@@ -46,6 +46,22 @@ public class QueryStatistics {
 
   private final Map<String, OperationStatistic> operationStatistics = new ConcurrentHashMap<>();
 
+  public static final String LOCAL_EXECUTION_PLANNER = "LocalExecutionPlanner";
+
+  public static final String QUERY_EXECUTION = "QueryExecution";
+
+  public static final String SERIES_SCAN_OPERATOR = "SeriesScanOperator";
+
+  public static final String ALIGNED_SERIES_SCAN_OPERATOR = "AlignedSeriesScanOperator";
+
+  public static final String AGG_SCAN_OPERATOR = "AbstractSeriesAggregationScanOperator";
+
+  public static final String FILTER_AND_PROJECT_OPERATOR = "FilterAndProjectOperator";
+
+  public static final String SINGLE_INPUT_AGG_OPERATOR = "SingleInputAggregationOperator";
+
+  public static final String PAGE_READER = "IPageReader";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");

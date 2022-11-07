@@ -68,7 +68,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected boolean calculateNextAggregationResult() {
+    long startTime = System.nanoTime();
+
     while (!calculateFromRawData()) {
+      long endTime = System.nanoTime();
+      costTime += (endTime - startTime);
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
@@ -79,19 +83,24 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // if child still has next but can't be invoked now
         return false;
       } else {
+        startTime = System.nanoTime();
         // If there are no points belong to last window, the last window will not
         // initialize window and aggregators
         if (!windowManager.isCurWindowInit()) {
           initWindowAndAggregators();
         }
+        endTime = System.nanoTime();
+        costTime += (endTime - startTime);
+        startTime = endTime;
         break;
       }
+      startTime = System.nanoTime();
     }
 
     updateResultTsBlock();
     // Step into next window
     windowManager.next();
-
+    costTime += (System.nanoTime() - startTime);
     return true;
   }
 

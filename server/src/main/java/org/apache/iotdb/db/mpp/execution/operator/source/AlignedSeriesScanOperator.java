@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.HashSet;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.ALIGNED_SERIES_SCAN_OPERATOR;
+
 public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
@@ -81,7 +83,7 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public boolean hasNext() {
-
+    long startTime = System.nanoTime();
     try {
       if (hasCachedTsBlock) {
         return true;
@@ -115,6 +117,8 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
       return hasCachedTsBlock;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
+    } finally {
+      operatorContext.addOperatorTime(ALIGNED_SERIES_SCAN_OPERATOR, System.nanoTime() - startTime);
     }
   }
 

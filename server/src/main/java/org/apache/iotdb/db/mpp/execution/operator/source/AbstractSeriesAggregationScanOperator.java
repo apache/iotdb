@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.AGG_SCAN_OPERATOR;
 
 public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
 
@@ -141,28 +142,31 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
+    try {
+      while (System.nanoTime() - start < maxRuntime
+          && timeRangeIterator.hasNextTimeRange()
+          && !resultTsBlockBuilder.isFull()) {
+        // move to next time window
+        curTimeRange = timeRangeIterator.nextTimeRange();
 
-    while (System.nanoTime() - start < maxRuntime
-        && timeRangeIterator.hasNextTimeRange()
-        && !resultTsBlockBuilder.isFull()) {
-      // move to next time window
-      curTimeRange = timeRangeIterator.nextTimeRange();
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.updateTimeRange(curTimeRange);
+        }
 
-      // clear previous aggregation result
-      for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
+        // calculate aggregation result on current time window
+        calculateNextAggregationResult();
       }
 
-      // calculate aggregation result on current time window
-      calculateNextAggregationResult();
-    }
-
-    if (resultTsBlockBuilder.getPositionCount() > 0) {
-      TsBlock resultTsBlock = resultTsBlockBuilder.build();
-      resultTsBlockBuilder.reset();
-      return resultTsBlock;
-    } else {
-      return null;
+      if (resultTsBlockBuilder.getPositionCount() > 0) {
+        TsBlock resultTsBlock = resultTsBlockBuilder.build();
+        resultTsBlockBuilder.reset();
+        return resultTsBlock;
+      } else {
+        return null;
+      }
+    } finally {
+      operatorContext.addOperatorTime(AGG_SCAN_OPERATOR, System.nanoTime() - start);
     }
   }
 

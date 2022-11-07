@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 
 import org.slf4j.Logger;
@@ -42,6 +43,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final long END_TIME_INITIAL_VALUE = -1L;
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
+
   private final FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
@@ -157,7 +161,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
 
     OperatorContext operatorContext =
-        new OperatorContext(operatorId, planNodeId, operatorType, this);
+        new OperatorContext(operatorId, planNodeId, operatorType, this, QUERY_STATISTICS);
     operatorContexts.add(operatorContext);
     return operatorContext;
   }
@@ -222,5 +226,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public void addOperationTime(String key, long costTimeInNanos) {
+    QUERY_STATISTICS.addCost(key, costTimeInNanos);
   }
 }

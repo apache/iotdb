@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SERIES_SCAN_OPERATOR;
+
 public class SeriesScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
@@ -82,7 +84,7 @@ public class SeriesScanOperator implements DataSourceOperator {
 
   @Override
   public boolean hasNext() {
-
+    long startTime = System.nanoTime();
     try {
       if (hasCachedTsBlock) {
         return true;
@@ -116,6 +118,8 @@ public class SeriesScanOperator implements DataSourceOperator {
       return hasCachedTsBlock;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
+    } finally {
+      operatorContext.addOperatorTime(SERIES_SCAN_OPERATOR, System.nanoTime() - startTime);
     }
   }
 

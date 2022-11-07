@@ -33,6 +33,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SINGLE_INPUT_AGG_OPERATOR;
+
 public abstract class SingleInputAggregationOperator implements ProcessOperator {
 
   protected final OperatorContext operatorContext;
@@ -49,6 +51,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
+
+  protected long costTime = 0L;
 
   public SingleInputAggregationOperator(
       OperatorContext operatorContext,
@@ -97,12 +101,19 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       }
     }
 
-    if (resultTsBlockBuilder.getPositionCount() > 0) {
-      TsBlock resultTsBlock = resultTsBlockBuilder.build();
-      resultTsBlockBuilder.reset();
-      return resultTsBlock;
-    } else {
-      return null;
+    start = System.nanoTime();
+    try {
+      if (resultTsBlockBuilder.getPositionCount() > 0) {
+        TsBlock resultTsBlock = resultTsBlockBuilder.build();
+        resultTsBlockBuilder.reset();
+        return resultTsBlock;
+      } else {
+        return null;
+      }
+    } finally {
+      operatorContext.addOperatorTime(
+          SINGLE_INPUT_AGG_OPERATOR, costTime + (System.nanoTime() - start));
+      costTime = 0;
     }
   }
 

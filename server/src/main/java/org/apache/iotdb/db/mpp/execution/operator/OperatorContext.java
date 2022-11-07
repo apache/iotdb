@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import io.airlift.units.Duration;
 
@@ -38,17 +39,21 @@ public class OperatorContext {
   private final String operatorType;
   private final FragmentInstanceContext instanceContext;
 
+  private final QueryStatistics queryStatistics;
+
   private Duration maxRunTime;
 
   public OperatorContext(
       int operatorId,
       PlanNodeId planNodeId,
       String operatorType,
-      FragmentInstanceContext instanceContext) {
+      FragmentInstanceContext instanceContext,
+      QueryStatistics queryStatistics) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
     this.instanceContext = instanceContext;
+    this.queryStatistics = queryStatistics;
   }
 
   public int getOperatorId() {
@@ -73,6 +78,10 @@ public class OperatorContext {
 
   public SessionInfo getSessionInfo() {
     return instanceContext.getSessionInfo();
+  }
+
+  public void addOperatorTime(String key, long costTimeInNanos) {
+    queryStatistics.addCost(key, costTimeInNanos);
   }
 
   @Override

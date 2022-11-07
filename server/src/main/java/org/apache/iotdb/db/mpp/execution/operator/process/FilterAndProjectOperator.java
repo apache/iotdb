@@ -43,19 +43,21 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.FILTER_AND_PROJECT_OPERATOR;
+
 public class FilterAndProjectOperator implements ProcessOperator {
 
   private final Operator inputOperator;
 
-  private List<LeafColumnTransformer> filterLeafColumnTransformerList;
+  private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
 
-  private ColumnTransformer filterOutputTransformer;
+  private final ColumnTransformer filterOutputTransformer;
 
-  private List<ColumnTransformer> commonTransformerList;
+  private final List<ColumnTransformer> commonTransformerList;
 
-  private List<LeafColumnTransformer> projectLeafColumnTransformerList;
+  private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
 
-  private List<ColumnTransformer> projectOutputTransformerList;
+  private final List<ColumnTransformer> projectOutputTransformerList;
 
   private final TsBlockBuilder filterTsBlockBuilder;
 
@@ -101,17 +103,23 @@ public class FilterAndProjectOperator implements ProcessOperator {
       return null;
     }
 
-    if (!hasFilter) {
-      return getTransformedTsBlock(input);
-    }
+    long startTime = System.nanoTime();
 
-    TsBlock filterResult = getFilterTsBlock(input);
+    try {
+      if (!hasFilter) {
+        return getTransformedTsBlock(input);
+      }
 
-    // contains non-mappable udf, we leave calculation for TransformOperator
-    if (hasNonMappableUDF) {
-      return filterResult;
+      TsBlock filterResult = getFilterTsBlock(input);
+
+      // contains non-mappable udf, we leave calculation for TransformOperator
+      if (hasNonMappableUDF) {
+        return filterResult;
+      }
+      return getTransformedTsBlock(filterResult);
+    } finally {
+      operatorContext.addOperatorTime(FILTER_AND_PROJECT_OPERATOR, System.nanoTime() - startTime);
     }
-    return getTransformedTsBlock(filterResult);
   }
 
   /**

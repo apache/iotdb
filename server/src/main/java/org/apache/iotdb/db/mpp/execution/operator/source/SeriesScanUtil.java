@@ -58,6 +58,7 @@ import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.PAGE_READER;
 
 public class SeriesScanUtil {
   private final FragmentInstanceContext context;
@@ -1124,10 +1125,12 @@ public class SeriesScanUtil {
     }
 
     TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
+      long startTime = System.nanoTime();
       TsBlock tsBlock = data.getAllSatisfiedData();
       if (!ascending) {
         tsBlock.reverse();
       }
+      context.addOperationTime(PAGE_READER, System.nanoTime() - startTime);
       return tsBlock;
     }
 

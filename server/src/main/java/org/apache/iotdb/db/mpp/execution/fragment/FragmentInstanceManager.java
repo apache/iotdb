@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import io.airlift.stats.CounterStat;
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeoutException;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.LOCAL_EXECUTION_PLANNER;
 
 public class FragmentInstanceManager {
 
@@ -67,6 +69,8 @@ public class FragmentInstanceManager {
 
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -96,6 +100,7 @@ public class FragmentInstanceManager {
       FragmentInstance instance, DataRegion dataRegion) {
 
     FragmentInstanceId instanceId = instance.getId();
+    long startTime = System.nanoTime();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
       FragmentInstanceExecution execution =
           instanceExecution.computeIfAbsent(
@@ -135,6 +140,8 @@ public class FragmentInstanceManager {
               });
 
       return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    } finally {
+      QUERY_STATISTICS.addCost(LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }
   }
 

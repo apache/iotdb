@@ -65,6 +65,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
 
   @Override
   protected boolean calculateNextAggregationResult() {
+    long startTime = System.nanoTime();
     if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
       // move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();
@@ -75,7 +76,12 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       }
     }
 
+    long endTime = System.nanoTime();
+    costTime += (endTime - startTime);
+    startTime = endTime;
+
     while (!isCalculationDone()) {
+      costTime += (System.nanoTime() - startTime);
       if (inputTsBlock == null) {
         // NOTE: child.next() can only be invoked once
         if (child.hasNext() && canCallNext) {
@@ -85,15 +91,20 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
           // if child still has next but can't be invoked now
           return false;
         } else {
+          startTime = System.nanoTime();
           break;
         }
       }
-
+      startTime = System.nanoTime();
       calculateFromCachedData();
+      endTime = System.nanoTime();
+      costTime += (endTime - startTime);
+      startTime = endTime;
     }
 
     // update result using aggregators
     updateResultTsBlock();
+    costTime += (System.nanoTime() - startTime);
 
     return true;
   }
