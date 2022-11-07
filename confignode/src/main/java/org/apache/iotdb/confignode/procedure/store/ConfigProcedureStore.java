@@ -36,7 +36,7 @@ import java.util.List;
 
 public class ConfigProcedureStore implements IProcedureStore {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
   private volatile boolean isRunning = false;
   private final ProcedureInfo procedureInfo;

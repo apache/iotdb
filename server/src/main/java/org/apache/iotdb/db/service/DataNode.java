@@ -135,7 +135,7 @@ public class DataNode implements DataNodeMBean {
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
       if (endPoint.getIp().equals("0.0.0.0")) {
         throw new ConfigurationException(
-            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
       }
     }
 
