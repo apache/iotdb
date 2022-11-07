@@ -318,11 +318,12 @@ public class IoTDBDescriptor {
 
     loadWALProps(properties);
 
-    String systemDir = properties.getProperty("dn_system_dir").trim();
+    String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
-      systemDir = properties.getProperty("base_dir").trim();
+      systemDir = properties.getProperty("base_dir");
       if (systemDir != null) {
-        systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        systemDir =
+            FilePathUtils.regularizePath(systemDir.trim()) + IoTDBConstant.SYSTEM_FOLDER_NAME;
       } else {
         systemDir = conf.getSystemDir();
       }
@@ -362,9 +363,7 @@ public class IoTDBDescriptor {
 
     String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
-        properties
-            .getProperty("dn_multi_dir_strategy", conf.getMultiDirStrategyClassName())
-            .trim());
+        properties.getProperty("dn_multi_dir_strategy", conf.getMultiDirStrategyClassName()));
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
@@ -1681,17 +1680,16 @@ public class IoTDBDescriptor {
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
-      String dataDirs = properties.getProperty("dn_data_dirs", null).trim();
+      String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.split(","));
+        conf.reloadDataDirs(dataDirs.trim().split(","));
       }
 
       // update dir strategy, must update after data dirs
-      String multiDirStrategyClassName =
-          properties.getProperty("dn_multi_dir_strategy", null).trim();
+      String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
-        conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+        conf.setMultiDirStrategyClassName(multiDirStrategyClassName.trim());
         conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
@@ -1843,7 +1841,7 @@ public class IoTDBDescriptor {
 
   private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion =
-        properties.getProperty("write_read_schema_free_memory_proportion").trim();
+        properties.getProperty("write_read_schema_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1962,7 +1960,7 @@ public class IoTDBDescriptor {
     int lastCacheProportion = 1;
 
     String schemaMemoryAllocatePortion =
-        properties.getProperty("schema_memory_allocate_proportion").trim();
+        properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
       conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
@@ -2000,31 +1998,32 @@ public class IoTDBDescriptor {
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
   private void loadUDFProps(Properties properties) {
     String initialByteArrayLengthForMemoryControl =
-        properties.getProperty("udf_initial_byte_array_length_for_memory_control").trim();
+        properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
       conf.setUdfInitialByteArrayLengthForMemoryControl(
-          Integer.parseInt(initialByteArrayLengthForMemoryControl));
+          Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
     }
 
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
 
-    String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb").trim();
+    String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
       conf.setUdfMemoryBudgetInMB(
           (float)
-              Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
+              Math.min(
+                  Float.parseFloat(memoryBudgetInMb.trim()),
+                  0.2 * conf.getAllocateMemoryForRead()));
     }
 
-    String groupByFillCacheSizeInMB =
-        properties.getProperty("group_by_fill_cache_size_in_mb").trim();
+    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
     if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
+      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB.trim()));
     }
 
     String readerTransformerCollectorMemoryProportion =
-        properties.getProperty("udf_reader_transformer_collector_memory_proportion").trim();
+        properties.getProperty("udf_reader_transformer_collector_memory_proportion");
     if (readerTransformerCollectorMemoryProportion != null) {
-      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
+      String[] proportions = readerTransformerCollectorMemoryProportion.trim().split(":");
       int proportionSum = 0;
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
@@ -2149,10 +2148,10 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES).trim();
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES);
     if (configNodeUrls != null) {
       try {
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls.trim()));
       } catch (BadNodeUrlException e) {
         logger.error(
             "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
