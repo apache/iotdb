@@ -269,4 +269,13 @@ public class PathPatternTree {
     }
     return this.getRoot().equalWith(that.getRoot());
   }
+
+  @Override
+  public boolean equals(Object that) {
+    if (that instanceof PathPatternTree) {
+      return equalWith((PathPatternTree) that);
+    } else {
+      return false;
+    }
+  }
 }

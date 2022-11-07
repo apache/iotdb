@@ -336,4 +336,24 @@ public class IoTDBCompactionIT {
       assertEquals(10000, cnt);
     }
   }
+
+  @Test
+  public void testDataConversion() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      for (int fileIndex = 0; fileIndex < 29; ++fileIndex) {
+        for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+          for (long time = fileIndex * 100; time < fileIndex * 100 + 100; ++time) {
+            statement.execute(
+                String.format(
+                    "insert into root.compactionTest.d(time, s%d) values (%d,%d)",
+                    seriesIndex, time, time));
+          }
+        }
+        statement.execute("flush");
+      }
+      statement.execute("Alter");
+    }
+  }
 }

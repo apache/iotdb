@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -76,6 +77,7 @@ public class SingleSeriesCompactionExecutor {
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
   private boolean alreadyFetchSchema = false;
+  private ISchemaFetcher schemaFetcher = null;
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -104,10 +106,12 @@ public class SingleSeriesCompactionExecutor {
   }
 
   public SingleSeriesCompactionExecutor(
+      ISchemaFetcher schemaFetcher,
       PartialPath series,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
       TsFileResource targetResource) {
+    this.schemaFetcher = schemaFetcher;
     this.device = series.getDevice();
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -235,7 +239,7 @@ public class SingleSeriesCompactionExecutor {
       return;
     }
     IMeasurementSchema correctSchema =
-        CompactionUtils.fetchSchema(device, schema.getMeasurementId());
+        CompactionUtils.fetchSchema(schemaFetcher, device, schema.getMeasurementId());
     if (schema.getType() != correctSchema.getType()) {
       chunkWriter = new ChunkWriterImpl(correctSchema);
       schema = correctSchema;
@@ -367,18 +371,22 @@ public class SingleSeriesCompactionExecutor {
         if (timeValuePair.getValue() instanceof TsPrimitiveType.TsFloat) {
           chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
         } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
-          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+          chunkWriter.write(
+              timeValuePair.getTimestamp(), (float) timeValuePair.getValue().getInt());
         }
         break;
       case DOUBLE:
         if (timeValuePair.getValue() instanceof TsPrimitiveType.TsDouble) {
           chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
         } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsFloat) {
-          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+          chunkWriter.write(
+              timeValuePair.getTimestamp(), (double) timeValuePair.getValue().getFloat());
         } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
-          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+          chunkWriter.write(
+              timeValuePair.getTimestamp(), (double) timeValuePair.getValue().getInt());
         } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsLong) {
-          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+          chunkWriter.write(
+              timeValuePair.getTimestamp(), (double) timeValuePair.getValue().getLong());
         }
         break;
       case BOOLEAN:
@@ -388,7 +396,7 @@ public class SingleSeriesCompactionExecutor {
         if (timeValuePair.getValue() instanceof TsPrimitiveType.TsLong) {
           chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
         } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
-          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+          chunkWriter.write(timeValuePair.getTimestamp(), (long) timeValuePair.getValue().getInt());
         }
         break;
       case INT32:

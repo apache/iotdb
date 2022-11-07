@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -71,6 +72,7 @@ public class AlignedSeriesCompactionExecutor {
   private long remainingPointInChunkWriter = 0L;
   private final RateLimiter rateLimiter =
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
+  private ISchemaFetcher schemaFetcher;
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -79,11 +81,13 @@ public class AlignedSeriesCompactionExecutor {
   private boolean alreadyFetchSchema = false;
 
   public AlignedSeriesCompactionExecutor(
+      ISchemaFetcher schemaFetcher,
       String device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter writer)
       throws IOException {
+    this.schemaFetcher = schemaFetcher;
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.writer = writer;
@@ -207,7 +211,7 @@ public class AlignedSeriesCompactionExecutor {
     List<IMeasurementSchema> newSchemaList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
       IMeasurementSchema schema =
-          CompactionUtils.fetchSchema(device, measurementSchema.getMeasurementId());
+          CompactionUtils.fetchSchema(schemaFetcher, device, measurementSchema.getMeasurementId());
       if (schema == null) {
         log.warn(
             "Cannot get schema of {}.{}, skip it", device, measurementSchema.getMeasurementId());

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -35,19 +36,34 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -935,6 +951,370 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
+    }
+  }
+
+  @Test
+  public void testDataConvertFromIntToLong() throws Exception {
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int fileIndex = 0; fileIndex < 10; ++fileIndex) {
+      try (TsFileIOWriter writer =
+          new TsFileIOWriter(
+              new File(
+                  SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1)))) {
+        writer.startChunkGroup("root.test.d");
+        for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+          ChunkWriterImpl chunkWriter =
+              new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.INT64));
+          for (long time = fileIndex * 100; time < fileIndex * 100 + 100; ++time) {
+            chunkWriter.write(time, time);
+          }
+          chunkWriter.writeToFileWriter(writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+        tsFileResources.add(
+            new TsFileResource(
+                new File(
+                    SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1))));
+      }
+    }
+    try (TsFileIOWriter writer =
+        new TsFileIOWriter(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12)))) {
+      writer.startChunkGroup("root.test.d");
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        ChunkWriterImpl chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.INT32));
+        for (long time = 10 * 100; time < 10 * 100 + 100; ++time) {
+          chunkWriter.write(time, (int) time);
+        }
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+      tsFileResources.add(
+          new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12))));
+    }
+    ISchemaFetcher schemaFetcher = Mockito.mock(ISchemaFetcher.class);
+    for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+      ISchemaTree result = Mockito.mock(ISchemaTree.class);
+      Mockito.when(result.getAllMeasurement())
+          .thenReturn(
+              Collections.singletonList(
+                  new MeasurementPath("root.test.d.s" + seriesIndex, TSDataType.INT64)));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(new PartialPath("root.test.d", "s" + seriesIndex));
+      patternTree.constructTree();
+      Mockito.when(schemaFetcher.fetchSchema(patternTree)).thenReturn(result);
+    }
+    TsFileResource targetResource =
+        new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-1-0.tsfile", 1, 1)));
+    ReadChunkCompactionPerformer performer =
+        new ReadChunkCompactionPerformer(tsFileResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.setSchemaFetcher(schemaFetcher);
+    performer.perform();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        Path path = new Path("root.test.d.s" + seriesIndex);
+        Map<String, List<TimeseriesMetadata>> deviceToTimeseriesMetadataMap =
+            reader.getAllTimeseriesMetadata(true);
+        Assert.assertEquals(10, deviceToTimeseriesMetadataMap.get("root.test.d").size());
+        for (TimeseriesMetadata timeseriesMetadata :
+            deviceToTimeseriesMetadataMap.get("root.test.d")) {
+          int cnt = 0;
+          for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+            IChunkReader chunkReader = new ChunkReader(chunk, null);
+            while (chunkReader.hasNextSatisfiedPage()) {
+              IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+              while (batchIterator.hasNextTimeValuePair()) {
+                TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+                Assert.assertTrue(timeValuePair.getValue() instanceof TsPrimitiveType.TsLong);
+                Assert.assertEquals(
+                    timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+                Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+                cnt++;
+              }
+            }
+          }
+          Assert.assertEquals(cnt, 1100);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testDataConvertFromFloatToDouble() throws Exception {
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int fileIndex = 0; fileIndex < 10; ++fileIndex) {
+      try (TsFileIOWriter writer =
+          new TsFileIOWriter(
+              new File(
+                  SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1)))) {
+        writer.startChunkGroup("root.test.d");
+        for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+          ChunkWriterImpl chunkWriter =
+              new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.DOUBLE));
+          for (long time = fileIndex * 100; time < fileIndex * 100 + 100; ++time) {
+            chunkWriter.write(time, (double) time);
+          }
+          chunkWriter.writeToFileWriter(writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+        tsFileResources.add(
+            new TsFileResource(
+                new File(
+                    SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1))));
+      }
+    }
+    try (TsFileIOWriter writer =
+        new TsFileIOWriter(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12)))) {
+      writer.startChunkGroup("root.test.d");
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        ChunkWriterImpl chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.FLOAT));
+        for (long time = 10 * 100; time < 10 * 100 + 100; ++time) {
+          chunkWriter.write(time, (float) time);
+        }
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+      tsFileResources.add(
+          new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12))));
+    }
+    ISchemaFetcher schemaFetcher = Mockito.mock(ISchemaFetcher.class);
+    for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+      ISchemaTree result = Mockito.mock(ISchemaTree.class);
+      Mockito.when(result.getAllMeasurement())
+          .thenReturn(
+              Collections.singletonList(
+                  new MeasurementPath("root.test.d.s" + seriesIndex, TSDataType.DOUBLE)));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(new PartialPath("root.test.d", "s" + seriesIndex));
+      patternTree.constructTree();
+      Mockito.when(schemaFetcher.fetchSchema(patternTree)).thenReturn(result);
+    }
+    TsFileResource targetResource =
+        new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-1-0.tsfile", 1, 1)));
+    ReadChunkCompactionPerformer performer =
+        new ReadChunkCompactionPerformer(tsFileResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.setSchemaFetcher(schemaFetcher);
+    performer.perform();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        Path path = new Path("root.test.d.s" + seriesIndex);
+        Map<String, List<TimeseriesMetadata>> deviceToTimeseriesMetadataMap =
+            reader.getAllTimeseriesMetadata(true);
+        Assert.assertEquals(10, deviceToTimeseriesMetadataMap.get("root.test.d").size());
+        for (TimeseriesMetadata timeseriesMetadata :
+            deviceToTimeseriesMetadataMap.get("root.test.d")) {
+          int cnt = 0;
+          for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+            IChunkReader chunkReader = new ChunkReader(chunk, null);
+            while (chunkReader.hasNextSatisfiedPage()) {
+              IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+              while (batchIterator.hasNextTimeValuePair()) {
+                TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+                Assert.assertTrue(timeValuePair.getValue() instanceof TsPrimitiveType.TsDouble);
+                Assert.assertEquals(
+                    timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), 0.001);
+                Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+                cnt++;
+              }
+            }
+          }
+          Assert.assertEquals(cnt, 1100);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testDataConvertFromFloatAndIntToDouble() throws Exception {
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int fileIndex = 0; fileIndex < 10; ++fileIndex) {
+      try (TsFileIOWriter writer =
+          new TsFileIOWriter(
+              new File(
+                  SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1)))) {
+        writer.startChunkGroup("root.test.d");
+        for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+          ChunkWriterImpl chunkWriter =
+              new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.FLOAT));
+          for (long time = fileIndex * 100; time < fileIndex * 100 + 100; ++time) {
+            chunkWriter.write(time, (float) time);
+          }
+          chunkWriter.writeToFileWriter(writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+        tsFileResources.add(
+            new TsFileResource(
+                new File(
+                    SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1))));
+      }
+    }
+    try (TsFileIOWriter writer =
+        new TsFileIOWriter(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12)))) {
+      writer.startChunkGroup("root.test.d");
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        ChunkWriterImpl chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.INT32));
+        for (long time = 10 * 100; time < 10 * 100 + 100; ++time) {
+          chunkWriter.write(time, (int) time);
+        }
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+      tsFileResources.add(
+          new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12))));
+    }
+    ISchemaFetcher schemaFetcher = Mockito.mock(ISchemaFetcher.class);
+    for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+      ISchemaTree result = Mockito.mock(ISchemaTree.class);
+      Mockito.when(result.getAllMeasurement())
+          .thenReturn(
+              Collections.singletonList(
+                  new MeasurementPath("root.test.d.s" + seriesIndex, TSDataType.DOUBLE)));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(new PartialPath("root.test.d", "s" + seriesIndex));
+      patternTree.constructTree();
+      Mockito.when(schemaFetcher.fetchSchema(patternTree)).thenReturn(result);
+    }
+    TsFileResource targetResource =
+        new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-1-0.tsfile", 1, 1)));
+    ReadChunkCompactionPerformer performer =
+        new ReadChunkCompactionPerformer(tsFileResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.setSchemaFetcher(schemaFetcher);
+    performer.perform();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        Path path = new Path("root.test.d.s" + seriesIndex);
+        Map<String, List<TimeseriesMetadata>> deviceToTimeseriesMetadataMap =
+            reader.getAllTimeseriesMetadata(true);
+        Assert.assertEquals(10, deviceToTimeseriesMetadataMap.get("root.test.d").size());
+        for (TimeseriesMetadata timeseriesMetadata :
+            deviceToTimeseriesMetadataMap.get("root.test.d")) {
+          int cnt = 0;
+          for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+            IChunkReader chunkReader = new ChunkReader(chunk, null);
+            while (chunkReader.hasNextSatisfiedPage()) {
+              IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+              while (batchIterator.hasNextTimeValuePair()) {
+                TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+                Assert.assertTrue(timeValuePair.getValue() instanceof TsPrimitiveType.TsDouble);
+                Assert.assertEquals(
+                    timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), 0.001);
+                Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+                cnt++;
+              }
+            }
+          }
+          Assert.assertEquals(cnt, 1100);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testDataConvertFail() throws Exception {
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int fileIndex = 0; fileIndex < 10; ++fileIndex) {
+      try (TsFileIOWriter writer =
+          new TsFileIOWriter(
+              new File(
+                  SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1)))) {
+        writer.startChunkGroup("root.test.d");
+        for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+          ChunkWriterImpl chunkWriter =
+              new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.INT32));
+          for (long time = fileIndex * 100; time < fileIndex * 100 + 100; ++time) {
+            chunkWriter.write(time, (int) time);
+          }
+          chunkWriter.writeToFileWriter(writer);
+        }
+        writer.endChunkGroup();
+        writer.endFile();
+        tsFileResources.add(
+            new TsFileResource(
+                new File(
+                    SEQ_DIRS, String.format("%d-%d-0-0.tsfile", fileIndex + 1, fileIndex + 1))));
+      }
+    }
+    try (TsFileIOWriter writer =
+        new TsFileIOWriter(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12)))) {
+      writer.startChunkGroup("root.test.d");
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        ChunkWriterImpl chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema("s" + seriesIndex, TSDataType.INT64));
+        for (long time = 10 * 100; time < 10 * 100 + 100; ++time) {
+          chunkWriter.write(time, time);
+        }
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+      tsFileResources.add(
+          new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", 12, 12))));
+    }
+    ISchemaFetcher schemaFetcher = Mockito.mock(ISchemaFetcher.class);
+    for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+      ISchemaTree result = Mockito.mock(ISchemaTree.class);
+      Mockito.when(result.getAllMeasurement())
+          .thenReturn(
+              Collections.singletonList(
+                  new MeasurementPath("root.test.d.s" + seriesIndex, TSDataType.INT32)));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(new PartialPath("root.test.d", "s" + seriesIndex));
+      patternTree.constructTree();
+      Mockito.when(schemaFetcher.fetchSchema(patternTree)).thenReturn(result);
+    }
+    TsFileResource targetResource =
+        new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-1-0.tsfile", 1, 1)));
+    ReadChunkCompactionPerformer performer =
+        new ReadChunkCompactionPerformer(tsFileResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.setSchemaFetcher(schemaFetcher);
+    performer.perform();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
+      for (int seriesIndex = 0; seriesIndex < 10; ++seriesIndex) {
+        Path path = new Path("root.test.d.s" + seriesIndex);
+        Map<String, List<TimeseriesMetadata>> deviceToTimeseriesMetadataMap =
+            reader.getAllTimeseriesMetadata(true);
+        Assert.assertEquals(10, deviceToTimeseriesMetadataMap.get("root.test.d").size());
+        for (TimeseriesMetadata timeseriesMetadata :
+            deviceToTimeseriesMetadataMap.get("root.test.d")) {
+          int cnt = 0;
+          for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+            IChunkReader chunkReader = new ChunkReader(chunk, null);
+            while (chunkReader.hasNextSatisfiedPage()) {
+              IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+              while (batchIterator.hasNextTimeValuePair()) {
+                TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+                Assert.assertTrue(timeValuePair.getValue() instanceof TsPrimitiveType.TsInt);
+                Assert.assertEquals(
+                    timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+                Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+                cnt++;
+              }
+            }
+          }
+          Assert.assertEquals(cnt, 1000);
+        }
+      }
     }
   }
 }

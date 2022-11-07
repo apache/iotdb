@@ -30,6 +30,9 @@ import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -51,16 +54,31 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private List<TsFileResource> seqFiles;
   private CompactionTaskSummary summary;
 
+  private ISchemaFetcher schemaFetcher;
+
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
     this.targetResource = targetFile;
+    schemaFetcher =
+        IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+            ? ClusterSchemaFetcher.getInstance()
+            : StandaloneSchemaFetcher.getInstance();
   }
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     this.seqFiles = sourceFiles;
+    schemaFetcher =
+        IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+            ? ClusterSchemaFetcher.getInstance()
+            : StandaloneSchemaFetcher.getInstance();
   }
 
-  public ReadChunkCompactionPerformer() {}
+  public ReadChunkCompactionPerformer() {
+    schemaFetcher =
+        IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+            ? ClusterSchemaFetcher.getInstance()
+            : StandaloneSchemaFetcher.getInstance();
+  }
 
   @Override
   public void perform()
@@ -125,7 +143,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer);
+            schemaFetcher, device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
     writer.endChunkGroup();
   }
@@ -169,7 +187,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              schemaFetcher, p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();
@@ -178,5 +197,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+  }
+
+  public void setSchemaFetcher(ISchemaFetcher schemaFetcher) {
+    this.schemaFetcher = schemaFetcher;
   }
 }

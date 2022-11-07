@@ -29,9 +29,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -227,12 +225,9 @@ public class CompactionUtils {
     }
   }
 
-  public static IMeasurementSchema fetchSchema(String device, String measurementId)
+  public static IMeasurementSchema fetchSchema(
+      ISchemaFetcher schemaFetcher, String device, String measurementId)
       throws IllegalPathException {
-    ISchemaFetcher schemaFetcher =
-        IoTDBDescriptor.getInstance().getConfig().isClusterMode()
-            ? ClusterSchemaFetcher.getInstance()
-            : StandaloneSchemaFetcher.getInstance();
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(new PartialPath(device, measurementId));
     patternTree.constructTree();
