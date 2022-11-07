@@ -186,6 +186,12 @@ public class V012FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    throw new UnsupportedOperationException(
+        "V012FileTimeIndex should be rewritten while upgrading and getStartAndEndTime() method should not be called any more.");
+  }
+
+  @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
     throw new UnsupportedOperationException(
         "V012FileTimeIndex should be rewritten while upgrading and getPossibleStartTimeAndEndTime() method should not be called any more.");

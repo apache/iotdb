@@ -75,7 +75,7 @@ parameters:
 - by default, iotdb will run in the background
 - "-v": show iotdb version
 - "-f": run iotdb on the foreground and print logs on the console (by default)
-- "-b": run iotdb in the background which does not print logs on the console
+- "-d": run iotdb in the background which does not print logs on the console
 - "-p \<pidfile\>": save the pid into target pidfile
 - "-h": help
 - "printgc"(must be at the end of the command): print the GC log 

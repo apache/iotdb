@@ -77,6 +77,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -121,6 +122,8 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
+  private AtomicBoolean stopped;
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -161,6 +164,7 @@ public class QueryExecution implements IQueryExecution {
             }
           }
         });
+    this.stopped = new AtomicBoolean(false);
   }
 
   @FunctionalInterface
@@ -315,8 +319,11 @@ public class QueryExecution implements IQueryExecution {
 
   // Stop the workers for this query
   public void stop() {
-    if (this.scheduler != null) {
-      this.scheduler.stop();
+    // only stop once
+    if (stopped.compareAndSet(false, true)) {
+      if (this.scheduler != null) {
+        this.scheduler.stop();
+      }
     }
   }
 
