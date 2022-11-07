@@ -400,12 +400,10 @@ class RatisConsensus implements IConsensus {
    */
   @Override
   public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
-
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
     RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
-    logger.info("addPeer----");
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
       return failed(new ConsensusGroupNotExistException(groupId));
@@ -512,7 +510,6 @@ class RatisConsensus implements IConsensus {
     RaftPeer newPeer = Utils.fromPeerAndPriorityToRaftPeer(newNode, DEFAULT_PRIORITY);
     ConsensusGenericResponse createResp = addNewGroupToServer(group, newPeer);
     if (!createResp.isSuccess()) {
-      logger.info("===createResp is failed:", createResp.getException());
       return createResp;
     }
 
