@@ -19,15 +19,16 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -44,7 +45,6 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -104,7 +104,8 @@ public class AbstractCompactionTest {
 
   private int fileVersion = 0;
 
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     if (!SEQ_DIRS.exists()) {
       Assert.assertTrue(SEQ_DIRS.mkdirs());
     }
@@ -112,8 +113,12 @@ public class AbstractCompactionTest {
       Assert.assertTrue(UNSEQ_DIRS.mkdirs());
     }
     dataType = TSDataType.INT64;
-    EnvironmentUtils.envSetUp();
-    IoTDB.configManager.init();
+    CompactionTaskManager.getInstance().restart();
+    seqResources.clear();
+    unseqResources.clear();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   /**
@@ -315,51 +320,26 @@ public class AbstractCompactionTest {
           dataTypes.add(dataType);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
-          IoTDB.schemaProcessor.createTimeseries(
-              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
-              dataType,
-              TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED,
-              Collections.emptyMap());
-        }
-        IoTDB.schemaProcessor.createAlignedTimeSeries(
-            new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
-            measurements,
-            dataTypes,
-            encodings,
-            compressionTypes);
-      } else {
-        for (int j = 0; j < measurementNum; j++) {
-          IoTDB.schemaProcessor.createTimeseries(
-              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
-              dataType,
-              TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED,
-              Collections.emptyMap());
         }
       }
     }
   }
 
-  protected void deleteTimeseriesInMManager(List<String> timeseries) throws MetadataException {
-    for (String path : timeseries) {
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(path));
-    }
-  }
+  protected void deleteTimeseriesInMManager(List<String> timeseries) throws MetadataException {}
 
   public void tearDown() throws IOException, StorageEngineException {
     new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles();
+    CompactionTaskManager.getInstance().stop();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
-    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanAllDir();
     if (SEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(SEQ_DIRS);
     }

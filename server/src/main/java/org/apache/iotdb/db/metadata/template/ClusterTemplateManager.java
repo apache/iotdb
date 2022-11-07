@@ -57,13 +57,16 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTemplateManager.class);
 
-  private Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
-  private Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
+  // <TemplateId, Template>
+  private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
+  // <TemplateName, TemplateId>
+  private final Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
+  // <FullPath, TemplateId>
+  private final Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
+  // <TemplateId, List<FullPath>>
+  private final Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
 
-  private Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
-  private Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
-
-  private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private static final class ClusterTemplateManagerHolder {
     private static final ClusterTemplateManager INSTANCE = new ClusterTemplateManager();
