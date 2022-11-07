@@ -538,11 +538,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testAliasInAlterClause() {
     String[] alias = {
-      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "\"\\\\test\"",
+      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "`\\\\test`",
     };
 
     String[] res = {
-      "b", "test", "test.1", "1`1", "test", "test", "\\\\test",
+      "b", "test", "`test.1`", "`1``1`", "test", "test", "`\\\\test`",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -142,7 +142,7 @@ public class DataNodeRemoveHandler {
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn("Not find region replica nodes, region: {}", regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("not find region replica nodes, region: " + regionId);
+      status.setMessage("Not find region replica nodes, region: " + regionId);
       return null;
     }
 
@@ -378,6 +378,7 @@ public class DataNodeRemoveHandler {
    * @return data node location
    */
   public List<TDataNodeLocation> findRegionReplicaNodes(TConsensusGroupId regionId) {
+    // Through consensus?
     List<TRegionReplicaSet> regionReplicaSets =
         configManager.getPartitionManager().getAllReplicaSets().stream()
             .filter(rg -> rg.regionId.equals(regionId))
@@ -610,11 +611,10 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.ONE_COPY_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.ONE_COPY_CONSENSUS)) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
-      status.setMessage("standalone protocol is not supported to remove data node");
+      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }
     return status;
   }

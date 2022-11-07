@@ -23,7 +23,7 @@ echo ---------------------
 echo Starting WalChecker 
 echo ---------------------
 
-source "$(dirname "$0")/iotdb-common.sh"
+source "$(dirname "$0")/../sbin/iotdb-common.sh"
 #get_iotdb_include and checkAllVariables is in iotdb-common.sh
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
@@ -63,7 +63,7 @@ classname=org.apache.iotdb.db.tools.WalChecker
 launch_service()
 {
 	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-datanode.xml"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"

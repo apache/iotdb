@@ -121,7 +121,7 @@ public class RegionMigrateProcedure
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
-          // remove consensus group after a node stop, which will be failed, but we will
+          // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;

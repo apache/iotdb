@@ -27,7 +27,7 @@ public class ConfigFactory {
     if (config == null) {
       EnvType env = EnvType.getSystemEnvType();
       switch (env) {
-        case OneCopy:
+        case Simple:
         case Cluster1:
           config = new MppConfig();
           break;

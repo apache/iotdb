@@ -533,7 +533,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
-      alterTimeSeriesStatement.setAlias(parseAlias(ctx.alias()));
+      alterTimeSeriesStatement.setAlias(parseAliasNode(ctx.alias()));
     }
   }
 
@@ -1910,17 +1910,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return src;
   }
 
-  /** function for parsing Alias. */
+  // alias
+
+  /** function for parsing Alias of ResultColumn . */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
     }
     return alias;
   }
 
+  /** function for parsing AliasNode. */
+  private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseConstant(ctx.constant());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
+      }
+    } else {
+      alias = parseNodeString(ctx.identifier().getText());
+    }
+    return alias;
+  }
   /** Data Control Language (DCL) */
 
   // Create User

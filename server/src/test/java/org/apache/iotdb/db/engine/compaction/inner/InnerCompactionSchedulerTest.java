@@ -50,7 +50,8 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
       IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     CompactionTaskManager.getInstance().start();
     super.setUp();
     originFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
