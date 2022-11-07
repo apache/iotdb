@@ -22,10 +22,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -123,11 +122,23 @@ public class UnsealedTsFileRecoverPerformerTest {
     long time = 4;
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
     String[] columns = new String[] {1 + "", 1.0 + ""};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            dataTypes,
+            time,
+            columns,
+            true);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+            new MeasurementSchema("s1", TSDataType.FLOAT),
+            new MeasurementSchema("s2", TSDataType.DOUBLE)
+        });
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowPlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -179,10 +190,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
     assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
     // generate InsertRowPlan
-    DeletePlan deletePlan =
-        new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE2_NAME));
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId("0"),
+            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Long.MIN_VALUE, Long.MAX_VALUE);
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deletePlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deleteDataNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here

@@ -25,7 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
@@ -91,7 +92,7 @@ public class WALNodeTest {
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
     List<WALFlushListener> walFlushListeners = Collections.synchronizedList(new ArrayList<>());
-    Set<InsertTabletPlan> expectedInsertTabletPlans = ConcurrentHashMap.newKeySet();
+    Set<InsertTabletNode> expectedInsertTabletPlans = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threadsNum; ++i) {
       int memTableId = i;
       Callable<Void> writeTask =
@@ -117,17 +118,17 @@ public class WALNodeTest {
     Thread.sleep(1_000);
     // check .wal files
     File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
-    Set<InsertTabletPlan> actualInsertTabletPlans = new HashSet<>();
+    Set<InsertTabletNode> actualInsertTabletNodes = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {
         try (WALReader walReader = new WALReader(walFile)) {
           while (walReader.hasNext()) {
-            actualInsertTabletPlans.add((InsertTabletPlan) walReader.next().getValue());
+            actualInsertTabletNodes.add((InsertTabletNode) walReader.next().getValue());
           }
         }
       }
     }
-    assertEquals(expectedInsertTabletPlans, actualInsertTabletPlans);
+    assertEquals(expectedInsertTabletPlans, actualInsertTabletNodes);
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {
@@ -140,28 +141,28 @@ public class WALNodeTest {
 
   private void writeInsertTabletPlan(
       int memTableId,
-      Set<InsertTabletPlan> expectedInsertTabletPlans,
+      Set<InsertTabletNode> expectedInsertTabletPlans,
       List<WALFlushListener> walFlushListeners)
       throws IllegalPathException {
     for (int i = 0; i < 100; ++i) {
-      InsertTabletPlan insertTabletPlan =
-          getInsertTabletPlan(devicePath + memTableId, new long[] {i});
-      expectedInsertTabletPlans.add(insertTabletPlan);
+      InsertTabletNode insertTabletNode =
+          getInsertTabletNode(devicePath + memTableId, new long[] {i});
+      expectedInsertTabletPlans.add(insertTabletNode);
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletPlan, 0, insertTabletPlan.getRowCount());
+          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
       walFlushListeners.add(walFlushListener);
     }
   }
 
-  private InsertTabletPlan getInsertTabletPlan(String devicePath, long[] times)
+  private InsertTabletNode getInsertTabletNode(String devicePath, long[] times)
       throws IllegalPathException {
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.BOOLEAN);
+    dataTypes.add(TSDataType.TEXT);
 
     Object[] columns = new Object[6];
     columns[0] = new double[times.length];
@@ -188,16 +189,16 @@ public class WALNodeTest {
       bitMaps[i].mark(i % times.length);
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(devicePath),
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setBitMaps(bitMaps);
-    return insertTabletPlan;
+    return new InsertTabletNode(
+        new PlanNodeId("0"),
+        new PartialPath(devicePath),
+        false,
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        dataTypes.toArray(new TSDataType[0]),
+        times,
+        null,
+        columns,
+        times.length);
   }
 
   @Test
@@ -251,10 +252,10 @@ public class WALNodeTest {
     walNode.onMemTableCreated(memTable, tsFilePath);
     while (walNode.getCurrentLogVersion() == 0) {
       ++time;
-      InsertTabletPlan insertTabletPlan =
-          getInsertTabletPlan(devicePath + memTableId, new long[] {time});
+      InsertTabletNode insertTabletNode =
+          getInsertTabletNode(devicePath + memTableId, new long[] {time});
       WALFlushListener walFlushListener =
-          walNode.log(memTableId, insertTabletPlan, 0, insertTabletPlan.getRowCount());
+          walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);

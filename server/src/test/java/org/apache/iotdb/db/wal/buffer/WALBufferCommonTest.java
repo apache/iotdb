@@ -23,11 +23,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,13 +73,13 @@ public abstract class WALBufferCommonTest {
     int threadsNum = 3;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    Set<InsertRowPlan> expectedInsertRowPlans = ConcurrentHashMap.newKeySet();
+    Set<InsertRowNode> expectedInsertRowNodes = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threadsNum; ++i) {
       int memTableId = i;
       Callable<Void> writeTask =
           () -> {
             try {
-              writeInsertRowPlan(memTableId, expectedInsertRowPlans);
+              writeInsertRowNode(memTableId, expectedInsertRowNodes);
             } catch (IllegalPathException e) {
               fail();
             }
@@ -95,31 +99,32 @@ public abstract class WALBufferCommonTest {
     Thread.sleep(1_000);
     // check .wal files
     File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
-    Set<InsertRowPlan> actualInsertRowPlans = new HashSet<>();
+    Set<InsertRowNode> actualInsertRowNodes = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {
         try (WALReader walReader = new WALReader(walFile)) {
           while (walReader.hasNext()) {
-            actualInsertRowPlans.add((InsertRowPlan) walReader.next().getValue());
+            actualInsertRowNodes.add((InsertRowNode) walReader.next().getValue());
           }
         }
       }
     }
-    assertEquals(expectedInsertRowPlans, actualInsertRowPlans);
+    assertEquals(expectedInsertRowNodes, actualInsertRowNodes);
   }
 
-  private void writeInsertRowPlan(int memTableId, Set<InsertRowPlan> expectedInsertRowPlans)
-      throws IllegalPathException {
+  private void writeInsertRowNode(int memTableId, Set<InsertRowNode> expectedInsertRowNodes)
+      throws IllegalPathException, QueryProcessException {
     for (int i = 0; i < 100; ++i) {
-      InsertRowPlan insertRowPlan = getInsertRowPlan(devicePath + memTableId, i);
-      expectedInsertRowPlans.add(insertRowPlan);
+      InsertRowNode insertRowNode = getInsertRowNode(devicePath + memTableId, i);
+      expectedInsertRowNodes.add(insertRowNode);
 
-      WALEntry walEntry = new WALInfoEntry(memTableId, insertRowPlan);
+      WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
       walBuffer.write(walEntry);
     }
   }
 
-  private InsertRowPlan getInsertRowPlan(String devicePath, long time) throws IllegalPathException {
+  private InsertRowNode getInsertRowNode(String devicePath, long time)
+      throws IllegalPathException, QueryProcessException {
     TSDataType[] dataTypes =
         new TSDataType[] {
           TSDataType.DOUBLE,
@@ -130,20 +135,29 @@ public abstract class WALBufferCommonTest {
           TSDataType.TEXT
         };
 
-    String[] columns = new String[6];
-    columns[0] = 1.0 + "";
-    columns[1] = 2 + "";
-    columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
+    Object[] columns = new Object[6];
+    columns[0] = 1.0d;
+    columns[1] = 2f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0);
 
-    return new InsertRowPlan(
+    InsertRowNode node = new InsertRowNode(
+        new PlanNodeId("0"),
         new PartialPath(devicePath),
-        time,
+        false,
         new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
         dataTypes,
-        columns);
+        time,
+        columns,
+        false);
+    MeasurementSchema[] schemas = new MeasurementSchema[6];
+    for (int i = 0; i < 6; i++) {
+      schemas[i] = new MeasurementSchema("s" + (i + 1), dataTypes[i]);
+    }
+    node.setMeasurementSchemas(schemas);
+    return node;
   }
 
   @Test

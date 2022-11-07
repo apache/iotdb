@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -95,9 +94,9 @@ public class TsFileRewriteToolTest {
     boolean newEnablePartition = true;
     config.setEnablePartition(newEnablePartition);
     config.setTimePartitionIntervalForStorage(newPartitionInterval);
-
-    StorageEngine.setEnablePartition(newEnablePartition);
-    StorageEngine.setTimePartitionInterval(newPartitionInterval);
+    //
+    //    StorageEngine.setEnablePartition(newEnablePartition);
+    //    StorageEngine.setTimePartitionInterval(newPartitionInterval);
 
     File f = new File(folder);
     if (!f.exists()) {
@@ -117,8 +116,8 @@ public class TsFileRewriteToolTest {
     config.setEnablePartition(originEnablePartition);
     config.setTimePartitionIntervalForStorage(originPartitionInterval);
 
-    StorageEngine.setEnablePartition(originEnablePartition);
-    StorageEngine.setTimePartitionInterval(originPartitionInterval);
+    //    StorageEngine.setEnablePartition(originEnablePartition);
+    //    StorageEngine.setTimePartitionInterval(originPartitionInterval);
 
     File directory = new File(folder);
     try {

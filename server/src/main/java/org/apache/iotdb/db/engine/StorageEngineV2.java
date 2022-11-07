@@ -776,6 +776,22 @@ public class StorageEngineV2 implements IService {
     return status;
   }
 
+  /** reboot timed flush sequence/unsequence memetable thread */
+  public void rebootTimedService() throws ShutdownException {
+    logger.info("Start rebooting all timed service.");
+
+    // exclude ttl check thread
+    stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    stopTimedServiceAndThrow(
+        unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+
+    logger.info("Stop all timed service successfully, and now restart them.");
+
+    startTimedService();
+
+    logger.info("Reboot all timed service successfully");
+  }
+
   static class InstanceHolder {
 
     private static final StorageEngineV2 INSTANCE = new StorageEngineV2();

@@ -39,92 +39,92 @@ import org.junit.Test;
 import java.io.IOException;
 import java.sql.SQLException;
 
-public class SingleDataSetTest {
-  private final IPlanExecutor queryExecutor = new PlanExecutor();
-  private final Planner processor = new Planner();
-
-  private final String[] sqls = {
-    "SET STORAGE GROUP TO root.vehicle",
-    "SET STORAGE GROUP TO root.test",
-    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.`\"s3+xy\"` WITH DATATYPE=TEXT, ENCODING=PLAIN"
-  };
-
-  public SingleDataSetTest() throws QueryProcessException {}
-
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    for (String sql : sqls) {
-      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
-    }
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void countDevice()
-      throws QueryProcessException, TException, StorageEngineException,
-          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-          SQLException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count devices");
-    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertTrue(dataSet instanceof SingleDataSet);
-    Assert.assertEquals("[devices]", dataSet.getPaths().toString());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals("0\t3", record.toString());
-    }
-  }
-
-  @Test
-  public void countTimeSeries()
-      throws QueryProcessException, TException, StorageEngineException,
-          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-          SQLException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count TimeSeries");
-    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertTrue(dataSet instanceof SingleDataSet);
-    Assert.assertEquals("[count]", dataSet.getPaths().toString());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals("0\t5", record.toString());
-    }
-  }
-
-  @Test
-  public void countStorageGroup()
-      throws TException, StorageEngineException, QueryFilterOptimizationException,
-          MetadataException, IOException, InterruptedException, SQLException,
-          QueryProcessException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count storage group");
-    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertTrue(dataSet instanceof SingleDataSet);
-    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals("0\t2", record.toString());
-    }
-  }
-
-  @Test
-  public void countNodes()
-      throws QueryProcessException, TException, StorageEngineException,
-          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-          SQLException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test.** level=2");
-    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertTrue(dataSet instanceof SingleDataSet);
-    Assert.assertEquals("[count]", dataSet.getPaths().toString());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals("0\t2", record.toString());
-    }
-  }
-}
+//public class SingleDataSetTest {
+//  private final IPlanExecutor queryExecutor = new PlanExecutor();
+//  private final Planner processor = new Planner();
+//
+//  private final String[] sqls = {
+//    "SET STORAGE GROUP TO root.vehicle",
+//    "SET STORAGE GROUP TO root.test",
+//    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+//    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+//    "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+//    "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+//    "CREATE TIMESERIES root.test.d1.`\"s3+xy\"` WITH DATATYPE=TEXT, ENCODING=PLAIN"
+//  };
+//
+//  public SingleDataSetTest() throws QueryProcessException {}
+//
+//  @Before
+//  public void setUp() throws Exception {
+//    EnvironmentUtils.envSetUp();
+//    for (String sql : sqls) {
+//      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
+//    }
+//  }
+//
+//  @After
+//  public void tearDown() throws Exception {
+//    EnvironmentUtils.cleanEnv();
+//  }
+//
+//  @Test
+//  public void countDevice()
+//      throws QueryProcessException, TException, StorageEngineException,
+//          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
+//          SQLException {
+//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count devices");
+//    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+//    Assert.assertTrue(dataSet instanceof SingleDataSet);
+//    Assert.assertEquals("[devices]", dataSet.getPaths().toString());
+//    while (dataSet.hasNext()) {
+//      RowRecord record = dataSet.next();
+//      Assert.assertEquals("0\t3", record.toString());
+//    }
+//  }
+//
+//  @Test
+//  public void countTimeSeries()
+//      throws QueryProcessException, TException, StorageEngineException,
+//          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
+//          SQLException {
+//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count TimeSeries");
+//    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+//    Assert.assertTrue(dataSet instanceof SingleDataSet);
+//    Assert.assertEquals("[count]", dataSet.getPaths().toString());
+//    while (dataSet.hasNext()) {
+//      RowRecord record = dataSet.next();
+//      Assert.assertEquals("0\t5", record.toString());
+//    }
+//  }
+//
+//  @Test
+//  public void countStorageGroup()
+//      throws TException, StorageEngineException, QueryFilterOptimizationException,
+//          MetadataException, IOException, InterruptedException, SQLException,
+//          QueryProcessException {
+//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count storage group");
+//    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+//    Assert.assertTrue(dataSet instanceof SingleDataSet);
+//    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
+//    while (dataSet.hasNext()) {
+//      RowRecord record = dataSet.next();
+//      Assert.assertEquals("0\t2", record.toString());
+//    }
+//  }
+//
+//  @Test
+//  public void countNodes()
+//      throws QueryProcessException, TException, StorageEngineException,
+//          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
+//          SQLException {
+//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test.** level=2");
+//    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+//    Assert.assertTrue(dataSet instanceof SingleDataSet);
+//    Assert.assertEquals("[count]", dataSet.getPaths().toString());
+//    while (dataSet.hasNext()) {
+//      RowRecord record = dataSet.next();
+//      Assert.assertEquals("0\t2", record.toString());
+//    }
+//  }
+//}

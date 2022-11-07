@@ -87,10 +87,10 @@ public class WalCheckerTest {
                 walNodeDir, WALFileUtils.getLogFileName(i, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
-        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowNode(DEVICE_ID)));
         walEntries.add(
-            new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
+            new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletNode(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeleteDataNode(DEVICE_ID)));
         int size = 0;
         for (WALEntry walEntry : walEntries) {
           size += walEntry.serializedSize();
@@ -126,10 +126,10 @@ public class WalCheckerTest {
                 walNodeDir, WALFileUtils.getLogFileName(i, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
-        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowNode(DEVICE_ID)));
         walEntries.add(
-            new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletPlan(DEVICE_ID)));
-        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeletePlan(DEVICE_ID)));
+            new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletNode(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeleteDataNode(DEVICE_ID)));
         int size = 0;
         for (WALEntry walEntry : walEntries) {
           size += walEntry.serializedSize();

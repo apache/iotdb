@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -29,7 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
@@ -167,7 +168,7 @@ public class DataRegionTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
 
-    dataRegion.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1, null);
+    dataRegion.deleteByDevice(new PartialPath(deviceId, measurementId), 0, 15L, -1, null);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
@@ -830,7 +831,17 @@ public class DataRegionTest {
               0);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
-      StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
+      List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+      List<DataRegion> regionsToBeDeleted = new ArrayList<>();
+      for (DataRegion region : dataRegions) {
+        if (region.getStorageGroupName().equals(storageGroup)) {
+          regionsToBeDeleted.add(region);
+        }
+      }
+      for (DataRegion region : regionsToBeDeleted) {
+        StorageEngineV2.getInstance()
+            .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+      }
       Thread.sleep(500);
 
       for (TsFileResource resource : dataRegion.getSequenceFileList()) {
@@ -870,7 +881,7 @@ public class DataRegionTest {
     long preFLushInterval = config.getSeqMemtableFlushInterval();
     config.setEnableTimedFlushSeqMemtable(true);
     config.setSeqMemtableFlushInterval(5);
-    StorageEngine.getInstance().rebootTimedService();
+    StorageEngineV2.getInstance().rebootTimedService();
 
     Thread.sleep(500);
 
@@ -926,7 +937,7 @@ public class DataRegionTest {
     long preFLushInterval = config.getUnseqMemtableFlushInterval();
     config.setEnableTimedFlushUnseqMemtable(true);
     config.setUnseqMemtableFlushInterval(5);
-    StorageEngine.getInstance().rebootTimedService();
+    StorageEngineV2.getInstance().rebootTimedService();
 
     Thread.sleep(500);
 
@@ -993,10 +1004,10 @@ public class DataRegionTest {
     }
 
     // delete root.vehicle.d2.s0 data in the second file
-    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0, null);
 
     // delete root.vehicle.d2.s0 data in the third file
-    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0, null);
 
     for (int i = 0; i < dataRegion.getSequenceFileList().size(); i++) {
       TsFileResource resource = dataRegion.getSequenceFileList().get(i);
@@ -1011,7 +1022,17 @@ public class DataRegionTest {
       }
     }
 
-    StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
+    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    List<DataRegion> regionsToBeDeleted = new ArrayList<>();
+    for (DataRegion region : dataRegions) {
+      if (region.getStorageGroupName().equals(storageGroup)) {
+        regionsToBeDeleted.add(region);
+      }
+    }
+    for (DataRegion region : regionsToBeDeleted) {
+      StorageEngineV2.getInstance()
+          .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+    }
     Thread.sleep(500);
 
     for (TsFileResource resource : dataRegion.getSequenceFileList()) {
@@ -1032,10 +1053,10 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is in memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
 
     // delete data which is not in memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1054,13 +1075,13 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is not in flushing memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     // delete data which is in flushing memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
@@ -1078,13 +1099,13 @@ public class DataRegionTest {
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
     // delete data which is not in work memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     // delete data which is in work memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
@@ -1096,11 +1117,11 @@ public class DataRegionTest {
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
     // delete data which is not in work memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     // delete data which is in work memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0, null);
 
     Assert.assertFalse(tsFileResource.getModFile().exists());
 
@@ -1109,14 +1130,14 @@ public class DataRegionTest {
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
     // delete data which is not in flushing memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     // delete data which is in flushing memtable
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0, null);
-    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0, null);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
