@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -59,8 +60,19 @@ public class Planner {
       String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws QueryProcessException {
     // from SQL to logical operator
+    long t1 = System.nanoTime();
     Operator operator = LogicalGenerator.generate(sqlStr, zoneId, clientVersion);
-    return generatePhysicalPlanFromOperator(operator, clientVersion);
+    if (operator.isQuery()) {
+      QueryStatistics.getInstance().addCost(QueryStatistics.PARSER, System.nanoTime() - t1);
+    }
+
+    long t2 = System.nanoTime();
+    PhysicalPlan physicalPlan = generatePhysicalPlanFromOperator(operator, clientVersion);
+    if (operator.isQuery()) {
+      QueryStatistics.getInstance().addCost(QueryStatistics.PLANNER, System.nanoTime() - t2);
+    }
+
+    return physicalPlan;
   }
 
   /** convert raw data query to physical plan directly */
