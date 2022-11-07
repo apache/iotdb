@@ -300,7 +300,9 @@ public class IoTDBConfig {
 
   /** Space quota directory, stores space quota information of each storage group */
   private String spaceQuotaDir =
-      systemDir
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + IoTDBConstant.QUOTA_FOLDER_NAME
           + File.separator
@@ -308,7 +310,9 @@ public class IoTDBConfig {
 
   /** Throttle quota directory, stores throttle quota information of each storage group */
   private String throttleQuotaDir =
-      systemDir
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + IoTDBConstant.QUOTA_FOLDER_NAME
           + File.separator
@@ -1193,8 +1197,8 @@ public class IoTDBConfig {
 
     extPipeDir = addDataHomeDir(extPipeDir);
 
-    spaceQuotaDir = addHomeDir(spaceQuotaDir);
-    throttleQuotaDir = addHomeDir(throttleQuotaDir);
+    spaceQuotaDir = addDataHomeDir(spaceQuotaDir);
+    throttleQuotaDir = addDataHomeDir(throttleQuotaDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
