@@ -71,12 +71,12 @@ public class NullColumn implements Column {
 
   @Override
   public Column getRegion(int positionOffset, int length) {
-    return null;
+    return this;
   }
 
   @Override
   public Column subColumn(int fromIndex) {
-    return null;
+    return this;
   }
 
   @Override

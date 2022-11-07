@@ -1068,7 +1068,7 @@ public class ExpressionAnalyzer {
         return new TimeSeriesOperand(newPath);
       }
       return expression;
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
+    } else if (expression instanceof LeafOperand) {
       // do nothing
       return expression;
     } else {
@@ -1092,7 +1092,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof ConstantOperand) {
       return false;
     } else if (expression instanceof NullOperand) {
-      return false;
+      return true;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

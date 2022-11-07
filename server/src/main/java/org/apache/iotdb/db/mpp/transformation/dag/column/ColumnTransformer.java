@@ -96,10 +96,10 @@ public abstract class ColumnTransformer {
 
   /**
    * Return whether the type of this ColumnTransformer is not equal to certain type. If this
-   * ColumnTransformer is {@link NullColumnTransformer}, return {@code false}
+   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}
    */
   public boolean typeNotEquals(TypeEnum typeEnum) {
-    return returnType != null && !returnType.getTypeEnum().equals(typeEnum);
+    return returnType == null || !returnType.getTypeEnum().equals(typeEnum);
   }
 
   /** Responsible for the calculation */
