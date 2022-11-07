@@ -20,6 +20,8 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
@@ -29,13 +31,22 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
  */
 public class NullColumn implements Column {
 
+  private static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(BooleanColumn.class).instanceSize();
+
   private final int positionCount;
 
   private final int arrayOffset;
 
+  private final long retainedSizeInBytes;
+
   public NullColumn(int positionCount) {
+    if (positionCount < 0) {
+      throw new IllegalArgumentException("positionCount is negative");
+    }
     this.positionCount = positionCount;
     arrayOffset = 0;
+    retainedSizeInBytes = INSTANCE_SIZE;
   }
 
   public NullColumn(int arrayOffset, int positionCount) {
@@ -47,16 +58,17 @@ public class NullColumn implements Column {
       throw new IllegalArgumentException("positionCount is negative");
     }
     this.positionCount = positionCount;
+    retainedSizeInBytes = INSTANCE_SIZE;
   }
 
   @Override
   public TSDataType getDataType() {
-    return null;
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
   public ColumnEncoding getEncoding() {
-    return ColumnEncoding.BYTE_ARRAY;
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
@@ -71,7 +83,7 @@ public class NullColumn implements Column {
 
   @Override
   public boolean[] isNull() {
-    return null;
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
@@ -81,7 +93,7 @@ public class NullColumn implements Column {
 
   @Override
   public long getRetainedSizeInBytes() {
-    return 0;
+    return retainedSizeInBytes;
   }
 
   @Override
