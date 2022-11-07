@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -5274,7 +5273,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -5320,10 +5319,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(900,1400,100);
+        List<TimeRange> pages = createPages(900, 1400, 100);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5331,13 +5330,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1550,1700,50);
+        pages = createPages(1550, 1700, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
-        //write third chunk
-        pages=createPages(1750,2000,60);
+        // write third chunk
+        pages = createPages(1750, 2000, 60);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5368,10 +5367,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(200,2200,100);
+        List<TimeRange> pages = createPages(200, 2200, 100);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5404,10 +5403,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(550,800,70);
+        List<TimeRange> pages = createPages(550, 800, 70);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5415,14 +5414,14 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1200,1300,200);
+        pages = createPages(1200, 1300, 200);
 
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages=createPages(1500,1600,50);
+        pages = createPages(1500, 1600, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5439,21 +5438,21 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     unseqResources.add(resource);
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
-            readSourceFiles(timeserisPathList, tsDataTypes);
+        readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
-            new CrossSpaceCompactionTask(
-                    0,
-                    tsFileManager,
-                    seqResources,
-                    unseqResources,
-                    new FastCompactionPerformer(),
-                    new AtomicInteger(0),
-                    0,
-                    0);
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(),
+            new AtomicInteger(0),
+            0,
+            0);
     task.start();
 
     validateSeqFiles();
@@ -5480,10 +5479,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages =createPages(100,300,100);
+        List<TimeRange> pages = createPages(100, 300, 100);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5491,7 +5490,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages =createPages(500,600,30);
+        pages = createPages(500, 600, 30);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5522,11 +5521,11 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(900,1199,100);
-        pages.addAll(createPages(1301,1400,100));
+        List<TimeRange> pages = createPages(900, 1199, 100);
+        pages.addAll(createPages(1301, 1400, 100));
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5534,19 +5533,19 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1800,1900,200);
+        pages = createPages(1800, 1900, 200);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
-        //write third chunk
-        pages=createPages(2150,2250,60);
+        // write third chunk
+        pages = createPages(2150, 2250, 60);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
-        //write forth chunk
-        pages=createPages(2300,2500,50);
+        // write forth chunk
+        pages = createPages(2300, 2500, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5577,11 +5576,11 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(0,1199,50);
-        pages.addAll(createPages(1301,2000,100));
+        List<TimeRange> pages = createPages(0, 1199, 50);
+        pages.addAll(createPages(1301, 2000, 100));
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5589,7 +5588,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(2100,2200,60);
+        pages = createPages(2100, 2200, 60);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5620,10 +5619,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(550,800,70);
+        List<TimeRange> pages = createPages(550, 800, 70);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5631,14 +5630,14 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1200,1300,60);
+        pages = createPages(1200, 1300, 60);
 
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages=createPages(1500,2200,50);
+        pages = createPages(1500, 2200, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5669,10 +5668,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(350,400,70);
+        List<TimeRange> pages = createPages(350, 400, 70);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5680,14 +5679,14 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(550,700,100);
+        pages = createPages(550, 700, 100);
 
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages=createPages(1050,1150,50);
+        pages = createPages(1050, 1150, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5704,21 +5703,21 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     unseqResources.add(resource);
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
-            readSourceFiles(timeserisPathList, tsDataTypes);
+        readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
-            new CrossSpaceCompactionTask(
-                    0,
-                    tsFileManager,
-                    seqResources,
-                    unseqResources,
-                    new FastCompactionPerformer(),
-                    new AtomicInteger(0),
-                    0,
-                    0);
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(),
+            new AtomicInteger(0),
+            0,
+            0);
     task.start();
 
     validateSeqFiles();
@@ -5745,10 +5744,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages =createPages(0,300,100);
+        List<TimeRange> pages = createPages(0, 300, 100);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5756,7 +5755,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages =createPages(500,600,30);
+        pages = createPages(500, 600, 30);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5787,11 +5786,11 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(900,1199,100);
-        pages.addAll(createPages(1301,1400,100));
+        List<TimeRange> pages = createPages(900, 1199, 100);
+        pages.addAll(createPages(1301, 1400, 100));
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5823,10 +5822,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(1800,1900,30);
+        List<TimeRange> pages = createPages(1800, 1900, 30);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5834,13 +5833,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages =createPages(2150,2250,50);
+        pages = createPages(2150, 2250, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages =createPages(2400,2500,100);
+        pages = createPages(2400, 2500, 100);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5871,11 +5870,11 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(100,1199,50);
-        pages.addAll(createPages(1301,1650,100));
+        List<TimeRange> pages = createPages(100, 1199, 50);
+        pages.addAll(createPages(1301, 1650, 100));
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5883,7 +5882,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1700,2000,60);
+        pages = createPages(1700, 2000, 60);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5914,10 +5913,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(2200,2400,100);
+        List<TimeRange> pages = createPages(2200, 2400, 100);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5925,12 +5924,11 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(2500,2600,90);
+        pages = createPages(2500, 2600, 90);
 
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
-
 
         tsFileIOWriter.endChunkGroup();
         resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 2200);
@@ -5958,10 +5956,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(550,800,70);
+        List<TimeRange> pages = createPages(550, 800, 70);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -5969,19 +5967,19 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(1200,1300,100);
+        pages = createPages(1200, 1300, 100);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages=createPages(1500,1750,50);
+        pages = createPages(1500, 1750, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write forth chunk
-        pages=createPages(1850,2200,50);
+        pages = createPages(1850, 2200, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6012,10 +6010,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(350,400,25);
+        List<TimeRange> pages = createPages(350, 400, 25);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -6023,13 +6021,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(550,700,100);
+        pages = createPages(550, 700, 100);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
 
         // write third chunk
-        pages=createPages(1050,1250,50);
+        pages = createPages(1050, 1250, 50);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6060,10 +6058,10 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
         // write first chunk
-        List<TimeRange> pages=createPages(2700,2800,25);
+        List<TimeRange> pages = createPages(2700, 2800, 25);
 
         List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
@@ -6071,7 +6069,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         }
 
         // write second chunk
-        pages=createPages(2900,3000,100);
+        pages = createPages(2900, 3000, 100);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6088,21 +6086,21 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     unseqResources.add(resource);
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
-            readSourceFiles(timeserisPathList, tsDataTypes);
+        readSourceFiles(timeserisPathList, tsDataTypes);
 
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
-            new CrossSpaceCompactionTask(
-                    0,
-                    tsFileManager,
-                    seqResources,
-                    unseqResources,
-                    new FastCompactionPerformer(),
-                    new AtomicInteger(0),
-                    0,
-                    0);
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(),
+            new AtomicInteger(0),
+            0,
+            0);
     task.start();
 
     validateSeqFiles();
@@ -6110,15 +6108,14 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
-  private List<TimeRange> createPages(long startTime,long endTime,int pagePointNum){
-    List<TimeRange> pages=new ArrayList<>();
-    for(long i=startTime;i<=endTime;i+=pagePointNum){
-      long pageEndTime= Math.min(i + pagePointNum-1, endTime);
-      pages.add(new TimeRange(i,pageEndTime));
+  private List<TimeRange> createPages(long startTime, long endTime, int pagePointNum) {
+    List<TimeRange> pages = new ArrayList<>();
+    for (long i = startTime; i <= endTime; i += pagePointNum) {
+      long pageEndTime = Math.min(i + pagePointNum - 1, endTime);
+      pages.add(new TimeRange(i, pageEndTime));
     }
     return pages;
   }
-
 
   protected void validateSeqFiles() {
     List<File> files = new ArrayList<>();

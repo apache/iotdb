@@ -88,7 +88,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = "127.0.0.1";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
@@ -103,7 +103,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -865,7 +865,7 @@ public class IoTDBConfig {
   private int schemaFileLogSize = 16384;
 
   /** Internal address for data node */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;

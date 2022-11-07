@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +39,12 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPartialInsertionIT {
   private final Logger logger = LoggerFactory.getLogger(IoTDBPartialInsertionIT.class);
 
@@ -70,8 +70,8 @@ public class IoTDBPartialInsertionIT {
       try {
         statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
         fail();
-      } catch (IoTDBSQLException e) {
-        assertTrue(e.getMessage().contains("304: Path [s0] does not exist"));
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("304: Path [root.sg1.s0] does not exist"));
       }
     }
   }
@@ -87,11 +87,13 @@ public class IoTDBPartialInsertionIT {
 
       try {
         statement.execute("INSERT INTO root.sg.d1(time,s1,s2) VALUES(100,'test','test')");
-      } catch (IoTDBSQLException e) {
+      } catch (SQLException e) {
         // ignore
       }
     }
 
+    // TODO: replace restartDaemon() with new methods in Env.
+    /*
     long time = 0;
     try {
       EnvironmentUtils.restartDaemon();
@@ -105,15 +107,15 @@ public class IoTDBPartialInsertionIT {
         }
       }
     } catch (Exception e) {
-      Assert.fail();
+      fail(e.getMessage());
     }
+     */
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("SELECT s1 FROM root.sg.d1");
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.d1")) {
+        assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -121,9 +123,8 @@ public class IoTDBPartialInsertionIT {
         }
         assertEquals(1, cnt);
       }
-      hasResultSet = statement.execute("SELECT s2 FROM root.sg.d1");
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM root.sg.d1")) {
+        assertNotNull(resultSet);
         assertFalse(resultSet.next());
       }
     }

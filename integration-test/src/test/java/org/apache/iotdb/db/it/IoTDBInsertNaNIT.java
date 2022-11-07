@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -37,6 +38,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -46,7 +48,8 @@ import static org.junit.Assert.fail;
  *
  * <p>This test stores NaN Values and retrieves them via SQL Interface.
  */
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBInsertNaNIT {
 
   private static final String CREATE_TEMPLATE_SQL =
@@ -108,34 +111,33 @@ public class IoTDBInsertNaNIT {
   public void selectAllSQLTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle.*");
-      Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.vehicle.*")) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
           for (int i = 0; i < 10; i++) {
-            Assert.assertEquals(
+            assertEquals(
                 Float.parseFloat(VALUE),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 Float.parseFloat(VALUE),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
                 DELTA_FLOAT);
-            Assert.assertEquals(
+            assertEquals(
                 Double.parseDouble(VALUE),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
                 DELTA_DOUBLE);
-            Assert.assertEquals(
+            assertEquals(
                 Double.parseDouble(VALUE),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
                 DELTA_DOUBLE);
           }
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -151,10 +153,10 @@ public class IoTDBInsertNaNIT {
           "CREATE TIMESERIES root.happy.device1.sensor1.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE");
       statement.execute(
           "INSERT INTO root.happy.device1.sensor1(timestamp,temperature) values(7925, NaN)");
-      boolean hasResultSet = statement.execute("select * from root.happy.device1.sensor1");
-      Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.happy.device1.sensor1")) {
+        assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
           assertEquals(7925 + "", resultSet.getString(TIMESTAMP_STR));
@@ -164,7 +166,7 @@ public class IoTDBInsertNaNIT {
               DELTA_DOUBLE);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -178,10 +180,9 @@ public class IoTDBInsertNaNIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(INSERT_BRAND_NEW_TEMPLATE_SQL, "d0", "s0" + "2f", TIMESTAMP, VALUE));
-      boolean hasResultSet = statement.execute("show timeseries");
-      Assert.assertTrue(hasResultSet);
       boolean exist = false;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        assertNotNull(resultSet);
         while (resultSet.next()) {
           if ((resultSet.getString("timeseries")).contains("root.cycle.d0.s0")) {
             exist = true;

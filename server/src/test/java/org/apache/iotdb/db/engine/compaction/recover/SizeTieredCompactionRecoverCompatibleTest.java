@@ -55,7 +55,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactionTest {
   @Override
   @Before
-  public void setUp() throws IOException, MetadataException, WriteProcessException {
+  public void setUp()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     super.setUp();
   }
 
