@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -190,16 +191,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     long startTime = System.currentTimeMillis();
+    long startTimeInNano = System.nanoTime();
     try {
       Statement s =
           StatementGenerator.createStatement(
               statement, SESSION_MANAGER.getCurrSession().getZoneId());
-
       if (s == null) {
         return RpcUtils.getTSExecuteStatementResp(
             RpcUtils.getStatus(
                 TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
       }
+
+      if (s.isQuery()) {
+        QueryStatistics.getInstance().addCost("Parser", System.nanoTime() - startTimeInNano);
+      }
+
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

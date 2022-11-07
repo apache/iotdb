@@ -105,6 +105,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -196,11 +197,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree;
+
+      long t1 = System.nanoTime();
       if (queryStatement.isGroupByTag()) {
         schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
+      QueryStatistics.getInstance().addCost("SchemaFetcher", System.nanoTime() - t1);
+
       logger.debug("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -278,7 +283,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeOutput(analysis, queryStatement, outputExpressions);
 
       // fetch partition information
+      long t2 = System.nanoTime();
       analyzeDataPartition(analysis, queryStatement, schemaTree);
+      QueryStatistics.getInstance().addCost("PartitionFetcher", System.nanoTime() - t2);
 
     } catch (StatementAnalyzeException e) {
       logger.error("Meet error when analyzing the query statement: ", e);
