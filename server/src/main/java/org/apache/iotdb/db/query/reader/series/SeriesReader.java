@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -1172,7 +1173,11 @@ public class SeriesReader {
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-      return data.getAllSatisfiedPageData(ascending);
+      long startTime = System.nanoTime();
+      BatchData batchData = data.getAllSatisfiedPageData(ascending);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.PAGE_READER, System.nanoTime() - startTime);
+      return batchData;
     }
 
     void setFilter(Filter filter) {

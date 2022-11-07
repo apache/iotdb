@@ -274,8 +274,12 @@ public class PlanExecutor implements IPlanExecutor {
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
           QueryProcessException, MetadataException, InterruptedException {
+    long startTime = System.nanoTime();
     if (queryPlan instanceof QueryPlan) {
-      return processDataQuery((QueryPlan) queryPlan, context);
+      QueryDataSet queryDataSet = processDataQuery((QueryPlan) queryPlan, context);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.INIT_QUERY_DATASET, System.nanoTime() - startTime);
+      return queryDataSet;
     } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan);
     } else if (queryPlan instanceof ShowPlan) {

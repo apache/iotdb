@@ -65,6 +65,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
@@ -854,7 +855,10 @@ public class TSServiceImpl implements TSIService.Iface {
       resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
     } else {
       try {
+        long startTime = System.nanoTime();
         TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.QUERY_EXECUTION, System.nanoTime() - startTime);
         resp.setQueryDataSet(tsQueryDataSet);
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
