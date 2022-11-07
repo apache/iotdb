@@ -26,7 +26,7 @@
 ## 语法定义
 
 ```sql
-SELECT [LAST] resultColumn [, resultColumn] ...
+SELECT [LAST] selectExpr [, selectExpr] ...
     [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
     [WHERE whereCondition]
@@ -46,8 +46,8 @@ SELECT [LAST] resultColumn [, resultColumn] ...
 
 ### `SELECT` 子句
 
-- `SELECT` 子句指定查询的输出，由若干个 `resultColumn` 组成。
-- 每个 `resultColumn` 定义查询结果中的一列或多列，它是一个由时间序列路径后缀、函数和运算符组成的表达式。
+- `SELECT` 子句指定查询的输出，由若干个 `selectExpr` 组成。
+- 每个 `selectExpr` 定义查询结果中的一列或多列，它是一个由时间序列路径后缀、常量、函数和运算符组成的表达式。
 - 支持使用`AS`为查询结果集中的列指定别名。
 - 在 `SELECT` 子句中使用 `LAST` 关键词可以指定查询为最新点查询，详细说明及示例见文档 [最新点查询](./Last-Query.md) 。
 - 详细说明及示例见文档 [选择表达式](./Select-Expression.md) 。

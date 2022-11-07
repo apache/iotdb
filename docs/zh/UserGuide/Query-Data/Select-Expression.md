@@ -21,9 +21,9 @@
 
 # 选择表达式
 
-## 语法定义
+`SELECT` 子句指定查询的输出，由若干个 `selectExpr` 组成。 每个 `selectExpr` 定义了查询结果中的一列或多列。
 
-选择表达式（`selectExpr`）是 SELECT 子句的组成单元，每个 `selectExpr` 对应查询结果集中的一列，其语法定义如下：
+## 语法定义
 
 ```sql
 selectClause
@@ -44,23 +44,20 @@ selectExpr
     | selectExpr (AND | OR) selectExpr
     | functionName '(' selectExpr (',' selectExpr)* functionAttribute* ')'
     | timeSeriesSuffixPath
-    | number
+    | constant
     ;
 ```
 
 由该语法定义可知，`selectExpr` 可以包含：
 
-- 时间序列路径后缀
+- 时间序列路径后缀（支持使用通配符）
+- 运算符
+  - 算数运算符
+  - 逻辑运算符
 - 函数
-  - 内置聚合函数，详见 [聚合查询](./Group-By.md) 。
+  - 聚合函数
   - 时间序列生成函数
-  - 用户自定义函数，详见 [UDF](../Process-Data/UDF-User-Defined-Function.md) 。
-- 表达式
-  - 算数运算表达式
-  - 逻辑运算表达式
-  - 时间序列查询嵌套表达式
-  - 聚合查询嵌套表达式
-- 数字常量（仅用于表达式）
+- 常量
 
 ## 算数运算查询
 
