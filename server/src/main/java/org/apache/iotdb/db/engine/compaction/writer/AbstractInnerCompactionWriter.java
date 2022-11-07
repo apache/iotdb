@@ -42,7 +42,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
             (SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
+    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
+    this.fileWriter =
+        new TsFileIOWriter(targetFileResource.getTsFile(), enableMemoryControl, sizeForFileWriter);
     this.targetResource = targetFileResource;
     isEmptyFile = true;
   }

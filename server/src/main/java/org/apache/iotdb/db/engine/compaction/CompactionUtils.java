@@ -217,7 +217,7 @@ public class CompactionUtils {
   public static void updateResource(
       TsFileResource resource, TsFileIOWriter tsFileIOWriter, String deviceId) {
     List<ChunkMetadata> chunkMetadatasOfCurrentDevice =
-        tsFileIOWriter.getChunkMetadatasOfDeviceInMemory(deviceId);
+        tsFileIOWriter.getChunkMetadatasOfCurrentDeviceInMemory();
     if (chunkMetadatasOfCurrentDevice != null) {
       // this target file contains current device
       for (ChunkMetadata chunkMetadata : chunkMetadatasOfCurrentDevice) {

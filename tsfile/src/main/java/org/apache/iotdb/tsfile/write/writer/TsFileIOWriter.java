@@ -566,19 +566,11 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /**
-   * This method should be called before flushing chunk group metadatas.
-   *
-   * @return return chunk null if current file does not contain chunk metadatas of this device in
-   *     memory
+   * This method should be called before flushing chunk group metadatas, otherwise, it will return
+   * null.
    */
-  public List<ChunkMetadata> getChunkMetadatasOfDeviceInMemory(String deviceId) {
-    for (int i = chunkGroupMetadataList.size() - 1; i >= 0; i--) {
-      ChunkGroupMetadata chunkGroupMetadata = chunkGroupMetadataList.get(i);
-      if (chunkGroupMetadata.getDevice().equals(deviceId)) {
-        return chunkGroupMetadata.getChunkMetadataList();
-      }
-    }
-    return null;
+  public List<ChunkMetadata> getChunkMetadatasOfCurrentDeviceInMemory() {
+    return chunkMetadataList;
   }
 
   /**
