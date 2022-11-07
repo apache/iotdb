@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -211,6 +212,28 @@ public class ConfigNodeProcedureEnv {
    * @throws AddPeerException When addNewNodeToExistedGroup doesn't success
    */
   public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
+
+    for (int i = 0; i < 3; i++) {
+      TSStatus tsStatus =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      newConfigNode.getInternalEndPoint(),
+                      null,
+                      ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER);
+      if (tsStatus == StatusUtils.OK) {
+        break;
+      }
+      LOG.info("not ok about consensus");
+      // wait 7 seconds to wait the registered ConfigNode completed initConsensusManager
+      try {
+        TimeUnit.SECONDS.sleep(7);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
+      }
+    }
+
     List<TConfigNodeLocation> originalConfigNodes =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
 

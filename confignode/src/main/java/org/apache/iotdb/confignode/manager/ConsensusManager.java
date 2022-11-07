@@ -248,14 +248,6 @@ public class ConsensusManager {
                     new Peer(consensusGroupId, node.getConfigNodeId(), node.getConsensusEndPoint()))
             .collect(Collectors.toList());
 
-    // wait 7 seconds to wait the registered ConfigNode completed initConsensusManager
-    try {
-      TimeUnit.SECONDS.sleep(7);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
-    }
-
     LOGGER.info("AddNewNodeToExistedGroup, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
 
     ConsensusGenericResponse response =
