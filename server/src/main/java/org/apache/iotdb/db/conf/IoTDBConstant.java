@@ -40,6 +40,7 @@ public class IoTDBConstant {
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
   public static final String DOUBLE_LIVE_LOGGER_NAME = "DOUBLE_LIVE";
+  public static final String QUERY_STATISTICS_LOGGER_NAME = "QUERY_STATISTICS";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
