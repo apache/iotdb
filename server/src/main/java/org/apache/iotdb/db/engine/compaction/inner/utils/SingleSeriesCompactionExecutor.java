@@ -162,7 +162,7 @@ public class SingleSeriesCompactionExecutor {
           currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
       compactOneChunk(
-          chunkMetadata, currentChunk, currentChunk.getHeader().getDataType() == schema.getType());
+          chunkMetadata, currentChunk, currentChunk.getHeader().getDataType() != schema.getType());
     }
   }
 
@@ -212,8 +212,10 @@ public class SingleSeriesCompactionExecutor {
     if (currentChunk.getHeader().getDataType() != schema.getType()) {
       // the datatype is not consistent
       fixSchemaInconsistent();
+      return isDataTypeConvertable(currentChunk.getHeader().getDataType(), schema.getType());
+    } else {
+      return true;
     }
-    return isDataTypeConvertable(currentChunk.getHeader().getDataType(), schema.getType());
   }
 
   private boolean isDataTypeConvertable(TSDataType originType, TSDataType newType) {
