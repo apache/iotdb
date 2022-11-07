@@ -31,7 +31,7 @@ public enum ThreadName {
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
-  DATA_REGION_RECOVER_SERVICE("Data-Region-Recover"),
+  STORAGE_ENGINE_CACHED_SERVICE("StorageEngine"),
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   FLUSH_TASK_SUBMIT("FlushTask-Submit-Pool"),
