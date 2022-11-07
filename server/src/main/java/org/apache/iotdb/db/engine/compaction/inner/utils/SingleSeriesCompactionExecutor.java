@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -37,6 +38,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -49,6 +51,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
@@ -155,13 +161,15 @@ public class SingleSeriesCompactionExecutor {
       CompactionMetricsRecorder.recordReadInfo(
           currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
-      compactOneChunk(chunkMetadata, currentChunk);
+      compactOneChunk(
+          chunkMetadata, currentChunk, currentChunk.getHeader().getDataType() == schema.getType());
     }
   }
 
-  private void compactOneChunk(ChunkMetadata chunkMetadata, Chunk chunk) throws IOException {
+  private void compactOneChunk(ChunkMetadata chunkMetadata, Chunk chunk, boolean needConvert)
+      throws IOException {
     // if this chunk is modified, deserialize it into points
-    if (chunkMetadata.getDeleteIntervalList() != null) {
+    if (chunkMetadata.getDeleteIntervalList() != null || needConvert) {
       processModifiedChunk(chunk);
       return;
     }
@@ -205,7 +213,19 @@ public class SingleSeriesCompactionExecutor {
       // the datatype is not consistent
       fixSchemaInconsistent();
     }
-    return currentChunk.getHeader().getDataType() == schema.getType();
+    return isDataTypeConvertable(currentChunk.getHeader().getDataType(), schema.getType());
+  }
+
+  private boolean isDataTypeConvertable(TSDataType originType, TSDataType newType) {
+    switch (newType) {
+      case INT64:
+      case FLOAT:
+        return originType == INT32;
+      case DOUBLE:
+        return originType == INT32 || originType == INT64 || originType == FLOAT;
+      default:
+        return false;
+    }
   }
 
   private void fixSchemaInconsistent() throws IllegalPathException {
@@ -342,16 +362,32 @@ public class SingleSeriesCompactionExecutor {
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+        if (timeValuePair.getValue() instanceof TsPrimitiveType.TsFloat) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+        } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+        }
         break;
       case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+        if (timeValuePair.getValue() instanceof TsPrimitiveType.TsDouble) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+        } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsFloat) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+        } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+        } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsLong) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        }
         break;
       case BOOLEAN:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
         break;
       case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        if (timeValuePair.getValue() instanceof TsPrimitiveType.TsLong) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        } else if (timeValuePair.getValue() instanceof TsPrimitiveType.TsInt) {
+          chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+        }
         break;
       case INT32:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
