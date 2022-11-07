@@ -1242,7 +1242,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       // construct insert rows statement
       // construct insert statement
-      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement = new InsertRowsOfOneDeviceStatement();
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          new InsertRowsOfOneDeviceStatement();
       List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
