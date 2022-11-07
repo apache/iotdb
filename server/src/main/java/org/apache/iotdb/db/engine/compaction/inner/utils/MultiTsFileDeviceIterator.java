@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  // sorted from the newest to the oldest
   private final List<TsFileResource> tsFileResources;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
