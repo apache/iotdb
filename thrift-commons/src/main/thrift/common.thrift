@@ -124,8 +124,8 @@ struct TFilesResp {
 }
 
 // quota
-struct TSpaceQuota{
+struct TSpaceQuota {
   1: optional i64 disk
   2: optional i32 deviceNum
-  3: optional i32 timeseriesNum
+  3: optional i32 timeserieNum
 }

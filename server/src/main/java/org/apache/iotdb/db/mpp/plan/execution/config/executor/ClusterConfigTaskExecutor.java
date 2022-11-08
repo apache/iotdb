@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -57,6 +58,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -121,6 +123,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -1065,6 +1068,33 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } catch (TException | IOException e) {
       future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSpaceQuota(
+      SetSpaceQuotaStatement setSpaceQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    TSetSpaceQuotaReq req = new TSetSpaceQuotaReq();
+    req.setStorageGroup(setSpaceQuotaStatement.getPrefixPathList());
+    TSpaceQuota spaceQuota = new TSpaceQuota();
+    spaceQuota.setDeviceNum(setSpaceQuotaStatement.getDeviceNum());
+    spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
+    spaceQuota.setDisk(setSpaceQuotaStatement.getDiskSize());
+    req.setSpaceLimit(spaceQuota);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      tsStatus = client.setSpaceQuota(req);
+    } catch (IOException | TException e) {
+      future.setException(e);
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
     }
     return future;
   }

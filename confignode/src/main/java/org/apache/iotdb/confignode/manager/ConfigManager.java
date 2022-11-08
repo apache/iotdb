@@ -124,6 +124,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -1315,6 +1316,14 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? cqManager.showCQ()
         : new TShowCQResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.setSpaceQuota(req)
+        : status;
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

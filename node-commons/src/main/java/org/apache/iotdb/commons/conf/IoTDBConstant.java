@@ -293,6 +293,9 @@ public class IoTDBConstant {
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
+  // quota
+  public static final String SPACE_QUOTA_DISK = "disk";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

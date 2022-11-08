@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.persistence.QuotaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,5 +39,24 @@ public class ClusterQuotaManager {
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
     this.quotaInfo = quotaInfo;
+  }
+
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+    ConsensusWriteResponse response =
+        configManager
+            .getConsensusManager()
+            .write(new SetSpaceQuotaPlan(req.getStorageGroup(), req.getSpaceLimit()));
+    if (response.getStatus() != null) {
+      return response.getStatus();
+    } else {
+      LOGGER.warn(
+          "Unexpected error happened while setting space quota on {}: ",
+          req.getStorageGroup().toString(),
+          response.getException());
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(response.getErrorMessage());
+      return res;
+    }
   }
 }

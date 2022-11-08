@@ -136,7 +136,10 @@ public enum ConfigPhysicalPlanType {
   ACTIVE_CQ((short) 1101),
   ADD_CQ((short) 1102),
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
-  SHOW_CQ((short) 1104);
+  SHOW_CQ((short) 1104),
+
+  /** Quota */
+  SET_SPACE_QUOTA((short) 1200);
 
   private final short planType;
 

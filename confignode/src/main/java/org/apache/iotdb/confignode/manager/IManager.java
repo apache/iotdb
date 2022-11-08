@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -530,6 +531,8 @@ public interface IManager {
   TSStatus dropCQ(TDropCQReq req);
 
   TShowCQResp showCQ();
+
+  TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 

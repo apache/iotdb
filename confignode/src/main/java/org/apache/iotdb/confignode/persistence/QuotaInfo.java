@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,5 +43,12 @@ public class QuotaInfo {
     spaceQuotaLimit = new HashMap<>();
     useSpaceQuota = new HashMap<>();
     regionDisk = new HashMap<>();
+  }
+
+  public TSStatus setSpaceQuota(SetSpaceQuotaPlan setSpaceQuotaPlan) {
+    for (String storageGroup : setSpaceQuotaPlan.getPrefixPathList()) {
+      spaceQuotaLimit.put(storageGroup, setSpaceQuotaPlan.getSpaceLimit());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }

@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
@@ -371,6 +372,8 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case SET_SPACE_QUOTA:
+        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

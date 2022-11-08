@@ -145,6 +145,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -2162,6 +2163,61 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       privileges.add(privilegeValue.getText());
     }
     return privileges.toArray(new String[0]);
+  }
+
+  // Quota
+
+  @Override
+  public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
+    SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
+    List<String> paths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : prefixPathContexts) {
+      paths.add(parsePrefixPath(prefixPathContext).getFullPath());
+    }
+    setSpaceQuotaStatement.setPrefixPathList(paths);
+
+    Map<String, String> quotas = new HashMap<>();
+    for (IoTDBSqlParser.AttributePairContext attributePair : ctx.attributePair()) {
+      quotas.put(
+          parseAttributeKey(attributePair.attributeKey()),
+          parseAttributeValue(attributePair.attributeValue()));
+    }
+
+    if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
+      setSpaceQuotaStatement.setDeviceNum(
+          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+    }
+    if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
+      setSpaceQuotaStatement.setTimeSeriesNum(
+          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+    }
+    if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
+      setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+    }
+    return setSpaceQuotaStatement;
+  }
+
+  private long parseUnit(String data) {
+    String unit = data.substring(data.length() - 1);
+    long disk = Long.parseLong(data.substring(0, data.length() - 1));
+    switch (unit) {
+      case "M":
+      case "m":
+        return disk * 1024;
+      case "G":
+      case "g":
+        return disk * 1024 * 1024;
+      case "T":
+      case "t":
+        return disk * 1024 * 1024 * 1024;
+      case "P":
+      case "p":
+        return disk * 1024 * 1024 * 1024 * 1024;
+      default:
+        throw new SQLParserException(
+            "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");
+    }
   }
 
   // Create Storage Group

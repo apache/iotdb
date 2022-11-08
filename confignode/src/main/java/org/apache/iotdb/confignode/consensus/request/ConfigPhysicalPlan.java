@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -379,6 +380,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetFunctionJar:
           plan = new GetUDFJarPlan();
           break;
+        case SET_SPACE_QUOTA:
+          plan = new SetSpaceQuotaPlan();
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
       }

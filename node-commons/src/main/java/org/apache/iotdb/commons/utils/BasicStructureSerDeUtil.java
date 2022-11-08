@@ -29,6 +29,7 @@ import java.util.Map;
 
 public class BasicStructureSerDeUtil {
   public static final int INT_LEN = 4;
+  public static final int LONG_LEN = 8;
 
   private BasicStructureSerDeUtil() {}
 
@@ -61,6 +62,11 @@ public class BasicStructureSerDeUtil {
   /** read a int var from byteBuffer. */
   public static int readInt(ByteBuffer buffer) {
     return buffer.getInt();
+  }
+
+  /** read a long var from byteBuffer. */
+  public static long readLong(ByteBuffer buffer) {
+    return buffer.getLong();
   }
 
   /**
@@ -133,6 +139,16 @@ public class BasicStructureSerDeUtil {
   public static int write(int n, DataOutputStream stream) throws IOException {
     stream.writeInt(n);
     return INT_LEN;
+  }
+
+  /**
+   * write a long n to dataOutputStream.
+   *
+   * @return The number of bytes used to represent n.
+   */
+  public static int write(long n, DataOutputStream stream) throws IOException {
+    stream.writeLong(n);
+    return LONG_LEN;
   }
 
   /**
