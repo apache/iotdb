@@ -107,6 +107,7 @@ Makefile
 **/CMakeFiles/
 
 ### cluster test data
+node1/
 node2/
 node3/
 
