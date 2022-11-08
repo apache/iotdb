@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
@@ -141,8 +142,8 @@ public class WalCheckerTest {
         try (ILogWriter walWriter = new WALWriter(walFile)) {
           walWriter.write(buffer.getBuffer());
           if (i == 0) {
-            ByteBuffer errorBuffer = ByteBuffer.allocate(4);
-            errorBuffer.putInt(1);
+            ByteBuffer errorBuffer = ByteBuffer.allocate(2);
+            errorBuffer.put((byte) 3);
             walWriter.write(errorBuffer);
           }
         }

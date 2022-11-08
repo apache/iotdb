@@ -28,6 +28,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -146,11 +148,12 @@ public class EnvironmentUtils {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
 
-    //    // clean storage group manager
-    //    if (!StorageEngine.getInstance().deleteAll()) {
-    //      logger.error("Can't close the storage group manager in EnvironmentUtils");
-    //      fail();
-    //    }
+    StorageEngineV2.getInstance().stop();
+    // clean storage group manager
+//    if (!StorageEngine.getInstance().deleteAll()) {
+//      logger.error("Can't close the storage group manager in EnvironmentUtils");
+//      fail();
+//    }
 
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
@@ -297,6 +300,7 @@ public class EnvironmentUtils {
     }
     try {
       EnvironmentUtils.daemon.active();
+      StorageEngineV2.getInstance().start();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

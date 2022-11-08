@@ -62,6 +62,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,12 +90,16 @@ public class DataRegionTest {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
+    StorageEngineV2.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
   }
 
   @After
   public void tearDown() throws Exception {
-    dataRegion.syncDeleteDataFiles();
+    if (dataRegion != null) {
+      dataRegion.syncDeleteDataFiles();
+      StorageEngineV2.getInstance().deleteDataRegion(new DataRegionId(0));
+    }
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
@@ -809,6 +814,7 @@ public class DataRegionTest {
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
+  @Ignore
   @Test
   public void testDeleteStorageGroupWhenCompacting() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);

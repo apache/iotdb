@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -166,7 +167,7 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForNormal()
-      throws MetadataException, ExecutionException, InterruptedException {
+      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -224,7 +225,7 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForSnapshot()
-      throws MetadataException, ExecutionException, InterruptedException {
+      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -349,14 +350,15 @@ public class WALRecoverManagerTest {
     // endregion
   }
 
-  private InsertRowNode getInsertRowNode(String devicePath, long time) throws MetadataException {
+  private InsertRowNode getInsertRowNode(String devicePath, long time)
+      throws MetadataException, QueryProcessException {
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
+    Object[] columns = new Object[] {1.0f, 1.0d};
     PartialPath path = new PartialPath(devicePath);
     String[] measurements = new String[] {"s1", "s2"};
     InsertRowNode insertRowNode =
         new InsertRowNode(
-            new PlanNodeId("0"), path, false, measurements, dataTypes, time, columns, true);
+            new PlanNodeId(""), path, false, measurements, dataTypes, time, columns, false);
 
     insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
@@ -402,16 +404,27 @@ public class WALRecoverManagerTest {
       bitMaps[i].mark(i % times.length);
     }
 
-    return new InsertTabletNode(
-        new PlanNodeId("0"),
+
+    InsertTabletNode insertTabletNode = new InsertTabletNode(
+        new PlanNodeId(""),
         new PartialPath(devicePath),
-        false,
+        true,
         new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
         dataTypes.toArray(new TSDataType[0]),
         times,
-        null,
+        bitMaps,
         columns,
         times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+            new MeasurementSchema("s1", TSDataType.DOUBLE),
+            new MeasurementSchema("s2", TSDataType.FLOAT),
+            new MeasurementSchema("s3", TSDataType.INT64),
+            new MeasurementSchema("s4", TSDataType.INT32),
+            new MeasurementSchema("s5", TSDataType.BOOLEAN),
+            new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+    return insertTabletNode;
   }
 
   private List<WALRecoverListener> prepareCrashedTsFile()

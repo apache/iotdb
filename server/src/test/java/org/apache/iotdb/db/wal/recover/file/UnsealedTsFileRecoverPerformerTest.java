@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -64,6 +66,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class UnsealedTsFileRecoverPerformerTest {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
@@ -71,10 +75,14 @@ public class UnsealedTsFileRecoverPerformerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.envSetUp();
+    isClusterMode = config.isClusterMode();
+    config.setClusterMode(true);
     IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
     IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s1")),
@@ -107,6 +115,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.cleanEnv();
   }
@@ -121,17 +130,17 @@ public class UnsealedTsFileRecoverPerformerTest {
     // generate InsertRowPlan
     long time = 4;
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
+    Object[] columns = new Object[] {1.0f, 1.0d};
     InsertRowNode insertRowNode =
         new InsertRowNode(
-            new PlanNodeId("0"),
+            new PlanNodeId(""),
             new PartialPath(DEVICE2_NAME),
             false,
             new String[] {"s1", "s2"},
             dataTypes,
             time,
             columns,
-            true);
+            false);
     insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
             new MeasurementSchema("s1", TSDataType.FLOAT),

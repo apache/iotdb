@@ -671,19 +671,6 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
-  //  public TSStatus setTTL(TSetTTLReq req) {
-  //    Map<String, List<DataRegionId>> localDataRegionInfo =
-  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
-  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
-  //    for (DataRegionId dataRegionId : dataRegionIdList) {
-  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-  //      if (dataRegion != null) {
-  //        dataRegion.setDataTTL(req.TTL);
-  //      }
-  //    }
-  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  //  }
-
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();

@@ -36,9 +36,11 @@ import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,11 +72,15 @@ public class WALNodeTest {
   private WALMode prevMode;
   private WALNode walNode;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
+    isClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
+    config.setClusterMode(true);
     walNode = new WALNode(identifier, logDirectory);
   }
 
@@ -82,6 +88,7 @@ public class WALNodeTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
@@ -156,13 +163,14 @@ public class WALNodeTest {
 
   private InsertTabletNode getInsertTabletNode(String devicePath, long[] times)
       throws IllegalPathException {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE);
-    dataTypes.add(TSDataType.FLOAT);
-    dataTypes.add(TSDataType.INT64);
-    dataTypes.add(TSDataType.INT32);
-    dataTypes.add(TSDataType.BOOLEAN);
-    dataTypes.add(TSDataType.TEXT);
+    String[] measurements = new String[] {"s1", "s2", "s3", "s4", "s5", "s6"};
+    TSDataType[] dataTypes = new TSDataType[6];
+    dataTypes[0] = TSDataType.DOUBLE;
+    dataTypes[1] = TSDataType.FLOAT;
+    dataTypes[2] = TSDataType.INT64;
+    dataTypes[3] = TSDataType.INT32;
+    dataTypes[4] = TSDataType.BOOLEAN;
+    dataTypes[5] = TSDataType.TEXT;
 
     Object[] columns = new Object[6];
     columns[0] = new double[times.length];
@@ -173,32 +181,38 @@ public class WALNodeTest {
     columns[5] = new Binary[times.length];
 
     for (int r = 0; r < times.length; r++) {
-      ((double[]) columns[0])[r] = 1.0 + r;
-      ((float[]) columns[1])[r] = 2 + r;
-      ((long[]) columns[2])[r] = 10000 + r;
+      ((double[]) columns[0])[r] = 1.0d + r;
+      ((float[]) columns[1])[r] = 2.0f + r;
+      ((long[]) columns[2])[r] = 10000L + r;
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
     }
 
-    BitMap[] bitMaps = new BitMap[dataTypes.size()];
-    for (int i = 0; i < dataTypes.size(); i++) {
+    BitMap[] bitMaps = new BitMap[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
       if (bitMaps[i] == null) {
         bitMaps[i] = new BitMap(times.length);
       }
       bitMaps[i].mark(i % times.length);
     }
 
-    return new InsertTabletNode(
-        new PlanNodeId("0"),
+    InsertTabletNode insertTabletNode = new InsertTabletNode(
+        new PlanNodeId(""),
         new PartialPath(devicePath),
         false,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-        dataTypes.toArray(new TSDataType[0]),
+        measurements,
+        dataTypes,
         times,
-        null,
+        bitMaps,
         columns,
         times.length);
+    MeasurementSchema[] schemas = new MeasurementSchema[6];
+    for (int i = 0; i < 6; i++) {
+      schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], TSEncoding.PLAIN);
+    }
+    insertTabletNode.setMeasurementSchemas(schemas);
+    return insertTabletNode;
   }
 
   @Test

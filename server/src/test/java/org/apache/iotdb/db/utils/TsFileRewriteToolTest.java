@@ -85,18 +85,13 @@ public class TsFileRewriteToolTest {
 
   @Before
   public void setUp() {
-    EnvironmentUtils.envSetUp();
-
     config = IoTDBDescriptor.getInstance().getConfig();
     originEnablePartition = config.isEnablePartition();
     originPartitionInterval = config.getTimePartitionIntervalForStorage();
-
     boolean newEnablePartition = true;
     config.setEnablePartition(newEnablePartition);
     config.setTimePartitionIntervalForStorage(newPartitionInterval);
-    //
-    //    StorageEngine.setEnablePartition(newEnablePartition);
-    //    StorageEngine.setTimePartitionInterval(newPartitionInterval);
+    EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
     if (!f.exists()) {
@@ -115,9 +110,6 @@ public class TsFileRewriteToolTest {
     }
     config.setEnablePartition(originEnablePartition);
     config.setTimePartitionIntervalForStorage(originPartitionInterval);
-
-    //    StorageEngine.setEnablePartition(originEnablePartition);
-    //    StorageEngine.setTimePartitionInterval(originPartitionInterval);
 
     File directory = new File(folder);
     try {
