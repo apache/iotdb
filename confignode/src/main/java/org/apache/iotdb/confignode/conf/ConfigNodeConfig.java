@@ -141,6 +141,9 @@ public class ConfigNodeConfig {
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.LEADER_POLICY;
 
+  /** The ConfigNode-leader will automatically balance leader distribution if set true */
+  private boolean enableLeaderBalancing = false;
+
   private String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader */
@@ -527,6 +530,14 @@ public class ConfigNodeConfig {
 
   public void setRoutingPolicy(String routingPolicy) {
     this.routingPolicy = routingPolicy;
+  }
+
+  public boolean isEnableLeaderBalancing() {
+    return enableLeaderBalancing;
+  }
+
+  public void setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    this.enableLeaderBalancing = enableLeaderBalancing;
   }
 
   public String getReadConsistencyLevel() {
