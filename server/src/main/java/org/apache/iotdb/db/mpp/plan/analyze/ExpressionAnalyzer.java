@@ -674,7 +674,7 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (actualPaths.isEmpty()) {
-        return Collections.singletonList(new NullOperand());
+        return Collections.emptyList();
       }
       List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
       return reconstructTimeSeriesOperands(noStarPaths);
