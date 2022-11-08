@@ -119,10 +119,10 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  */
 public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
-  private CachedMTreeStore store;
+  private final CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
-  private int levelOfSG;
+  private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
@@ -143,8 +143,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       CachedMTreeStore store,
       IStorageGroupMNode storageGroupMNode,
       Consumer<IMeasurementMNode> measurementProcess,
-      Function<IMeasurementMNode, Map<String, String>> tagGetter,
-      int schemaRegionId)
+      Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws MetadataException {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
@@ -188,8 +187,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             snapshotDir, storageGroupMNode.getFullPath(), schemaRegionId),
         storageGroupMNode,
         measurementProcess,
-        tagGetter,
-        schemaRegionId);
+        tagGetter);
   }
 
   // endregion
