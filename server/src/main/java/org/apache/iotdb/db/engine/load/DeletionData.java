@@ -40,7 +40,7 @@ public class DeletionData implements TsFileData {
 
   @Override
   public long getDataSize() {
-    return 0;
+    return Long.BYTES;
   }
 
   @Override
@@ -60,7 +60,7 @@ public class DeletionData implements TsFileData {
   }
 
   @Override
-  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(isModification(), stream);
     deletion.serializeWithoutFileOffset(stream);
   }

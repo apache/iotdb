@@ -239,16 +239,16 @@ Eg：
 
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+------------+
-|NodeID|  NodeType| Status|     Host|InternalPort|
-+------+----------+-------+---------+------------+
-|     0|ConfigNode|Running|  0.0.0.0|       22277|
-|     1|ConfigNode|Running|  0.0.0.0|       22279|
-|     2|ConfigNode|Running|  0.0.0.0|       22281|
-|     3|  DataNode|Running|127.0.0.1|        9003|
-|     4|  DataNode|Running|127.0.0.1|        9005|
-|     5|  DataNode|Running|127.0.0.1|        9007|
-+------+----------+-------+---------+------------+
++------+----------+-------+---------------+------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|
++------+----------+-------+---------------+------------+
+|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     1|ConfigNode|Running|        0.0.0.0|       22279|
+|     2|ConfigNode|Running|        0.0.0.0|       22281|
+|     3|  DataNode|Running|      127.0.0.1|        9003|
+|     4|  DataNode|Running|      127.0.0.1|        9005|
+|     5|  DataNode|Running|      127.0.0.1|        9007|
++------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.011s
 ```
@@ -257,16 +257,16 @@ After a node is stopped, its status will change, as shown below:
 
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+------------+
-|NodeID|  NodeType| Status|     Host|InternalPort|
-+------+----------+-------+---------+------------+
-|     0|ConfigNode|Running|  0.0.0.0|       22277|
-|     1|ConfigNode|Unknown|  0.0.0.0|       22279|
-|     2|ConfigNode|Running|  0.0.0.0|       22281|
-|     3|  DataNode|Running|127.0.0.1|        9003|
-|     4|  DataNode|Running|127.0.0.1|        9005|
-|     5|  DataNode|Running|127.0.0.1|        9007|
-+------+----------+-------+---------+------------+
++------+----------+-------+---------------+------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|
++------+----------+-------+---------------+------------+
+|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     1|ConfigNode|Unknown|        0.0.0.0|       22279|
+|     2|ConfigNode|Running|        0.0.0.0|       22281|
+|     3|  DataNode|Running|      127.0.0.1|        9003|
+|     4|  DataNode|Running|      127.0.0.1|        9005|
+|     5|  DataNode|Running|      127.0.0.1|        9007|
++------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.012s
 ```
