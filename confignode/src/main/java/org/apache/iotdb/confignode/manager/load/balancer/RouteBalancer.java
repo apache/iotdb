@@ -70,6 +70,7 @@ public class RouteBalancer {
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final boolean ENABLE_LEADER_BALANCING = CONF.isEnableLeaderBalancing();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getSchemaRegionConsensusProtocolClass();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -227,30 +228,34 @@ public class RouteBalancer {
 
   /** Start the route balancing service */
   public void startRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture == null) {
-        currentLeaderBalancingFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                leaderBalancingExecutor,
-                this::balancingRegionLeader,
-                0,
-                // Execute route balancing service in every 5 loops of heartbeat service
-                NodeManager.HEARTBEAT_INTERVAL * 5,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("Route-Balancing service is started successfully.");
+    if (ENABLE_LEADER_BALANCING) {
+      synchronized (scheduleMonitor) {
+        if (currentLeaderBalancingFuture == null) {
+          currentLeaderBalancingFuture =
+              ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                  leaderBalancingExecutor,
+                  this::balancingRegionLeader,
+                  0,
+                  // Execute route balancing service in every 5 loops of heartbeat service
+                  NodeManager.HEARTBEAT_INTERVAL * 5,
+                  TimeUnit.MILLISECONDS);
+          LOGGER.info("Route-Balancing service is started successfully.");
+        }
       }
     }
   }
 
   /** Stop the route balancing service */
   public void stopRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture != null) {
-        currentLeaderBalancingFuture.cancel(false);
-        currentLeaderBalancingFuture = null;
-        leaderCache.clear();
-        regionRouteMap.clear();
-        LOGGER.info("Route-Balancing service is stopped successfully.");
+    if (ENABLE_LEADER_BALANCING) {
+      synchronized (scheduleMonitor) {
+        if (currentLeaderBalancingFuture != null) {
+          currentLeaderBalancingFuture.cancel(false);
+          currentLeaderBalancingFuture = null;
+          leaderCache.clear();
+          regionRouteMap.clear();
+          LOGGER.info("Route-Balancing service is stopped successfully.");
+        }
       }
     }
   }

@@ -60,6 +60,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Category({ClusterIT.class})
 public class IoTDBClusterRegionLeaderBalancingIT {
 
+  protected static boolean originalEnableLeaderBalancing;
+
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
@@ -75,6 +77,9 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @BeforeClass
   public static void setUp() {
+    originalEnableLeaderBalancing = ConfigFactory.getConfig().isEnableLeaderBalancing();
+    ConfigFactory.getConfig().setEnableLeaderBalancing(true);
+
     originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     ConfigFactory.getConfig()
@@ -93,6 +98,8 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @AfterClass
   public static void tearDown() {
+    ConfigFactory.getConfig().setEnableLeaderBalancing(originalEnableLeaderBalancing);
+
     ConfigFactory.getConfig()
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()

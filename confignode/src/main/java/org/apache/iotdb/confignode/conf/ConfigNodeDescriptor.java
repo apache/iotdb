@@ -267,6 +267,11 @@ public class ConfigNodeDescriptor {
               "Unknown routing_policy: %s, please set to \"leader\" or \"greedy\"", routingPolicy));
     }
 
+    conf.setEnableLeaderBalancing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_leader_balancing", String.valueOf(conf.isEnableLeaderBalancing()))));
+
     String readConsistencyLevel =
         properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel());
     if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
