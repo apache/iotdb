@@ -457,7 +457,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus isConsensusInitialized() throws TException {
     if (configManager.getConsensusManager() != null) {
-      return StatusUtils.OK;
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
   }
