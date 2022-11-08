@@ -42,40 +42,68 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
 
-public class ShowClusterTask implements IConfigTask {
+public class ShowClusterDetailsTask implements IConfigTask {
 
   private final ShowClusterStatement showClusterStatement;
 
-  public ShowClusterTask(ShowClusterStatement showClusterStatement) {
+  public ShowClusterDetailsTask(ShowClusterStatement showClusterStatement) {
     this.showClusterStatement = showClusterStatement;
   }
 
-  @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.showCluster(showClusterStatement);
-  }
-
-  private static void buildTsBlock(
+  private static void buildConfigNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,
       String nodeType,
       String nodeStatus,
-      String hostAddress,
-      int port) {
+      String internalAddress,
+      int internalPort,
+      int configConsensusPort) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
-    builder.getColumnBuilder(4).writeInt(port);
+    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder.getColumnBuilder(4).writeInt(internalPort);
+    builder.getColumnBuilder(5).writeBinary(new Binary(Integer.toString(configConsensusPort)));
+    builder.getColumnBuilder(6).writeBinary(new Binary(""));
+    builder.getColumnBuilder(7).writeBinary(new Binary(""));
+    builder.getColumnBuilder(8).writeBinary(new Binary(""));
+    builder.getColumnBuilder(9).writeBinary(new Binary(""));
+    builder.getColumnBuilder(10).writeBinary(new Binary(""));
+    builder.declarePosition();
+  }
+
+  private static void buildDataNodesTsBlock(
+      TsBlockBuilder builder,
+      int nodeId,
+      String nodeType,
+      String nodeStatus,
+      String internalAddress,
+      int internalPort,
+      String rpcAddress,
+      int rpcPort,
+      int dataConsensusPort,
+      int schemaConsensusPort,
+      int mppPort) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeInt(nodeId);
+    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
+    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
+    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder.getColumnBuilder(4).writeInt(internalPort);
+    builder.getColumnBuilder(5).writeBinary(new Binary(""));
+    builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress));
+    builder.getColumnBuilder(7).writeBinary(new Binary(Integer.toString(rpcPort)));
+    builder.getColumnBuilder(8).writeBinary(new Binary(Integer.toString(dataConsensusPort)));
+    builder.getColumnBuilder(9).writeBinary(new Binary(Integer.toString(schemaConsensusPort)));
+    builder.getColumnBuilder(10).writeBinary(new Binary(Integer.toString(mppPort)));
     builder.declarePosition();
   }
 
   public static void buildTSBlock(
       TShowClusterResp clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showClusterColumnHeaders.stream()
+        ColumnHeaderConstant.showClusterDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
@@ -84,27 +112,39 @@ public class ShowClusterTask implements IConfigTask {
         .getConfigNodeList()
         .forEach(
             e ->
-                buildTsBlock(
+                buildConfigNodesTsBlock(
                     builder,
                     e.getConfigNodeId(),
                     NODE_TYPE_CONFIG_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    e.getConsensusEndPoint().getPort()));
 
     clusterNodeInfos
         .getDataNodeList()
         .forEach(
             e ->
-                buildTsBlock(
+                buildDataNodesTsBlock(
                     builder,
                     e.getDataNodeId(),
                     NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    e.getClientRpcEndPoint().getIp(),
+                    e.getClientRpcEndPoint().getPort(),
+                    e.getDataRegionConsensusEndPoint().getPort(),
+                    e.getSchemaRegionConsensusEndPoint().getPort(),
+                    e.getMPPDataExchangeEndPoint().getPort()));
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.showCluster(showClusterStatement);
   }
 }

@@ -62,14 +62,19 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
   public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
 
-  // column names for show cluster statement
+  // column names for show cluster and show cluster details statements
   public static final String COLUMN_NODE_ID = "NodeID";
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
   public static final String COLUMN_HOST = "Host";
   public static final String COLUMN_INTERNAL_ADDRESS = "InternalAddress";
   public static final String COLUMN_INTERNAL_PORT = "InternalPort";
+  public static final String COLUMN_CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
+  public static final String COLUMN_RPC_ADDRESS = "RpcAddress";
   public static final String COLUMN_RPC_PORT = "RpcPort";
+  public static final String COLUMN_DATA_CONSENSUS_PORT = "DataConsensusPort";
+  public static final String COLUMN_SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
+  public static final String COLUMN_MPP_PORT = "MppPort";
 
   // column names for show functions statement
   public static final String COLUMN_FUNCTION_NAME = "function name";
@@ -251,6 +256,20 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showClusterDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_INTERNAL_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_CONFIG_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_MPP_PORT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
