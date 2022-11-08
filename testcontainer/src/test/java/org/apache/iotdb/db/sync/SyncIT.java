@@ -168,7 +168,7 @@ public class SyncIT {
   private void preparePipe() throws Exception {
     receiverStatement.execute("start pipeserver");
     senderStatement.execute(
-        "create pipesink my_iotdb as iotdb(ip='sync_iotdb-receiver_1',port=6667)");
+        "create pipesink my_iotdb as iotdb(ip='sync_iotdb-receiver_1',port=6670)");
     senderStatement.execute("create pipe p to my_iotdb");
   }
 
