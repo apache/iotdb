@@ -301,6 +301,8 @@ public class LogDispatcher {
               .getOrCreateHistogram(
                   Metric.STAGE.toString(),
                   MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  Metric.MULTI_LEADER.toString(),
                   Tag.TYPE.toString(),
                   "constructBatch",
                   Tag.REGION.toString(),

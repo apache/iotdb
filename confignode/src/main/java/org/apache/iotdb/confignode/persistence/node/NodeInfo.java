@@ -168,13 +168,14 @@ public class NodeInfo implements SnapshotProcessor {
         "{}, There are {} data node in cluster before executed remove-datanode.sh",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
+
+    dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
-                LOGGER.info("removed the datanode {} from cluster", removeDataNodes);
+                LOGGER.info("Removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();

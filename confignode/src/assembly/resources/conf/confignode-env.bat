@@ -87,25 +87,6 @@ if %desired_yg_in_mb% GTR 16384 (
 @REM Minimum heap size
 @REM set HEAP_NEWSIZE="2G"
 
-IF ["%CONFIGNODE_HEAP_OPTS%"] EQU [""] (
-	rem detect Java 8 or 11
-	IF "%JAVA_VERSION%" == "8" (
-		java -d64 -version >nul 2>&1
-		set CONFIGNODE_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%CONFIGNODE_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
-		goto end_config_setting
-	) ELSE (
-		goto detect_jdk11_bit_version
-	)
-)
-
-:detect_jdk11_bit_version
-for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
-	@rem echo %%j
-	@rem echo %%k
-	@rem echo %%l
-	set BIT_VERSION=%%l
-)
-
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
 @REM threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
@@ -116,14 +97,13 @@ set temp_buffer_pool_size=1024
 @REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
 set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
 
-set CONFIGNODE_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"%CONFIGNODE_HOME%\gc.log"
+set CONFIGNODE_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
-:end_config_setting
 @REM set gc log.
 IF "%1" equ "printgc" (
 	IF "%JAVA_VERSION%" == "8" (

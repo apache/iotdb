@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,6 +37,7 @@ import javax.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class QueryDataSetHandler {
@@ -48,7 +50,7 @@ public class QueryDataSetHandler {
   public static Response fillQueryDataSet(
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
       throws IoTDBException {
-    if (statement instanceof ShowStatement) {
+    if (statement instanceof ShowStatement || statement instanceof AuthorStatement) {
       return fillShowPlanDataSet(queryExecution, actualRowSizeLimit);
     } else if (statement instanceof QueryStatement) {
       if (((QueryStatement) statement).isAggregationQuery()
@@ -72,12 +74,7 @@ public class QueryDataSetHandler {
       throws IoTDBException {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
-    DatasetHeader header = queryExecution.getDatasetHeader();
-    List<String> resultColumns = header.getRespColumns();
-    for (String resultColumn : resultColumns) {
-      targetDataSet.addExpressionsItem(resultColumn);
-      targetDataSet.addValuesItem(new ArrayList<>());
-    }
+
     return fillQueryDataSetWithTimestamps(
         queryExecution, actualRowSizeLimit, targetDataSet, timePrecision);
   }
@@ -141,6 +138,15 @@ public class QueryDataSetHandler {
       throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
+
+    DatasetHeader header = queryExecution.getDatasetHeader();
+    List<String> resultColumns = header.getRespColumns();
+    Map<String, Integer> headerMap = header.getColumnNameIndexMap();
+    for (String resultColumn : resultColumns) {
+      targetDataSet.addExpressionsItem(resultColumn);
+      targetDataSet.addValuesItem(new ArrayList<>());
+    }
+
     while (true) {
       if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
         return Response.ok()
@@ -155,6 +161,11 @@ public class QueryDataSetHandler {
       }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
+        if (fetched == 0) {
+          targetDataSet.setTimestamps(new ArrayList<>());
+          targetDataSet.setValues(new ArrayList<>());
+          return Response.ok().entity(targetDataSet).build();
+        }
         break;
       }
       TsBlock tsBlock = optionalTsBlock.get();
@@ -166,8 +177,8 @@ public class QueryDataSetHandler {
                 ? tsBlock.getTimeByIndex(i)
                 : tsBlock.getTimeByIndex(i) / timePrecision);
       }
-      for (int k = 0; k < columnNum; k++) {
-        Column column = tsBlock.getColumn(k);
+      for (int k = 0; k < resultColumns.size(); k++) {
+        Column column = tsBlock.getColumn(headerMap.get(resultColumns.get(k)));
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
           fetched++;
@@ -209,10 +220,18 @@ public class QueryDataSetHandler {
       }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
+        if (fetched == 0) {
+          targetDataSet.setValues(new ArrayList<>());
+          return Response.ok().entity(targetDataSet).build();
+        }
         break;
       }
       TsBlock tsBlock = optionalTsBlock.get();
       int currentCount = tsBlock.getPositionCount();
+      if (currentCount == 0) {
+        targetDataSet.setValues(new ArrayList<>());
+        return Response.ok().entity(targetDataSet).build();
+      }
       for (int k = 0; k < columnNum; k++) {
         Column column = tsBlock.getColumn(k);
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);

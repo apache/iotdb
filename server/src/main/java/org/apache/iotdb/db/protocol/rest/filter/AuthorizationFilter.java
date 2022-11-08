@@ -16,11 +16,13 @@
  */
 package org.apache.iotdb.db.protocol.rest.filter;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;
@@ -108,7 +110,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     user.setUsername(split[0]);
     user.setPassword(split[1]);
     try {
-      if (!authorizer.login(split[0], split[1])) {
+      TSStatus tsStatus = ((AuthorizerManager) authorizer).checkUser(split[0], split[1]);
+      if (tsStatus.code != 200) {
         Response resp =
             Response.status(Status.UNAUTHORIZED)
                 .type(MediaType.APPLICATION_JSON)
@@ -120,7 +123,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
         containerRequestContext.abortWith(resp);
         return null;
       }
-    } catch (AuthException e) {
+    } catch (ConfigNodeConnectionException e) {
       LOGGER.warn(e.getMessage(), e);
       Response resp =
           Response.status(Status.INTERNAL_SERVER_ERROR)

@@ -68,6 +68,7 @@ struct TSExecuteStatementResp {
   11: optional list<byte> aliasColumns
   12: optional TSTracingInfo tracingInfo
   13: optional list<binary> queryResult
+  14: optional bool moreData
 }
 
 enum TSProtocolVersion {
@@ -176,6 +177,7 @@ struct TSFetchResultsResp{
   4: optional TSQueryDataSet queryDataSet
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
   6: optional list<binary> queryResult
+  7: optional bool moreData
 }
 
 struct TSFetchMetadataResp{

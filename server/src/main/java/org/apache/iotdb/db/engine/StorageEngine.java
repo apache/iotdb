@@ -210,7 +210,7 @@ public class StorageEngine implements IService {
     setAllSgReady(false);
     recoveryThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
+            ThreadName.STORAGE_ENGINE_CACHED_SERVICE.getName());
 
     List<IStorageGroupMNode> sgNodes = IoTDB.schemaProcessor.getAllStorageGroupNodes();
     // init wal recover manager

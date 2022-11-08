@@ -135,7 +135,7 @@ public class DataNode implements DataNodeMBean {
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
       if (endPoint.getIp().equals("0.0.0.0")) {
         throw new ConfigurationException(
-            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
       }
     }
 
@@ -257,8 +257,8 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait 5s to start the next try
-        Thread.sleep(config.getJoinClusterTimeOutMs());
+        // wait to start the next try
+        Thread.sleep(config.getJoinClusterRetryIntervalMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);

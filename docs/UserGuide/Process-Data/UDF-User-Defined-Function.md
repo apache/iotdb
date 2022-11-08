@@ -459,16 +459,8 @@ The usage of UDF is similar to that of built-in aggregation functions.
 
 * Support `SLIMIT` / `SOFFSET`
 * Support `LIMIT` / `OFFSET`
-* Support `NON ALIGN`
 * Support queries with time filters
 * Support queries with value filters
-
-
-
-### Queries with Aligned Timeseries 
-
-Aligned Timeseries has not been supported in UDF queries yet. An error message is expected if you use UDF functions with Aligned Timeseries selected.
-
 
 
 ### Queries with * in SELECT Clauses
@@ -567,8 +559,8 @@ This part mainly introduces how external users can contribute their own UDFs to 
 
 #### UDF Source Code
 
-1. Create the UDF main class and related classes in `src/main/java/org/apache/iotdb/db/query/udf/builtin` or in its subfolders.
-2. Register your UDF in `src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`.
+1. Create the UDF main class and related classes in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin` or in its subfolders.
+2. Register your UDF in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/BuiltinTimeSeriesGeneratingFunction.java`.
 
 
 
@@ -576,7 +568,7 @@ This part mainly introduces how external users can contribute their own UDFs to 
 
 At a minimum, you need to write integration tests for the UDF.
 
-You can add a test class in `server/src/test/java/org/apache/iotdb/db/integration`. 
+You can add a test class in `integration-test/src/test/java/org/apache/iotdb/db/it/udf`. 
 
 
 

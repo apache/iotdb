@@ -88,7 +88,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = "127.0.0.1";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
@@ -103,7 +103,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -864,8 +864,14 @@ public class IoTDBConfig {
   /** maximum number of logged pages before log erased */
   private int schemaFileLogSize = 16384;
 
+  /**
+   * Maximum number of measurement in one create timeseries plan node. If the number of measurement
+   * in user request exceeds this limit, the request will be split.
+   */
+  private int maxMeasurementNumOfInternalRequest = 10000;
+
   /** Internal address for data node */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -880,8 +886,8 @@ public class IoTDBConfig {
   private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
-  /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
+  /** The time of data node waiting for the next retry to join into the cluster */
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
@@ -2917,6 +2923,14 @@ public class IoTDBConfig {
     this.schemaFileLogSize = schemaFileLogSize;
   }
 
+  public int getMaxMeasurementNumOfInternalRequest() {
+    return maxMeasurementNumOfInternalRequest;
+  }
+
+  public void setMaxMeasurementNumOfInternalRequest(int maxMeasurementNumOfInternalRequest) {
+    this.maxMeasurementNumOfInternalRequest = maxMeasurementNumOfInternalRequest;
+  }
+
   public String getInternalAddress() {
     return internalAddress;
   }
@@ -2957,12 +2971,12 @@ public class IoTDBConfig {
     this.targetConfigNodeList = targetConfigNodeList;
   }
 
-  public long getJoinClusterTimeOutMs() {
-    return joinClusterTimeOutMs;
+  public long getJoinClusterRetryIntervalMs() {
+    return joinClusterRetryIntervalMs;
   }
 
-  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
-    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  public void setJoinClusterRetryIntervalMs(long joinClusterRetryIntervalMs) {
+    this.joinClusterRetryIntervalMs = joinClusterRetryIntervalMs;
   }
 
   public String getDataRegionConsensusProtocolClass() {
