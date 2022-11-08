@@ -154,13 +154,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
     // recover measurement
     MeasurementCollector<?> collector =
-        new MeasurementCollector<Set<PartialPath>>(
-            this.storageGroupMNode, new PartialPath("root.**"), this.store) {
+        new MeasurementCollector<Void>(
+            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
           }
         };
+    collector.setPrefixMatch(true);
     collector.traverse();
   }
 
