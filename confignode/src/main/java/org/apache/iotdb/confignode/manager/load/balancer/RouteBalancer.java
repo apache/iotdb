@@ -20,19 +20,28 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
+import org.apache.iotdb.confignode.manager.load.balancer.router.mcf.MCFLeaderBalancer;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -60,9 +69,16 @@ public class RouteBalancer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final boolean ENABLE_LEADER_BALANCING = CONF.isEnableLeaderBalancing();
+  private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      CONF.getSchemaRegionConsensusProtocolClass();
+  private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      CONF.getDataRegionConsensusProtocolClass();
   private static final boolean isMultiLeader =
       ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
           ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+
   public static final String LEADER_POLICY = "leader";
   public static final String GREEDY_POLICY = "greedy";
 
@@ -212,36 +228,114 @@ public class RouteBalancer {
 
   /** Start the route balancing service */
   public void startRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture == null) {
-        currentLeaderBalancingFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                leaderBalancingExecutor,
-                this::balancingRegionLeader,
-                0,
-                // Execute route balancing service in every 10 loops of heartbeat service
-                NodeManager.HEARTBEAT_INTERVAL * 10,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("Route-Balancing service is started successfully.");
+    if (ENABLE_LEADER_BALANCING) {
+      synchronized (scheduleMonitor) {
+        if (currentLeaderBalancingFuture == null) {
+          currentLeaderBalancingFuture =
+              ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                  leaderBalancingExecutor,
+                  this::balancingRegionLeader,
+                  0,
+                  // Execute route balancing service in every 5 loops of heartbeat service
+                  NodeManager.HEARTBEAT_INTERVAL * 5,
+                  TimeUnit.MILLISECONDS);
+          LOGGER.info("Route-Balancing service is started successfully.");
+        }
       }
     }
   }
 
   /** Stop the route balancing service */
   public void stopRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture != null) {
-        currentLeaderBalancingFuture.cancel(false);
-        currentLeaderBalancingFuture = null;
-        leaderCache.clear();
-        regionRouteMap.clear();
-        LOGGER.info("Route-Balancing service is stopped successfully.");
+    if (ENABLE_LEADER_BALANCING) {
+      synchronized (scheduleMonitor) {
+        if (currentLeaderBalancingFuture != null) {
+          currentLeaderBalancingFuture.cancel(false);
+          currentLeaderBalancingFuture = null;
+          leaderCache.clear();
+          regionRouteMap.clear();
+          LOGGER.info("Route-Balancing service is stopped successfully.");
+        }
       }
     }
   }
 
   private void balancingRegionLeader() {
-    // TODO: IOTDB-4768
+    balancingRegionLeader(TConsensusGroupType.SchemaRegion);
+    balancingRegionLeader(TConsensusGroupType.DataRegion);
+  }
+
+  private void balancingRegionLeader(TConsensusGroupType regionGroupType) {
+    // Collect latest data to generate leaderBalancer
+    MCFLeaderBalancer leaderBalancer =
+        new MCFLeaderBalancer(
+            getPartitionManager().getAllReplicaSetsMap(regionGroupType),
+            regionRouteMap.getRegionLeaderMap(),
+            getNodeManager()
+                .filterDataNodeThroughStatus(
+                    NodeStatus.Unknown, NodeStatus.ReadOnly, NodeStatus.Removing)
+                .stream()
+                .map(TDataNodeConfiguration::getLocation)
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toSet()));
+
+    // Calculate the optimal leader distribution
+    Map<TConsensusGroupId, Integer> leaderDistribution =
+        leaderBalancer.generateOptimalLeaderDistribution();
+
+    // Transfer leader to the optimal distribution
+    AtomicInteger requestId = new AtomicInteger(0);
+    AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
+    leaderDistribution.forEach(
+        (regionGroupId, newLeaderId) -> {
+          if (newLeaderId != regionRouteMap.getLeader(regionGroupId)) {
+            String consensusProtocolClass;
+            switch (regionGroupId.getType()) {
+              case SchemaRegion:
+                consensusProtocolClass = SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
+                break;
+              case DataRegion:
+              default:
+                consensusProtocolClass = DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+                break;
+            }
+            LOGGER.info(
+                "[LeaderBalancer] Try to change the leader of Region: {} to DataNode: {} ",
+                regionGroupId,
+                newLeaderId);
+            changeRegionLeader(
+                consensusProtocolClass, requestId, clientHandler, regionGroupId, newLeaderId);
+          }
+        });
+    if (requestId.get() > 0) {
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    }
+  }
+
+  private void changeRegionLeader(
+      String consensusProtocolClass,
+      AtomicInteger requestId,
+      AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler,
+      TConsensusGroupId regionGroupId,
+      int newLeaderId) {
+    switch (consensusProtocolClass) {
+      case ConsensusFactory.MULTI_LEADER_CONSENSUS:
+        // For multi-leader protocol, change RegionRouteMap is enough.
+        // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
+        regionRouteMap.setLeader(regionGroupId, newLeaderId);
+        break;
+      case ConsensusFactory.RATIS_CONSENSUS:
+      default:
+        // For ratis protocol, the ConfigNode-leader will send a changeLeaderRequest to the new
+        // leader.
+        // And the RegionRouteMap will be updated by Cluster-Heartbeat-Service later if change
+        // leader success.
+        TRegionLeaderChangeReq regionLeaderChangeReq =
+            new TRegionLeaderChangeReq(
+                regionGroupId, getNodeManager().getRegisteredDataNode(newLeaderId).getLocation());
+        clientHandler.putRequest(requestId.getAndIncrement(), regionLeaderChangeReq);
+    }
   }
 
   /** Initialize the regionRouteMap when the ConfigNode-Leader is switched */
