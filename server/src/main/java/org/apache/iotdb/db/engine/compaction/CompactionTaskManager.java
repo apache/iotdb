@@ -382,6 +382,7 @@ public class CompactionTaskManager implements IService {
       initThreadPool();
       finishedTaskNum.set(0);
       candidateCompactionTaskQueue.clear();
+      init = true;
     }
     currentTaskNum = new AtomicInteger(0);
     init = true;

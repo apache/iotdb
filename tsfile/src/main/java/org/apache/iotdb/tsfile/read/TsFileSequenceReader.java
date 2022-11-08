@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -1171,6 +1172,27 @@ public class TsFileSequenceReader implements AutoCloseable {
             header.getDataSize());
     return new Chunk(
         header, buffer, chunkCacheKey.getDeleteIntervalList(), chunkCacheKey.getStatistics());
+  }
+
+  /**
+   * read the {@link CompressionType} and {@link TSEncoding} of a timeseries. This method will skip
+   * the measurement id, and data type. This method will change the position of this reader.
+   *
+   * @param timeseriesMetadata timeseries' metadata
+   * @return a pair of {@link CompressionType} and {@link TSEncoding} of given timeseries.
+   * @throws IOException
+   */
+  public Pair<CompressionType, TSEncoding> readTimeseriesCompressionTypeAndEncoding(
+      TimeseriesMetadata timeseriesMetadata) throws IOException {
+
+    String measurementId = timeseriesMetadata.getMeasurementId();
+    int measurementIdLength = measurementId.getBytes(TSFileConfig.STRING_CHARSET).length;
+    position(
+        timeseriesMetadata.getChunkMetadataList().get(0).getOffsetOfChunkHeader()
+            + Byte.BYTES // chunkType
+            + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
+            + measurementIdLength); // measurementID
+    return ChunkHeader.deserializeCompressionTypeAndEncoding(tsFileInput.wrapAsInputStream());
   }
 
   /** Get measurement schema by chunkMetadatas. */

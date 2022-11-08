@@ -203,7 +203,7 @@ public class NodeManager {
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
-    ratisConfig.setSchemaPreserveWhenPurge(conf.getPartitionRegionRatisPreserveLogsWhenPurge());
+    ratisConfig.setSchemaPreserveWhenPurge(conf.getConfigNodeRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
 
     ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
@@ -248,6 +248,9 @@ public class NodeManager {
 
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
+    } else {
+      status.setCode(TSStatusCode.REJECT_REMOVED_DATANODE.getStatusCode());
+      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
     }
 
     dataSet.setStatus(status);
@@ -410,6 +413,19 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     return nodeInfo.getRegisteredDataNodes();
+  }
+
+  /**
+   * Only leader use this interface
+   *
+   * <p>Notice: The result will be an empty TDataNodeConfiguration if the specified DataNode doesn't
+   * register
+   *
+   * @param dataNodeId The specified DataNode's index
+   * @return The specified registered DataNode
+   */
+  public TDataNodeConfiguration getRegisteredDataNode(int dataNodeId) {
+    return nodeInfo.getRegisteredDataNode(dataNodeId);
   }
 
   public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations() {

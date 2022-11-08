@@ -28,7 +28,7 @@ Now integration testing supports two kinds of architecture.
 - `Simple`: A cluster with 1 config node and 1 data node.
 - `Cluster1`: A cluster with 1 config node and 3 data nodes.
 
-## Integration Testing with One Copy Mode
+## Integration Testing with Simple Consensus Mode
 
 Integration testing in `Simple` mode can be run with both maven and IDEs like IntelliJ easily.
 

@@ -363,6 +363,17 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
+      return null;
+    } else {
+      int i = index;
+      return new long[] {startTimes[i], endTimes[i]};
+    }
+  }
+
+  @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
     boolean hasMatchedDevice = false;
     long startTime = Long.MAX_VALUE;

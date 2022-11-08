@@ -514,11 +514,22 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.addAlias(deletedNode.getAlias(), deletedNode);
     }
-    IMNode curNode = parent;
-    if (!parent.isUseTemplate()) {
+    return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
+  }
+
+  /**
+   * Used when delete timeseries or deactivate template
+   *
+   * @param entityMNode delete empty InternalMNode from entityMNode to storageGroupMNode
+   * @return After delete if MTree is empty, return SG path, otherwise return null
+   */
+  private PartialPath deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode)
+      throws MetadataException {
+    IMNode curNode = entityMNode;
+    if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
       IMNode child;
-      IMNodeIterator iterator = store.getChildrenIterator(parent);
+      IMNodeIterator iterator = store.getChildrenIterator(entityMNode);
       try {
         while (iterator.hasNext()) {
           child = iterator.next();
@@ -534,7 +545,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
       if (!hasMeasurement) {
         synchronized (this) {
-          curNode = store.setToInternal(parent);
+          curNode = store.setToInternal(entityMNode);
           if (curNode.isStorageGroup()) {
             this.storageGroupMNode = curNode.getAsStorageGroupMNode();
           }
@@ -546,13 +557,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     while (isEmptyInternalMNode(curNode)) {
       // if current storage group has no time series, return the storage group name
       if (curNode.isStorageGroup()) {
-        return new Pair<>(curNode.getPartialPath(), deletedNode);
+        return curNode.getPartialPath();
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
     unPinMNode(curNode);
-    return new Pair<>(null, deletedNode);
+    return null;
   }
 
   @Override
@@ -1023,7 +1034,11 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.setTemplateMap(templateMap);
+    counter.traverse();
+    return counter.getCount();
   }
 
   /**
@@ -1731,6 +1746,162 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     } finally {
       unPinPath(cur);
     }
+  }
+
+  @Override
+  public void activateTemplate(PartialPath activatePath, Template template)
+      throws MetadataException {
+    String[] nodes = activatePath.getNodes();
+    IMNode cur = storageGroupMNode;
+    List<IMNode> pinnedNodes = new ArrayList<>();
+    IEntityMNode entityMNode = null;
+
+    try {
+      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+        cur = store.getChild(cur, nodes[i]);
+        pinnedNodes.add(cur);
+      }
+      synchronized (this) {
+        for (String measurement : template.getSchemaMap().keySet()) {
+          if (store.hasChild(cur, measurement)) {
+            throw new TemplateImcompatibeException(
+                activatePath.concatNode(measurement).getFullPath(), template.getName());
+          }
+        }
+
+        if (cur.isUseTemplate()) {
+          throw new TemplateIsInUseException(cur.getFullPath());
+        }
+
+        if (cur.isEntity()) {
+          entityMNode = cur.getAsEntityMNode();
+        } else {
+          entityMNode = store.setToEntity(cur);
+          if (entityMNode.isStorageGroup()) {
+            this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+          }
+        }
+      }
+
+      if (!entityMNode.isAligned()) {
+        entityMNode.setAligned(template.isDirectAligned());
+      }
+      entityMNode.setUseTemplate(true);
+      entityMNode.setSchemaTemplateId(template.getId());
+    } finally {
+      if (entityMNode != null) {
+        store.updateMNode(entityMNode);
+      }
+      for (IMNode node : pinnedNodes) {
+        store.unPin(node);
+      }
+    }
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    Set<String> result = new HashSet<>();
+
+    EntityCollector<Set<String>> collector =
+        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectEntity(IEntityMNode node) {
+            if (node.getSchemaTemplateId() == templateId) {
+              result.add(node.getFullPath());
+            }
+          }
+        };
+    collector.traverse();
+    return new ArrayList<>(result);
+  }
+
+  public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      EntityCollector<List<IEntityMNode>> collector =
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+            @Override
+            protected void collectEntity(IEntityMNode node) throws MetadataException {
+              if (entry.getValue().contains(node.getSchemaTemplateId())) {
+                resultTemplateSetInfo.put(
+                    node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
+                node.preDeactivateTemplate();
+                store.updateMNode(node);
+              }
+            }
+          };
+      collector.traverse();
+    }
+    return resultTemplateSetInfo;
+  }
+
+  public Map<PartialPath, List<Integer>> rollbackSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      EntityCollector<List<IEntityMNode>> collector =
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+            @Override
+            protected void collectEntity(IEntityMNode node) throws MetadataException {
+              if (entry.getValue().contains(node.getSchemaTemplateId())
+                  && node.isPreDeactivateTemplate()) {
+                resultTemplateSetInfo.put(
+                    node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
+                node.rollbackPreDeactivateTemplate();
+                store.updateMNode(node);
+              }
+            }
+          };
+      collector.traverse();
+    }
+    return resultTemplateSetInfo;
+  }
+
+  public Map<PartialPath, List<Integer>> deactivateTemplateInBlackList(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      EntityCollector<List<IEntityMNode>> collector =
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+            @Override
+            protected void collectEntity(IEntityMNode node) throws MetadataException {
+              if (entry.getValue().contains(node.getSchemaTemplateId())
+                  && node.isPreDeactivateTemplate()) {
+                resultTemplateSetInfo.put(
+                    node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
+                node.deactivateTemplate();
+                store.updateMNode(node);
+                deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node);
+              }
+            }
+          };
+      collector.traverse();
+    }
+    return resultTemplateSetInfo;
+  }
+
+  @Override
+  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    CounterTraverser counterTraverser =
+        new CounterTraverser(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
+              count++;
+            }
+            return false;
+          }
+        };
+    counterTraverser.traverse();
+    return counterTraverser.getCount();
   }
 
   // endregion
