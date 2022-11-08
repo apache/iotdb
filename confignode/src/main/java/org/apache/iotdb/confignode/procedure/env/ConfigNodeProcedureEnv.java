@@ -205,17 +205,16 @@ public class ConfigNodeProcedureEnv {
 
   /**
    * Only ConfigNode leader will invoke this method. Add the new ConfigNode Peer into
-   * PartitionRegionGroup.
+   * ConfigNodeRegionGroup.
    *
    * @param newConfigNode The new ConfigNode
    * @throws AddPeerException When addNewNodeToExistedGroup doesn't success
    */
   public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
-
     for (int i = 0; i < 3; i++) {
-      // sleep 7 seconds to wait the registered ConfigNode completed initConsensusManager
       try {
-        TimeUnit.SECONDS.sleep(7);
+        // sleep 5 seconds to wait the registered ConfigNode completed initConsensusManager
+        TimeUnit.SECONDS.sleep(5);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
