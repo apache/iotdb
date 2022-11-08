@@ -496,15 +496,17 @@ public class DataRegion {
       }
       WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
-      long latestPartitionId =
-          ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
-      for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
-        recoverFilesInPartition(
-            partitionFiles.getKey(),
-            DataRegionRecoveryContext,
-            partitionFiles.getValue(),
-            true,
-            partitionFiles.getKey() == latestPartitionId);
+      if (!partitionTmpSeqTsFiles.isEmpty()) {
+        long latestPartitionId =
+            ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+        for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
+          recoverFilesInPartition(
+              partitionFiles.getKey(),
+              DataRegionRecoveryContext,
+              partitionFiles.getValue(),
+              true,
+              partitionFiles.getKey() == latestPartitionId);
+        }
       }
       for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpUnseqTsFiles.entrySet()) {
         recoverFilesInPartition(
