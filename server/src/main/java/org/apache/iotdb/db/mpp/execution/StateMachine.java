@@ -34,12 +34,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static java.util.Objects.requireNonNull;
 
-/**
- * This class is copied from <a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/StateMachine.java">Trino</a>
- *
- * <p>Simple state machine which holds a single state. Callers can register for state change events.
- */
 @ThreadSafe
 public class StateMachine<T> {
   private final String name;

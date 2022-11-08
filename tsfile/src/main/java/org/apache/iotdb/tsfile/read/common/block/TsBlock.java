@@ -35,16 +35,9 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * This class is inspired by
- *
- * <p><a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/Page.java">Trino</a>
- *
- * <p>We customize it for IIoT case where TimeColumn always exists.
- *
- * <p>Intermediate result for most of ExecOperators. The TsBlock contains data from one or more
- * columns and constructs them as a row based view The columns can be series, aggregation result for
- * one series or scalar value (such as deviceName).
+ * Intermediate result for most of ExecOperators. The TsBlock contains data from one or more columns
+ * and constructs them as a row based view The columns can be series, aggregation result for one
+ * series or scalar value (such as deviceName).
  */
 public class TsBlock {
 

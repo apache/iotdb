@@ -22,12 +22,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-/**
- * This class is inspired by
- *
- * <p><a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/block/Block.java">Trino</a>
- */
 public interface Column {
 
   /** Get the data type. */

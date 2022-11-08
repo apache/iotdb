@@ -46,12 +46,6 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
 
-/**
- * This class is inspired by <a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/operator/Driver.java">Trino</a>
- *
- * <p>The difference is that Trino is push-based, we're pull-based
- */
 public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);

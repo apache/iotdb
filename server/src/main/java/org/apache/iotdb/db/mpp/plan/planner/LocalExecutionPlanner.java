@@ -40,12 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is inspired by
- *
- * <p><a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/sql/planner/LocalExecutionPlanner.java">Trino</a>
- *
- * <p>Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
+ * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
  * run a fragment instance parallel and take full advantage of multi-cores
  */

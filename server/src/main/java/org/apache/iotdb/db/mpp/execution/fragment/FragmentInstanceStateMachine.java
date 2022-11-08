@@ -51,12 +51,6 @@ import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.F
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.RUNNING;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState.TERMINAL_INSTANCE_STATES;
 
-/**
- * This class is copied from
- *
- * <p><a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/TaskStateMachine.java">Trino</a>
- */
 @ThreadSafe
 public class FragmentInstanceStateMachine {
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceStateMachine.class);
