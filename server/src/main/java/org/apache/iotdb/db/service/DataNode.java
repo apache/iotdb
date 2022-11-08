@@ -594,7 +594,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);

@@ -1341,8 +1341,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error("Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
-              req.triggerName,e);
+      LOGGER.error(
+          "Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
+          req.triggerName,
+          e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
