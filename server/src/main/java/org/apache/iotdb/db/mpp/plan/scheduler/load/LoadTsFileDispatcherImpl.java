@@ -112,7 +112,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint); // TODO: can read only once
+        dispatchRemote(instance, endPoint);
       }
     }
   }

@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** region migrate procedure */
@@ -142,10 +143,10 @@ public class RegionMigrateProcedure
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "{}, Failed state is not support rollback, failed state {}, originalDataNode: {}",
+            "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
             REMOVE_DATANODE_PROCESS,
             state,
-            originalDataNode);
+            getIdWithRpcEndpoint(originalDataNode));
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
@@ -283,7 +284,7 @@ public class RegionMigrateProcedure
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
     LOG.info(
-        "{}, ConfigNode received DataNode reported region migrate result: {}",
+        "{}, ConfigNode received region migrate result reported by DataNode: {}",
         REMOVE_DATANODE_PROCESS,
         req);
 
@@ -293,7 +294,7 @@ public class RegionMigrateProcedure
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
         LOG.info(
-            "{}, Region migrate executed failed in DataNode, migrateStatus: {}",
+            "{}, Region migrate failed in DataNode, migrateStatus: {}",
             REMOVE_DATANODE_PROCESS,
             migrateStatus);
         migrateSuccess = false;
