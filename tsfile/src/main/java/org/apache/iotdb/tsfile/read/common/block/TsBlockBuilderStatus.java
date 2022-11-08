@@ -21,6 +21,12 @@ package org.apache.iotdb.tsfile.read.common.block;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
 
+/**
+ * This class is copied from
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/block/PageBuilderStatus.java">Trino</a>
+ */
 public class TsBlockBuilderStatus {
 
   public static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =

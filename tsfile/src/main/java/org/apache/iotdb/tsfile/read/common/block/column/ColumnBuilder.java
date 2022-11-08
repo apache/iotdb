@@ -22,6 +22,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+/**
+ * This class is inspired by
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/block/BlockBuilder.java">Trino</a>
+ */
 public interface ColumnBuilder {
 
   /** Write a boolean to the current entry; */

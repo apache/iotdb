@@ -38,6 +38,14 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
+/**
+ * This class is inspired by
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/PageBuilder.java">Trino</a>
+ *
+ * <p>We customize it for IIoT case where TimeColumn always exists.
+ */
 public class TsBlockBuilder {
 
   // We choose default initial size to be 8 for TsBlockBuilder and ColumnBuilder

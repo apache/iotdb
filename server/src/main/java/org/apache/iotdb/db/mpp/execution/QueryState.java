@@ -24,6 +24,12 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
+/**
+ * This class is inspired by
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/QueryState.java">Trino</a>
+ */
 public enum QueryState {
   QUEUED(false),
   PLANNED(false),

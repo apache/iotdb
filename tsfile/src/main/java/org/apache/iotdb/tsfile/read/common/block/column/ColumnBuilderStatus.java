@@ -28,6 +28,12 @@ import java.lang.reflect.Modifier;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * This class is copied from
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/block/BlockBuilderStatus.java">Trino</a>
+ */
 public class ColumnBuilderStatus {
 
   public static final int INSTANCE_SIZE = deepInstanceSize(ColumnBuilderStatus.class);

@@ -23,6 +23,12 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
+/**
+ * This class is copied from
+ *
+ * <p><a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/TaskState.java">Trino</a>
+ */
 public enum FragmentInstanceState {
   /**
    * Instance is planned but has not been scheduled yet. An instance will be in the planned state
