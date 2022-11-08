@@ -692,11 +692,11 @@ public class TsFilePlanRedoerTest {
     // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
     MeasurementSchema[] schemas = new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.INT32),
+        null,
         new MeasurementSchema("s2", TSDataType.INT64),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         new MeasurementSchema("s4", TSDataType.FLOAT),
-        new MeasurementSchema("s5", TSDataType.TEXT)
+        null
     };
     insertTabletNode.setMeasurementSchemas(schemas);
     planRedoer.redoInsert(insertTabletNode);
@@ -714,7 +714,7 @@ public class TsFilePlanRedoerTest {
             new PlanNodeId(""),
             new PartialPath(DEVICE3_NAME),
             true,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new String[] {null, "s2", "s3", "s4", null},
             dataTypes2,
             time,
             columns2,
