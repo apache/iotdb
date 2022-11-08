@@ -80,7 +80,7 @@ public class SyncConfigNodeClientPool {
             return removeConfigNode((TConfigNodeLocation) req, client);
           case DELETE_CONFIG_NODE_PEER:
             return client.deleteConfigNodePeer((TConfigNodeLocation) req);
-          case QUERY_CONSENSUS_MANAGER:
+          case QUERY_CONSENSUS_MANAGER_STATUS:
             return client.isConsensusInitialized();
           case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.

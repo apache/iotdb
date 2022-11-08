@@ -213,26 +213,29 @@ public class ConfigNodeProcedureEnv {
   public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
 
     for (int i = 0; i < 3; i++) {
+      // sleep 7 seconds to wait the registered ConfigNode completed initConsensusManager
+      try {
+        TimeUnit.SECONDS.sleep(7);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
+      }
+
       TSStatus status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       newConfigNode.getInternalEndPoint(),
                       null,
-                      ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER);
+                      ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER_STATUS);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }
 
-      LOG.info("not ok about consensus, {}", status.getCode());
-      // wait 7 seconds to wait the registered ConfigNode completed initConsensusManager
-    }
-
-    try {
-      TimeUnit.SECONDS.sleep(7);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
+      LOG.info(
+          "The ConsensusManager of Registered-ConfigNode is not initialized, wait 7 seconds, ConfigNode: {}, status: {}",
+          newConfigNode,
+          status);
     }
 
     List<TConfigNodeLocation> originalConfigNodes =
