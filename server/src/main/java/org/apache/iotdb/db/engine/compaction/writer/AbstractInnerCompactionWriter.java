@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -35,6 +36,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected boolean isEmptyFile;
 
   protected TsFileResource targetResource;
+
+  protected long targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+
+  protected long targetPagePointNum =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   public AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
@@ -61,7 +67,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId]);
+    sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
   }
 
   @Override

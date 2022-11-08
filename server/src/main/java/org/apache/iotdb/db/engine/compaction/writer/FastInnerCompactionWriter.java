@@ -30,19 +30,17 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * time of file, else return true. Notice: if sub-value measurement is null, then flush empty
    * value chunk.
    */
-  public boolean flushChunkToFileWriter(
+  public boolean flushChunk(
       IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
       throws IOException {
     boolean isUnsealedChunkLargeEnough =
-        chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
-            chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction);
+        chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum);
     if (!isUnsealedChunkLargeEnough) {
-      // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
-      // chunk
+      // if unsealed chunk is not large enough , then deserialize the chunk
       return false;
     }
 
-    flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId], reader, iChunkMetadata);
+    flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId], reader, iChunkMetadata, subTaskId);
 
     isEmptyFile = false;
     lastTime[subTaskId] = iChunkMetadata.getEndTime();
@@ -55,7 +53,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
    * flush empty value page.
    */
-  public boolean flushAlignedPageToChunkWriter(
+  public boolean flushAlignedPage(
       ByteBuffer compressedTimePageData,
       PageHeader timePageHeader,
       List<ByteBuffer> compressedValuePageDatas,
@@ -64,9 +62,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       throws IOException, PageException {
     boolean isUnsealedPageLargeEnough =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+            targetPageSize, targetPagePointNum);
     if (!isUnsealedPageLargeEnough) {
-      // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
+      // unsealed page is too small , then deserialize the page
       return false;
     }
 
@@ -89,14 +87,14 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true.
    */
-  public boolean flushPageToChunkWriter(
+  public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
     boolean isUnsealedPageLargeEnough =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+            targetPageSize, targetPagePointNum);
     if (!isUnsealedPageLargeEnough) {
-      // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
+      // unsealed page is too small , then deserialize the page
       return false;
     }
 

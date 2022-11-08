@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.compaction.cross.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.cross.utils.NonAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -40,7 +40,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private SubCompactionTaskSummary summary;
 
-  private FastCrossCompactionWriter compactionWriter;
+  private AbstractCompactionWriter compactionWriter;
 
   private int subTaskId;
 
@@ -67,7 +67,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   /** Used for nonAligned timeseries. */
   public FastCompactionPerformerSubTask(
-      FastCrossCompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
@@ -90,7 +90,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   /** Used for aligned timeseries. */
   public FastCompactionPerformerSubTask(
-      FastCrossCompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,

@@ -61,36 +61,19 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int[] chunkPointNumArray = new int[subTaskNum];
 
   // used to control the target chunk size
-  public long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  protected long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   // used to control the point num of target chunk
-  public long targetChunkPointNum =
+  protected long targetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
-  // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
-  // overlapped or not
-  public long chunkSizeLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-
-  // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
-  // overlapped or not
-  public long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-
-  // if unsealed page size is lower then this, then deserialize next page no matter it is
-  // overlapped or not
-  public long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
-
-  // if point num of unsealed page is lower then this, then deserialize next page no matter it is
-  // overlapped or not
-  public long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
-
   // When num of points writing into target files reaches check point, then check chunk size
-  public long checkPoint = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
+  private final long checkPoint =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
 
   private long lastCheckIndex = 0;
 
-  private boolean enableMetrics =
+  private final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   protected boolean isAlign;
@@ -102,7 +85,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   public abstract void endChunkGroup() throws IOException;
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    chunkPointNumArray[subTaskId] = 0;
     lastCheckIndex = 0;
     lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
@@ -187,23 +169,29 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter)
+  protected void sealChunk(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
     writeRateLimit(iChunkWriter.estimateMaxSeriesMemSize());
     synchronized (targetWriter) {
       iChunkWriter.writeToFileWriter(targetWriter);
     }
+    chunkPointNumArray[subTaskId] = 0;
   }
+
+  public abstract boolean flushChunk(
+      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId) throws IOException;
 
   protected void flushChunkToFileWriter(
       TsFileIOWriter targetWriter,
       IChunkWriter iChunkWriter,
       TsFileSequenceReader reader,
-      IChunkMetadata iChunkMetadata)
+      IChunkMetadata iChunkMetadata,
+      int subTaskId)
       throws IOException {
     synchronized (targetWriter) {
       // seal last chunk to file writer
       iChunkWriter.writeToFileWriter(targetWriter);
+      chunkPointNumArray[subTaskId] = 0;
       if (iChunkMetadata instanceof AlignedChunkMetadata) {
         AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) iChunkMetadata;
         // flush time chunk
@@ -235,6 +223,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
+  public abstract boolean flushNonAlignedPage(
+      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
+      throws IOException, PageException;
+
   protected void flushNonAlignedPageToChunkWriter(
       TsFileIOWriter targetWriter,
       ChunkWriterImpl chunkWriter,
@@ -252,6 +244,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(targetWriter, chunkWriter, subTaskId, true);
   }
+
+  public abstract boolean flushAlignedPage(
+      ByteBuffer compressedTimePageData,
+      PageHeader timePageHeader,
+      List<ByteBuffer> compressedValuePageDatas,
+      List<PageHeader> valuePageHeaders,
+      int subTaskId)
+      throws IOException, PageException;
 
   protected void flushAlignedPageToChunkWriter(
       TsFileIOWriter targetWriter,
@@ -296,8 +296,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       // if chunk point num reaches the check point, then check if the chunk size over threshold
       lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
       if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum)) {
-        flushChunkToFileWriter(fileWriter, iChunkWriter);
-        chunkPointNumArray[subTaskId] = 0;
+        sealChunk(fileWriter, iChunkWriter, subTaskId);
         lastCheckIndex = 0;
         if (enableMetrics) {
           CompactionMetricsRecorder.recordWriteInfo(

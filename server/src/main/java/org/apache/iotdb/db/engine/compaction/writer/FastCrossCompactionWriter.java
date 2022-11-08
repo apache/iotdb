@@ -50,7 +50,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * time of file, else return true. Notice: if sub-value measurement is null, then flush empty
    * value chunk.
    */
-  public boolean flushChunkToFileWriter(
+  public boolean flushChunk(
       IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
       throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(iChunkMetadata.getStartTime(), subTaskId);
@@ -67,7 +67,11 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
 
     flushChunkToFileWriter(
-        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], reader, iChunkMetadata);
+        targetFileWriters.get(fileIndex),
+        chunkWriters[subTaskId],
+        reader,
+        iChunkMetadata,
+        subTaskId);
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
@@ -81,7 +85,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
    * flush empty value page.
    */
-  public boolean flushAlignedPageToChunkWriter(
+  public boolean flushAlignedPage(
       ByteBuffer compressedTimePageData,
       PageHeader timePageHeader,
       List<ByteBuffer> compressedValuePageDatas,
@@ -115,7 +119,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true.
    */
-  public boolean flushPageToChunkWriter(
+  public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);

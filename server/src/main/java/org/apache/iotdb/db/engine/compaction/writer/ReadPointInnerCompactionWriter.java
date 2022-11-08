@@ -19,11 +19,17 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
@@ -38,5 +44,30 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId, false);
     isEmptyFile = false;
+  }
+
+  @Override
+  public boolean flushChunk(
+      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
+      throws IOException {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushNonAlignedPage(
+      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
+      throws IOException, PageException {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushAlignedPage(
+      ByteBuffer compressedTimePageData,
+      PageHeader timePageHeader,
+      List<ByteBuffer> compressedValuePageDatas,
+      List<PageHeader> valuePageHeaders,
+      int subTaskId)
+      throws IOException, PageException {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 }

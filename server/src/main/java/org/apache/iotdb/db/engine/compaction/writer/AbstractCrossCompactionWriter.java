@@ -61,6 +61,24 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   protected List<TsFileResource> targetResources;
 
+  // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
+  protected long chunkSizeLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+
+  // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
+  protected long chunkPointNumLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
+  // if unsealed page size is lower then this, then deserialize next page no matter it is
+  // overlapped or not
+  protected long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
+
+  // if point num of unsealed page is lower then this, then deserialize next page no matter it is
+  // overlapped or not
+  protected long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
+
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
@@ -109,8 +127,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(
-        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
+    sealChunk(
+        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId], subTaskId);
     seqFileIndexArray[subTaskId] = 0;
   }
 
@@ -194,7 +212,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         && fileIndex != seqTsFileResources.size() - 1) {
       if (!hasFlushedCurrentChunk) {
         // flush chunk to current file before moving target file index
-        flushChunkToFileWriter(targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
+        sealChunk(targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
         hasFlushedCurrentChunk = true;
       }
       seqFileIndexArray[subTaskId] = ++fileIndex;

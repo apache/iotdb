@@ -29,7 +29,9 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterat
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -77,6 +79,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
+  private boolean isCrossCompaction = true;
+
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -84,6 +88,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
+    if (seqFiles.isEmpty() || unseqFiles.isEmpty()) {
+      // inner space compaction
+      isCrossCompaction = false;
+    }
   }
 
   public FastCompactionPerformer() {}
@@ -93,8 +101,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
-        FastCrossCompactionWriter compactionWriter =
-            new FastCrossCompactionWriter(targetFiles, seqFiles)) {
+        AbstractCompactionWriter compactionWriter =
+            isCrossCompaction
+                ? new FastCrossCompactionWriter(targetFiles, seqFiles)
+                : new FastInnerCompactionWriter(targetFiles.get(0))) {
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -139,7 +149,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private void compactAlignedSeries(
       String deviceId,
       MultiTsFileDeviceIterator deviceIterator,
-      FastCrossCompactionWriter fastCrossCompactionWriter)
+      AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
@@ -178,7 +188,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private void compactNonAlignedSeries(
       String deviceID,
       MultiTsFileDeviceIterator deviceIterator,
-      FastCrossCompactionWriter fastCrossCompactionWriter)
+      AbstractCompactionWriter fastCrossCompactionWriter)
       throws IOException, InterruptedException {
     // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
     // Get all measurements of the current device. Also get start offset and end offset of each
@@ -268,5 +278,9 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   public List<TsFileResource> getSeqFiles() {
     return seqFiles;
+  }
+
+  public void setCrossCompaction(boolean crossCompaction) {
+    isCrossCompaction = crossCompaction;
   }
 }

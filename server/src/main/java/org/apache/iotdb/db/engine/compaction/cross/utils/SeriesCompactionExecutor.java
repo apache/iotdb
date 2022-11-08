@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -53,7 +53,7 @@ public abstract class SeriesCompactionExecutor {
         throws WriteProcessException, IOException, IllegalPathException;
   }
 
-  private SubCompactionTaskSummary summary;
+  private final SubCompactionTaskSummary summary;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
@@ -64,7 +64,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected final PriorityQueue<PageElement> pageQueue;
 
-  protected FastCrossCompactionWriter compactionWriter;
+  protected AbstractCompactionWriter compactionWriter;
 
   protected int subTaskId;
 
@@ -83,7 +83,7 @@ public abstract class SeriesCompactionExecutor {
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
 
   public SeriesCompactionExecutor(
-      FastCrossCompactionWriter compactionWriter,
+      AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
@@ -164,7 +164,7 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    if (compactionWriter.flushChunkToFileWriter(
+    if (compactionWriter.flushChunk(
         chunkMetadataElement.chunkMetadata,
         readerCacheMap.get(chunkMetadataElement.fileElement.resource),
         subTaskId)) {
@@ -220,7 +220,7 @@ public abstract class SeriesCompactionExecutor {
     boolean success;
     if (pageElement.iChunkReader instanceof AlignedChunkReader) {
       success =
-          compactionWriter.flushAlignedPageToChunkWriter(
+          compactionWriter.flushAlignedPage(
               pageElement.pageData,
               pageElement.pageHeader,
               pageElement.valuePageDatas,
@@ -228,7 +228,7 @@ public abstract class SeriesCompactionExecutor {
               subTaskId);
     } else {
       success =
-          compactionWriter.flushPageToChunkWriter(
+          compactionWriter.flushNonAlignedPage(
               pageElement.pageData, pageElement.pageHeader, subTaskId);
     }
     if (success) {
