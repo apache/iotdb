@@ -317,12 +317,14 @@ public class EnvironmentUtils {
   public static void stopDaemon() {
     if (daemon != null) {
       daemon.stop();
+      StorageEngineV2.getInstance().stop();
     }
   }
 
   public static void shutdownDaemon() throws Exception {
     if (daemon != null) {
       daemon.shutdown();
+      StorageEngineV2.getInstance().shutdown(10000);
     }
   }
 
