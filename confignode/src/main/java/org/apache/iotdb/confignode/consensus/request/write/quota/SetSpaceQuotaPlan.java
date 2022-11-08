@@ -81,6 +81,7 @@ public class SetSpaceQuotaPlan extends ConfigPhysicalPlan {
     spaceLimit.setDeviceNum(deviceNum);
     spaceLimit.setTimeserieNum(timeserieNum);
     spaceLimit.setDisk(disk);
+    this.spaceLimit = spaceLimit;
   }
 
   @Override

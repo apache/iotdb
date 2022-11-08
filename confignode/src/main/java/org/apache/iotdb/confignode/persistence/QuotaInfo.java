@@ -21,18 +21,22 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 // TODO: Store quota information of each sg
-public class QuotaInfo {
+public class QuotaInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(QuotaInfo.class);
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
@@ -51,4 +55,13 @@ public class QuotaInfo {
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
+
+  // TODO: add Snapshot
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return false;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
 }

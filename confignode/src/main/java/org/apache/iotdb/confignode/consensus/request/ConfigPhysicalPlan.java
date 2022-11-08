@@ -382,6 +382,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SET_SPACE_QUOTA:
           plan = new SetSpaceQuotaPlan();
+          break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
       }
