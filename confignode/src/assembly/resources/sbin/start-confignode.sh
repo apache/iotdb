@@ -139,19 +139,20 @@ launch_service() {
           iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
             [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+              # shellcheck disable=SC2154
+              exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           else
               [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
-              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+              exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           fi
       # Startup IoTDB, background it, and write the pid.
       else
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-                exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
+                exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
                 [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           else
-                exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
+                exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
                 [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           fi
