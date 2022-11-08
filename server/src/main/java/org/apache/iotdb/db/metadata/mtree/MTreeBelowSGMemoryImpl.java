@@ -156,6 +156,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     storageGroupMNode = null;
   }
 
+  @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
