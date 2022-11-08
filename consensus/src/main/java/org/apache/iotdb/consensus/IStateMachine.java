@@ -78,7 +78,7 @@ public interface IStateMachine {
    * @return true if snapshot is successfully taken
    */
   default boolean takeSnapshot(File snapshotDir, String snapshotId) {
-    throw new UnsupportedOperationException("Not implemented");
+    return takeSnapshot(snapshotDir);
   }
 
   /**
