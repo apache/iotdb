@@ -199,7 +199,8 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
-    conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
+    conf.setRpcAddress(
+        properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
 
     // TODO: Use FQDN  to identify our nodes afterwards
     try {
@@ -210,84 +211,108 @@ public class IoTDBDescriptor {
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "rpc_thrift_compression_enable",
-                Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+            properties
+                .getProperty(
+                    "rpc_thrift_compression_enable",
+                    Boolean.toString(conf.isRpcThriftCompressionEnable()))
+                .trim()));
 
     conf.setRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "rpc_advanced_compression_enable",
-                Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
+            properties
+                .getProperty(
+                    "rpc_advanced_compression_enable",
+                    Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
+                .trim()));
 
     conf.setConnectionTimeoutInMS(
         Integer.parseInt(
-            properties.getProperty(
-                "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+            properties
+                .getProperty(
+                    "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
+                .trim()));
 
     conf.setMaxConnectionForInternalService(
         Integer.parseInt(
-            properties.getProperty(
-                "max_connection_for_internal_service",
-                String.valueOf(conf.getMaxConnectionForInternalService()))));
+            properties
+                .getProperty(
+                    "max_connection_for_internal_service",
+                    String.valueOf(conf.getMaxConnectionForInternalService()))
+                .trim()));
 
     conf.setCoreConnectionForInternalService(
         Integer.parseInt(
-            properties.getProperty(
-                "core_connection_for_internal_service",
-                String.valueOf(conf.getCoreConnectionForInternalService()))));
+            properties
+                .getProperty(
+                    "core_connection_for_internal_service",
+                    String.valueOf(conf.getCoreConnectionForInternalService()))
+                .trim()));
 
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
-            properties.getProperty(
-                "selector_thread_count_of_client_manager",
-                String.valueOf(conf.getSelectorNumOfClientManager()))));
+            properties
+                .getProperty(
+                    "selector_thread_count_of_client_manager",
+                    String.valueOf(conf.getSelectorNumOfClientManager()))
+                .trim()));
 
     conf.setRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))));
+            properties
+                .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
+                .trim()));
 
     conf.setEnableInfluxDBRpcService(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_influxdb_rpc_service",
-                Boolean.toString(conf.isEnableInfluxDBRpcService()))));
+            properties
+                .getProperty(
+                    "enable_influxdb_rpc_service",
+                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
+                .trim()));
 
     conf.setInfluxDBRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                "influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))));
+            properties
+                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
+                .trim()));
 
     conf.setTimestampPrecision(
-        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
+        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
 
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "buffered_arrays_memory_proportion",
-                Double.toString(conf.getBufferedArraysMemoryProportion()))));
+            properties
+                .getProperty(
+                    "buffered_arrays_memory_proportion",
+                    Double.toString(conf.getBufferedArraysMemoryProportion()))
+                .trim()));
 
     conf.setFlushProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "flush_proportion", Double.toString(conf.getFlushProportion()))));
+            properties
+                .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
+                .trim()));
 
     conf.setRejectProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "reject_proportion", Double.toString(conf.getRejectProportion()))));
+            properties
+                .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
+                .trim()));
 
     conf.setWriteMemoryVariationReportProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "write_memory_variation_report_proportion",
-                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
+            properties
+                .getProperty(
+                    "write_memory_variation_report_proportion",
+                    Double.toString(conf.getWriteMemoryVariationReportProportion()))
+                .trim()));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
+            properties
+                .getProperty(
+                    "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))
+                .trim()));
 
     initMemoryAllocate(properties);
 
