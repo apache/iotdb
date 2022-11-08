@@ -362,14 +362,13 @@ public class WALRecoverManagerTest {
 
     insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-            new MeasurementSchema("s1", TSDataType.FLOAT),
-            new MeasurementSchema("s2", TSDataType.DOUBLE)
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
         });
     return insertRowNode;
   }
 
-  private InsertTabletNode getInsertTabletNode(String devicePath)
-      throws IllegalPathException {
+  private InsertTabletNode getInsertTabletNode(String devicePath) throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE);
@@ -404,25 +403,25 @@ public class WALRecoverManagerTest {
       bitMaps[i].mark(i % times.length);
     }
 
-
-    InsertTabletNode insertTabletNode = new InsertTabletNode(
-        new PlanNodeId(""),
-        new PartialPath(devicePath),
-        true,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-        dataTypes.toArray(new TSDataType[0]),
-        times,
-        bitMaps,
-        columns,
-        times.length);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            true,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes.toArray(new TSDataType[0]),
+            times,
+            bitMaps,
+            columns,
+            times.length);
     insertTabletNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-            new MeasurementSchema("s1", TSDataType.DOUBLE),
-            new MeasurementSchema("s2", TSDataType.FLOAT),
-            new MeasurementSchema("s3", TSDataType.INT64),
-            new MeasurementSchema("s4", TSDataType.INT32),
-            new MeasurementSchema("s5", TSDataType.BOOLEAN),
-            new MeasurementSchema("s6", TSDataType.TEXT)
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
         });
     return insertTabletNode;
   }

@@ -39,8 +39,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -99,13 +99,13 @@ public class WALNodeTest {
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
     List<WALFlushListener> walFlushListeners = Collections.synchronizedList(new ArrayList<>());
-    Set<InsertTabletNode> expectedInsertTabletPlans = ConcurrentHashMap.newKeySet();
+    Set<InsertTabletNode> expectedInsertTabletNodes = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < threadsNum; ++i) {
       int memTableId = i;
       Callable<Void> writeTask =
           () -> {
             try {
-              writeInsertTabletPlan(memTableId, expectedInsertTabletPlans, walFlushListeners);
+              writeInsertTabletNode(memTableId, expectedInsertTabletNodes, walFlushListeners);
             } catch (IllegalPathException e) {
               fail();
             }
@@ -135,7 +135,7 @@ public class WALNodeTest {
         }
       }
     }
-    assertEquals(expectedInsertTabletPlans, actualInsertTabletNodes);
+    assertEquals(expectedInsertTabletNodes, actualInsertTabletNodes);
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {
@@ -146,15 +146,15 @@ public class WALNodeTest {
     }
   }
 
-  private void writeInsertTabletPlan(
+  private void writeInsertTabletNode(
       int memTableId,
-      Set<InsertTabletNode> expectedInsertTabletPlans,
+      Set<InsertTabletNode> expectedInsertTabletNodes,
       List<WALFlushListener> walFlushListeners)
       throws IllegalPathException {
     for (int i = 0; i < 100; ++i) {
       InsertTabletNode insertTabletNode =
           getInsertTabletNode(devicePath + memTableId, new long[] {i});
-      expectedInsertTabletPlans.add(insertTabletNode);
+      expectedInsertTabletNodes.add(insertTabletNode);
       WALFlushListener walFlushListener =
           walNode.log(memTableId, insertTabletNode, 0, insertTabletNode.getRowCount());
       walFlushListeners.add(walFlushListener);
@@ -197,16 +197,17 @@ public class WALNodeTest {
       bitMaps[i].mark(i % times.length);
     }
 
-    InsertTabletNode insertTabletNode = new InsertTabletNode(
-        new PlanNodeId(""),
-        new PartialPath(devicePath),
-        false,
-        measurements,
-        dataTypes,
-        times,
-        bitMaps,
-        columns,
-        times.length);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            measurements,
+            dataTypes,
+            times,
+            bitMaps,
+            columns,
+            times.length);
     MeasurementSchema[] schemas = new MeasurementSchema[6];
     for (int i = 0; i < 6; i++) {
       schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], TSEncoding.PLAIN);

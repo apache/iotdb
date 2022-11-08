@@ -143,8 +143,8 @@ public class UnsealedTsFileRecoverPerformerTest {
             false);
     insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-            new MeasurementSchema("s1", TSDataType.FLOAT),
-            new MeasurementSchema("s2", TSDataType.DOUBLE)
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
         });
     int fakeMemTableId = 1;
     WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowNode);
@@ -203,7 +203,8 @@ public class UnsealedTsFileRecoverPerformerTest {
         new DeleteDataNode(
             new PlanNodeId("0"),
             Collections.singletonList(new PartialPath(DEVICE2_NAME)),
-            Long.MIN_VALUE, Long.MAX_VALUE);
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     int fakeMemTableId = 1;
     WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deleteDataNode);
     // recover

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
@@ -187,14 +186,15 @@ public class WALFileTest {
             columns,
             false);
 
-    MeasurementSchema[] schemas = new MeasurementSchema[] {
-        new MeasurementSchema("s1", dataTypes[0]),
-        new MeasurementSchema("s2", dataTypes[1]),
-        new MeasurementSchema("s3", dataTypes[2]),
-        new MeasurementSchema("s4", dataTypes[3]),
-        new MeasurementSchema("s5", dataTypes[4]),
-        new MeasurementSchema("s6", dataTypes[5]),
-    };
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", dataTypes[0]),
+          new MeasurementSchema("s2", dataTypes[1]),
+          new MeasurementSchema("s3", dataTypes[2]),
+          new MeasurementSchema("s4", dataTypes[3]),
+          new MeasurementSchema("s5", dataTypes[4]),
+          new MeasurementSchema("s6", dataTypes[5]),
+        };
     insertRowNode.setMeasurementSchemas(schemas);
     return insertRowNode;
   }
@@ -248,14 +248,15 @@ public class WALFileTest {
             bitMaps,
             columns,
             times.length);
-    MeasurementSchema[] schemas = new MeasurementSchema[] {
-        new MeasurementSchema("s1", dataTypes[0]),
-        new MeasurementSchema("s2", dataTypes[1]),
-        new MeasurementSchema("s3", dataTypes[2]),
-        new MeasurementSchema("s4", dataTypes[3]),
-        new MeasurementSchema("s5", dataTypes[4]),
-        new MeasurementSchema("s6", dataTypes[5]),
-    };
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", dataTypes[0]),
+          new MeasurementSchema("s2", dataTypes[1]),
+          new MeasurementSchema("s3", dataTypes[2]),
+          new MeasurementSchema("s4", dataTypes[3]),
+          new MeasurementSchema("s5", dataTypes[4]),
+          new MeasurementSchema("s6", dataTypes[5]),
+        };
     insertTabletNode.setMeasurementSchemas(schemas);
 
     return insertTabletNode;

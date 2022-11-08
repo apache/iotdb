@@ -22,23 +22,16 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 public class MemTableTestUtils {
 
@@ -104,20 +97,19 @@ public class MemTableTestUtils {
     MeasurementSchema[] schemas = new MeasurementSchema[2];
     schemas[0] = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
     schemas[1] = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
-    InsertTabletNode node = new InsertTabletNode(
-        new PlanNodeId("0"),
-        new PartialPath(deviceId0),
-        true,
-        measurements,
-        dataTypes,
-        times,
-        null,
-        columns,
-        times.length
-    );
+    InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(deviceId0),
+            true,
+            measurements,
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
     node.setMeasurementSchemas(schemas);
     return node;
-
   }
 
   public static void produceNullableVectorData(IMemTable iMemTable)

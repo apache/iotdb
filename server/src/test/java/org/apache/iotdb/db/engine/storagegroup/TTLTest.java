@@ -56,7 +56,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -144,16 +143,16 @@ public class TTLTest {
   public void testTTLWrite()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
-    InsertRowNode node = new InsertRowNode(
-        new PlanNodeId("0"),
-        new PartialPath(sg1),
-        false,
-        new String[] {"s1"},
-        new TSDataType[] {TSDataType.INT64},
-        System.currentTimeMillis(),
-        new Object[] {1L},
-        false
-        );
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(sg1),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            System.currentTimeMillis(),
+            new Object[] {1L},
+            false);
     node.setMeasurementSchemas(
         new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
@@ -175,18 +174,17 @@ public class TTLTest {
   }
 
   private void prepareData()
-      throws WriteProcessException, IllegalPathException,
-          TriggerExecutionException {
-    InsertRowNode node = new InsertRowNode(
-        new PlanNodeId("0"),
-        new PartialPath(sg1),
-        false,
-        new String[] {"s1"},
-        new TSDataType[] {TSDataType.INT64},
-        System.currentTimeMillis(),
-        new Object[] {1L},
-        false
-    );
+      throws WriteProcessException, IllegalPathException, TriggerExecutionException {
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(sg1),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            System.currentTimeMillis(),
+            new Object[] {1L},
+            false);
     node.setMeasurementSchemas(
         new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 

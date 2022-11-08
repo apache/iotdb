@@ -18,28 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import org.apache.thrift.TException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.sql.SQLException;
-
-//public class SingleDataSetTest {
+// public class SingleDataSetTest {
 //  private final IPlanExecutor queryExecutor = new PlanExecutor();
 //  private final Planner processor = new Planner();
 //
@@ -127,4 +106,4 @@ import java.sql.SQLException;
 //      Assert.assertEquals("0\t2", record.toString());
 //    }
 //  }
-//}
+// }

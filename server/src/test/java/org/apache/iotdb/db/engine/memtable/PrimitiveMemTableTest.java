@@ -523,16 +523,17 @@ public class PrimitiveMemTableTest {
     schemas[0] = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
     schemas[1] = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
 
-    InsertTabletNode node =  new InsertTabletNode(
-        new PlanNodeId("0"),
-        new PartialPath(deviceId),
-        true,
-        measurements,
-        dataTypes,
-        times,
-        null,
-        columns,
-        times.length);
+    InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(deviceId),
+            true,
+            measurements,
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
     node.setMeasurementSchemas(schemas);
     return node;
   }

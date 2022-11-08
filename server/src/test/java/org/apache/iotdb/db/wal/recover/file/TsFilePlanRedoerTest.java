@@ -90,7 +90,7 @@ public class TsFilePlanRedoerTest {
     // set recover config, avoid creating deleted time series when recovering wal
     prevIsAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-//    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    //    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     prevIsEnablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -146,9 +146,9 @@ public class TsFilePlanRedoerTest {
     IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
     EnvironmentUtils.cleanEnv();
     // reset config
-//    IoTDBDescriptor.getInstance()
-//        .getConfig()
-//        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    //    IoTDBDescriptor.getInstance()
+    //        .getConfig()
+    //        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(prevIsEnablePartialInsert);
   }
 
@@ -177,10 +177,11 @@ public class TsFilePlanRedoerTest {
             time,
             columns,
             false);
-    insertRowNode.setMeasurementSchemas(new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.FLOAT),
-        new MeasurementSchema("s2", TSDataType.DOUBLE),
-    });
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
@@ -245,13 +246,14 @@ public class TsFilePlanRedoerTest {
             time,
             columns,
             false);
-    insertRowNode.setMeasurementSchemas(new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.INT32),
-        new MeasurementSchema("s2", TSDataType.INT64),
-        new MeasurementSchema("s3", TSDataType.BOOLEAN),
-        new MeasurementSchema("s4", TSDataType.FLOAT),
-        new MeasurementSchema("s5", TSDataType.TEXT),
-    });
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          new MeasurementSchema("s5", TSDataType.TEXT),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
@@ -332,10 +334,11 @@ public class TsFilePlanRedoerTest {
             bitMaps,
             columns,
             times.length);
-    insertTabletNode.setMeasurementSchemas(new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.INT32),
-        new MeasurementSchema("s2", TSDataType.INT64),
-    });
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
@@ -432,14 +435,14 @@ public class TsFilePlanRedoerTest {
             bitMaps,
             columns,
             times.length);
-    insertTabletNode.setMeasurementSchemas(new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.INT32),
-        new MeasurementSchema("s2", TSDataType.INT64),
-        new MeasurementSchema("s3", TSDataType.BOOLEAN),
-        new MeasurementSchema("s4", TSDataType.FLOAT),
-        new MeasurementSchema("s5", TSDataType.TEXT),
-    });
-
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          new MeasurementSchema("s5", TSDataType.TEXT),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
@@ -560,10 +563,11 @@ public class TsFilePlanRedoerTest {
             null,
             columns,
             times.length);
-    insertTabletNode.setMeasurementSchemas(new MeasurementSchema[] {
-        new MeasurementSchema("s1", TSDataType.INT32),
-        new MeasurementSchema("s2", TSDataType.INT64),
-    });
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
@@ -677,7 +681,7 @@ public class TsFilePlanRedoerTest {
             new PlanNodeId(""),
             new PartialPath(DEVICE3_NAME),
             true,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new String[] {null, "s2", "s3", "s4", null},
             new TSDataType[] {
               TSDataType.INT32,
               TSDataType.INT64,
@@ -691,13 +695,14 @@ public class TsFilePlanRedoerTest {
             times.length);
     // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    MeasurementSchema[] schemas = new MeasurementSchema[] {
-        null,
-        new MeasurementSchema("s2", TSDataType.INT64),
-        new MeasurementSchema("s3", TSDataType.BOOLEAN),
-        new MeasurementSchema("s4", TSDataType.FLOAT),
-        null
-    };
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          null,
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          null
+        };
     insertTabletNode.setMeasurementSchemas(schemas);
     planRedoer.redoInsert(insertTabletNode);
 

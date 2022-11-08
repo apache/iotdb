@@ -29,9 +29,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -146,15 +146,16 @@ public abstract class WALBufferCommonTest {
     columns[4] = false;
     columns[5] = new Binary("hh" + 0);
 
-    InsertRowNode node = new InsertRowNode(
-        new PlanNodeId(""),
-        new PartialPath(devicePath),
-        false,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-        dataTypes,
-        time,
-        columns,
-        false);
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            time,
+            columns,
+            false);
     MeasurementSchema[] schemas = new MeasurementSchema[6];
     for (int i = 0; i < 6; i++) {
       schemas[i] = new MeasurementSchema("s" + (i + 1), dataTypes[i]);
