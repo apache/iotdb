@@ -153,19 +153,34 @@ public class LocalConfigNode {
   private IAuthorizer iAuthorizer;
 
   private LocalConfigNode() {
+    // create schema dir
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
-    if (!schemaFolder.exists()) {
-      if (schemaFolder.mkdirs()) {
-        logger.info("create system folder {}", schemaFolder.getAbsolutePath());
-      } else {
-        logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
-      }
-    }
+    createFolder(schemaFolder);
+
+    // create space quota dir
+    File spaceQuotaFolder = SystemFileFactory.INSTANCE.getFile(config.getSpaceQuotaDir());
+    createFolder(spaceQuotaFolder);
+
+    // create throttle quota dir
+    File throttleQuotaFolder = SystemFileFactory.INSTANCE.getFile(config.getThrottleQuotaDir());
+    createFolder(throttleQuotaFolder);
+
     try {
       iAuthorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       logger.error(e.getMessage());
+    }
+  }
+
+  /** Create system folders based on paths */
+  private void createFolder(File fileFolder) {
+    if (!fileFolder.exists()) {
+      if (fileFolder.mkdirs()) {
+        logger.info("create system folder {}", fileFolder.getAbsolutePath());
+      } else {
+        logger.error("create system folder {} failed.", fileFolder.getAbsolutePath());
+      }
     }
   }
 

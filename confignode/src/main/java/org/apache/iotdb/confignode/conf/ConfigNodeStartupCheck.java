@@ -114,6 +114,14 @@ public class ConfigNodeStartupCheck {
     // If consensusDir does not exist, create consensusDir
     File consensusDir = new File(CONF.getConsensusDir());
     createDirIfEmpty(consensusDir);
+
+    // If spaceQuotaDir does not exist, create spaceQuotaDir
+    File spaceQuotaDir = new File(CONF.getSpaceQuotaDir());
+    createDirIfEmpty(spaceQuotaDir);
+
+    // If throttleQuotaDir does not exist, create throttleQuotaDir
+    File throttleQuotaDir = new File(CONF.getThrottleQuotaDir());
+    createDirIfEmpty(throttleQuotaDir);
   }
 
   private void createDirIfEmpty(File dir) throws IOException {

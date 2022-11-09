@@ -136,6 +136,7 @@ keyWords
     | PRUNE
     | QUERIES
     | QUERY
+    | QUOTA
     | RANGE
     | READONLY
     | REGEXP
@@ -157,6 +158,7 @@ keyWords
     | SHOW
     | SLIMIT
     | SOFFSET
+    | SPACE
     | STORAGE
     | START
     | STARTTIME

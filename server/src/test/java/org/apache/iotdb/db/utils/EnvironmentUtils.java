@@ -384,6 +384,10 @@ public class EnvironmentUtils {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());
     }
+    // create space quota
+    createDir(config.getSpaceQuotaDir());
+    // create throttle quota
+    createDir(config.getThrottleQuotaDir());
   }
 
   private static void createDir(String dir) {

@@ -84,6 +84,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -444,5 +445,9 @@ public abstract class StatementVisitor<R, C> {
   public R visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, C context) {
     return visitStatement(dropSchemaTemplateStatement, context);
+  }
+
+  public R visitSetSpaceQuota(SetSpaceQuotaStatement setSpaceQuotaStatement, C context) {
+    return visitStatement(setSpaceQuotaStatement, context);
   }
 }

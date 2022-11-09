@@ -235,6 +235,11 @@ public class IoTDBConstant {
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
+  // quota folder name
+  public static final String QUOTA_FOLDER_NAME = "quota";
+  public static final String SPACE_QUOTA_FOLDER_NAME = "space";
+  public static final String THROTTLE_QUOTA_FOLDER_NAME = "throttle";
+
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
@@ -287,6 +292,9 @@ public class IoTDBConstant {
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
+
+  // quota
+  public static final String SPACE_QUOTA_DISK = "disk";
 
   // client version number
   public enum ClientVersion {

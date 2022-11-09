@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -76,6 +77,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -1303,5 +1305,19 @@ public class ConfigPhysicalPlanSerDeTest {
         (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
     Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void setSpaceQuotaPlanTest() throws IOException {
+    TSpaceQuota spaceQuota = new TSpaceQuota();
+    spaceQuota.setDeviceNum(2);
+    spaceQuota.setTimeserieNum(3);
+    spaceQuota.setDisk(1024);
+    SetSpaceQuotaPlan plan =
+        new SetSpaceQuotaPlan(Collections.singletonList("root.sg"), spaceQuota);
+    SetSpaceQuotaPlan deserializedPlan =
+        (SetSpaceQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getPrefixPathList(), deserializedPlan.getPrefixPathList());
+    Assert.assertEquals(plan.getSpaceLimit(), deserializedPlan.getSpaceLimit());
   }
 }

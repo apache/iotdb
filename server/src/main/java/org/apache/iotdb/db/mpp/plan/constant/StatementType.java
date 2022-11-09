@@ -152,4 +152,6 @@ public enum StatementType {
   SHOW_TRIGGERS,
 
   DEACTIVATE_TEMPLATE,
+
+  SET_SPACE_QUOTA,
 }
