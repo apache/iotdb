@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -32,16 +31,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
+abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
 
-  protected OperatorContext operatorContext;
+  protected final OperatorContext operatorContext;
 
-  protected final QueryId queryId;
+  protected final String queryId;
   protected final MPPObjectPool objectPool = MPPObjectPool.getInstance();
 
   private final List<TSDataType> outputDataTypes = Collections.singletonList(TSDataType.INT32);
 
-  public ObjectQueryOperator(OperatorContext operatorContext, QueryId queryId) {
+  ObjectQueryOperator(OperatorContext operatorContext, String queryId) {
     this.operatorContext = operatorContext;
     this.queryId = queryId;
   }

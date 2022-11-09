@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MPPObjectPool {
 
-  private final Map<QueryId, List<ObjectEntry>> objectPool = new ConcurrentHashMap<>();
+  private final Map<String, List<ObjectEntry>> objectPool = new ConcurrentHashMap<>();
 
   private MPPObjectPool() {}
 
@@ -44,7 +42,7 @@ public class MPPObjectPool {
     return MPPObjectPoolHolder.INSTANCE;
   }
 
-  public synchronized <T extends ObjectEntry> T put(QueryId queryId, T objectEntry) {
+  public synchronized <T extends ObjectEntry> T put(String queryId, T objectEntry) {
     List<ObjectEntry> queryObjectList =
         objectPool.computeIfAbsent(queryId, k -> Collections.synchronizedList(new ArrayList<>()));
     queryObjectList.add(objectEntry);
@@ -53,7 +51,7 @@ public class MPPObjectPool {
   }
 
   @SuppressWarnings("unchecked")
-  public <T extends ObjectEntry> T get(QueryId queryId, int objectId) {
+  public <T extends ObjectEntry> T get(String queryId, int objectId) {
     List<ObjectEntry> queryObjectList = objectPool.get(queryId);
     if (queryObjectList == null) {
       return null;
@@ -61,7 +59,7 @@ public class MPPObjectPool {
     return (T) queryObjectList.get(objectId);
   }
 
-  public void clear(QueryId queryId) {
+  public void clear(String queryId) {
     objectPool.remove(queryId);
   }
 

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -33,8 +32,11 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
+import org.apache.iotdb.db.mpp.execution.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -48,15 +50,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -76,6 +73,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+  private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
+
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -130,8 +129,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
-        List<String> storageGroupList = new ArrayList<>();
-        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+        IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
+        while (queryExecution.hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
           // So we don't need to clean up it manually
           Optional<TsBlock> tsBlock;
@@ -145,35 +144,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, storageGroupList);
+            SchemaFetchObjectEntry objectEntry =
+                objectPool.get(queryExecution.getQueryId(), column.getInt(i));
+            if (objectEntry.isReadingStorageGroupInfo()) {
+              result.setStorageGroups(objectEntry.getStorageGroupList());
+            } else {
+              result.mergeSchemaTree(objectEntry.getSchemaTree());
+            }
           }
         }
-        result.setStorageGroups(storageGroupList);
         return result;
       }
     } finally {
       coordinator.cleanupQueryExecution(queryId);
-    }
-  }
-
-  private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, List<String> storageGroupList) {
-    InputStream inputStream = new ByteArrayInputStream(data.getValues());
-    try {
-      byte type = ReadWriteIOUtils.readByte(inputStream);
-      if (type == 0) {
-        int size = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < size; i++) {
-          storageGroupList.add(ReadWriteIOUtils.readString(inputStream));
-        }
-      } else if (type == 1) {
-        resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
-      } else {
-        throw new RuntimeException(
-            new MetadataException("Failed to fetch schema because of unrecognized data"));
-      }
-    } catch (IOException e) {
-      // Totally memory operation. This case won't happen.
     }
   }
 

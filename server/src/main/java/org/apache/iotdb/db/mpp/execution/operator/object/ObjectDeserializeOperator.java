@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntryFactory;
@@ -52,7 +51,7 @@ public class ObjectDeserializeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final QueryId queryId;
+  private final String queryId;
   private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
 
   private final List<TSDataType> outputDataTypes = Collections.singletonList(TSDataType.INT32);
@@ -62,7 +61,7 @@ public class ObjectDeserializeOperator implements ProcessOperator {
   private final List<ByteBuffer> bufferList = new ArrayList<>();
 
   public ObjectDeserializeOperator(
-      OperatorContext operatorContext, QueryId queryId, Operator child) {
+      OperatorContext operatorContext, String queryId, Operator child) {
     this.operatorContext = operatorContext;
     this.queryId = queryId;
     this.child = child;

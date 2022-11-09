@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -33,9 +32,8 @@ import java.util.List;
 public abstract class ObjectProcessOperator<T extends ObjectEntry> extends ObjectQueryOperator<T>
     implements ProcessOperator {
 
-  public ObjectProcessOperator(OperatorContext operatorContext, QueryId queryId) {
+  public ObjectProcessOperator(OperatorContext operatorContext, String queryId) {
     super(operatorContext, queryId);
-    this.operatorContext = operatorContext;
   }
 
   protected List<T> getNextObjectBatchFromChild(Operator childOperator) {
@@ -49,7 +47,7 @@ public abstract class ObjectProcessOperator<T extends ObjectEntry> extends Objec
 
     List<T> objectEntryList = new ArrayList<>(tsBlock.getPositionCount());
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      objectEntryList.add((T) objectPool.get(queryId, tsBlock.getColumn(0).getInt(i)));
+      objectEntryList.add(objectPool.get(queryId, tsBlock.getColumn(0).getInt(i)));
     }
     return objectEntryList;
   }

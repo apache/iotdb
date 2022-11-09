@@ -938,6 +938,7 @@ public class OperatorMemoryTest {
           new SchemaFetchScanOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
+              "",
               null,
               null,
               null,
@@ -972,7 +973,7 @@ public class OperatorMemoryTest {
     }
 
     SchemaFetchMergeOperator operator =
-        new SchemaFetchMergeOperator(Mockito.mock(OperatorContext.class), children, null);
+        new SchemaFetchMergeOperator(Mockito.mock(OperatorContext.class), "", children, null);
 
     assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());

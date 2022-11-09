@@ -1596,7 +1596,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SchemaFetchMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new SchemaFetchMergeOperator(operatorContext, children, node.getStorageGroupList());
+    return new SchemaFetchMergeOperator(
+        operatorContext, node.getPlanNodeId().getId(), children, node.getStorageGroupList());
   }
 
   @Override
@@ -1613,6 +1614,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaFetchScanOperator(
         node.getPlanNodeId(),
         operatorContext,
+        node.getPlanNodeId().getId(),
         node.getPatternTree(),
         node.getTemplateMap(),
         ((SchemaDriverContext) (context.getInstanceContext().getDriverContext())).getSchemaRegion(),
@@ -1972,8 +1974,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   ObjectDeserializeNode.class.getSimpleName());
-      return new ObjectDeserializeOperator(
-          operatorContext, new QueryId(node.getPlanNodeId().getId()), child);
+      return new ObjectDeserializeOperator(operatorContext, node.getPlanNodeId().getId(), child);
     }
   }
 

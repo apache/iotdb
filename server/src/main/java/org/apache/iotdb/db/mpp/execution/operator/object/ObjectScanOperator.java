@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
@@ -30,7 +29,7 @@ public abstract class ObjectScanOperator<T extends ObjectEntry> extends ObjectQu
 
   protected PlanNodeId sourceId;
 
-  public ObjectScanOperator(PlanNodeId sourceId, OperatorContext operatorContext, QueryId queryId) {
+  public ObjectScanOperator(PlanNodeId sourceId, OperatorContext operatorContext, String queryId) {
     super(operatorContext, queryId);
     this.sourceId = sourceId;
   }

@@ -19,30 +19,89 @@
 
 package org.apache.iotdb.db.mpp.execution.object.entry;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
 import org.apache.iotdb.db.mpp.execution.object.ObjectType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class SchemaFetchObjectEntry extends ObjectEntry {
 
+  private List<String> storageGroupList;
+
   private ClusterSchemaTree schemaTree;
+
+  private transient boolean isReadingStorageGroupInfo;
+
+  public SchemaFetchObjectEntry() {
+    super();
+  }
+
+  public SchemaFetchObjectEntry(List<String> storageGroupList) {
+    super();
+    this.storageGroupList = storageGroupList;
+    isReadingStorageGroupInfo = true;
+  }
+
+  public SchemaFetchObjectEntry(ClusterSchemaTree schemaTree) {
+    super();
+    this.schemaTree = schemaTree;
+    isReadingStorageGroupInfo = false;
+  }
 
   @Override
   public ObjectType getType() {
     return ObjectType.SCHEMA_FETCH;
   }
 
+  public boolean isReadingStorageGroupInfo() {
+    return isReadingStorageGroupInfo;
+  }
+
+  public List<String> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public ClusterSchemaTree getSchemaTree() {
+    return schemaTree;
+  }
+
   @Override
   protected void serializeObjectData(DataOutputStream dataOutputStream) throws IOException {
-    schemaTree.serialize(dataOutputStream);
+    if (isReadingStorageGroupInfo) {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 0, dataOutputStream);
+
+      ReadWriteIOUtils.write(storageGroupList.size(), dataOutputStream);
+      for (String storageGroup : storageGroupList) {
+        ReadWriteIOUtils.write(storageGroup, dataOutputStream);
+      }
+    } else {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 1, dataOutputStream);
+
+      schemaTree.serialize(dataOutputStream);
+    }
   }
 
   @Override
   protected void deserializeObjectData(DataInputStream dataInputStream) throws IOException {
-    schemaTree = ClusterSchemaTree.deserialize(dataInputStream);
+    byte type = ReadWriteIOUtils.readByte(dataInputStream);
+    if (type == 0) {
+      int size = ReadWriteIOUtils.readInt(dataInputStream);
+      for (int i = 0; i < size; i++) {
+        storageGroupList.add(ReadWriteIOUtils.readString(dataInputStream));
+      }
+    } else if (type == 1) {
+      schemaTree = ClusterSchemaTree.deserialize(dataInputStream);
+    } else {
+      throw new RuntimeException(
+          new MetadataException("Failed to fetch schema because of unrecognized data"));
+    }
   }
 }
