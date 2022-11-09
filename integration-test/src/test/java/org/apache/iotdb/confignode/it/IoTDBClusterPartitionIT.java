@@ -354,7 +354,7 @@ public class IoTDBClusterPartitionIT {
         // Check the number of DataRegionGroup.
         // And this number should be greater than or equal to testLeastDataRegionGroupNum
         TShowStorageGroupResp showStorageGroupResp =
-            client.showStorageGroup(Collections.singletonList(storageGroup));
+            client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
         Assert.assertTrue(
             showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
                 >= testLeastDataRegionGroupNum);
