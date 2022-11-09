@@ -1850,7 +1850,7 @@ var config = {
 					},
 					{
 						title: '数据查询',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
 							['Query-Data/Overview.md','概述'],
 							['Query-Data/Select-Expression.md','选择表达式'],
