@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -111,11 +111,7 @@ public class EnvironmentUtils {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
     // clean storage group manager
-    if (!StorageEngine.getInstance().deleteAll()) {
-      logger.error("Can't close the storage group manager in EnvironmentUtils");
-      Assert.fail();
-    }
-    StorageEngine.getInstance().reset();
+    StorageEngineV2.getInstance().reset();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
     // clean wal
@@ -177,7 +173,7 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e);
     }
-    StorageEngine.getInstance().reset();
+    StorageEngineV2.getInstance().reset();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();

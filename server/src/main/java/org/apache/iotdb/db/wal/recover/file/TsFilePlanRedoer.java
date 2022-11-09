@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -38,11 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,24 +66,6 @@ public class TsFilePlanRedoer {
     this.idTable = idTable;
   }
 
-  void redoDelete(DeletePlan deletePlan) throws IOException, MetadataException {
-    List<PartialPath> paths = deletePlan.getPaths();
-    for (PartialPath path : paths) {
-      for (PartialPath device : IoTDB.schemaProcessor.getBelongedDevices(path)) {
-        recoveryMemTable.delete(
-            path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
-      }
-      tsFileResource
-          .getModFile()
-          .write(
-              new Deletion(
-                  path,
-                  tsFileResource.getTsFileSize(),
-                  deletePlan.getDeleteStartTime(),
-                  deletePlan.getDeleteEndTime()));
-    }
-  }
-
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
     List<PartialPath> paths = deleteDataNode.getPathList();
     for (PartialPath path : paths) {
@@ -107,55 +83,6 @@ public class TsFilePlanRedoer {
                   tsFileResource.getTsFileSize(),
                   deleteDataNode.getDeleteStartTime(),
                   deleteDataNode.getDeleteEndTime()));
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  void redoInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
-    if (!plan.hasValidMeasurements()) {
-      return;
-    }
-    if (tsFileResource != null) {
-      String deviceId =
-          plan.isAligned()
-              ? plan.getDevicePath().getDevicePath().getFullPath()
-              : plan.getDevicePath().getFullPath();
-      // orders of insert plan is guaranteed by storage engine, just check time in the file
-      // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = tsFileResource.getEndTime(deviceId);
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= plan.getMinTime() && sequence) {
-        return;
-      }
-    }
-
-    plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
-    try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-        idTable.getSeriesSchemas(plan);
-      } else {
-        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
-        plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
-      }
-    } catch (IOException | MetadataException e) {
-      throw new QueryProcessException("can't replay insert logs, ", e);
-    }
-
-    // mark failed plan manually
-    checkDataTypeAndMarkFailed(plan.getMeasurementMNodes(), plan);
-    if (plan instanceof InsertRowPlan) {
-      if (plan.isAligned()) {
-        recoveryMemTable.insertAlignedRow((InsertRowPlan) plan);
-      } else {
-        recoveryMemTable.insert((InsertRowPlan) plan);
-      }
-    } else {
-      if (plan.isAligned()) {
-        recoveryMemTable.insertAlignedTablet(
-            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
-      } else {
-        recoveryMemTable.insertTablet(
-            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
-      }
     }
   }
 

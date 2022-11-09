@@ -18,17 +18,15 @@ import { DataSourceInstanceSettings, MetricFindValue, ScopedVars } from '@grafan
 
 import { IoTDBOptions, IoTDBQuery } from './types';
 import { toMetricFindValue } from './functions';
-import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
+import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
 
 export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> {
   username: string;
-  password: string;
   url: string;
 
   constructor(instanceSettings: DataSourceInstanceSettings<IoTDBOptions>) {
     super(instanceSettings);
     this.url = instanceSettings.jsonData.url;
-    this.password = instanceSettings.jsonData.password;
     this.username = instanceSettings.jsonData.username;
   }
   applyTemplateVariables(query: IoTDBQuery, scopedVars: ScopedVars) {
@@ -64,8 +62,7 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
 
   metricFindQuery(query: any, options?: any): Promise<MetricFindValue[]> {
     query = getTemplateSrv().replace(query, options.scopedVars);
-    const sql = { sql: query };
-    return this.getVariablesResult(sql);
+    return this.getVariablesResult(query);
   }
 
   nodeQuery(query: any, options?: any): Promise<MetricFindValue[]> {
@@ -73,23 +70,13 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
   }
 
   async getChildPaths(detachedPath: string[]) {
-    const myHeader = new Headers();
-    myHeader.append('Content-Type', 'application/json');
-    const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
-    myHeader.append('Authorization', Authorization);
     if (this.url.substr(this.url.length - 1, 1) === '/') {
       this.url = this.url.substr(0, this.url.length - 1);
     }
-    return await getBackendSrv()
-      .datasourceRequest({
-        method: 'POST',
-        url: this.url + '/grafana/v1/node',
-        data: detachedPath,
-        headers: myHeader,
-      })
+    return this.postResource('getNodes', { url: this.url, data: detachedPath })
       .then((response) => {
-        if (response.data instanceof Array) {
-          return response.data;
+        if (response instanceof Array) {
+          return response;
         } else {
           throw 'the result is not array';
         }
@@ -97,30 +84,16 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
       .then((data) => data.map(toMetricFindValue));
   }
 
-  async getVariablesResult(sql: object) {
-    const myHeader = new Headers();
-    myHeader.append('Content-Type', 'application/json');
-    const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
-    myHeader.append('Authorization', Authorization);
+  async getVariablesResult(sql: string) {
     if (this.url.substr(this.url.length - 1, 1) === '/') {
       this.url = this.url.substr(0, this.url.length - 1);
     }
-    return await getBackendSrv()
-      .datasourceRequest({
-        method: 'POST',
-        url: this.url + '/grafana/v1/variable',
-        data: sql,
-        headers: myHeader,
-      })
+    return this.getResource('getVariables', { url: this.url, sql: sql })
       .then((response) => {
-        if (response.data instanceof Array) {
-          return response.data;
+        if (response instanceof Array) {
+          return response;
         } else {
-          if ((response.data.code = 400)) {
-            throw response.data.message;
-          } else {
-            throw 'the result is not array';
-          }
+          throw response.message;
         }
       })
       .then((data) => data.map(toMetricFindValue));
