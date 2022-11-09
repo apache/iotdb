@@ -99,6 +99,8 @@ public class QueryStatistics {
           (k, v) -> {
             QUERY_STATISTICS_LOGGER.info("Operation: {}, Statistics: {}", k, v);
           });
+      // line breaker
+      QUERY_STATISTICS_LOGGER.info("");
     }
   }
 
