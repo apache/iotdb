@@ -144,6 +144,24 @@ public abstract class SchemaRegionBasicTest {
       Map<String, String> resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
+
+      IoTDB.configManager.clear();
+      IoTDB.configManager.init();
+      SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
+      ISchemaRegion newSchemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+      newSchemaRegion.loadSnapshot(snapshotDir);
+      result =
+          newSchemaRegion.showTimeseries(
+              new ShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
+              null);
+
+      seriesResult = result.left.get(0);
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getName());
+      resultTagMap = seriesResult.getTag();
+      Assert.assertEquals(1, resultTagMap.size());
+      Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
+
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }

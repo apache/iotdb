@@ -451,7 +451,12 @@ public class SchemaFile implements ISchemaFile {
     Files.deleteIfExists(schemaFile.toPath());
     Files.deleteIfExists(schemaLogFile.toPath());
     Files.createLink(schemaFile.toPath(), snapshot.toPath());
-    return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
+    return new SchemaFile(
+        sgName,
+        schemaRegionId,
+        false,
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        false);
   }
 
   // endregion
