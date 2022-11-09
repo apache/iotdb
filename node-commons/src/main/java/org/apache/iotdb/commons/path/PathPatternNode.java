@@ -45,6 +45,9 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   private final String name;
   private final Map<String, PathPatternNode<V, VSerializer>> children;
   private Set<V> valueSet;
+  // Used only in PatternTreeMap to identify whether a node is Measurement.
+  // In PatternTreeMap, it can be replaced by the size of the valueSet
+  private Role roleType = Role.INTERNAL;
   private final VSerializer serializer;
 
   public PathPatternNode(String name, VSerializer serializer) {
@@ -56,7 +59,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   public PathPatternNode(String name, Supplier<? extends Set<V>> supplier, VSerializer serialize) {
     this.name = name;
     this.children = new HashMap<>();
-    valueSet = supplier.get();
+    this.valueSet = supplier.get();
     this.serializer = serialize;
   }
 
@@ -106,6 +109,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return valueSet;
   }
 
+  public boolean isMeasurement() {
+    return roleType.equals(Role.MEASUREMENT);
+  }
+
   public boolean isLeaf() {
     return children.isEmpty();
   }
@@ -116,6 +123,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
   public boolean isMultiLevelWildcard() {
     return name.equals(MULTI_LEVEL_PATH_WILDCARD);
+  }
+
+  public void setRoleType(Role roleType) {
+    this.roleType = roleType;
   }
 
   @TestOnly
@@ -129,8 +140,11 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     if (!Objects.equals(that.getName(), this.getName())) {
       return false;
     }
-    if (that.isLeaf() && this.isLeaf()) {
-      return true;
+    if (that.isLeaf() != this.isLeaf()) {
+      return false;
+    }
+    if (that.isMeasurement() != this.isMeasurement()) {
+      return false;
     }
     if (that.getChildren().size() != this.getChildren().size()) {
       return false;
@@ -148,10 +162,23 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return true;
   }
 
+  /**
+   * Serialize PathPatternNode
+   *
+   * <ul>
+   *   <li>[required] 1 string: name. It specifies the name of node
+   *   <li>[required] 1 int: nodeType or size of valueSet. If this node is being used by
+   *       PatternTreeMap, it specifies the size of valueSet which will be serialized next. If this
+   *       node is being used by PathPatternTree, it specifies the role type of this node.
+   *   <li>[optional] valueSet
+   *   <li>[required] 1 int: children size.
+   *   <li>[optional] children
+   * </ul>
+   */
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(name, buffer);
     if (valueSet == null) {
-      ReadWriteIOUtils.write(0, buffer);
+      ReadWriteIOUtils.write(roleType.getType(), buffer);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), buffer);
       for (V value : valueSet) {
@@ -171,7 +198,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   public void serialize(PublicBAOS outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
     if (valueSet == null) {
-      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(roleType.getType(), outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
       for (V value : valueSet) {
@@ -185,7 +212,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
     if (valueSet == null) {
-      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(roleType.getType(), outputStream);
     } else {
       ReadWriteIOUtils.write(valueSet.size(), outputStream);
       for (V value : valueSet) {
@@ -212,10 +239,14 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
       ByteBuffer buffer, T serializer) {
     PathPatternNode<V, T> node =
         new PathPatternNode<>(ReadWriteIOUtils.readString(buffer), serializer);
-    int valueSize = ReadWriteIOUtils.readInt(buffer);
-    if (valueSize > 0) {
+    int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
+    if (typeOrValueSize < 0) {
+      // node in PathPatternTree
+      node.setRoleType(Role.getRole(typeOrValueSize));
+    } else { // typeOrValueSize >= 0
+      // measurement node in PatternTreeMap
       Set<V> valueSet = new HashSet<>();
-      for (int i = 0; i < valueSize; i++) {
+      for (int i = 0; i < typeOrValueSize; i++) {
         valueSet.add(serializer.read(buffer));
       }
       node.valueSet = valueSet;
@@ -227,6 +258,32 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
       childrenSize--;
     }
     return node;
+  }
+
+  public enum Role {
+    INTERNAL(-1),
+    MEASUREMENT(-2);
+
+    private final int type;
+
+    Role(int type) {
+      this.type = type;
+    }
+
+    public int getType() {
+      return type;
+    }
+
+    public static Role getRole(int type) {
+      switch (type) {
+        case -1:
+          return Role.INTERNAL;
+        case -2:
+          return Role.MEASUREMENT;
+        default:
+          throw new IllegalArgumentException("Invalid input: " + type);
+      }
+    }
   }
 
   /**
