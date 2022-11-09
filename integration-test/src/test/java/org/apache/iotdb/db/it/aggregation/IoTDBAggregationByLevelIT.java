@@ -321,6 +321,33 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
+  @Test
+  public void functionNameUppercaseTest() throws Exception {
+    String[] retArray = new String[] {"17", "17", "8"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+         Statement statement = connection.createStatement()) {
+
+      int cnt = 0;
+      try (ResultSet resultSet =
+             statement.executeQuery("select COUNT(*) from root.*.* GROUP BY level=0")) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(count("root.*.*.*"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+
+      try (ResultSet resultSet =
+             statement.executeQuery("select CoUnT(status) from root.*.* GROUP BY level=0")) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(count("root.*.*.status"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+    }
+  }
+
   /**
    * [root.sg.d1.temperature, root.sg.d2.temperature] with level = 1
    *
