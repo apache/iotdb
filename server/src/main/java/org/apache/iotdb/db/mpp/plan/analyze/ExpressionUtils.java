@@ -76,7 +76,7 @@ public class ExpressionUtils {
     for (List<Expression> functionExpressions : childExpressionsList) {
       resultExpressions.add(
           new FunctionExpression(
-              expression.getFunctionName(),
+              expression.getFunctionName().toLowerCase(),
               expression.getFunctionAttributes(),
               functionExpressions));
     }
