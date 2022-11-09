@@ -60,8 +60,8 @@ public class IoTDBConstant {
   public static final String DN_INTERNAL_PORT = "dn_internal_port";
   public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
 
-  public static final String CN_TARGET_CONFIG_NODES = "cn_target_config_nodes";
-  public static final String DN_TARGET_CONFIG_NODES = "dn_target_config_nodes";
+  public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
+  public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()

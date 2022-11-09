@@ -47,6 +47,9 @@ public class ConfigNodeConstant {
   public static final String METRIC_STATUS_ONLINE = "Online";
   public static final String METRIC_STATUS_UNKNOWN = "Unknown";
 
+  public static final String METRIC_CONFIG_NODE = "ConfigNode";
+  public static final String METRIC_DATA_NODE = "DataNode";
+
   public static final String REMOVE_CONFIGNODE_USAGE =
       "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
 

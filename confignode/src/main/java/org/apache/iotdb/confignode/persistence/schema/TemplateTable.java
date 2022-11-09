@@ -69,7 +69,7 @@ public class TemplateTable {
       templateReadWriteLock.readLock().lock();
       Template template = templateMap.get(name);
       if (template == null) {
-        throw new MetadataException(String.format("Template %s not exits", name));
+        throw new MetadataException(String.format("Template %s does not exist", name));
       }
       return templateMap.get(name);
     } finally {
@@ -82,7 +82,8 @@ public class TemplateTable {
       templateReadWriteLock.readLock().lock();
       Template template = templateIdMap.get(templateId);
       if (template == null) {
-        throw new MetadataException(String.format("Template with id=%s not exits", templateId));
+        throw new MetadataException(
+            String.format("Template with id=%s does not exist", templateId));
       }
       return template;
     } finally {

@@ -88,7 +88,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = "127.0.0.1";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
@@ -103,7 +103,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -864,8 +864,14 @@ public class IoTDBConfig {
   /** maximum number of logged pages before log erased */
   private int schemaFileLogSize = 16384;
 
+  /**
+   * Maximum number of measurement in one create timeseries plan node. If the number of measurement
+   * in user request exceeds this limit, the request will be split.
+   */
+  private int maxMeasurementNumOfInternalRequest = 10000;
+
   /** Internal address for data node */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -2915,6 +2921,14 @@ public class IoTDBConfig {
 
   public void setSchemaFileLogSize(int schemaFileLogSize) {
     this.schemaFileLogSize = schemaFileLogSize;
+  }
+
+  public int getMaxMeasurementNumOfInternalRequest() {
+    return maxMeasurementNumOfInternalRequest;
+  }
+
+  public void setMaxMeasurementNumOfInternalRequest(int maxMeasurementNumOfInternalRequest) {
+    this.maxMeasurementNumOfInternalRequest = maxMeasurementNumOfInternalRequest;
   }
 
   public String getInternalAddress() {

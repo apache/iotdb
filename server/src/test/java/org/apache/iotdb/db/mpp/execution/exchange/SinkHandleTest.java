@@ -145,7 +145,13 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    try {
+      Thread.sleep(500L);
+      Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
 
     // Ack tsblocks.
     sinkHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
@@ -311,7 +317,14 @@ public class SinkHandleTest {
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    try {
+      Thread.sleep(500L);
+      Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+
     try {
       Thread.sleep(100L);
       Mockito.verify(mockClient, Mockito.times(1))
@@ -439,12 +452,13 @@ public class SinkHandleTest {
     // Close the SinkHandle.
     try {
       sinkHandle.setNoMoreTsBlocks();
-      Assert.fail("Expect an RuntimeException.");
-    } catch (RuntimeException e) {
-      Assert.assertEquals("Send EndOfDataBlockEvent failed", e.getMessage());
+      Assert.assertFalse(sinkHandle.isAborted());
+      Thread.sleep(500L);
+      Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onEndOfBlocks(sinkHandle);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Assert.fail();
     }
-    Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onEndOfBlocks(sinkHandle);
 
     // Abort the SinkHandle.
     sinkHandle.abort();

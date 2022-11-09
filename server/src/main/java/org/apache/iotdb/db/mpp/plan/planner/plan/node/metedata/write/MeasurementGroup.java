@@ -141,8 +141,52 @@ public class MeasurementGroup {
     }
   }
 
+  public int size() {
+    return measurements.size();
+  }
+
   public boolean isEmpty() {
     return measurements.isEmpty();
+  }
+
+  public List<MeasurementGroup> split(int targetSize) {
+    int totalSize = measurements.size();
+    int num = totalSize / targetSize + (totalSize % targetSize == 0 ? 0 : 1);
+    List<MeasurementGroup> result = new ArrayList<>(num);
+    if (totalSize <= targetSize) {
+      result.add(this);
+      return result;
+    }
+    for (int i = 0; i < num - 1; i++) {
+      result.add(getSubMeasurementGroup(i * targetSize, i * targetSize + targetSize));
+    }
+    int restSize = totalSize % targetSize;
+    if (restSize != 0) {
+      result.add(getSubMeasurementGroup(totalSize - restSize, totalSize));
+    }
+    return result;
+  }
+
+  private MeasurementGroup getSubMeasurementGroup(int startIndex, int endIndex) {
+    MeasurementGroup subMeasurementGroup;
+    subMeasurementGroup = new MeasurementGroup();
+    subMeasurementGroup.measurements = measurements.subList(startIndex, endIndex);
+    subMeasurementGroup.dataTypes = dataTypes.subList(startIndex, endIndex);
+    subMeasurementGroup.encodings = encodings.subList(startIndex, endIndex);
+    subMeasurementGroup.compressors = compressors.subList(startIndex, endIndex);
+    if (aliasList != null) {
+      subMeasurementGroup.aliasList = aliasList.subList(startIndex, endIndex);
+    }
+    if (propsList != null) {
+      subMeasurementGroup.propsList = propsList.subList(startIndex, endIndex);
+    }
+    if (tagsList != null) {
+      subMeasurementGroup.tagsList = tagsList.subList(startIndex, endIndex);
+    }
+    if (attributesList != null) {
+      subMeasurementGroup.attributesList = attributesList.subList(startIndex, endIndex);
+    }
+    return subMeasurementGroup;
   }
 
   public void serialize(ByteBuffer byteBuffer) {

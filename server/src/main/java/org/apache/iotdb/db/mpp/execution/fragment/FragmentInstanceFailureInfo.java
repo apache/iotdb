@@ -39,6 +39,10 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * This class is inspired by Trino <a
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/ExecutionFailureInfo.java">...</a>
+ */
 public class FragmentInstanceFailureInfo implements Serializable {
   private static final Pattern STACK_TRACE_PATTERN =
       Pattern.compile("(.*)\\.(.*)\\(([^:]*)(?::(.*))?\\)");
@@ -168,11 +172,11 @@ public class FragmentInstanceFailureInfo implements Serializable {
     } else {
       cause = deserialize(byteBuffer);
     }
-    int suppressedSize = ReadWriteIOUtils.read(byteBuffer);
+    int suppressedSize = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < suppressedSize; i++) {
       suppressed.add(deserialize(byteBuffer));
     }
-    int stackSize = ReadWriteIOUtils.read(byteBuffer);
+    int stackSize = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < stackSize; i++) {
       stack.add(ReadWriteIOUtils.readString(byteBuffer));
     }
@@ -180,6 +184,25 @@ public class FragmentInstanceFailureInfo implements Serializable {
   }
 
   // end region
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FragmentInstanceFailureInfo that = (FragmentInstanceFailureInfo) o;
+    return (this.getMessage() == null
+            ? that.getMessage() == null
+            : this.getMessage().equals(that.getMessage()))
+        && (this.getCause() == null
+            ? that.getCause() == null
+            : this.getCause().equals(that.getCause()))
+        && this.getSuppressed().equals(that.getSuppressed())
+        && this.getStack().equals(that.getStack());
+  }
 
   private static class FailureException extends RuntimeException {
     FailureException(String message, FailureException cause) {

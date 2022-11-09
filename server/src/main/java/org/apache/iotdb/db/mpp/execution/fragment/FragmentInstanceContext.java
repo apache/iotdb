@@ -182,12 +182,14 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.failed(cause);
   }
 
+  /** @return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
         .map(Throwable::getMessage)
         .collect(Collectors.joining("; "));
   }
 
+  /** @return List of specific throwable and stack trace */
   public List<FragmentInstanceFailureInfo> getFailureInfoList() {
     return stateMachine.getFailureCauses().stream()
         .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)

@@ -49,4 +49,8 @@ public interface IQueryExecution {
   boolean isQuery();
 
   String getQueryId();
+
+  long getStartExecutionTime();
+
+  Optional<String> getExecuteSQL();
 }
