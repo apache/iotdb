@@ -84,7 +84,7 @@ public class SyncDataNodeClientPool {
   }
 
   public TSStatus sendSyncRequestToDataNodeWithGivenRetry(
-          TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
+      TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -92,22 +92,22 @@ public class SyncDataNodeClientPool {
       } catch (TException | IOException e) {
         lastException = e;
         LOGGER.warn(
-                "{} failed on DataNode {}, because {}, retrying {}...",
-                requestType,
-                endPoint,
-                e.getMessage(),
-                retry);
+            "{} failed on DataNode {}, because {}, retrying {}...",
+            requestType,
+            endPoint,
+            e.getMessage(),
+            retry);
         doRetryWait(retry);
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-            .setMessage("All retry failed due to: " + lastException.getMessage());
+        .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
-  private TSStatus executeSyncRequest(DataNodeRequestType requestType,
-                                      SyncDataNodeInternalServiceClient client,
-                                      Object req) throws TException {
+  private TSStatus executeSyncRequest(
+      DataNodeRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      throws TException {
     switch (requestType) {
       case INVALIDATE_PARTITION_CACHE:
         return client.invalidatePartitionCache((TInvalidateCacheReq) req);
@@ -139,7 +139,7 @@ public class SyncDataNodeClientPool {
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
       default:
         return RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
     }
   }
 
@@ -162,7 +162,7 @@ public class SyncDataNodeClientPool {
    */
   public TSStatus changeRegionLeader(
       TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
-    LOGGER.info("send RPC to data node: {} for changing regions leader on it", dataNode);
+    LOGGER.info("Send RPC to data node: {} for changing regions leader on it", dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);

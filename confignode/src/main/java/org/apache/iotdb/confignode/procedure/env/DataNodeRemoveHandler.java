@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -49,10 +50,13 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.consensus.ConsensusFactory.MULTI_LEADER_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class DataNodeRemoveHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
@@ -544,15 +548,43 @@ public class DataNodeRemoveHandler {
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 
-  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
+  /**
+   * Change the leader of given Region
+   *
+   * @param regionId The region to be migrated
+   * @param originalDataNode The DataNode where the region locates
+   * @param migrateDestDataNode The DataNode where the region is to be migrated
+   */
+  public void changeRegionLeader(TConsensusGroupId regionId,
+                                 TDataNodeLocation originalDataNode,
+                                 TDataNodeLocation migrateDestDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+
+    if (TConsensusGroupType.DataRegion.equals(regionId.getType()) &&
+            MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      if (CONF.getDataReplicationFactor() == 1) {
+        configManager.getLoadManager().getRouteBalancer().
+                changeLeaderForMultiLeaderConsensus(regionId, migrateDestDataNode.getDataNodeId());
+      } else if (newLeaderNode.isPresent()) {
+        configManager.getLoadManager().getRouteBalancer().
+                changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
+      }
+      LOGGER.info(
+              "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+              REMOVE_DATANODE_PROCESS,
+              regionId,
+              newLeaderNode);
+
+      return;
+    }
+
     if (newLeaderNode.isPresent()) {
       SyncDataNodeClientPool.getInstance()
           .changeRegionLeader(
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
-          "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
+          "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
           REMOVE_DATANODE_PROCESS,
           regionId,
           newLeaderNode);
@@ -610,8 +642,8 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }

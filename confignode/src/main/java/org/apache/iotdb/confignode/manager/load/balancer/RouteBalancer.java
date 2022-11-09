@@ -313,6 +313,11 @@ public class RouteBalancer {
     }
   }
 
+  public void changeLeaderForMultiLeaderConsensus(
+      TConsensusGroupId regionGroupId, int newLeaderId) {
+    regionRouteMap.setLeader(regionGroupId, newLeaderId);
+  }
+
   private void changeRegionLeader(
       String consensusProtocolClass,
       AtomicInteger requestId,
