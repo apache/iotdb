@@ -194,10 +194,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         logger.error(String.format("Move to next pipe log %s error.", pipeData), e);
       }
     }
-    if (!inputDeque.offer(pipeData)) {
-      return false;
-    }
     synchronized (waitLock) {
+      if (!inputDeque.offer(pipeData)) {
+        return false;
+      }
       waitLock.notifyAll();
     }
 
