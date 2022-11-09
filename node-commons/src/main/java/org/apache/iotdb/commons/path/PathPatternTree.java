@@ -104,7 +104,7 @@ public class PathPatternTree {
   private void appendBranchWithoutPrune(
       PathPatternNode<Void, VoidSerializer> curNode, String[] pathNodes, int pos) {
     if (pos == pathNodes.length - 1) {
-      curNode.setRoleType(PathPatternNode.Role.MEASUREMENT);
+      curNode.markPathPattern(true);
       return;
     }
 
@@ -125,7 +125,7 @@ public class PathPatternTree {
       curNode.addChild(newNode);
       curNode = newNode;
     }
-    curNode.setRoleType(PathPatternNode.Role.MEASUREMENT);
+    curNode.markPathPattern(true);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ public class PathPatternTree {
   private void searchDevicePattern(
       PathPatternNode<Void, VoidSerializer> curNode, List<String> nodes, Set<String> results) {
     nodes.add(curNode.getName());
-    if (curNode.isMeasurement()) {
+    if (curNode.isPathPattern()) {
       if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         results.add(
             nodes.size() == 1 ? "" : convertNodesToString(nodes.subList(0, nodes.size() - 1)));
@@ -181,7 +181,7 @@ public class PathPatternTree {
       PathPatternNode<Void, VoidSerializer> node,
       Deque<String> ancestors,
       List<PartialPath> fullPaths) {
-    if (node.isMeasurement()) {
+    if (node.isPathPattern()) {
       fullPaths.add(convertNodesToPartialPath(node, ancestors));
       if (node.isLeaf()) {
         return;
