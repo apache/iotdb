@@ -388,8 +388,8 @@ public class IoTDBAliasIT {
   public void aggregationFuncNameTest() {
     String expectedHeader =
         "count(root.sg.d1.temperature),count(root.sg.d2.temperature),"
-            + "COUNT(root.sg.d1.s2),COUNT(root.sg.d2.s2),"
-            + "CoUnT(root.sg.d1.temperature),CoUnT(root.sg.d2.temperature),";
+            + "count(root.sg.d1.s2),count(root.sg.d2.s2),"
+            + "count(root.sg.d1.temperature),count(root.sg.d2.temperature),";
     String[] retArray = new String[] {"4,4,4,4,4,4,"};
 
     resultSetEqualTest(
@@ -400,7 +400,7 @@ public class IoTDBAliasIT {
 
   @Test
   public void groupByLevelFuncNameTest() {
-    String expectedHeader = "count(root.sg.*.s2),COUNT(root.sg.*.temperature),CoUnT(root.sg.*.s2),";
+    String expectedHeader = "count(root.sg.*.s2),count(root.sg.*.temperature),count(root.sg.*.s2),";
     String[] retArray = new String[] {"8,8,8,"};
 
     resultSetEqualTest(
