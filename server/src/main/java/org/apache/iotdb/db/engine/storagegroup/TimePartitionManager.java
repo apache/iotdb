@@ -57,7 +57,7 @@ public class TimePartitionManager {
     }
   }
 
-  public void flushMemtable(
+  public void updateAfterFlushing(
       DataRegionId dataRegionId,
       long timePartitionId,
       long systemFlushTime,
@@ -80,7 +80,7 @@ public class TimePartitionManager {
     }
   }
 
-  public void openMemtable(DataRegionId dataRegionId, long timePartitionId) {
+  public void updateAfterOpeningTsFileProcessor(DataRegionId dataRegionId, long timePartitionId) {
     synchronized (timePartitionInfoMap) {
       TimePartitionInfo timePartitionInfo =
           timePartitionInfoMap

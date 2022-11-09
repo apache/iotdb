@@ -764,7 +764,8 @@ public class DataRegion {
       RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
       long timePartitionId = tsFileResource.getTimePartition();
       TimePartitionManager.getInstance()
-          .openMemtable(new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
+          .updateAfterOpeningTsFileProcessor(
+              new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
               dataRegionId,
@@ -1251,7 +1252,8 @@ public class DataRegion {
     if (null == res) {
       // build new processor, memory control module will control the number of memtables
       TimePartitionManager.getInstance()
-          .openMemtable(new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
+          .updateAfterOpeningTsFileProcessor(
+              new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
       res = newTsFileProcessor(sequence, timeRangeId);
       tsFileProcessorTreeMap.put(timeRangeId, res);
       tsFileManager.add(res.getTsFileResource(), sequence);
@@ -2076,7 +2078,7 @@ public class DataRegion {
   private boolean unsequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
     TimePartitionManager.getInstance()
-        .flushMemtable(
+        .updateAfterFlushing(
             new DataRegionId(Integer.valueOf(dataRegionId)),
             processor.getTimeRangeId(),
             systemFlushTime,
@@ -2098,7 +2100,7 @@ public class DataRegion {
     }
 
     TimePartitionManager.getInstance()
-        .flushMemtable(
+        .updateAfterFlushing(
             new DataRegionId(Integer.valueOf(dataRegionId)),
             processor.getTimeRangeId(),
             systemFlushTime,

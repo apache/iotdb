@@ -83,7 +83,7 @@ public class TimePartitionManagerTest {
         new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0, true);
     timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
 
-    timePartitionManager.flushMemtable(new DataRegionId(1), 0L, 100L, 100L, false);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(1), 0L, 100L, 100L, false);
 
     TimePartitionInfo timePartitionInfo1 =
         timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L);
@@ -93,7 +93,7 @@ public class TimePartitionManagerTest {
     assertEquals(timePartitionInfo1.memSize, 100);
     assertFalse(timePartitionInfo1.isActive);
 
-    timePartitionManager.openMemtable(new DataRegionId(1), 0L);
+    timePartitionManager.updateAfterOpeningTsFileProcessor(new DataRegionId(1), 0L);
     TimePartitionInfo timePartitionInfo2 =
         timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L);
     assertTrue(timePartitionInfo2.isActive);
@@ -106,23 +106,23 @@ public class TimePartitionManagerTest {
           new TimePartitionInfo(new DataRegionId(i), 0L, true, Long.MAX_VALUE, 0, true);
       timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
     }
-    timePartitionManager.flushMemtable(new DataRegionId(0), 0L, 100L, 20L, false);
-    timePartitionManager.flushMemtable(new DataRegionId(1), 0L, 101L, 20L, true);
-    timePartitionManager.flushMemtable(new DataRegionId(2), 0L, 102L, 20L, false);
-    timePartitionManager.flushMemtable(new DataRegionId(3), 0L, 103L, 20L, false);
-    timePartitionManager.flushMemtable(new DataRegionId(4), 0L, 104L, 20L, true);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(0), 0L, 100L, 20L, false);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(1), 0L, 101L, 20L, true);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(2), 0L, 102L, 20L, false);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(3), 0L, 103L, 20L, false);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(4), 0L, 104L, 20L, true);
     timePartitionManager.registerTimePartitionInfo(
         new TimePartitionInfo(new DataRegionId(0), 1L, true, Long.MAX_VALUE, 0, true));
 
-    timePartitionManager.flushMemtable(new DataRegionId(0), 1L, 105L, 20L, true);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 105L, 20L, true);
 
     Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(0), 0L));
 
-    timePartitionManager.flushMemtable(new DataRegionId(0), 1L, 106L, 40L, true);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 106L, 40L, true);
 
     Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(2), 0L));
 
-    timePartitionManager.flushMemtable(new DataRegionId(0), 1L, 107L, 60L, true);
+    timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 107L, 60L, true);
 
     Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(3), 0L));
   }
