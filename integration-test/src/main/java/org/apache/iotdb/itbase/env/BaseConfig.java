@@ -342,4 +342,12 @@ public interface BaseConfig {
   default int getSelectIntoInsertTabletPlanRowLimit() {
     return 10000;
   }
+
+  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    return this;
+  }
+
+  default boolean isEnableLeaderBalancing() {
+    return false;
+  }
 }

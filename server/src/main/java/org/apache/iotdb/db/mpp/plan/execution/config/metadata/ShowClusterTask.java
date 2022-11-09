@@ -97,8 +97,8 @@ public class ShowClusterTask implements IConfigTask {
                     e.getDataNodeId(),
                     NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
-                    e.getClientRpcEndPoint().getIp(),
-                    e.getClientRpcEndPoint().getPort()));
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort()));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

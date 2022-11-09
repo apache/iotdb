@@ -67,6 +67,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
   public static final String COLUMN_HOST = "Host";
+  public static final String COLUMN_INTERNAL_ADDRESS = "InternalAddress";
   public static final String COLUMN_INTERNAL_PORT = "InternalPort";
   public static final String COLUMN_RPC_PORT = "RpcPort";
 
@@ -248,7 +249,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =

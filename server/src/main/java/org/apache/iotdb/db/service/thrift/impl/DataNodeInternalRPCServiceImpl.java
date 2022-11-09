@@ -1341,7 +1341,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error("Error occurred during ");
+      LOGGER.error(
+          "Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
+          req.triggerName,
+          e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
@@ -1355,7 +1358,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
     } catch (Exception e) {
       LOGGER.error(
-          "Error occurred during drop trigger instance for trigger: {}. The cause is {}.",
+          "Error occurred when dropping trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getStatusCode())
@@ -1371,7 +1374,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .updateLocationOfStatefulTrigger(req.triggerName, req.newLocation);
     } catch (Exception e) {
       LOGGER.error(
-          "Error occurred during update Location for trigger: {}. The cause is {}.",
+          "Error occurred when updating Location for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
       return new TSStatus(TSStatusCode.UPDATE_TRIGGER_LOCATION_ERROR.getStatusCode())
