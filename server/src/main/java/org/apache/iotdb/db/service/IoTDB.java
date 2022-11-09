@@ -171,16 +171,6 @@ public class IoTDB implements IoTDBMBean {
     logger.info(
         "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
 
-    while (!StorageEngine.getInstance().isAllSgReady()) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up.", e);
-        Thread.currentThread().interrupt();
-        return;
-      }
-    }
-
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());

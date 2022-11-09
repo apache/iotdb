@@ -21,7 +21,6 @@ package org.apache.iotdb.db.wal.buffer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.utils.WALMode;
 
 /** This entry class stores info for persistence */
@@ -40,16 +39,9 @@ public class WALInfoEntry extends WALEntry {
 
   public WALInfoEntry(long memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
-    if (value instanceof InsertTabletPlan) {
-      tabletInfo = new TabletInfo(0, ((InsertTabletPlan) value).getRowCount());
-    } else if (value instanceof InsertTabletNode) {
+    if (value instanceof InsertTabletNode) {
       tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
     }
-  }
-
-  public WALInfoEntry(long memTableId, InsertTabletPlan value, int tabletStart, int tabletEnd) {
-    this(memTableId, value, config.getWalMode() == WALMode.SYNC);
-    tabletInfo = new TabletInfo(tabletStart, tabletEnd);
   }
 
   public WALInfoEntry(long memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
@@ -71,21 +63,17 @@ public class WALInfoEntry extends WALEntry {
     buffer.put(type.getCode());
     buffer.putLong(memTableId);
     switch (type) {
-      case INSERT_TABLET_PLAN:
-        ((InsertTabletPlan) value)
-            .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
-        break;
       case INSERT_TABLET_NODE:
         ((InsertTabletNode) value)
             .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
         break;
-      case INSERT_ROW_PLAN:
       case INSERT_ROW_NODE:
-      case DELETE_PLAN:
       case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
         value.serializeToWAL(buffer);
         break;
+      default:
+        throw new RuntimeException("Unsupported wal entry type " + type);
     }
   }
 

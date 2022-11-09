@@ -815,6 +815,11 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus isConsensusInitialized() throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support isConsensusInitialized.");
+  }
+
+  @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support removeConfigNode.");
   }

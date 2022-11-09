@@ -96,6 +96,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           break;
         case STOP_DATA_NODE:
           // TODO if region migrate is failed, don't execute STOP_DATA_NODE
+          LOG.info(
+              "{}, Begin to stop DataNode: {}", REMOVE_DATANODE_PROCESS, disableDataNodeLocation);
           env.getDataNodeRemoveHandler().removeDataNodePersistence(disableDataNodeLocation);
           env.getDataNodeRemoveHandler().stopDataNode(disableDataNodeLocation);
           return Flow.NO_MORE_STATE;
