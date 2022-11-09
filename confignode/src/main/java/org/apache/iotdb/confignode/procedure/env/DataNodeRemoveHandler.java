@@ -412,14 +412,18 @@ public class DataNodeRemoveHandler {
    * @param dataNode old data node
    */
   public void stopDataNode(TDataNodeLocation dataNode) {
-    LOGGER.info("{}, Begin to stop DataNode {}", REMOVE_DATANODE_PROCESS, dataNode);
+
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
     configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info("{}, Stop Data Node {} result: {}", REMOVE_DATANODE_PROCESS, dataNode, status);
+    LOGGER.info(
+        "{}, Stop DataNode execute finished, DataNode: {}, result: {}",
+        REMOVE_DATANODE_PROCESS,
+        dataNode,
+        status);
   }
 
   /**
@@ -536,8 +540,7 @@ public class DataNodeRemoveHandler {
    * @param tDataNodeLocation data node location
    */
   public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
-    removeDataNodes.add(tDataNodeLocation);
+    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 

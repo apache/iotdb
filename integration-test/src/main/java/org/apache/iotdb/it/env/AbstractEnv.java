@@ -201,6 +201,7 @@ public abstract class AbstractEnv implements BaseEnv {
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
+      logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
       fail("After 30 times retry, the cluster can't work!");
     }
   }
