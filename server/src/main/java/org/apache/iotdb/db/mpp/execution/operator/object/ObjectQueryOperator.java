@@ -57,6 +57,9 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
     }
 
     List<T> objectEntryList = nextBatch();
+    if (objectEntryList == null) {
+      return null;
+    }
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     int objectId;
     for (ObjectEntry objectEntry : objectEntryList) {
@@ -67,6 +70,7 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
       }
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeInt(objectId);
+      builder.declarePosition();
     }
 
     return builder.build();

@@ -93,11 +93,13 @@ public class SchemaFetchObjectEntry extends ObjectEntry {
   protected void deserializeObjectData(DataInputStream dataInputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(dataInputStream);
     if (type == 0) {
+      isReadingStorageGroupInfo = true;
       int size = ReadWriteIOUtils.readInt(dataInputStream);
       for (int i = 0; i < size; i++) {
         storageGroupList.add(ReadWriteIOUtils.readString(dataInputStream));
       }
     } else if (type == 1) {
+      isReadingStorageGroupInfo = false;
       schemaTree = ClusterSchemaTree.deserialize(dataInputStream);
     } else {
       throw new RuntimeException(

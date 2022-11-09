@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -52,7 +51,7 @@ public class ObjectSerializeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final QueryId queryId;
+  private final String queryId;
   private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
 
   private final List<TSDataType> outputDataTypes = Collections.singletonList(TSDataType.TEXT);
@@ -61,7 +60,7 @@ public class ObjectSerializeOperator implements ProcessOperator {
 
   private final Queue<TsBlock> tsBlockBufferQueue = new LinkedList<>();
 
-  public ObjectSerializeOperator(OperatorContext operatorContext, QueryId queryId, Operator child) {
+  public ObjectSerializeOperator(OperatorContext operatorContext, String queryId, Operator child) {
     this.operatorContext = operatorContext;
     this.queryId = queryId;
     this.child = child;
@@ -106,12 +105,17 @@ public class ObjectSerializeOperator implements ProcessOperator {
       for (int i = 0; i < bufferList.size(); i++) {
         TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeBinary(new Binary(bufferList.get(0).array()));
+        builder.getColumnBuilder(0).writeBinary(new Binary(bufferList.get(i).array()));
+        builder.declarePosition();
+
+        builder.getTimeColumnBuilder().writeLong(0L);
         if (i == bufferList.size() - 1) {
           builder.getColumnBuilder(0).writeBinary(new Binary(BATCH_END_SYMBOL));
         } else {
           builder.getColumnBuilder(0).writeBinary(new Binary(BATCH_CONTINUE_SYMBOL));
         }
+        builder.declarePosition();
+
         tsBlockBufferQueue.offer(builder.build());
       }
     }

@@ -51,7 +51,7 @@ public class ObjectDeserializeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new ObjectSerializeNode(getPlanNodeId());
+    return new ObjectDeserializeNode(getPlanNodeId());
   }
 
   @Override

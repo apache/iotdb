@@ -250,7 +250,11 @@ public class ClusterSchemaTree implements ISchemaTree {
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
 
-    while (inputStream.available() > 0) {
+    if (inputStream.available() <= 0) {
+      return new ClusterSchemaTree();
+    }
+
+    while (!(!stack.isEmpty() && stack.peek().getName().equals(PATH_ROOT))) {
       nodeType = ReadWriteIOUtils.readByte(inputStream);
       if (nodeType == SCHEMA_MEASUREMENT_NODE) {
         SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);

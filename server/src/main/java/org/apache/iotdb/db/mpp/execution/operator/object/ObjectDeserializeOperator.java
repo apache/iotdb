@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -90,7 +91,6 @@ public class ObjectDeserializeOperator implements ProcessOperator {
     ByteBuffer buffer;
     for (int i = 0; i < tsBlock.getPositionCount() - 1; i++) {
       buffer = ByteBuffer.wrap(tsBlock.getColumn(0).getBinary(i).getValues());
-      buffer.flip();
       bufferList.add(buffer);
     }
     if (Arrays.equals(
@@ -103,17 +103,18 @@ public class ObjectDeserializeOperator implements ProcessOperator {
   }
 
   private TsBlock generateObject() {
-    SegmentedInputStream segmentedInputStream = new SegmentedInputStream(bufferList);
-    DataInputStream dataInputStream = new DataInputStream(segmentedInputStream);
+    SegmentedByteInputStream segmentedByteInputStream = new SegmentedByteInputStream(bufferList);
+    DataInputStream dataInputStream = new DataInputStream(segmentedByteInputStream);
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     try {
       byte objectRecordSymbol = dataInputStream.readByte();
       while (objectRecordSymbol == OBJECT_START_SYMBOL) {
         ObjectEntry objectEntry =
-            ObjectEntryFactory.getObjectEntry(ObjectType.deserialize(segmentedInputStream));
+            ObjectEntryFactory.getObjectEntry(ObjectType.deserialize(segmentedByteInputStream));
         objectEntry.deserializeObject(dataInputStream);
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(objectPool.put(queryId, objectEntry).getId());
+        builder.declarePosition();
         objectRecordSymbol = dataInputStream.readByte();
       }
     } catch (IOException e) {
@@ -149,28 +150,66 @@ public class ObjectDeserializeOperator implements ProcessOperator {
         + child.calculateRetainedSizeAfterCallingNext();
   }
 
-  private static class SegmentedInputStream extends InputStream {
+  private static class SegmentedByteInputStream extends InputStream {
 
     private final List<ByteBuffer> bufferList;
 
     private int index = 0;
 
-    public SegmentedInputStream(List<ByteBuffer> bufferList) {
+    private ByteBuffer workingBuffer;
+
+    public SegmentedByteInputStream(List<ByteBuffer> bufferList) {
       this.bufferList = bufferList;
+      this.workingBuffer = bufferList.get(0);
     }
 
     @Override
     public int read() throws IOException {
-      ByteBuffer buffer = bufferList.get(index);
-      if (!buffer.hasRemaining()) {
+      if (!workingBuffer.hasRemaining()) {
         if (index == bufferList.size() - 1) {
           throw new EOFException();
         } else {
           index++;
-          buffer = bufferList.get(index);
+          workingBuffer = bufferList.get(index);
         }
       }
-      return buffer.get();
+      return workingBuffer.get();
+    }
+
+    @Override
+    public int read(@NotNull byte[] b, int off, int len) throws IOException {
+      int count = 0;
+      int position;
+      int delta;
+      while (len > 0) {
+        if (workingBuffer.remaining() >= len) {
+          position = workingBuffer.position();
+          workingBuffer.get(b, off, len);
+          delta = workingBuffer.position() - position;
+        } else {
+          delta = workingBuffer.remaining();
+          workingBuffer.get(b, off, delta);
+          if (index == bufferList.size() - 1) {
+            break;
+          } else {
+            index++;
+            workingBuffer = bufferList.get(index);
+          }
+        }
+        count += len;
+        off += delta;
+        len -= delta;
+      }
+      return count;
+    }
+
+    @Override
+    public int available() throws IOException {
+      int remaining = 0;
+      for (int i = index; i < bufferList.size(); i++) {
+        remaining += bufferList.get(i).remaining();
+      }
+      return remaining;
     }
   }
 }

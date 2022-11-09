@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
@@ -1523,6 +1522,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+    TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
+    boolean isSameNode = isSameNode(upstreamEndPoint);
+
+    context.setSourceOnSameNode(isSameNode);
+
     OperatorContext operatorContext =
         context
             .getInstanceContext()
@@ -1535,9 +1539,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
-    TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
     ISourceHandle sourceHandle =
-        isSameNode(upstreamEndPoint)
+        isSameNode
             ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
@@ -1556,7 +1559,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
     TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
     boolean isOnSameNode = isSameNode(downStreamEndPoint);
-    context.setOnSameNode(isOnSameNode);
+    context.setSinkOnSameNode(isOnSameNode);
 
     Operator child = node.getChild().accept(this, context);
 
@@ -1597,7 +1600,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SchemaFetchMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new SchemaFetchMergeOperator(
-        operatorContext, node.getPlanNodeId().getId(), children, node.getStorageGroupList());
+        operatorContext,
+        context.getInstanceContext().getId().getQueryId().getId(),
+        children,
+        node.getStorageGroupList());
   }
 
   @Override
@@ -1614,7 +1620,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaFetchScanOperator(
         node.getPlanNodeId(),
         operatorContext,
-        node.getPlanNodeId().getId(),
+        context.getInstanceContext().getId().getQueryId().getId(),
         node.getPatternTree(),
         node.getTemplateMap(),
         ((SchemaDriverContext) (context.getInstanceContext().getDriverContext())).getSchemaRegion(),
@@ -1964,7 +1970,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitObjectDeserialize(
       ObjectDeserializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    if (context.isOnSameNode()) {
+    if (context.isSourceOnSameNode()) {
       return child;
     } else {
       OperatorContext operatorContext =
@@ -1974,7 +1980,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   ObjectDeserializeNode.class.getSimpleName());
-      return new ObjectDeserializeOperator(operatorContext, node.getPlanNodeId().getId(), child);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new ObjectDeserializeOperator(
+          operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
     }
   }
 
@@ -1982,7 +1990,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitObjectSerialize(
       ObjectSerializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    if (context.isOnSameNode()) {
+    if (context.isSinkOnSameNode()) {
       return child;
     } else {
       OperatorContext operatorContext =
@@ -1992,8 +2000,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   ObjectSerializeNode.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new ObjectSerializeOperator(
-          operatorContext, new QueryId(node.getPlanNodeId().getId()), child);
+          operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
     }
   }
 }

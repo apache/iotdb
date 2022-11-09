@@ -62,7 +62,9 @@ public class LocalExecutionPlanContext {
 
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
-  private boolean isOnSameNode;
+  private boolean isSinkOnSameNode;
+
+  private boolean isSourceOnSameNode;
 
   public LocalExecutionPlanContext(
       TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
@@ -161,11 +163,19 @@ public class LocalExecutionPlanContext {
     return needUpdateLastCache;
   }
 
-  public boolean isOnSameNode() {
-    return isOnSameNode;
+  public boolean isSinkOnSameNode() {
+    return isSinkOnSameNode;
   }
 
-  public void setOnSameNode(boolean onSameNode) {
-    isOnSameNode = onSameNode;
+  public void setSinkOnSameNode(boolean sinkOnSameNode) {
+    isSinkOnSameNode = sinkOnSameNode;
+  }
+
+  public boolean isSourceOnSameNode() {
+    return isSourceOnSameNode;
+  }
+
+  public void setSourceOnSameNode(boolean sourceOnSameNode) {
+    isSourceOnSameNode = sourceOnSameNode;
   }
 }
