@@ -87,6 +87,10 @@ public class PendingBatch {
     return batches.isEmpty();
   }
 
+  public long getSerializedSize() {
+    return serializedSize;
+  }
+
   @Override
   public String toString() {
     return "PendingBatch{"

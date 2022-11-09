@@ -99,7 +99,9 @@ public class MultiLeaderConsensus implements IConsensus {
                 new SyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
     // init multiLeader memory manager
     MultiLeaderMemoryManager.getInstance()
-        .init(config.getMultiLeaderConfig().getReplication().getAllocateMemoryForConsensus());
+        .init(
+            config.getMultiLeaderConfig().getReplication().getAllocateMemoryForConsensus(),
+            config.getMultiLeaderConfig().getReplication().getAllocateMemoryForQueue());
   }
 
   @Override

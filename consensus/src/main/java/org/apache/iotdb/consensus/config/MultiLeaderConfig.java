@@ -197,7 +197,6 @@ public class MultiLeaderConfig {
 
   public static class Replication {
     private final int maxRequestNumPerBatch;
-
     private final int maxSizePerBatch;
     private final int maxPendingBatch;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
@@ -206,7 +205,8 @@ public class MultiLeaderConfig {
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
     private final long checkpointGap;
-    private final Long allocateMemoryForConsensus;
+    private final long allocateMemoryForConsensus;
+    private final long allocateMemoryForQueue;
 
     private Replication(
         int maxRequestNumPerBatch,
@@ -218,7 +218,8 @@ public class MultiLeaderConfig {
         long walThrottleThreshold,
         long throttleTimeOutMs,
         long checkpointGap,
-        long allocateMemoryForConsensus) {
+        long allocateMemoryForConsensus,
+        double maxMemoryRatioForQueue) {
       this.maxRequestNumPerBatch = maxRequestNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatch = maxPendingBatch;
@@ -229,6 +230,7 @@ public class MultiLeaderConfig {
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
       this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+      this.allocateMemoryForQueue = (long) (allocateMemoryForConsensus * maxMemoryRatioForQueue);
     }
 
     public int getMaxRequestNumPerBatch() {
@@ -271,6 +273,10 @@ public class MultiLeaderConfig {
       return allocateMemoryForConsensus;
     }
 
+    public long getAllocateMemoryForQueue() {
+      return allocateMemoryForQueue;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -288,6 +294,7 @@ public class MultiLeaderConfig {
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
       private long allocateMemoryForConsensus;
+      private double maxMemoryRatioForQueue = 0.6;
 
       public Replication.Builder setMaxRequestNumPerBatch(int maxRequestNumPerBatch) {
         this.maxRequestNumPerBatch = maxRequestNumPerBatch;
@@ -351,7 +358,8 @@ public class MultiLeaderConfig {
             walThrottleThreshold,
             throttleTimeOutMs,
             checkpointGap,
-            allocateMemoryForConsensus);
+            allocateMemoryForConsensus,
+            maxMemoryRatioForQueue);
       }
     }
   }
