@@ -44,12 +44,16 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterTask implements IConfigTask {
 
-  public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
+  private final ShowClusterStatement showClusterStatement;
+
+  public ShowClusterTask(ShowClusterStatement showClusterStatement) {
+    this.showClusterStatement = showClusterStatement;
+  }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showCluster();
+    return configTaskExecutor.showCluster(showClusterStatement);
   }
 
   private static void buildTsBlock(
@@ -75,41 +79,32 @@ public class ShowClusterTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    if (clusterNodeInfos.getConfigNodeList() != null
-        && clusterNodeInfos.getConfigNodeList().size() != 0) {
-      clusterNodeInfos
-          .getConfigNodeList()
-          .forEach(
-              e ->
-                  buildTsBlock(
-                      builder,
-                      e.getConfigNodeId(),
-                      NODE_TYPE_CONFIG_NODE,
-                      clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
-                      e.getInternalEndPoint().getIp(),
-                      e.getInternalEndPoint().getPort()));
-    }
 
-    if (clusterNodeInfos.getDataNodeList() != null
-        && clusterNodeInfos.getDataNodeList().size() != 0) {
-      clusterNodeInfos
-          .getDataNodeList()
-          .forEach(
-              e ->
-                  buildTsBlock(
-                      builder,
-                      e.getDataNodeId(),
-                      NODE_TYPE_DATA_NODE,
-                      clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
-                      e.getClientRpcEndPoint().getIp(),
-                      e.getClientRpcEndPoint().getPort()));
-    }
+    clusterNodeInfos
+        .getConfigNodeList()
+        .forEach(
+            e ->
+                buildTsBlock(
+                    builder,
+                    e.getConfigNodeId(),
+                    NODE_TYPE_CONFIG_NODE,
+                    clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort()));
+
+    clusterNodeInfos
+        .getDataNodeList()
+        .forEach(
+            e ->
+                buildTsBlock(
+                    builder,
+                    e.getDataNodeId(),
+                    NODE_TYPE_DATA_NODE,
+                    clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort()));
+
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
-    if (clusterNodeInfos.getConfigNodeList() != null
-        && clusterNodeInfos.getDataNodeList() != null) {
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    } else {
-      future.set(new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR));
-    }
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
