@@ -103,8 +103,8 @@ public class SyncIT {
   }
 
   private void prepareSchema() throws Exception {
-    senderStatement.execute("set storage group to root.sg1");
-    senderStatement.execute("set storage group to root.sg2");
+    senderStatement.execute("CREATE DATABASE root.sg1");
+    senderStatement.execute("CREATE DATABASE root.sg2");
     senderStatement.execute("create timeseries root.sg1.d1.s1 with datatype=int32, encoding=PLAIN");
     senderStatement.execute("create timeseries root.sg1.d1.s2 with datatype=float, encoding=RLE");
     senderStatement.execute("create timeseries root.sg1.d1.s3 with datatype=TEXT, encoding=PLAIN");

@@ -1012,7 +1012,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return stopTriggerOperator;
   }
 
-  // Show Storage Group
+  // SHOW DATABASES
 
   @Override
   public Operator visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {

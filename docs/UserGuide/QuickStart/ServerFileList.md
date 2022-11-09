@@ -64,7 +64,7 @@
 > under directory basedir/wal
 
 1. {StorageGroupName}-{TsFileName}/wal1
-    + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
+    + every database has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 
 #### TsFile
 > under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
@@ -88,7 +88,7 @@
 > under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
 
 1. Version-{version}
-    + version file, record the max version in fileName of a storage group
+    + version file, record the max version in fileName of a database
 
 #### Upgrade
 > under directory basedir/system/upgrade

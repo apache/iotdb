@@ -66,7 +66,7 @@ public class IoTDBCreateTimeseriesIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("SET storage group TO %s", storageGroup));
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -93,7 +93,7 @@ public class IoTDBCreateTimeseriesIT {
     resultList.clear();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("show storage group")) {
+        ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
         String res = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
         resultList.add(res);

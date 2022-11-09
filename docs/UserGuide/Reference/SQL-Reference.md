@@ -48,11 +48,11 @@ It costs 0.417s
 
 ## Schema Statement
 
-* Set Storage Group
+* Create Database
 
 ``` SQL
-SET STORAGE GROUP TO <FullPath>
-Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
+CREATE DATABASE <FullPath>
+Eg: IoTDB > CREATE DATABASE root.ln.wf01.wt01
 Note: FullPath can not include wildcard `*` or `**`
 ```
 
@@ -265,20 +265,20 @@ Eg: show timeseries root.ln.** where description contains 'test1'
 Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
-* Show Storage Group Statement
+* Show Databases Statement
 
 ```
-SHOW STORAGE GROUP
-Eg: IoTDB > SHOW STORAGE GROUP
+SHOW DATABASES
+Eg: IoTDB > SHOW DATABASES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Storage Group Statement
 
 ```
-SHOW STORAGE GROUP <Path>
-Eg: IoTDB > SHOW STORAGE GROUP root.*
-Eg: IoTDB > SHOW STORAGE GROUP root.ln
+SHOW DATABASES <Path>
+Eg: IoTDB > SHOW DATABASES root.*
+Eg: IoTDB > SHOW DATABASES root.ln
 Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```

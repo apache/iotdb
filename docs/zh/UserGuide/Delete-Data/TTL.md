@@ -79,7 +79,7 @@ SHOW TTL ON root.ln,root.sgcc,root.DB 这个例子会显示指定的三个存储
 ```
 IoTDB> show all ttl
 +-------------+-------+
-|storage group|ttl(ms)|
+|     database|ttl(ms)|
 +-------------+-------+
 |      root.ln|3600000|
 |    root.sgcc|   null|

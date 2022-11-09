@@ -53,8 +53,8 @@ public class IoTDBAggregationByLevelIT {
 
   private static final String[] dataSet =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg1",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",

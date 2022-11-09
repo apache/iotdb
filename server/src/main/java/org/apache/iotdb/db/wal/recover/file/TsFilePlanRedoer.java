@@ -61,7 +61,7 @@ public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
   /** only unsequence file tolerates duplicated data */
   private final boolean sequence;
-  /** virtual storage group's idTable of this tsFile */
+  /** virtual database's idTable of this tsFile */
   private final IDTable idTable;
   /** store data when redoing logs */
   private IMemTable recoveryMemTable = new PrimitiveMemTable();

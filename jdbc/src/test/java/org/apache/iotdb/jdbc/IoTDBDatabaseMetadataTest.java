@@ -115,7 +115,7 @@ public class IoTDBDatabaseMetadataTest {
     resp.setSubStatus(resExpected);
 
     statement.clearBatch();
-    statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
+    statement.addBatch("CREATE DATABASE root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     int[] result = statement.executeBatch();

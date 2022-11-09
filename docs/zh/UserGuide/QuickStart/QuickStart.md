@@ -122,23 +122,23 @@ IoTDB>
 
 在这里，我们首先介绍一下使用 Cli 工具创建时间序列、插入数据并查看数据的方法。
 
-数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用 SET STORAGE GROUP 语句定义存储组。SQL 语句如下：
+数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用 CREATE DATABASE 语句创建数据库。SQL 语句如下：
 
 ``` 
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们可以使用 SHOW STORAGE GROUP 语句来查看系统当前所有的存储组，SQL 语句如下：
+我们可以使用 SHOW DATABASES 语句来查看系统当前所有的存储组，SQL 语句如下：
 
 ```
-IoTDB> SHOW STORAGE GROUP
+IoTDB> SHOW DATABASES
 ```
 
 执行结果为：
 
 ```
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |      root.ln|
 +-------------+
@@ -164,7 +164,7 @@ IoTDB> SHOW TIMESERIES
 
 ```
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -182,7 +182,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 
 ```
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+

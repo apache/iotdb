@@ -73,7 +73,7 @@ public class IoTDBInterpreterTest {
   }
 
   private void initInsert() {
-    interpreter.internalInterpret("set storage group to root.test.wf01", null);
+    interpreter.internalInterpret("CREATE DATABASE root.test.wf01", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
         null);
@@ -90,7 +90,7 @@ public class IoTDBInterpreterTest {
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
         null);
 
-    interpreter.internalInterpret("set storage group to root.test.wf02", null);
+    interpreter.internalInterpret("CREATE DATABASE root.test.wf02", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf02.wt02 (timestamp, temperature, status, hardware) VALUES (44, 4.4, false, 44)",
         null);
@@ -245,7 +245,7 @@ public class IoTDBInterpreterTest {
   @Test
   public void TestMultiLines() {
     String insert =
-        "SET STORAGE GROUP TO root.test.wf01.wt01;\n"
+        "CREATE DATABASE root.test.wf01.wt01;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n"
@@ -268,7 +268,7 @@ public class IoTDBInterpreterTest {
             + "\n";
     String[] gt =
         new String[] {
-          "SET STORAGE GROUP TO root.test.wf01.wt01",
+          "CREATE DATABASE root.test.wf01.wt01",
           "CREATE TIMESERIES root.test.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
           "CREATE TIMESERIES root.test.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.test.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -378,7 +378,7 @@ public class IoTDBInterpreterTest {
 
   @Test
   public void testShowStorageGroup() {
-    InterpreterResult actual = interpreter.internalInterpret("SHOW STORAGE GROUP", null);
+    InterpreterResult actual = interpreter.internalInterpret("SHOW DATABASES", null);
     String gt = "storage group\n" + "root.test.wf02\n" + "root.test.wf01";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());

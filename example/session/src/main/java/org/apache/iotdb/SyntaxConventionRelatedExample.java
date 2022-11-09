@@ -32,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * When using session API, measurement, device, storage group and path are represented by String.
- * The content of the String should be the same as what you would write in a SQL statement. This
- * class is an example to help you understand better.
+ * When using session API, measurement, device, database and path are represented by String. The
+ * content of the String should be the same as what you would write in a SQL statement. This class
+ * is an example to help you understand better.
  */
 public class SyntaxConventionRelatedExample {
   private static Session session;

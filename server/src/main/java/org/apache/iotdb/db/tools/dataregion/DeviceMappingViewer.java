@@ -28,7 +28,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import java.util.Set;
 
 /**
- * for DBA to view the mapping from device to virtual storage group ID usage: run this class with
+ * for DBA to view the mapping from device to virtual database ID usage: run this class with
  * arguments [system_schema_dir], if args are not given, use default in config
  */
 public class DeviceMappingViewer {

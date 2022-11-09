@@ -221,7 +221,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
         }
       }
       if (isAutoCreate) {
-        // try to auto create storage group
+        // try to auto create database
         Set<PartialPath> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : devicePaths) {
           if (!deviceToStorageGroup.containsKey(devicePath)) {

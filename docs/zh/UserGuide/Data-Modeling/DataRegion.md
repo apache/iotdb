@@ -21,7 +21,7 @@
 
 # 背景
 
-存储组由用户显示指定，使用语句"SET STORAGE GROUP TO"来指定存储组，每一个存储组有一个对应的 StorageGroupProcessor
+存储组由用户显示指定，使用语句"CREATE DATABASE"来指定存储组，每一个存储组有一个对应的 StorageGroupProcessor
 
 为了确保最终一致性，每一个存储组有一个数据插入锁（排它锁）来同步每一次插入操作。
 所以服务端数据写入的并行度为存储组的数量。
@@ -48,6 +48,6 @@
 data_region_num
 ```
 
-推荐值为[data region number] = [CPU core number] / [user-defined storage group number]
+推荐值为[data region number] = [CPU core number] / [user-defined database number]
 
 参考[配置手册](../Reference/DataNode-Config-Manual.md)以获取更多信息。

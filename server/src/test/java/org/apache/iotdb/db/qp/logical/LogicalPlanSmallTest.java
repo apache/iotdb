@@ -221,7 +221,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testChineseCharacter() throws IllegalPathException {
-    String sqlStr1 = "set storage group to root.一级";
+    String sqlStr1 = "CREATE DATABASE root.一级";
     Operator operator = LogicalGenerator.generate(sqlStr1, ZoneId.systemDefault());
     Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
     Assert.assertEquals(new PartialPath("root.一级"), ((SetStorageGroupOperator) operator).getPath());

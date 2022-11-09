@@ -138,9 +138,9 @@ public void exampleTest() throws Exception {
   try (Connection connection = EnvFactory.getEnv().getConnection();
       Statement statement = connection.createStatement()) {
     // use execute() to set the storage groups
-    statement.execute("set storage group to root.sg");
+    statement.execute("CREATE DATABASE root.sg");
     // use executeQuery() query the storage groups
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       if (resultSet.next()) {
         String storageGroupPath = resultSet.getString("storage group");
         Assert.assertEquals("root.sg", storageGroupPath);

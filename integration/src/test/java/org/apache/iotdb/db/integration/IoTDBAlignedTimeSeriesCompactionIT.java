@@ -43,7 +43,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
     EnvFactory.getEnv().initBeforeClass();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + storageGroup);
+      statement.execute("CREATE DATABASE " + storageGroup);
     }
   }
 

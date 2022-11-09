@@ -27,12 +27,12 @@ public class StorageGroupNotSetException extends MetadataException {
   private static final long serialVersionUID = 3739300272099030533L;
 
   public StorageGroupNotSetException(String path) {
-    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
+    super(String.format("Database is not set for current seriesPath: [%s]", path));
     this.errorCode = TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode();
   }
 
   public StorageGroupNotSetException(String path, boolean isUserException) {
-    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
+    super(String.format("Database is not set for current seriesPath: [%s]", path));
     this.isUserException = isUserException;
     this.errorCode = TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode();
   }
@@ -40,6 +40,6 @@ public class StorageGroupNotSetException extends MetadataException {
   public StorageGroupNotSetException(String path, String reason) {
     super(
         String.format(
-            "Storage group is not set for current seriesPath: [%s], because %s", path, reason));
+            "Database is not set for current seriesPath: [%s], because %s", path, reason));
   }
 }

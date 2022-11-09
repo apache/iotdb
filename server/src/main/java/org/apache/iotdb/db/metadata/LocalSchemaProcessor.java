@@ -395,7 +395,7 @@ public class LocalSchemaProcessor {
   // including sg set and delete, and ttl set
 
   /**
-   * Set storage group of the given path to MTree.
+   * CREATE DATABASE of the given path to MTree.
    *
    * @param storageGroup root.node.(node)*
    */

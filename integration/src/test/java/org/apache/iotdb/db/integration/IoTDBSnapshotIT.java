@@ -72,7 +72,7 @@ public class IoTDBSnapshotIT {
           DirectoryNotLegalException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -138,7 +138,7 @@ public class IoTDBSnapshotIT {
           DirectoryNotLegalException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -173,7 +173,7 @@ public class IoTDBSnapshotIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       Map<String, Integer> resultMap = new HashMap<>();
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -230,7 +230,7 @@ public class IoTDBSnapshotIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       Map<String, Integer> resultMap = new HashMap<>();
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(

@@ -34,7 +34,7 @@ import java.util.Map;
 /** This is an internal example of the UDTF implementation. */
 public class UDTFExample implements UDTF {
   /*
-   * SET STORAGE GROUP TO root.sg1;
+   * CREATE DATABASE root.sg1;
    * CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;
    * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1);

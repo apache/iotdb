@@ -41,7 +41,7 @@ public class IoTDBFilterNullIT {
 
   private static final String[] createSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.testNullFilter",
+        "CREATE DATABASE root.testNullFilter",
         "CREATE TIMESERIES root.testNullFilter.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.testNullFilter.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.testNullFilter.d1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN"

@@ -74,7 +74,7 @@ IoTDB> login successfully
 |-pw <`password`>|string 类型，不需要引号|否|IoTDB 连接服务器所使用的密码。如果没有输入密码 IoTDB 会在 Cli 端提示输入密码。|-pw root|
 |-u <`username`>|string 类型，不需要引号|是|IoTDB 连接服务器锁使用的用户名。|-u root|
 |-maxPRC <`maxPrintRowCount`>|int 类型|否|设置 IoTDB 返回客户端命令行中所显示的最大行数。|-maxPRC 10|
-|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show storage group"|
+|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show databases"|
 |-c | 空 | 否 | 如果服务器设置了 `rpc_thrift_compression_enable=true`, 则 CLI 必须使用 `-c` | -c |
 
 下面展示一条客户端命令，功能是连接 IP 为 10.129.187.21 的主机，端口为 6667 ，用户名为 root，密码为 root，以数字的形式打印时间戳，IoTDB 命令行显示的最大行数为 10。
@@ -246,7 +246,7 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "CREATE DATABASE root.demo"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"

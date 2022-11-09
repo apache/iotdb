@@ -538,7 +538,7 @@ public class IoTDBRestServiceTest {
   }
 
   public void showStorageGroup(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show storage group root.*\"}";
+    String sql = "{\"sql\":\"SHOW DATABASES root.*\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");

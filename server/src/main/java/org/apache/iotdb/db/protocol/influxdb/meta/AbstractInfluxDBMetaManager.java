@@ -57,7 +57,7 @@ public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManage
   }
 
   /**
-   * set storage group
+   * create database
    *
    * @param database database of influxdb
    * @param sessionID session id

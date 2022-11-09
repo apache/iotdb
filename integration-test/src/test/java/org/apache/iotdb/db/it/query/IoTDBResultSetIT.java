@@ -50,7 +50,7 @@ public class IoTDBResultSetIT {
 
   private static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.t1",
+        "CREATE DATABASE root.t1",
         "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",

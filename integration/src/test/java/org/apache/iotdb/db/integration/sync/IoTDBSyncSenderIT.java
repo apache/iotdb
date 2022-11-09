@@ -109,8 +109,8 @@ public class IoTDBSyncSenderIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.sg1");
-      statement.execute("set storage group to root.sg2");
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
       statement.execute("create timeseries root.sg1.d1.s1 with datatype=int32, encoding=PLAIN");
       statement.execute("create timeseries root.sg1.d1.s2 with datatype=float, encoding=RLE");
       statement.execute("create timeseries root.sg1.d1.s3 with datatype=TEXT, encoding=PLAIN");
@@ -231,7 +231,7 @@ public class IoTDBSyncSenderIT {
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.* where time <= 2");
       statement.execute("delete timeseries root.sg1.d2.*");
-      statement.execute("delete storage group root.sg2");
+      statement.execute("delete database root.sg2");
     }
 
     List<PipeData> resultList = new ArrayList<>();

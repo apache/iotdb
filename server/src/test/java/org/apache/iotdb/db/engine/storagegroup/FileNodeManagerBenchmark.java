@@ -39,7 +39,7 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Bench The storage group manager with mul-thread and get its performance. */
+/** Bench The database manager with mul-thread and get its performance. */
 public class FileNodeManagerBenchmark {
 
   private static int numOfWorker = 10;

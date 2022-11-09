@@ -162,7 +162,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   /**
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
-   * storage group should be set first, throw exception otherwise
+   * database should be set first, throw exception otherwise
    *
    * @param path timeseries path
    * @param dataType data type
@@ -258,7 +258,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   /**
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * storage group should be set first, throw exception otherwise
+   * timeseries, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -553,9 +553,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
     }
 
-    // delete all empty ancestors except storage group and MeasurementMNode
+    // delete all empty ancestors except database and MeasurementMNode
     while (isEmptyInternalMNode(curNode)) {
-      // if current storage group has no time series, return the storage group name
+      // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
         return curNode.getPartialPath();
       }

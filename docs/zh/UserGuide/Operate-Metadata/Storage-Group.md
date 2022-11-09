@@ -28,7 +28,7 @@
 我们可以根据存储模型建立相应的存储组。创建存储组支持两种 SQL 语句，如下所示：
 
 ```
-IoTDB > set storage group to root.ln
+IoTDB > CREATE DATABASE root.ln
 IoTDB > create storage group root.sgcc
 ```
 
@@ -37,10 +37,10 @@ IoTDB > create storage group root.sgcc
 需要注意的是，存储组的父子节点都不能再设置存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
 
 ```
-IoTDB> set storage group to root.ln.wf01
-Msg: 300: root.ln has already been set to storage group.
+IoTDB> CREATE DATABASE root.ln.wf01
+Msg: 300: root.ln has already been created as database.
 IoTDB> create storage group root.ln.wf01
-Msg: 300: root.ln has already been set to storage group.
+Msg: 300: root.ln has already been created as database.
 ```
 存储组节点名只支持中英文字符、数字、下划线的组合，如果想设置为纯数字或者包含其他字符，需要用反引号(``)把存储组名称引起来。
 
@@ -48,12 +48,12 @@ Msg: 300: root.ln has already been set to storage group.
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用 [SHOW STORAGE GROUP](../Reference/SQL-Reference.md) 语句和 [SHOW STORAGE GROUP \<PathPattern>](../Reference/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
+在存储组创建后，我们可以使用 [SHOW DATABASES](../Reference/SQL-Reference.md) 语句和 [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
 
 ```
-IoTDB> show storage group
-IoTDB> show storage group root.*
-IoTDB> show storage group root.**
+IoTDB> show databases
+IoTDB> show databases root.*
+IoTDB> show databases root.**
 ```
 
 执行结果为：
@@ -87,7 +87,7 @@ IoTDB > DELETE STORAGE GROUP root.**
 SQL 语句如下所示：
 
 ```
-IoTDB> show storage group
+IoTDB> show databases
 IoTDB> count storage group
 IoTDB> count storage group root.*
 IoTDB> count storage group root.sgcc.*

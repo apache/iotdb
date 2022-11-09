@@ -44,8 +44,8 @@ public class SingleDataSetTest {
   private final Planner processor = new Planner();
 
   private final String[] sqls = {
-    "SET STORAGE GROUP TO root.vehicle",
-    "SET STORAGE GROUP TO root.test",
+    "CREATE DATABASE root.vehicle",
+    "CREATE DATABASE root.test",
     "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 public interface VirtualPartitioner {
 
   /**
-   * use device id to determine storage group id
+   * use device id to determine database id
    *
    * @param deviceId device id
    * @return data region id

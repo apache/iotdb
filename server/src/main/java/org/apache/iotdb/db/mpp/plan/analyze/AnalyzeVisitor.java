@@ -1734,10 +1734,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
-      logger.error(String.format("Set Storage group error, statement: %s.", statement));
-      logger.error(String.format("Set storage group result status : %s.", result.status));
+      logger.error(String.format("Create Database error, statement: %s.", statement));
+      logger.error(String.format("Create database result status : %s.", result.status));
       throw new LoadFileException(
-          String.format("Can not execute set storage group statement: %s", statement));
+          String.format("Can not execute create database statement: %s", statement));
     }
   }
 

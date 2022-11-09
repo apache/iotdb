@@ -56,7 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** id table belongs to a storage group and mapping timeseries path to it's schema */
+/** id table belongs to a database and mapping timeseries path to it's schema */
 public class IDTableHashmapImpl implements IDTable {
 
   // number of table slot

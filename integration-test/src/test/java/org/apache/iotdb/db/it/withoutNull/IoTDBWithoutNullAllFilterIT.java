@@ -45,7 +45,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
   private static String[] dataSet1 =
       new String[] {
-        "SET STORAGE GROUP TO root.test",
+        "CREATE DATABASE root.test",
         "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",

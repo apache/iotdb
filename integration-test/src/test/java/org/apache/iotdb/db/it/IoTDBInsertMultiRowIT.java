@@ -77,7 +77,7 @@ public class IoTDBInsertMultiRowIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.t1");
+    sqls.add("CREATE DATABASE root.t1");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
   }

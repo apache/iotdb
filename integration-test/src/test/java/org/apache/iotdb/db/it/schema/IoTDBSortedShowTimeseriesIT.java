@@ -48,8 +48,8 @@ public class IoTDBSortedShowTimeseriesIT {
 
   private static String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.turbine",
-        "SET STORAGE GROUP TO root.ln",
+        "CREATE DATABASE root.turbine",
+        "CREATE DATABASE root.ln",
         "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
             + "tags('unit'='f', 'description'='turbine this is a test1') "
             + "attributes('H_Alarm'='100', 'M_Alarm'='50')",

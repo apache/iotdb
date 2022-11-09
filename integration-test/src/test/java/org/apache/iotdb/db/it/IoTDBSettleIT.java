@@ -79,7 +79,7 @@ public class IoTDBSettleIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.st1");
+    sqls.add("CREATE DATABASE root.st1");
     sqls.add("CREATE TIMESERIES root.st1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     for (int i = 1; i <= 10; i++) {
       sqls.add("insert into root.st1.wf01.wt01(timestamp,status) values(" + 100 * i + ",false)");
