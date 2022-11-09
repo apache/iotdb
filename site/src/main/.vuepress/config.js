@@ -828,7 +828,7 @@ var config = {
 						collapsable: false,
 					},
 					{
-						title: 'IoTDB Introduction',
+						title: 'About IoTDB',
 						children: [
 							['IoTDB-Introduction/What-is-IoTDB','What is IoTDB'],
 							['IoTDB-Introduction/Architecture','Architecture'],
@@ -936,14 +936,15 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
+							['Process-Data/Triggers','Triggers'],
 						]
 					},
 					{
-						title: 'Alert',
+						title: 'Monitor and Alert',
 						sidebarDepth: 1,
 						children: [
-							['Alert/Alerting','Alerting'],
-							['Alert/Triggers','Triggers'],
+							['Monitor-Alert/Metric-Tool','Metric Tool'],
+							['Monitor-Alert/Alerting','Alerting'],
 						]
 					},
 					{
@@ -961,9 +962,14 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
-							['Maintenance-Tools/Metric-Tool','Metric Tool'],
 							['Maintenance-Tools/Sync-Tool','Sync Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+						]
+					},
+					{
+						title: 'Collaboration of Edge and Cloud',
+						children: [
+							['Edge-Cloud-Collaboration/Sync-Tool','TsFile Sync Tool'],
 						]
 					},
 					{
@@ -1007,12 +1013,17 @@ var config = {
 					    ]
 					},
 					{
+						title: 'FAQ',
+						children: [
+							['FAQ/Frequently-asked-questions','Frequently asked questions'],
+						]
+					},
+					{
 						title: 'Reference',
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Keywords','Keywords'],
-							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
 					},
@@ -1765,7 +1776,7 @@ var config = {
 						collapsable: false,
 					},
 					{
-						title: 'IoTDB简介',
+						title: '关于IoTDB',
 						children: [
 							['IoTDB-Introduction/What-is-IoTDB','IoTDB简介'],
 							['IoTDB-Introduction/Features','主要功能特点'],
@@ -1873,14 +1884,15 @@ var config = {
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
+							['Process-Data/Triggers','触发器'],
 						]
 					},
 					{
-						title: '告警',
+						title: '监控告警',
 						sidebarDepth: 1,
 						children: [
-							['Alert/Alerting','告警机制'],
-							['Alert/Triggers','触发器'],
+							['Monitor-Alert/Metric-Tool','监控工具'],
+							['Monitor-Alert/Alerting','告警机制'],
 						]
 					},
 					{
@@ -1898,9 +1910,13 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
-							['Maintenance-Tools/Metric-Tool','监控工具'],
-							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+						]
+					},
+					{
+						title: '端云协同',
+						children: [
+							['Edge-Cloud-Collaboration/Sync-Tool','TsFile 同步工具']
 						]
 					},
 					{
@@ -1944,12 +1960,17 @@ var config = {
                         ]
                     },
 					{
+						title: 'FAQ',
+						children: [
+							['FAQ/Frequently-asked-questions','常见问题'],
+						]
+					},
+					{
 						title: '参考',
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Keywords','关键字'],
-							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
 					}

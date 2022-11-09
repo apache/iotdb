@@ -56,7 +56,6 @@ export interface LimitAll {
  */
 export interface IoTDBOptions extends DataSourceJsonData {
   url: string;
-  password: string;
   username: string;
 }
 
@@ -64,5 +63,5 @@ export interface IoTDBOptions extends DataSourceJsonData {
  * Value that is used in the backend, but never sent over HTTP to the frontend
  */
 export interface IoTDBSecureJsonData {
-  apiKey?: string;
+  password?: string;
 }

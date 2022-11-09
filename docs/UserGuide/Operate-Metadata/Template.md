@@ -51,6 +51,8 @@ The` lat` and `lon` measurements are aligned.
 
 After a schema template is created, it should be set to specific path before creating related timeseries or insert data.
 
+**It should be ensured that the related storage group has been set before setting template.**
+
 **It is recommended to set schema template to storage group path. It is not suggested to set schema template to some path above storage group**
 
 
@@ -185,11 +187,25 @@ To delete a group of timeseries represented by schema template, namely deactivat
 IoTDB> delete timeseries of schema template t1 from root.sg1.d1
 ```
 
+or
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.d1
+```
+
 The deactivation supports batch process. 
 
 ```shell
 IoTDB> delete timeseries of schema template t1 from root.sg1.*, root.sg2.*
 ```
+
+or
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.*, root.sg2.*
+```
+
+If the template name is not provided in sql, all template activation on paths matched by given path pattern will be removed.
 
 ## Unset Schema Template
 

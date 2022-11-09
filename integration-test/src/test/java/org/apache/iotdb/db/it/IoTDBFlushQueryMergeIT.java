@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -36,9 +35,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -66,7 +65,6 @@ public class IoTDBFlushQueryMergeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    Locale.setDefault(Locale.ENGLISH);
     EnvFactory.getEnv().initBeforeClass();
     insertData();
   }
@@ -83,7 +81,7 @@ public class IoTDBFlushQueryMergeIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      Assert.fail("insertData failed.");
+      fail("insertData failed.");
     }
   }
 
@@ -100,7 +98,6 @@ public class IoTDBFlushQueryMergeIT {
       }
       statement.execute("merge");
     } catch (Exception e) {
-      Assert.fail("selectAllSQLTest failed.");
       fail(e.getMessage());
     }
   }
@@ -148,7 +145,6 @@ public class IoTDBFlushQueryMergeIT {
       assertEquals(30, i);
 
     } catch (Exception e) {
-      Assert.fail("testFlushGivenGroup failed.");
       fail(e.getMessage());
     }
   }
@@ -165,7 +161,6 @@ public class IoTDBFlushQueryMergeIT {
       statement.execute("FLUSH root.nodatagroup3");
       statement.execute("FLUSH root.nodatagroup1, root.nodatagroup2");
     } catch (Exception e) {
-      Assert.fail("testFlushGivenGroupNoData failed.");
       fail(e.getMessage());
     }
   }
@@ -183,10 +178,9 @@ public class IoTDBFlushQueryMergeIT {
         String expectedMsg =
             "322: 322: storageGroup root.notExistGroup1,root.notExistGroup2 does not exist";
         sqe.printStackTrace();
-        Assert.assertTrue(sqe.getMessage().contains(expectedMsg));
+        assertTrue(sqe.getMessage().contains(expectedMsg));
       }
     } catch (Exception e) {
-      Assert.fail("testFlushNotExistGroupNoData failed.");
       fail(e.getMessage());
     }
   }

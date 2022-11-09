@@ -22,13 +22,18 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 
 public class WALManagerTest {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final String[] walDirs =
       new String[] {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),
@@ -77,7 +83,7 @@ public class WALManagerTest {
       } else {
         assertEquals(walNodes[i / ElasticStrategy.APPLICATION_NODE_RATIO], walNode);
       }
-      walNode.log(i, getInsertRowPlan());
+      walNode.log(i, getInsertRowNode());
       walNode.rollWALFile();
     }
 
@@ -106,7 +112,7 @@ public class WALManagerTest {
     }
   }
 
-  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+  private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -118,19 +124,33 @@ public class WALManagerTest {
           TSDataType.TEXT
         };
 
-    String[] columns = new String[6];
-    columns[0] = 1.0 + "";
-    columns[1] = 2 + "";
-    columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
+    Object[] columns = new Object[6];
+    columns[0] = 1.0d;
+    columns[1] = 2.0f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0);
 
-    return new InsertRowPlan(
-        new PartialPath("root.test_sg.test_d"),
-        time,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-        dataTypes,
-        columns);
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("root.test_sg.test_d"),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            time,
+            columns,
+            false);
+    node.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+    return node;
   }
 }

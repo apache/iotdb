@@ -31,6 +31,8 @@ import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -39,6 +41,7 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -84,6 +87,27 @@ public class FileLoaderUtils {
             entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+  }
+
+  /**
+   * Generate {@link TsFileResource} from a closed {@link TsFileIOWriter}. Notice that the writer
+   * should have executed {@link TsFileIOWriter#endFile()}. And this method will not record plan
+   * Index of this writer.
+   *
+   * @param writer a {@link TsFileIOWriter}
+   * @return a updated {@link TsFileResource}
+   */
+  public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
+    TsFileResource resource = new TsFileResource(writer.getFile());
+    for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
+      String device = chunkGroupMetadata.getDevice();
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        resource.updateStartTime(device, chunkMetadata.getStartTime());
+        resource.updateEndTime(device, chunkMetadata.getEndTime());
+      }
+    }
+    resource.setStatus(TsFileResourceStatus.CLOSED);
+    return resource;
   }
 
   /**
@@ -160,9 +184,6 @@ public class FileLoaderUtils {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
-      if (!resource.getTsFile().exists()) {
-        return null;
-      }
       // load all the TimeseriesMetadata of vector, the first one is for time column and the
       // remaining is for sub sensors
       // the order of timeSeriesMetadata list is same as subSensorList's order

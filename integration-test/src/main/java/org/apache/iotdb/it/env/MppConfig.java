@@ -265,7 +265,7 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
-        "partition_region_ratis_snapshot_trigger_threshold",
+        "config_node_ratis_snapshot_trigger_threshold",
         String.valueOf(ratisSnapshotTriggerThreshold));
     return this;
   }
@@ -324,6 +324,13 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty(
         "select_into_insert_tablet_plan_row_limit",
         String.valueOf(selectIntoInsertTabletPlanRowLimit));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    confignodeProperties.setProperty(
+        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
     return this;
   }
 }

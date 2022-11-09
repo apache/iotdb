@@ -196,6 +196,9 @@ public class ClusterSchemaTree implements ISchemaTree {
       } else if (i == nodes.length - 2 && !child.isEntity()) {
         SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
         cur.replaceChild(nodes[i], entityNode);
+        if (!entityNode.isAligned()) {
+          entityNode.setAligned(isAligned);
+        }
         child = entityNode;
       }
       cur = child;

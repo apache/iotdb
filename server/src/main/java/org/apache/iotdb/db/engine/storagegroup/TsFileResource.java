@@ -645,7 +645,10 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (!mayContainsDevice(deviceId)) {
+    long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
+
+    // doesn't contain this device
+    if (startAndEndTime == null) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -653,8 +656,8 @@ public class TsFileResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long startTime = startAndEndTime[0];
+    long endTime = isClosed() || !isSeq ? startAndEndTime[1] : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {

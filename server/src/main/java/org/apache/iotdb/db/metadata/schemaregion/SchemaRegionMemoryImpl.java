@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -115,6 +114,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -901,9 +901,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     try {
       PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
       if (!isRecovering) {
-        if (emptyStorageGroup != null) {
-          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-        }
         writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
       }
     } catch (DeleteFailedException e) {
@@ -2096,10 +2093,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.preDeactivateTemplate();
         preDeactivateNum++;
         try {
-          writeToMLog(plan);
+          writeToMLog(SchemaRegionPlanFactory.getPreDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -2118,9 +2119,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         if (!entityMNode.isPreDeactivateTemplate()) {
           continue;
         }
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.rollbackPreDeactivateTemplate();
         try {
-          writeToMLog(plan);
+          writeToMLog(
+              SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -2134,10 +2140,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
           mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
+        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
+        subTemplateSetInfo.put(
+            entityMNode.getPartialPath(),
+            Collections.singletonList(entityMNode.getSchemaTemplateId()));
         entityMNode.deactivateTemplate();
         mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
         try {
-          writeToMLog(plan);
+          writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }

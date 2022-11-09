@@ -81,6 +81,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showClusterColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowClusterDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showClusterDetailsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowFunctionsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showFunctionsColumnHeaders, true);
   }
