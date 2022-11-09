@@ -464,15 +464,6 @@ During the process of creating and dropping triggers in the cluster, we maintain
 
 ## Configuration Parameters
 
-Configuration parameters on ConfigNode:
-
 | Parameter         | Meaning                                   |
 | ----------------- | ----------------------------------------- |
 | *trigger_lib_dir* | Directory to save the trigger jar package |
-
-Configuration parameters on DataNode:
-
-| Parameter                   | Meaning                                            |
-| --------------------------- | -------------------------------------------------- |
-| *trigger_root_dir*          | Directory to save the trigger jar package          |
-| *trigger_temporary_lib_dir* | Directory to save the temporary file when managing |

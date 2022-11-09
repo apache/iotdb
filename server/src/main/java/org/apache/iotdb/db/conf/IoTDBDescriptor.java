@@ -1789,9 +1789,7 @@ public class IoTDBDescriptor {
   }
 
   private void loadTriggerProps(Properties properties) {
-    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
-    conf.setTriggerTemporaryLibDir(
-        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()));
     conf.setRetryNumToFindStatefulTrigger(
         Integer.parseInt(
             properties.getProperty(

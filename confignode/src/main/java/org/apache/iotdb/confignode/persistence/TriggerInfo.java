@@ -88,7 +88,7 @@ public class TriggerInfo implements SnapshotProcessor {
     // jarReferenceTable = new ConcurrentHashMap<>();
     triggerExecutableManager =
         TriggerExecutableManager.setupAndGetInstance(
-            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getTriggerLibDir());
+            CONFIG_NODE_CONF.getTriggerTemporaryLibDir(), CONFIG_NODE_CONF.getTriggerDir());
   }
 
   public void acquireTriggerTableLock() {
