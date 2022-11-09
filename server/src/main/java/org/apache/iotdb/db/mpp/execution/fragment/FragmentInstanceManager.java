@@ -80,7 +80,7 @@ public class FragmentInstanceManager {
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
 
-    this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
+    this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
@@ -134,7 +134,19 @@ public class FragmentInstanceManager {
                 }
               });
 
-      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      if (execution != null) {
+        execution
+            .getStateMachine()
+            .addStateChangeListener(
+                newState -> {
+                  if (newState.isDone()) {
+                    instanceExecution.remove(instanceId);
+                  }
+                });
+        return execution.getInstanceInfo();
+      } else {
+        return createFailedInstanceInfo(instanceId);
+      }
     }
   }
 
@@ -172,7 +184,19 @@ public class FragmentInstanceManager {
                 return null;
               }
             });
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    if (execution != null) {
+      execution
+          .getStateMachine()
+          .addStateChangeListener(
+              newState -> {
+                if (newState.isDone()) {
+                  instanceExecution.remove(instanceId);
+                }
+              });
+      return execution.getInstanceInfo();
+    } else {
+      return createFailedInstanceInfo(instanceId);
+    }
   }
 
   /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
