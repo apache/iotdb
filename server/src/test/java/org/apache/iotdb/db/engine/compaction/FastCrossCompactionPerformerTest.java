@@ -64,7 +64,7 @@ import java.util.Map;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-public class FastCompactionPerformerTest extends AbstractCompactionTest {
+public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
   private List<TsFileResource> targetResources = new ArrayList<>();
 
   @Before

@@ -20,16 +20,22 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -41,10 +47,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -54,10 +64,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.junit.Assert.fail;
 
 public class AbstractCompactionTest {
   protected int seqFileNum = 5;
@@ -125,6 +137,9 @@ public class AbstractCompactionTest {
               + "0");
 
   private int fileVersion = 0;
+
+  protected TsFileManager tsFileManager =
+      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     if (!SEQ_DIRS.exists()) {
@@ -422,6 +437,79 @@ public class AbstractCompactionTest {
     }
   }
 
+  protected void validateSeqFiles(boolean isSeq) {
+    List<File> files = new ArrayList<>();
+    for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
+      files.add(resource.getTsFile());
+    }
+    TsFileValidationTool.findUncorrectFiles(files);
+    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap(true);
+  }
+
+  protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
+      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
+    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
+    for (int i = 0; i < timeseriesPaths.size(); i++) {
+      PartialPath path = timeseriesPaths.get(i);
+      List<TimeValuePair> dataList = new ArrayList<>();
+      sourceData.put(path, dataList);
+      IDataBlockReader tsBlockReader =
+          new SeriesDataBlockReader(
+              path,
+              dataTypes.get(i),
+              FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                  EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+              seqResources,
+              unseqResources,
+              true);
+      while (tsBlockReader.hasNextBatch()) {
+        TsBlock block = tsBlockReader.nextBatch();
+        IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
+        while (iterator.hasNext()) {
+          dataList.add(
+              new TimeValuePair(
+                  iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
+          // new Pair<>(iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
+          iterator.next();
+        }
+      }
+    }
+    return sourceData;
+  }
+
+  protected void validateTargetDatas(
+      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
+      throws IOException {
+    int timeseriesIndex = 0;
+    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
+      IDataBlockReader tsBlockReader =
+          new SeriesDataBlockReader(
+              entry.getKey(),
+              dataTypes.get(timeseriesIndex++),
+              FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                  EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+              tsFileManager.getTsFileList(true),
+              Collections.emptyList(),
+              true);
+      List<TimeValuePair> timeseriesData = entry.getValue();
+      while (tsBlockReader.hasNextBatch()) {
+        TsBlock block = tsBlockReader.nextBatch();
+        IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
+        while (iterator.hasNext()) {
+          TimeValuePair data = timeseriesData.remove(0);
+          Assert.assertEquals(data.getTimestamp(), iterator.currentTime());
+          Assert.assertEquals(data.getValue(), ((TsPrimitiveType[]) iterator.currentValue())[0]);
+          iterator.next();
+        }
+      }
+      if (timeseriesData.size() > 0) {
+        // there are still data points left, which are not in the target file
+        fail();
+      }
+    }
+  }
+
   protected void generateModsFile(
       List<String> seriesPaths, List<TsFileResource> resources, long startValue, long endValue)
       throws IllegalPathException, IOException {
@@ -432,6 +520,22 @@ public class AbstractCompactionTest {
       }
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
+  }
+
+  public void generateModsFile(
+      List<PartialPath> seriesPaths, TsFileResource resource, long startValue, long endValue)
+      throws IllegalPathException, IOException {
+    Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+    for (PartialPath path : seriesPaths) {
+      String fullPath =
+          (path instanceof AlignedPath)
+              ? path.getFullPath()
+                  + PATH_SEPARATOR
+                  + ((AlignedPath) path).getMeasurementList().get(0)
+              : path.getFullPath();
+      deleteMap.put(fullPath, new Pair<>(startValue, endValue));
+    }
+    CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
   }
 
   /**

@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -60,9 +61,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN
 
 public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private List<TsFileResource> seqFiles;
+  private List<TsFileResource> seqFiles = Collections.emptyList();
 
-  private List<TsFileResource> unseqFiles;
+  private List<TsFileResource> unseqFiles = Collections.emptyList();
 
   private List<TsFileResource> sortedSourceFiles = new ArrayList<>();
 
@@ -79,7 +80,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
-  private boolean isCrossCompaction = true;
+  private boolean isCrossCompaction;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -91,10 +92,14 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     if (seqFiles.isEmpty() || unseqFiles.isEmpty()) {
       // inner space compaction
       isCrossCompaction = false;
+    } else {
+      isCrossCompaction = true;
     }
   }
 
-  public FastCompactionPerformer() {}
+  public FastCompactionPerformer(boolean isCrossCompaction) {
+    this.isCrossCompaction = isCrossCompaction;
+  }
 
   @Override
   public void perform()
@@ -280,7 +285,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     return seqFiles;
   }
 
-  public void setCrossCompaction(boolean crossCompaction) {
-    isCrossCompaction = crossCompaction;
+  @Override
+  public void setSourceFiles(List<TsFileResource> unseqFiles) {
+    this.seqFiles = unseqFiles;
   }
 }

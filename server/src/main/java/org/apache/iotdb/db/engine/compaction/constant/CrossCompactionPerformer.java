@@ -40,7 +40,7 @@ public enum CrossCompactionPerformer {
       case READ_POINT:
         return new ReadPointCompactionPerformer();
       case FAST:
-        return new FastCompactionPerformer();
+        return new FastCompactionPerformer(true);
       default:
         throw new RuntimeException("Illegal compaction performer for cross compaction " + this);
     }
