@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
@@ -38,6 +39,8 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.object.ObjectDeserializeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSerializeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewIntoOperator;
@@ -131,6 +134,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryO
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectDeserializeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectSerializeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -1549,17 +1554,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
+    TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
+    boolean isOnSameNode = isSameNode(downStreamEndPoint);
+    context.setOnSameNode(isOnSameNode);
+
     Operator child = node.getChild().accept(this, context);
 
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
-    TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
 
     ISinkHandle sinkHandle =
-        isSameNode(downStreamEndPoint)
+        isOnSameNode
             ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandle(
                 localInstanceId.toThrift(),
                 targetInstanceId.toThrift(),
@@ -1948,5 +1956,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new PathsUsingTemplateScanOperator(
         node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
+  }
+
+  @Override
+  public Operator visitObjectDeserialize(
+      ObjectDeserializeNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChildren().get(0).accept(this, context);
+    if (context.isOnSameNode()) {
+      return child;
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getInstanceContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  ObjectDeserializeNode.class.getSimpleName());
+      return new ObjectDeserializeOperator(
+          operatorContext, new QueryId(node.getPlanNodeId().getId()), child);
+    }
+  }
+
+  @Override
+  public Operator visitObjectSerialize(
+      ObjectSerializeNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChildren().get(0).accept(this, context);
+    if (context.isOnSameNode()) {
+      return child;
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getInstanceContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  ObjectSerializeNode.class.getSimpleName());
+      return new ObjectSerializeOperator(
+          operatorContext, new QueryId(node.getPlanNodeId().getId()), child);
+    }
   }
 }

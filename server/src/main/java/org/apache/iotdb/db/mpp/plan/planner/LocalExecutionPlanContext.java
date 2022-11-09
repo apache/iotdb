@@ -62,6 +62,8 @@ public class LocalExecutionPlanContext {
 
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
+  private boolean isOnSameNode;
+
   public LocalExecutionPlanContext(
       TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
     this.typeProvider = typeProvider;
@@ -157,5 +159,13 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public boolean isOnSameNode() {
+    return isOnSameNode;
+  }
+
+  public void setOnSameNode(boolean onSameNode) {
+    isOnSameNode = onSameNode;
   }
 }

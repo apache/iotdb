@@ -45,6 +45,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectDeserializeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectSerializeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -324,6 +326,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitObjectSerialize(ObjectSerializeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitObjectDeserialize(ObjectDeserializeNode node, C context) {
     return visitPlan(node, context);
   }
 }

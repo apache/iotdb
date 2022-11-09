@@ -31,6 +31,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectDeserializeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.object.ObjectSerializeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -128,7 +130,37 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitSchemaFetchMerge(SchemaFetchMergeNode node, NodeGroupContext context) {
-    return internalVisitSchemaMerge(node, context);
+    node.getChildren()
+        .forEach(
+            child -> {
+              visit(child, context);
+            });
+    NodeDistribution nodeDistribution =
+        new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
+    PlanNode newNode = node.clone();
+    nodeDistribution.region = calculateSchemaRegionByChildren(node.getChildren(), context);
+    context.putNodeDistribution(newNode.getPlanNodeId(), nodeDistribution);
+    node.getChildren()
+        .forEach(
+            child -> {
+              if (!nodeDistribution.region.equals(
+                  context.getNodeDistribution(child.getPlanNodeId()).region)) {
+                ObjectSerializeNode serializeNode =
+                    new ObjectSerializeNode(context.queryContext.getQueryId().genPlanNodeId());
+                serializeNode.addChild(child);
+                ExchangeNode exchangeNode =
+                    new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+                exchangeNode.setChild(serializeNode);
+                exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+                ObjectDeserializeNode deserializeNode =
+                    new ObjectDeserializeNode(context.queryContext.getQueryId().genPlanNodeId());
+                deserializeNode.addChild(exchangeNode);
+                newNode.addChild(deserializeNode);
+              } else {
+                newNode.addChild(child);
+              }
+            });
+    return newNode;
   }
 
   @Override
