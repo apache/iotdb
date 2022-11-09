@@ -211,6 +211,11 @@ public class ConfigNodeDescriptor {
                     "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
                 .trim()));
 
+    conf.setLeastDataRegionGroupNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "least_data_region_group_num", String.valueOf(conf.getLeastDataRegionGroupNum()))));
+
     try {
       conf.setRegionAllocateStrategy(
           RegionBalancer.RegionAllocateStrategy.valueOf(

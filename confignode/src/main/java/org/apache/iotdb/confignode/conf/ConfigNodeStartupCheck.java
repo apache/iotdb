@@ -104,6 +104,11 @@ public class ConfigNodeStartupCheck {
       throw new ConfigurationException(
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
+
+    // The least DataRegionGroup number should be positive
+    if (CONF.getLeastDataRegionGroupNum() <= 0) {
+      throw new ConfigurationException("The least_data_region_group_num should be positive");
+    }
   }
 
   private void createDirsIfNecessary() throws IOException {

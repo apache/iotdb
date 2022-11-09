@@ -305,6 +305,7 @@ struct TConfigNodeRegisterReq {
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
   13: required double diskSpaceWarningThreshold
+  14: required i32 leastDataRegionGroupNum
 }
 
 struct TConfigNodeRegisterResp {

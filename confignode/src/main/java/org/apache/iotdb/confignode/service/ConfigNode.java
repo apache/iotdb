@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -57,6 +58,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
 
@@ -229,14 +231,15 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSchemaRegionConsensusProtocolClass(),
             CONF.getSeriesPartitionSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            COMMON_CONF.getDefaultTTLInMs(),
             CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
             CONF.getDataReplicationFactor(),
             CONF.getDataRegionPerProcessor(),
             CONF.getReadConsistencyLevel(),
-            CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+            COMMON_CONF.getDiskSpaceWarningThreshold(),
+            CONF.getLeastDataRegionGroupNum());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

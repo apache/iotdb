@@ -102,6 +102,8 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
 
@@ -129,10 +131,9 @@ public class PartitionManager {
 
   /** Construct SeriesPartitionExecutor by iotdb-confignode.properties */
   private void setSeriesPartitionExecutor() {
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            conf.getSeriesPartitionExecutorClass(), conf.getSeriesPartitionSlotNum());
+            CONF.getSeriesPartitionExecutorClass(), CONF.getSeriesPartitionSlotNum());
   }
 
   // ======================================================
@@ -337,51 +338,57 @@ public class PartitionManager {
         final String storageGroup = entry.getKey();
         final int unassignedPartitionSlotsCount = entry.getValue();
 
-        float allocatedRegionCount = partitionInfo.getRegionCount(storageGroup, consensusGroupType);
+        float allocatedRegionGroupCount =
+            partitionInfo.getRegionGroupCount(storageGroup, consensusGroupType);
         // The slotCount equals to the sum of assigned slot count and unassigned slot count
         float slotCount =
             (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(storageGroup)
                 + unassignedPartitionSlotsCount;
-        float maxRegionCount =
+        float maxRegionGroupCount =
             getClusterSchemaManager().getMaxRegionGroupCount(storageGroup, consensusGroupType);
-        float maxSlotCount =
-            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum();
+        float maxSlotCount = CONF.getSeriesPartitionSlotNum();
 
         /* Region extension is required in the following cases */
-        // 1. There are no Region has been created for the current StorageGroup
-        if (allocatedRegionCount == 0) {
-          // The delta is equal to the smallest integer solution that satisfies the inequality:
-          // slotCount / delta < maxSlotCount / maxRegionCount
+        // 1. The number of current RegionGroup of the StorageGroup is less than the least number
+        int leastRegionGroupNum =
+            TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
+                ? 1
+                : CONF.getLeastDataRegionGroupNum();
+        if (allocatedRegionGroupCount < leastRegionGroupNum) {
+          // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
+          // no less than the leastRegionGroupNum
           int delta =
-              Math.min(
-                  (int) maxRegionCount,
-                  Math.max(1, (int) Math.ceil(slotCount * maxRegionCount / maxSlotCount)));
+              (int)
+                  Math.min(
+                      unassignedPartitionSlotsCount,
+                      leastRegionGroupNum - allocatedRegionGroupCount);
           allotmentMap.put(storageGroup, delta);
           continue;
         }
 
         // 2. The average number of partitions held by each Region will be greater than the
         // expected average number after the partition allocation is completed
-        if (allocatedRegionCount < maxRegionCount
-            && slotCount / allocatedRegionCount > maxSlotCount / maxRegionCount) {
+        if (allocatedRegionGroupCount < maxRegionGroupCount
+            && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupCount) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
-          // slotCount / (allocatedRegionCount + delta) < maxSlotCount / maxRegionCount
+          // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupCount
           int delta =
               Math.min(
-                  (int) (maxRegionCount - allocatedRegionCount),
+                  (int) (maxRegionGroupCount - allocatedRegionGroupCount),
                   Math.max(
                       1,
                       (int)
                           Math.ceil(
-                              slotCount * maxRegionCount / maxSlotCount - allocatedRegionCount)));
+                              slotCount * maxRegionGroupCount / maxSlotCount
+                                  - allocatedRegionGroupCount)));
           allotmentMap.put(storageGroup, delta);
           continue;
         }
 
         // 3. All RegionGroups in the specified StorageGroup are disabled currently
-        if (allocatedRegionCount
+        if (allocatedRegionGroupCount
                 == filterRegionGroupThroughStatus(storageGroup, RegionGroupStatus.Disabled).size()
-            && allocatedRegionCount < maxRegionCount) {
+            && allocatedRegionGroupCount < maxRegionGroupCount) {
           allotmentMap.put(storageGroup, 1);
         }
       }
@@ -492,7 +499,7 @@ public class PartitionManager {
    */
   public int getRegionCount(String storageGroup, TConsensusGroupType type)
       throws StorageGroupNotExistsException {
-    return partitionInfo.getRegionCount(storageGroup, type);
+    return partitionInfo.getRegionGroupCount(storageGroup, type);
   }
 
   /**

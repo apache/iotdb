@@ -61,8 +61,11 @@ public class ConfigNodeConfig {
   /** DataNode data region consensus protocol */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
-  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  /** The maximum number of DataRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
+
+  /** The least number of DataRegionGroup for each StorageGroup. */
+  private int leastDataRegionGroupNum = 5;
 
   /** region allocate strategy. */
   private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
@@ -405,6 +408,14 @@ public class ConfigNodeConfig {
 
   public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
+  }
+
+  public int getLeastDataRegionGroupNum() {
+    return leastDataRegionGroupNum;
+  }
+
+  public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    this.leastDataRegionGroupNum = leastDataRegionGroupNum;
   }
 
   public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {

@@ -28,29 +28,13 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.*;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -65,10 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
@@ -78,6 +59,8 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 public class IoTDBClusterPartitionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClusterPartitionIT.class);
+
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
 
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
@@ -90,6 +73,9 @@ public class IoTDBClusterPartitionIT {
   protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
 
+  protected static int originalLeastDataRegionGroupNum;
+  private static final int testLeastDataRegionGroupNum = 10;
+
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
   private static final int seriesPartitionSlotsNum = 10000;
@@ -97,24 +83,23 @@ public class IoTDBClusterPartitionIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsesusProtocolClass();
+    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
+    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    CONF.setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    CONF.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    CONF.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
+    originalDataReplicationFactor = CONF.getDataReplicationFactor();
+    CONF.setSchemaReplicationFactor(testReplicationFactor);
+    CONF.setDataReplicationFactor(testReplicationFactor);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    originalTimePartitionInterval = CONF.getTimePartitionInterval();
+    CONF.setTimePartitionIntervalForRouting(testTimePartitionInterval);
+
+    originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
+    CONF.setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
 
     EnvFactory.getEnv().initBeforeClass();
   }
@@ -123,17 +108,14 @@ public class IoTDBClusterPartitionIT {
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
 
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
 
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    CONF.setDataReplicationFactor(originalDataReplicationFactor);
 
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    CONF.setTimePartitionIntervalForRouting(originalTimePartitionInterval);
   }
 
   @Test
@@ -368,6 +350,14 @@ public class IoTDBClusterPartitionIT {
                 dataPartitionTableResp.getDataPartitionTable());
           }
         }
+
+        // Check the number of DataRegionGroup.
+        // And this number should be greater than or equal to testLeastDataRegionGroupNum
+        TShowStorageGroupResp showStorageGroupResp =
+            client.showStorageGroup(Collections.singletonList(storageGroup));
+        Assert.assertTrue(
+            showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
+                >= testLeastDataRegionGroupNum);
       }
 
       // Test DataPartition inherit policy

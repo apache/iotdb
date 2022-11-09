@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -92,10 +93,10 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final double schemaRegionPerDataNode =
-      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
-  private static final double dataRegionPerProcessor =
-      ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerProcessor();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
+  private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
+  private static final int LEAST_DATA_REGION_GROUP_NUM = CONF.getLeastDataRegionGroupNum();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -291,7 +292,7 @@ public class ClusterSchemaManager {
         new AdjustMaxRegionGroupCountPlan();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
-        // Adjust maxSchemaRegionGroupCount.
+        // Adjust maxSchemaRegionGroupCount for each StorageGroup.
         // All StorageGroups share the DataNodes equally.
         // Allocated SchemaRegionGroups are not shrunk.
         int allocatedSchemaRegionGroupCount =
@@ -299,28 +300,37 @@ public class ClusterSchemaManager {
                 .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupCount =
             Math.max(
+                // Each StorageGroup should have at least 1 SchemaRegionGroup.
                 1,
                 Math.max(
+                    // The maxSchemaRegionGroupCount of the current StorageGroup is expected to be
+                    // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
+                    // (createdStorageGroupNum * schemaReplicationFactor)
                     (int)
-                        (schemaRegionPerDataNode
+                        (SCHEMA_REGION_PER_DATA_NODE
                             * dataNodeNum
                             / (double)
                                 (storageGroupNum
                                     * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
 
-        // Adjust maxDataRegionGroupCount.
-        // All StorageGroups divide one-third of the total cpu cores equally.
+        // Adjust maxDataRegionGroupCount for each StorageGroup.
+        // All StorageGroups divide the total cpu cores equally.
         // Allocated DataRegionGroups are not shrunk.
         int allocatedDataRegionGroupCount =
             getPartitionManager()
                 .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupCount =
             Math.max(
-                2,
+                // The least number of DataRegionGroup of each StorageGroup is specified
+                // by parameter least_data_region_group_num.
+                LEAST_DATA_REGION_GROUP_NUM,
                 Math.max(
+                    // The maxDataRegionGroupCount of the current StorageGroup is expected to be
+                    // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
+                    // (createdStorageGroupNum * dataReplicationFactor)
                     (int)
-                        (dataRegionPerProcessor
+                        (DATA_REGION_PER_PROCESSOR
                             * totalCpuCoreNum
                             / (double)
                                 (storageGroupNum * storageGroupSchema.getDataReplicationFactor())),
@@ -383,7 +393,7 @@ public class ClusterSchemaManager {
   /**
    * Only leader use this interface.
    *
-   * @return List<StorageGroupName>, all storageGroups' name
+   * @return List<StorageGroupName>, all StorageGroups' name
    */
   public List<String> getStorageGroupNames() {
     return clusterSchemaInfo.getStorageGroupNames();
