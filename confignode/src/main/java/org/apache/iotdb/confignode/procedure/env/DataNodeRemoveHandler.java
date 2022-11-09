@@ -37,8 +37,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -50,7 +48,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -426,7 +423,11 @@ public class DataNodeRemoveHandler {
             .sendSyncRequestToDataNodeWithGivenRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
     configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info("{}, Stop Data Node result: {}, stoppedDataNode: {}", REMOVE_DATANODE_PROCESS, status, dataNode);
+    LOGGER.info(
+        "{}, Stop Data Node result: {}, stoppedDataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        status,
+        dataNode);
   }
 
   /**
@@ -555,26 +556,31 @@ public class DataNodeRemoveHandler {
    * @param originalDataNode The DataNode where the region locates
    * @param migrateDestDataNode The DataNode where the region is to be migrated
    */
-  public void changeRegionLeader(TConsensusGroupId regionId,
-                                 TDataNodeLocation originalDataNode,
-                                 TDataNodeLocation migrateDestDataNode) {
+  public void changeRegionLeader(
+      TConsensusGroupId regionId,
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation migrateDestDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
-    if (TConsensusGroupType.DataRegion.equals(regionId.getType()) &&
-            MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+    if (TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       if (CONF.getDataReplicationFactor() == 1) {
-        configManager.getLoadManager().getRouteBalancer().
-                changeLeaderForMultiLeaderConsensus(regionId, migrateDestDataNode.getDataNodeId());
+        configManager
+            .getLoadManager()
+            .getRouteBalancer()
+            .changeLeaderForMultiLeaderConsensus(regionId, migrateDestDataNode.getDataNodeId());
       } else if (newLeaderNode.isPresent()) {
-        configManager.getLoadManager().getRouteBalancer().
-                changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
+        configManager
+            .getLoadManager()
+            .getRouteBalancer()
+            .changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
       }
       LOGGER.info(
-              "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
-              REMOVE_DATANODE_PROCESS,
-              regionId,
-              newLeaderNode);
+          "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+          REMOVE_DATANODE_PROCESS,
+          regionId,
+          newLeaderNode);
 
       return;
     }
