@@ -550,7 +550,12 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * Change the leader of given Region
+   * Change the leader of given Region.
+   *
+   * <p>For MULTI_LEADER_CONSENSUS, using `changeLeaderForMultiLeaderConsensus` method to change the
+   * regionLeaderMap maintained in ConfigNode.
+   *
+   * <p>For RATIS_CONSENSUS, invoking `changeRegionLeader` DataNode RPC method to change the leader.
    *
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
@@ -566,21 +571,20 @@ public class DataNodeRemoveHandler {
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       if (CONF.getDataReplicationFactor() == 1) {
-        configManager
-            .getLoadManager()
-            .getRouteBalancer()
-            .changeLeaderForMultiLeaderConsensus(regionId, migrateDestDataNode.getDataNodeId());
-      } else if (newLeaderNode.isPresent()) {
+        newLeaderNode = Optional.of(migrateDestDataNode);
+      }
+      if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
             .getRouteBalancer()
             .changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
+
+        LOGGER.info(
+            "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+            REMOVE_DATANODE_PROCESS,
+            regionId,
+            newLeaderNode);
       }
-      LOGGER.info(
-          "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
-          REMOVE_DATANODE_PROCESS,
-          regionId,
-          newLeaderNode);
 
       return;
     }
