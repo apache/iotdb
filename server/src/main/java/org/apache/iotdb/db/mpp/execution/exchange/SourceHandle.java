@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -49,10 +50,14 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.REMOTE_SOURCE_HANDLE_DESER_TSBLOCK;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.REMOTE_SOURCE_HANDLE_GET_TSBLOCK;
 
 public class SourceHandle implements ISourceHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(SourceHandle.class);
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
@@ -118,7 +123,12 @@ public class SourceHandle implements ISourceHandle {
   public synchronized TsBlock receive() {
     ByteBuffer tsBlock = getSerializedTsBlock();
     if (tsBlock != null) {
-      return serde.deserialize(tsBlock);
+      long startTime = System.nanoTime();
+      try {
+        return serde.deserialize(tsBlock);
+      } finally {
+        QUERY_STATISTICS.addCost(REMOTE_SOURCE_HANDLE_DESER_TSBLOCK, System.nanoTime() - startTime);
+      }
     } else {
       return null;
     }
@@ -126,6 +136,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized ByteBuffer getSerializedTsBlock() {
+    long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
 
       checkState();
@@ -153,6 +164,8 @@ public class SourceHandle implements ISourceHandle {
       }
       trySubmitGetDataBlocksTask();
       return tsBlock;
+    } finally {
+      QUERY_STATISTICS.addCost(REMOTE_SOURCE_HANDLE_GET_TSBLOCK, System.nanoTime() - startTime);
     }
   }
 

@@ -50,6 +50,19 @@ public class QueryStatistics {
 
   public static final String QUERY_EXECUTION = "QueryExecution";
 
+  public static final String QUERY_RESOURCE_INIT = "QueryResourceInit";
+
+  public static final String LOCAL_SOURCE_HANDLE_GET_TSBLOCK = "LocalSourceHandleGetTsBlock";
+
+  public static final String LOCAL_SOURCE_HANDLE_SER_TSBLOCK = "LocalSourceHandleSerializeTsBlock";
+
+  public static final String REMOTE_SOURCE_HANDLE_GET_TSBLOCK = "RemoteSourceHandleGetTsBlock";
+
+  public static final String REMOTE_SOURCE_HANDLE_DESER_TSBLOCK =
+      "RemoteSourceHandleDeserializeTsBlock";
+
+  public static final String WAIT_FOR_RESULT = "WaitForResult";
+
   public static final String SERIES_SCAN_OPERATOR = "SeriesScanOperator";
 
   public static final String ALIGNED_SERIES_SCAN_OPERATOR = "AlignedSeriesScanOperator";

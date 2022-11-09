@@ -83,6 +83,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.WAIT_FOR_RESULT;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -94,6 +95,9 @@ public class QueryExecution implements IQueryExecution {
   private static final Logger logger = LoggerFactory.getLogger(QueryExecution.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
+
   private static final int MAX_RETRY_COUNT = 3;
   private static final long RETRY_INTERVAL_IN_MS = 2000;
   private int retryCount = 0;
@@ -381,8 +385,14 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
 
-        ListenableFuture<?> blocked = resultHandle.isBlocked();
-        blocked.get();
+        long startTime = System.nanoTime();
+        try {
+          ListenableFuture<?> blocked = resultHandle.isBlocked();
+          blocked.get();
+        } finally {
+          QUERY_STATISTICS.addCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+        }
+
         if (!resultHandle.isFinished()) {
           // use the getSerializedTsBlock instead of receive to get ByteBuffer result
           T res = dataSupplier.get();
