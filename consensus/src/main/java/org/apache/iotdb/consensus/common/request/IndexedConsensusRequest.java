@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -31,22 +31,13 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long searchIndex;
 
   private final long syncIndex;
-  private List<IConsensusRequest> requests;
-  private List<ByteBuffer> serializedRequests;
+  private final List<IConsensusRequest> requests;
+  private final List<ByteBuffer> serializedRequests = new ArrayList<>();
   private long serializedSize = 0;
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
-    this.syncIndex = -1L;
-  }
-
-  public IndexedConsensusRequest(List<ByteBuffer> serializedRequests, long searchIndex) {
-    this.searchIndex = searchIndex;
-    this.serializedRequests = serializedRequests;
-    for (ByteBuffer byteBuffer : serializedRequests) {
-      serializedSize += byteBuffer.capacity();
-    }
     this.syncIndex = -1L;
   }
 
@@ -70,10 +61,13 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return serializedRequests;
   }
 
-  public List<ByteBuffer> buildSerializedRequests() {
-    List<ByteBuffer> result = new LinkedList<>();
-    this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
-    return result;
+  public void buildSerializedRequests() {
+    this.requests.forEach(
+        r -> {
+          ByteBuffer buffer = r.serializeToByteBuffer();
+          this.serializedRequests.add(buffer);
+          this.serializedSize += buffer.capacity();
+        });
   }
 
   public long getSerializedSize() {
