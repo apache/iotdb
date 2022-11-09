@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
@@ -895,6 +895,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
+    conf.setMaxMeasurementNumOfInternalRequest(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_measurement_num_of_internal_request",
+                String.valueOf(conf.getMaxMeasurementNumOfInternalRequest()))));
+
     // mqtt
     loadMqttProps(properties);
 
@@ -1451,7 +1457,7 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
-      StorageEngine.getInstance().rebootTimedService();
+      StorageEngineV2.getInstance().rebootTimedService();
 
       long seqTsFileSize =
           Long.parseLong(

@@ -16,24 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup.dataregion;
+package org.apache.iotdb.confignode.manager.load.balancer.router.mcf;
 
-import org.apache.iotdb.commons.path.PartialPath;
+public class MCFEdge {
 
-public interface VirtualPartitioner {
+  public int destNode;
+  public int capacity;
+  public int cost;
+  public int nextEdge;
 
-  /**
-   * use device id to determine storage group id
-   *
-   * @param deviceId device id
-   * @return data region id
-   */
-  int deviceToDataRegionId(PartialPath deviceId);
-
-  /**
-   * get total number of data region
-   *
-   * @return total number of data region
-   */
-  int getPartitionCount();
+  public MCFEdge(int destNode, int capacity, int cost, int nextEdge) {
+    this.destNode = destNode;
+    this.capacity = capacity;
+    this.cost = cost;
+    this.nextEdge = nextEdge;
+  }
 }

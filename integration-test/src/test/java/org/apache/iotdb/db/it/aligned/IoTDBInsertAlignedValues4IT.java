@@ -48,12 +48,12 @@ public class IoTDBInsertAlignedValues4IT {
     primitiveArraySize = ConfigFactory.getConfig().getPrimitiveArraySize();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
     ConfigFactory.getConfig().setPrimitiveArraySize(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
     ConfigFactory.getConfig().setPrimitiveArraySize(primitiveArraySize);
   }

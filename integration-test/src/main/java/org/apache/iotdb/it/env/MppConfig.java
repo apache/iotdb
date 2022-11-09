@@ -326,4 +326,11 @@ public class MppConfig implements BaseConfig {
         String.valueOf(selectIntoInsertTabletPlanRowLimit));
     return this;
   }
+
+  @Override
+  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    confignodeProperties.setProperty(
+        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+    return this;
+  }
 }

@@ -686,6 +686,10 @@ public class TsFileIOWriter implements AutoCloseable {
     return currentChunkGroupDeviceId;
   }
 
+  public List<ChunkGroupMetadata> getChunkGroupMetadataList() {
+    return chunkGroupMetadataList;
+  }
+
   public void flush() throws IOException {
     out.flush();
   }

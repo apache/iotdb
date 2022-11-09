@@ -864,6 +864,12 @@ public class IoTDBConfig {
   /** maximum number of logged pages before log erased */
   private int schemaFileLogSize = 16384;
 
+  /**
+   * Maximum number of measurement in one create timeseries plan node. If the number of measurement
+   * in user request exceeds this limit, the request will be split.
+   */
+  private int maxMeasurementNumOfInternalRequest = 10000;
+
   /** Internal address for data node */
   private String internalAddress = "127.0.0.1";
 
@@ -2915,6 +2921,14 @@ public class IoTDBConfig {
 
   public void setSchemaFileLogSize(int schemaFileLogSize) {
     this.schemaFileLogSize = schemaFileLogSize;
+  }
+
+  public int getMaxMeasurementNumOfInternalRequest() {
+    return maxMeasurementNumOfInternalRequest;
+  }
+
+  public void setMaxMeasurementNumOfInternalRequest(int maxMeasurementNumOfInternalRequest) {
+    this.maxMeasurementNumOfInternalRequest = maxMeasurementNumOfInternalRequest;
   }
 
   public String getInternalAddress() {
