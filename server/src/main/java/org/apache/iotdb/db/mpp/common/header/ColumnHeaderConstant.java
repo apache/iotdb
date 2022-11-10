@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.collect.ImmutableList;
@@ -26,6 +28,7 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 
 public class ColumnHeaderConstant {
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // column names for query statement
   public static final String COLUMN_TIME = "Time";
@@ -33,7 +36,8 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_DATABASE = "database";
+  public static final String COLUMN_DATABASE =
+      commonConfig.isUseDataBaseAsHeader() ? "database" : "storage group";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_ALIAS = "alias";
   public static final String COLUMN_DATATYPE = "dataType";
