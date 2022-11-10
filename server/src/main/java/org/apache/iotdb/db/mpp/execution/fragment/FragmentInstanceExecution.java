@@ -90,10 +90,7 @@ public class FragmentInstanceExecution {
 
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(
-        stateMachine.getState(),
-        context.getEndTime(),
-        context.getFailedCause(),
-        context.getFailureInfoList());
+        stateMachine.getState(), context.getEndTime(), context.getFailedCause());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {

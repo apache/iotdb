@@ -71,7 +71,6 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceFailureInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
@@ -142,12 +141,12 @@ import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
@@ -288,25 +287,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req) {
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
     FragmentInstanceId instanceId = FragmentInstanceId.fromThrift(req.fragmentInstanceId);
     FragmentInstanceInfo info = FragmentInstanceManager.getInstance().getInstanceInfo(instanceId);
     if (info != null) {
-      TFragmentInstanceInfoResp resp = new TFragmentInstanceInfoResp(info.getState().toString());
-      resp.setEndTime(info.getEndTime());
+      TFragmentInstanceStateResp resp = new TFragmentInstanceStateResp(info.getState().toString());
       resp.setFailedMessages(ImmutableList.of(info.getMessage()));
-      try {
-        List<ByteBuffer> failureInfoList = new ArrayList<>();
-        for (FragmentInstanceFailureInfo failureInfo : info.getFailureInfoList()) {
-          failureInfoList.add(failureInfo.serialize());
-        }
-        resp.setFailureInfoList(failureInfoList);
-        return resp;
-      } catch (IOException e) {
-        return resp;
-      }
+      return resp;
     } else {
-      return new TFragmentInstanceInfoResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
+      return new TFragmentInstanceStateResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
     }
   }
 
