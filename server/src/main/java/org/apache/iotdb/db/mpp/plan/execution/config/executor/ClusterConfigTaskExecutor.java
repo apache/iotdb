@@ -165,6 +165,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigTaskExecutor.class);
@@ -731,7 +733,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       showClusterResp = client.showCluster();
     } catch (TException | IOException e) {
-      future.setException(e);
+      if (showClusterResp.getConfigNodeList() == null) {
+        future.setException(new TException(MSG_RECONNECTION_FAIL));
+      } else {
+        future.setException(e);
+      }
+      return future;
     }
     // build TSBlock
     if (showClusterStatement.isDetails()) {
@@ -739,6 +746,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       ShowClusterTask.buildTSBlock(showClusterResp, future);
     }
+
     return future;
   }
 
