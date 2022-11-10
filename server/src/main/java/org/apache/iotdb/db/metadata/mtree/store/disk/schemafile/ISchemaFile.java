@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 
@@ -60,4 +61,6 @@ public interface ISchemaFile {
   IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
 
   Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;
+
+  boolean createSnapshot(File snapshotDir);
 }

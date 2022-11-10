@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -26,17 +25,13 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,29 +128,6 @@ public class TsFilePlanRedoer {
       } else {
         recoveryMemTable.insertTablet(
             (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
-      }
-    }
-  }
-
-  private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
-    for (int i = 0; i < mNodes.length; i++) {
-      if (mNodes[i] == null) {
-        tPlan.markFailedMeasurementInsertion(
-            i,
-            new PathNotExistException(
-                tPlan.getDevicePath().getFullPath()
-                    + IoTDBConstant.PATH_SEPARATOR
-                    + tPlan.getMeasurements()[i]));
-      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(
-            i,
-            new DataTypeMismatchException(
-                tPlan.getDevicePath().getFullPath(),
-                mNodes[i].getName(),
-                tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getType(),
-                tPlan.getMinTime(),
-                tPlan.getFirstValueOfIndex(i)));
       }
     }
   }

@@ -44,7 +44,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -119,7 +118,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces for lastCache operations
- *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
  *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
@@ -1224,20 +1222,6 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * delete all the last cache value of any timeseries or aligned timeseries under the device
-   *
-   * <p>Invoking scenario (1) after upload tsfile
-   *
-   * @param deviceId path of device
-   */
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
-    IMNode node = getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(node.getAsEntityMNode());
-    }
-  }
-
-  /**
    * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
    * is under the device and matching the originalPath
    *
@@ -1257,23 +1241,6 @@ public class LocalSchemaProcessor {
           node.getAsEntityMNode(), originalPath, startTime, endTime);
     }
   }
-  // endregion
-
-  // region Interfaces and Implementation for InsertPlan process
-  /** get schema for device. Attention!!! Only support insertPlan */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    ISchemaRegion schemaRegion;
-    if (config.isAutoCreateSchemaEnabled()) {
-      schemaRegion = getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath());
-    } else {
-      schemaRegion = getBelongedSchemaRegion(plan.getDevicePath());
-    }
-
-    return schemaRegion.getSeriesSchemasAndReadLockDevice(plan);
-  }
-
   // endregion
 
   // region Interfaces and Implementation for Template operations

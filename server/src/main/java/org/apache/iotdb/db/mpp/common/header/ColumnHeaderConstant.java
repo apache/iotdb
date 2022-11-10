@@ -37,7 +37,7 @@ public class ColumnHeaderConstant {
 
   // column names for schema statement
   public static final String COLUMN_DATABASE =
-          commonConfig.isUseDataBaseAsHeader() ? "database" : "storage group";
+      commonConfig.isUseDataBaseAsHeader() ? "database" : "storage group";
   public static final String COLUMN_TIMESERIES = "Timeseries";
   public static final String COLUMN_ALIAS = "Alias";
   public static final String COLUMN_DATATYPE = "DataType";
