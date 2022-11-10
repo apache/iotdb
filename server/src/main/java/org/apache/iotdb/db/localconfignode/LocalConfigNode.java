@@ -511,7 +511,7 @@ public class LocalConfigNode {
    * To collect nodes in the given level for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All nodes start with the matched prefix path will be
    * collected. This method only count in nodes above database. Nodes below database, including
-   * database node will be collected by certain SchemaRegion. The involved storage groups will be
+   * database node will be collected by certain SchemaRegion. The involved databases will be
    * collected to fetch schemaRegion.
    *
    * @param pathPattern a path pattern or a full path

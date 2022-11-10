@@ -155,7 +155,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     initProtocols();
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {

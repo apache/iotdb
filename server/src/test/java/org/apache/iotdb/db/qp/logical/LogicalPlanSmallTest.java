@@ -187,7 +187,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testDeleteStorageGroup() throws IllegalPathException {
-    String sqlStr = "delete storage group root.vehicle.d1";
+    String sqlStr = "delete database root.vehicle.d1";
     DeleteStorageGroupOperator operator =
         (DeleteStorageGroupOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());

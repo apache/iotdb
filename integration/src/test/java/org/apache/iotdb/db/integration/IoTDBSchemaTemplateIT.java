@@ -324,10 +324,10 @@ public class IoTDBSchemaTemplateIT {
   }
 
   private void prepareTemplate() throws SQLException {
-    // create storage group
-    statement.execute("CREATE STORAGE GROUP root.sg1");
-    statement.execute("CREATE STORAGE GROUP root.sg2");
-    statement.execute("CREATE STORAGE GROUP root.sg3");
+    // create database
+    statement.execute("CREATE DATABASE root.sg1");
+    statement.execute("CREATE DATABASE root.sg2");
+    statement.execute("CREATE DATABASE root.sg3");
 
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");

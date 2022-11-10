@@ -44,8 +44,8 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
    * Suppose there is an InsertRowsPlan, which contains 5 InsertRowPlans,
    * insertRowPlanList={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3,
    * InsertRowPlan_4}, then the insertRowPlanIndexList={0, 1, 2, 3, 4} respectively. But when the
-   * InsertRowsPlan is split into two InsertRowsPlans according to different storage group in
-   * cluster version, suppose that the InsertRowsPlan_1's insertRowPlanList = {InsertRowPlan_0,
+   * InsertRowsPlan is split into two InsertRowsPlans according to different database in cluster
+   * version, suppose that the InsertRowsPlan_1's insertRowPlanList = {InsertRowPlan_0,
    * InsertRowPlan_3, InsertRowPlan_4}, then InsertRowsPlan_1's insertRowPlanIndexList = {0, 3, 4};
    * InsertRowsPlan_2's insertRowPlanList = {InsertRowPlan_1, * InsertRowPlan_2} then
    * InsertRowsPlan_2's insertRowPlanIndexList= {1, 2} respectively;

@@ -659,7 +659,7 @@ public class PartitionCache {
    *
    * @param seriesSlotToTimePartitionMap result
    * @param dataPartitionQueryParam specific query param of data partition
-   * @param cachedStorageGroupPartitionMap all cached data partition map of related storage group
+   * @param cachedStorageGroupPartitionMap all cached data partition map of related database
    * @return whether hit
    */
   private boolean getDeviceDataPartition(
@@ -735,7 +735,7 @@ public class PartitionCache {
   /**
    * update dataPartitionCache by dataPartition
    *
-   * @param dataPartitionTable storage group to seriesPartitionSlot to timePartitionSlot to
+   * @param dataPartitionTable database to seriesPartitionSlot to timePartitionSlot to
    *     ConsensusGroupId map
    */
   public void updateDataPartitionCache(
@@ -785,7 +785,7 @@ public class PartitionCache {
   /**
    * invalid dataPartitionCache by storageGroup
    *
-   * @param storageGroup the storage groups that need to invalid
+   * @param storageGroup the databases that need to invalid
    */
   public void invalidDataPartitionCache(String storageGroup) {
     dataPartitionCacheLock.writeLock().lock();

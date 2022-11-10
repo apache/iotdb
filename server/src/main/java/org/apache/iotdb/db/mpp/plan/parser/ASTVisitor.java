@@ -628,7 +628,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesStatement);
     }
-    // show devices wtih storage group
+    // show devices wtih database
     if (ctx.WITH() != null) {
       showDevicesStatement.setSgCol(true);
     }
@@ -2165,7 +2165,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
-  // Create Storage Group
+  // Create database
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
@@ -2183,7 +2183,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
     if (ctx.storageGroupAttributeClause().size() != 0) {
       throw new RuntimeException(
-          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific storage group.");
+          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific database.");
     }
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {

@@ -108,8 +108,7 @@ public class IoTDBQuotedPathIT {
       Assert.assertTrue(
           e.getMessage().contains("Error StorageGroup name")
               || e.getMessage()
-                  .contains(
-                      "The storage group name can only be characters, numbers and underscores."));
+                  .contains("The database name can only be characters, numbers and underscores."));
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

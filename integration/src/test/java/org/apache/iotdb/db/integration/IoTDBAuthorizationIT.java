@@ -144,12 +144,12 @@ public class IoTDBAuthorizationIT {
         }
 
         Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("DELETE STORAGE GROUP root.sgtest"));
+            SQLException.class, () -> userStmt.execute("DELETE DATABASE root.sgtest"));
 
         adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_STORAGE_GROUP ON root.sgtest");
 
         try {
-          userStmt.execute("DELETE STORAGE GROUP root.sgtest");
+          userStmt.execute("DELETE DATABASE root.sgtest");
         } catch (SQLException e) {
           fail(e.getMessage());
         }

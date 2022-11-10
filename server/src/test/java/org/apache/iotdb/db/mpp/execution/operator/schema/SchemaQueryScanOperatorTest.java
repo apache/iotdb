@@ -56,9 +56,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
@@ -113,7 +113,7 @@ public class SchemaQueryScanOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
+      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_DATABASE, COLUMN_IS_ALIGNED);
       DevicesSchemaScanOperator deviceMetaScanOperator =
           new DevicesSchemaScanOperator(
               planNodeId,
@@ -186,7 +186,7 @@ public class SchemaQueryScanOperatorTest {
           Arrays.asList(
               COLUMN_TIMESERIES,
               COLUMN_TIMESERIES_ALIAS,
-              COLUMN_STORAGE_GROUP,
+              COLUMN_DATABASE,
               COLUMN_TIMESERIES_DATATYPE,
               COLUMN_TIMESERIES_ENCODING,
               COLUMN_TIMESERIES_COMPRESSION,

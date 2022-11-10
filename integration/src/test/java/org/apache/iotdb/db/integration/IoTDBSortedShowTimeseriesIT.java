@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -168,21 +169,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString("alias")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString("storage group")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString("compression")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
-                + resultSet.getString("tags")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
-                + resultSet.getString("attributes");
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
 
         assertTrue(retArray1.contains(ans));
         count++;
@@ -195,21 +196,21 @@ public class IoTDBSortedShowTimeseriesIT {
       count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString("alias")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString("storage group")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString("compression")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
-                + resultSet.getString("tags")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
-                + resultSet.getString("attributes");
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
         System.out.println("\"" + ans + "\",");
         assertTrue(retArray2.contains(ans));
         count++;
@@ -248,21 +249,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString("alias")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString("storage group")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString("compression")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
-                + resultSet.getString("tags")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
-                + resultSet.getString("attributes");
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
 
         assertEquals(retArray[count], ans);
         count++;
@@ -297,21 +298,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString("alias")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString("storage group")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString("compression")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
-                + resultSet.getString("tags")
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
-                + resultSet.getString("attributes");
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
 
         assertEquals(retArray[count], ans);
         count++;

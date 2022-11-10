@@ -252,7 +252,7 @@ public class MemTableFlushTask {
           }
 
           LOGGER.debug(
-              "Storage group {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
+              "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
               storageGroup,
               writer.getFile().getName(),
               memSerializeTime);
@@ -264,7 +264,7 @@ public class MemTableFlushTask {
   private Runnable ioTask =
       () -> {
         LOGGER.debug(
-            "Storage group {} memtable flushing to file {} start io.",
+            "Database {} memtable flushing to file {} start io.",
             storageGroup,
             writer.getFile().getName());
         while (true) {
@@ -291,13 +291,13 @@ public class MemTableFlushTask {
             }
           } catch (IOException e) {
             LOGGER.error(
-                "Storage group {} memtable {}, io task meets error.", storageGroup, memTable, e);
+                "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
             throw new FlushRunTimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
         LOGGER.debug(
-            "flushing a memtable to file {} in storage group {}, io cost {}ms",
+            "flushing a memtable to file {} in database {}, io cost {}ms",
             writer.getFile().getName(),
             storageGroup,
             ioTime);

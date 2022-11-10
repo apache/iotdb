@@ -162,7 +162,7 @@ public class SyncIT {
   private void prepareDel3() throws Exception { // after ins3, add 5 deletions, 2 schemas{
     senderStatement.execute("delete from root.sg1.d1.* where time <= 2");
     senderStatement.execute("delete timeseries root.sg1.d2.*");
-    senderStatement.execute("delete storage group root.sg2");
+    senderStatement.execute("delete database root.sg2");
   }
 
   private void preparePipe() throws Exception {

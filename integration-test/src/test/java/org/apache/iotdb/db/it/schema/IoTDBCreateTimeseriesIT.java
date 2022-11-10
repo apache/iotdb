@@ -59,7 +59,7 @@ public class IoTDBCreateTimeseriesIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
-  /** Test if creating a time series will cause the storage group with same name to disappear */
+  /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
@@ -75,7 +75,7 @@ public class IoTDBCreateTimeseriesIT {
     } catch (Exception ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     createTimeSeriesTool(storageGroup);
   }
 

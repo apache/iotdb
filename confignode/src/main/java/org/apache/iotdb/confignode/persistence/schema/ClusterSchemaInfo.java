@@ -163,10 +163,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
-      LOGGER.warn("Storage group not exist", e);
+      LOGGER.warn("Database not exist", e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Storage group not exist: " + e.getMessage());
+          .setMessage("Database not exist: " + e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }

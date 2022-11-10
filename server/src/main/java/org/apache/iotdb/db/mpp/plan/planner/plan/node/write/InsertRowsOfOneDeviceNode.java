@@ -56,11 +56,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
    * insertRowNodeList={InsertRowNode_0, InsertRowNode_1, InsertRowNode_2, InsertRowNode_3,
    * InsertRowNode_4}, then the insertRowNodeIndexList={0, 1, 2, 3, 4} respectively. But when the
    * InsertRowsOfOneDeviceNode is split into two InsertRowsOfOneDeviceNodes according to different
-   * storage group in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's
-   * insertRowNodeList = {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then
-   * InsertRowsOfOneDeviceNode_1's insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's
-   * insertRowNodeList = {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's
-   * insertRowNodeIndexList= {1, 2} respectively;
+   * database in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's insertRowNodeList =
+   * {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then InsertRowsOfOneDeviceNode_1's
+   * insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's insertRowNodeList =
+   * {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's insertRowNodeIndexList=
+   * {1, 2} respectively;
    */
   private List<Integer> insertRowNodeIndexList;
 

@@ -239,7 +239,7 @@ public abstract class SchemaBasicTest {
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format(
-              "The seriesPath of %s already exist, it can't be set to the storage group",
+              "The seriesPath of %s already exist, it can't be set to the database",
               "root.laptop1"),
           e.getMessage());
     }
@@ -2372,7 +2372,7 @@ public abstract class SchemaBasicTest {
       schemaProcessor.getStorageGroupNodeByPath(partialPath);
     } catch (StorageGroupNotSetException e) {
       Assert.assertEquals(
-          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          "Database is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
           e.getMessage());
     } catch (StorageGroupAlreadySetException e) {
       Assert.assertEquals(

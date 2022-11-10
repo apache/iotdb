@@ -130,7 +130,7 @@ public void exampleTest() throws Exception {
     // 使用 executeQuery() 方法查询存储组
     try (ResultSet resultSet = statement.executeQuery("show databases")) {
       if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
+        String storageGroupPath = resultSet.getString("database");
         Assert.assertEquals("root.sg", storageGroupPath);
       } else {
         Assert.fail("This ResultSet is empty.");

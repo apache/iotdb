@@ -108,7 +108,7 @@ Total line number = 1
 It costs 0.003s
 ```
 
-**Example 3:** Attention，the devices named `wt01` under databases `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different storage groups, you can use the following query:
+**Example 3:** Attention，the devices named `wt01` under databases `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different databases, you can use the following query:
 
 ```sql
 select count(status) from root.** group by level = 1, 3

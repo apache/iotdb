@@ -69,7 +69,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
-  private long lastSGAddr; // last segment of storage group node
+  private long lastSGAddr; // last segment of database node
 
   private IPageManager pageManager;
 
@@ -298,7 +298,7 @@ public class SchemaFile implements ISchemaFile {
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
-   *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
+   *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
    *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>

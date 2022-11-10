@@ -29,38 +29,38 @@ public class ColumnHeaderConstant {
 
   // column names for query statement
   public static final String COLUMN_TIME = "Time";
-  public static final String COLUMN_VALUE = "value";
+  public static final String COLUMN_VALUE = "Value";
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_DATABASE = "database";
-  public static final String COLUMN_TIMESERIES = "timeseries";
-  public static final String COLUMN_ALIAS = "alias";
-  public static final String COLUMN_DATATYPE = "dataType";
-  public static final String COLUMN_ENCODING = "encoding";
-  public static final String COLUMN_COMPRESSION = "compression";
-  public static final String COLUMN_DEVICES = "devices";
-  public static final String COLUMN_TAGS = "tags";
-  public static final String COLUMN_ATTRIBUTES = "attributes";
-  public static final String COLUMN_IS_ALIGNED = "isAligned";
-  public static final String COLUMN_COUNT = "count";
-  public static final String COLUMN_TTL = "ttl(ms)";
+  public static final String COLUMN_DATABASE = "Database";
+  public static final String COLUMN_TIMESERIES = "Timeseries";
+  public static final String COLUMN_ALIAS = "Alias";
+  public static final String COLUMN_DATATYPE = "DataType";
+  public static final String COLUMN_ENCODING = "Encoding";
+  public static final String COLUMN_COMPRESSION = "Compression";
+  public static final String COLUMN_DEVICES = "Devices";
+  public static final String COLUMN_TAGS = "Tags";
+  public static final String COLUMN_ATTRIBUTES = "Attributes";
+  public static final String COLUMN_IS_ALIGNED = "IsAligned";
+  public static final String COLUMN_COUNT = "Count";
+  public static final String COLUMN_TTL = "TTL(ms)";
   public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";
-  public static final String COLUMN_CHILDPATHS = "child paths";
-  public static final String COLUMN_NODETYPES = "node types";
-  public static final String COLUMN_CHILDNODES = "child nodes";
-  public static final String COLUMN_VERSION = "version";
-  public static final String COLUMN_BUILD_INFO = "build info";
-  public static final String COLUMN_PATHS = "paths";
+  public static final String COLUMN_CHILDPATHS = "ChildPaths";
+  public static final String COLUMN_NODETYPES = "NodeTypes";
+  public static final String COLUMN_CHILDNODES = "ChildNodes";
+  public static final String COLUMN_VERSION = "Version";
+  public static final String COLUMN_BUILD_INFO = "BuildInfo";
+  public static final String COLUMN_PATHS = "Paths";
 
   // column names for count statement
-  public static final String COLUMN_COLUMN = "column";
-  public static final String COLUMN_COUNT_DEVICES = "count(devices)";
-  public static final String COLUMN_COUNT_NODES = "count(nodes)";
-  public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
-  public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
+  public static final String COLUMN_COLUMN = "Column";
+  public static final String COLUMN_COUNT_DEVICES = "Count(Devices)";
+  public static final String COLUMN_COUNT_NODES = "Count(Nodes)";
+  public static final String COLUMN_COUNT_TIMESERIES = "Count(Timeseries)";
+  public static final String COLUMN_COUNT_DATABASE = "Count(Database)";
 
   // column names for show cluster and show cluster details statements
   public static final String COLUMN_NODE_ID = "NodeID";
@@ -77,9 +77,9 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_MPP_PORT = "MppPort";
 
   // column names for show functions statement
-  public static final String COLUMN_FUNCTION_NAME = "function name";
-  public static final String COLUMN_FUNCTION_TYPE = "function type";
-  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+  public static final String COLUMN_FUNCTION_NAME = "FunctionName";
+  public static final String COLUMN_FUNCTION_TYPE = "FunctionType";
+  public static final String COLUMN_FUNCTION_CLASS = "ClassName(UDF)";
 
   // column names for show triggers statement
   public static final String COLUMN_TRIGGER_NAME = "TriggerName";
@@ -88,12 +88,11 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_TRIGGER_STATE = "State";
   public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
   public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
-  public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
+  public static final String COLUMN_TRIGGER_LOCATION = "NodeID";
 
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
-  public static final String COLUMN_SHOW_REGION_STORAGE_GROUP = "Storage Group";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
   public static final String COLUMN_SERIES_SLOT_ID = "SeriesSlotId";
   public static final String COLUMN_TIME_SLOT_ID = "TimeSlotId";
@@ -104,34 +103,34 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
 
   // column names for show schema template statement
-  public static final String COLUMN_TEMPLATE_NAME = "template name";
+  public static final String COLUMN_TEMPLATE_NAME = "TemplateName";
 
   // column names for show pipe sink type
-  public static final String COLUMN_PIPESINK_TYPE = "type";
+  public static final String COLUMN_PIPESINK_TYPE = "Type";
 
   // column names for show pipe sink
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+  public static final String COLUMN_PIPESINK_NAME = "Name";
+  public static final String COLUMN_PIPESINK_ATTRIBUTES = "Attributes";
 
   // column names for show pipe
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_MESSAGE = "message";
+  public static final String COLUMN_PIPE_CREATE_TIME = "CreateTime";
+  public static final String COLUMN_PIPE_NAME = "Name";
+  public static final String COLUMN_PIPE_ROLE = "Role";
+  public static final String COLUMN_PIPE_REMOTE = "Remote";
+  public static final String COLUMN_PIPE_STATUS = "Status";
+  public static final String COLUMN_PIPE_ATTRIBUTES = "Attributes";
+  public static final String COLUMN_PIPE_MESSAGE = "Message";
 
   // column names for select into
-  public static final String COLUMN_SOURCE_DEVICE = "source device";
-  public static final String COLUMN_SOURCE_COLUMN = "source column";
-  public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
-  public static final String COLUMN_WRITTEN = "written";
+  public static final String COLUMN_SOURCE_DEVICE = "SourceDevice";
+  public static final String COLUMN_SOURCE_COLUMN = "SourceColumn";
+  public static final String COLUMN_TARGET_TIMESERIES = "TargetTimeseries";
+  public static final String COLUMN_WRITTEN = "Written";
 
   // column names for show cq
-  public static final String COLUMN_CQ_ID = "cq id";
-  public static final String COLUMN_QUERY = "query";
-  public static final String COLUMN_STATE = "state";
+  public static final String COLUMN_CQ_ID = "CqId";
+  public static final String COLUMN_QUERY = "Query";
+  public static final String COLUMN_STATE = "State";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -217,14 +216,14 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countStorageGroupColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_STORAGE_GROUP, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_DATABASE, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_TIME_SLOT_ID, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),

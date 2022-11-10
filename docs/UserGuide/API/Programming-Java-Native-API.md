@@ -115,7 +115,7 @@ void close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Storage Group Management
+#### Database Management
 
 * CREATE DATABASE
 
@@ -123,7 +123,7 @@ void close()
 void setStorageGroup(String storageGroupId)    
 ```
 
-* Delete one or several storage groups
+* Delete one or several databases
 
 ```java
 void deleteStorageGroup(String storageGroup)
@@ -286,7 +286,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 
 To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
 
-**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+**Please notice that, we strongly recommend not setting templates on the nodes above the database to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -541,7 +541,7 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 ## Cluster information related APIs (only works in the cluster mode)
 
-Cluster information related APIs allow users get the cluster info like where a storage group will be 
+Cluster information related APIs allow users get the cluster info like where a database will be 
 partitioned to, the status of each node in the cluster.
 
 To use the APIs, add dependency in your pom file:
@@ -603,7 +603,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -613,7 +613,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * Get metadata partition information of input path:
 ```java  
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

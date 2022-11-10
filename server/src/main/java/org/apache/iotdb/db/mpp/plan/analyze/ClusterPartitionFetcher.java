@@ -264,7 +264,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     partitionCache.invalidAllCache();
   }
 
-  /** split data partition query param by storage group */
+  /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
     List<String> devicePaths = new ArrayList<>();

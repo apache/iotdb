@@ -121,6 +121,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS_TYPES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COLUMN;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COUNT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
@@ -138,7 +139,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_SCHEMA_TEMPLATE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
@@ -341,7 +341,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processCountStorageGroup(CountPlan countPlan) throws MetadataException {
     int num = getStorageGroupNum(countPlan.getPath(), countPlan.isPrefixMatch());
-    return createSingleDataSet(COLUMN_STORAGE_GROUP, TSDataType.INT32, num);
+    return createSingleDataSet(COLUMN_DATABASE, TSDataType.INT32, num);
   }
 
   private QueryDataSet createSingleDataSet(String columnName, TSDataType columnType, Object val) {
@@ -488,7 +488,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_STORAGE_GROUP, false)),
+            Collections.singletonList(new PartialPath(COLUMN_DATABASE, false)),
             Collections.singletonList(TSDataType.TEXT));
     List<PartialPath> storageGroupList =
         getStorageGroupNames(showStorageGroupPlan.getPath(), showStorageGroupPlan.isPrefixMatch());
@@ -533,7 +533,7 @@ public class PlanExecutor implements IPlanExecutor {
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(
-                new PartialPath(COLUMN_STORAGE_GROUP, false), new PartialPath(COLUMN_TTL, false)),
+                new PartialPath(COLUMN_DATABASE, false), new PartialPath(COLUMN_TTL, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     Set<PartialPath> selectedSgs = new HashSet<>(showTTLPlan.getStorageGroups());
 

@@ -136,7 +136,7 @@ public class IoTDBLoadExternalTsfileIT {
   protected int prevCompactionThread;
 
   private static String[] deleteSqls =
-      new String[] {"DELETE STORAGE GROUP root.vehicle", "DELETE STORAGE GROUP root.test"};
+      new String[] {"DELETE DATABASE root.vehicle", "DELETE DATABASE root.test"};
 
   @Before
   public void setUp() throws Exception {

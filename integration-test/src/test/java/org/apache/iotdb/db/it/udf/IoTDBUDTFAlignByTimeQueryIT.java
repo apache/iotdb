@@ -103,7 +103,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s2 with datatype=INT32,encoding=PLAIN");
       // create aligned timeseries
-      statement.execute(("CREATE STORAGE GROUP root.sg1"));
+      statement.execute(("CREATE DATABASE root.sg1"));
       statement.execute("CREATE ALIGNED TIMESERIES root.sg1(s1 INT32, s2 INT32)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

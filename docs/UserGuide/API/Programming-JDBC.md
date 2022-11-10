@@ -82,7 +82,7 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
       statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){

@@ -61,7 +61,7 @@ def test_non_time_query():
     assert list(df.columns) == [
         "timeseries",
         "alias",
-        "storage group",
+        "database",
         "dataType",
         "encoding",
         "compression",

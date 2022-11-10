@@ -913,7 +913,7 @@ service IConfigNodeRPCService {
   /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
   common.TSStatus merge()
 
-  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
+  /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
@@ -1051,7 +1051,7 @@ service IConfigNodeRPCService {
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
 
-  /** Get the given storage group's assigned SeriesSlots */
+  /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
 

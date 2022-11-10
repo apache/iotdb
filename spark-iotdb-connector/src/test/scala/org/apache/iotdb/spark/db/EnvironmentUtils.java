@@ -110,7 +110,7 @@ public class EnvironmentUtils {
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    // clean storage group manager
+    // clean database manager
     StorageEngineV2.getInstance().reset();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
@@ -189,7 +189,7 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
-    // create storage group
+    // create database
     createDir(config.getSystemDir());
     // create wal
     for (String walDir : commonConfig.getWalDirs()) {

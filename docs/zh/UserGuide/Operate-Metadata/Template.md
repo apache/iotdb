@@ -86,7 +86,7 @@ show timeseries root.sg1.**
 
 ```shell
 +-----------------------+-----+-------------+--------+--------+-----------+----+----------+
-|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|             timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|

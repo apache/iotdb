@@ -312,7 +312,7 @@
           "refId": "A"
         }
       ],
-      "title": "storage group used memory",
+      "title": "database used memory",
       "type": "timeseries"
     },
     {

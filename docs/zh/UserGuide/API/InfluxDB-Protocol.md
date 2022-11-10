@@ -72,7 +72,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 
 #### 2.2.2 IoTDB 元数据
 
-1. storage group： 存储组。
+1. database： 数据库。
 2. path(time series ID)：存储路径。
 3. measurement： 物理量。
 
@@ -81,9 +81,9 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 #### 2.2.3 两者映射关系
 
 InfluxDB 元数据和 IoTDB 元数据有着如下的映射关系：
-1. InfluxDB 中的 database 和 measurement 组合起来作为 IoTDB 中的 storage group。
+1. InfluxDB 中的 database 和 measurement 组合起来作为 IoTDB 中的 database。
 2. InfluxDB 中的 field key 作为 IoTDB 中 measurement 路径，InfluxDB 中的 field value 即是该路径下记录的测点值。
-3. InfluxDB 中的 tag 在 IoTDB 中使用 storage group 和 measurement 之间的路径表达。InfluxDB 的 tag key 由 storage group 和 measurement 之间路径的顺序隐式表达，tag value 记录为对应顺序的路径的名称。
+3. InfluxDB 中的 tag 在 IoTDB 中使用 database 和 measurement 之间的路径表达。InfluxDB 的 tag key 由 database 和 measurement 之间路径的顺序隐式表达，tag value 记录为对应顺序的路径的名称。
 
 InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表示：
 
@@ -93,9 +93,9 @@ InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表�
 
 如上图所示，可以看出：
 
-我们在 IoTDB 中使用 storage group 和 measurement 之间的路径来表达 InfluxDB tag 的概念，也就是图中右侧绿色方框的部分。
+我们在 IoTDB 中使用 database 和 measurement 之间的路径来表达 InfluxDB tag 的概念，也就是图中右侧绿色方框的部分。
 
-storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag key 的数量为 N，那么 storage group 和 measurement 之间的路径的层数就是 N。我们对 storage group 和 measurement 之间的每一层进行顺序编号，每一个序号都和一个 tag key 一一对应。同时，我们使用 storage group 和 measurement 之间每一层 **路径的名字** 来记 tag value，tag key 可以通过自身的序号找到对应路径层级下的 tag value.
+database 和 measurement 之间的每一层都代表一个 tag。如果 tag key 的数量为 N，那么 database 和 measurement 之间的路径的层数就是 N。我们对 database 和 measurement 之间的每一层进行顺序编号，每一个序号都和一个 tag key 一一对应。同时，我们使用 database 和 measurement 之间每一层 **路径的名字** 来记 tag value，tag key 可以通过自身的序号找到对应路径层级下的 tag value.
 
 #### 2.2.4 关键问题
 

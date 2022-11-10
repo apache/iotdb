@@ -50,7 +50,7 @@ public class TsFileLoader implements ILoader {
   }
 
   private final File tsFile;
-  // TODO(sync): use storage group to support auto create schema
+  // TODO(sync): use database to support auto create schema
   private final String storageGroup;
 
   public TsFileLoader(File tsFile, String storageGroup) {

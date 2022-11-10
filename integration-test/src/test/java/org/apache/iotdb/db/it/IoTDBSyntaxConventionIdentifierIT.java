@@ -389,7 +389,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("create storage group root.sg1.d1.");
+        statement.execute("create database root.sg1.d1.");
         fail();
       } catch (Exception ignored) {
       }

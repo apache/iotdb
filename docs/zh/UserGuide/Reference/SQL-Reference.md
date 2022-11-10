@@ -49,10 +49,10 @@ Note: FullPath can not include wildcard `*` or `**`
 * 删除存储组
 
 ```
-DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln
-Eg: IoTDB > DELETE STORAGE GROUP root.*
-Eg: IoTDB > DELETE STORAGE GROUP root.**
+DELETE DATABASE <PathPattern> [COMMA <PathPattern>]*
+Eg: IoTDB > DELETE DATABASE root.ln
+Eg: IoTDB > DELETE DATABASE root.*
+Eg: IoTDB > DELETE DATABASE root.**
 ```
 
 * 创建时间序列语句
@@ -317,21 +317,21 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示所有设备语句
 
 ```
-SHOW DEVICES (WITH STORAGE GROUP)? limitClause? 
+SHOW DEVICES (WITH DATABASE)? limitClause? 
 Eg: IoTDB > SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES WITH DATABASE
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
+SHOW DEVICES <PathPattern> (WITH DATABASE)? limitClause?
 Eg: IoTDB > SHOW DEVICES root.**
 Eg: IoTDB > SHOW DEVICES root.ln.*
 Eg: IoTDB > SHOW DEVICES root.*.wf01
-Eg: IoTDB > SHOW DEVICES root.ln.* WITH STORAGE GROUP
-Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.ln.* WITH DATABASE
+Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH DATABASE
 Note: The path can be path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```

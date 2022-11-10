@@ -760,7 +760,7 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    // the num of memtables in each storage group
+    // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(
         Integer.parseInt(
             properties.getProperty(

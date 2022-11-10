@@ -107,7 +107,7 @@ public class IoTDBDeleteStorageGroupIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln2.wf01.wt01");
-      statement.execute("DELETE STORAGE GROUP root.ln2.wf01.wt02");
+      statement.execute("DELETE DATABASE root.ln2.wf01.wt02");
     }
   }
 
@@ -119,7 +119,7 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("CREATE DATABASE root.ln3.wf01.wt02");
       statement.execute("CREATE DATABASE root.ln3.wf02.wt03");
       statement.execute("CREATE DATABASE root.ln3.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.ln3.wf02.*");
+      statement.execute("DELETE DATABASE root.ln3.wf02.*");
       String[] expected = new String[] {"root.ln3.wf01.wt01", "root.ln3.wf01.wt02"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
@@ -142,7 +142,7 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("CREATE DATABASE root.ln4.wf01.wt02");
       statement.execute("CREATE DATABASE root.ln4.wf02.wt03");
       statement.execute("CREATE DATABASE root.ln4.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.**");
+      statement.execute("DELETE DATABASE root.**");
       List<String> result = new ArrayList<>();
       try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
@@ -160,7 +160,7 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
       statement.execute("flush");
       statement.execute("select count(*) from root.**;");
-      statement.execute("delete storage group root.sg1");
+      statement.execute("delete database root.sg1");
       statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
       statement.execute("flush");
       int count = 0;

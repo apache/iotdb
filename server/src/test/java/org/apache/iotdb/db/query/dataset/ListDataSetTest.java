@@ -79,7 +79,7 @@ public class ListDataSetTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("SHOW DATABASES");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
-    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
+    Assert.assertEquals("[database]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
@@ -145,11 +145,11 @@ public class ListDataSetTest {
           "0\troot.test.d2\troot.test\ttrue",
           "0\troot.vehicle.d0\troot.vehicle\tfalse"
         };
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with storage group");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with database");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
     Assert.assertEquals("devices", dataSet.getPaths().get(0).toString());
-    Assert.assertEquals("storage group", dataSet.getPaths().get(1).toString());
+    Assert.assertEquals("database", dataSet.getPaths().get(1).toString());
     Assert.assertEquals("isAligned", dataSet.getPaths().get(2).toString());
     int i = 0;
     while (dataSet.hasNext()) {

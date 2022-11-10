@@ -367,7 +367,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 |privilege Name|Interpretation|Example|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|set storage groups; set/unset storage group ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
+|SET\_STORAGE\_GROUP|create database; set/unset database ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
 |DELETE\_STORAGE\_GROUP|delete databases; path dependent|Eg: `delete database root.ln;`|
 |CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|

@@ -666,7 +666,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getCatalogTerm() {
-    return "storage group";
+    return "database";
   }
 
   @Override

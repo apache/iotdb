@@ -582,7 +582,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -592,7 +592,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * 给定一个路径（应包括一个 SG 作为前缀），获取其被分到了哪个节点上：
 ```java  
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

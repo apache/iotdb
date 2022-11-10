@@ -67,7 +67,7 @@ public class IoTDBAutoCreateSchemaIT {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
-  /** create timeseries without setting storage group */
+  /** create timeseries without setting database */
   @Test
   public void createTimeseriesTest() throws ClassNotFoundException {
     String[] sqls = {
@@ -77,7 +77,7 @@ public class IoTDBAutoCreateSchemaIT {
     executeSQL(sqls);
   }
 
-  /** insert data when storage group has been set but timeseries hasn't been created */
+  /** insert data when database has been set but timeseries hasn't been created */
   @Test
   public void insertTest1() throws ClassNotFoundException {
     String[] sqls = {
@@ -88,7 +88,7 @@ public class IoTDBAutoCreateSchemaIT {
     executeSQL(sqls);
   }
 
-  /** insert data when storage group hasn't been set and timeseries hasn't been created */
+  /** insert data when database hasn't been set and timeseries hasn't been created */
   @Test
   public void insertTest2() throws ClassNotFoundException {
     String[] sqls = {
@@ -154,7 +154,7 @@ public class IoTDBAutoCreateSchemaIT {
   }
 
   /**
-   * test if automatically creating a time series will cause the storage group with same name to
+   * test if automatically creating a time series will cause the database with same name to
    * disappear
    */
   @Test
@@ -169,7 +169,7 @@ public class IoTDBAutoCreateSchemaIT {
     } catch (SQLException ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
 
     statement.close();
@@ -178,7 +178,7 @@ public class IoTDBAutoCreateSchemaIT {
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
-    //    // ensure that storage group in cache is right after recovering.
+    //    // ensure that database in cache is right after recovering.
     //    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
   }
 
@@ -203,8 +203,7 @@ public class IoTDBAutoCreateSchemaIT {
   }
 
   /**
-   * insert data when storage group hasn't been set, timeseries hasn't been created and have null
-   * values
+   * insert data when database hasn't been set, timeseries hasn't been created and have null values
    */
   @Test
   public void testInsertAutoCreate3() {

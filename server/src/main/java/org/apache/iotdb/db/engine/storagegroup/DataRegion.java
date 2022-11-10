@@ -191,9 +191,9 @@ public class DataRegion {
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
-  /** time partition id in the storage group -> tsFileProcessor for this time partition */
+  /** time partition id in the database -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
-  /** time partition id in the storage group -> tsFileProcessor for this time partition */
+  /** time partition id in the database -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
   // upgrading sequence TsFile resource list
@@ -214,9 +214,9 @@ public class DataRegion {
 
   /** data region id */
   private String dataRegionId;
-  /** logical storage group name */
+  /** database name */
   private String storageGroupName;
-  /** storage group system directory */
+  /** database system directory */
   private File storageGroupSysDir;
   /** manage seqFileList and unSeqFileList */
   private TsFileManager tsFileManager;
@@ -231,7 +231,7 @@ public class DataRegion {
    */
   private HashMap<Long, VersionController> timePartitionIdVersionControllerMap = new HashMap<>();
   /**
-   * when the data in a storage group is older than dataTTL, it is considered invalid and will be
+   * when the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
@@ -246,7 +246,7 @@ public class DataRegion {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
-  /** storage group info for mem control */
+  /** database info for mem control */
   private DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
   /** whether it's ready from recovery */
   private boolean isReady = false;
@@ -270,12 +270,12 @@ public class DataRegion {
   private IDTable idTable;
 
   /**
-   * constrcut a storage group processor
+   * constrcut a database processor
    *
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param storageGroupName logical storage group name e.g. root.sg1
+   * @param storageGroupName database name e.g. root.sg1
    */
   public DataRegion(
       String systemDir,
@@ -292,10 +292,9 @@ public class DataRegion {
         new TsFileManager(storageGroupName, dataRegionId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
-          "Storage Group system Directory {} doesn't exist, create it",
-          storageGroupSysDir.getPath());
+          "Database system Directory {} doesn't exist, create it", storageGroupSysDir.getPath());
     } else if (!storageGroupSysDir.exists()) {
-      logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
+      logger.error("create database system Directory {} failed", storageGroupSysDir.getPath());
     }
 
     // if use id table, we use id table flush time manager
@@ -925,7 +924,7 @@ public class DataRegion {
   }
 
   /**
-   * Insert a tablet (rows belonging to the same devices) into this storage group.
+   * Insert a tablet (rows belonging to the same devices) into this database.
    *
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
@@ -1537,7 +1536,7 @@ public class DataRegion {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
-              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
+              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               storageGroupName,
               dataRegionId);
@@ -1560,7 +1559,7 @@ public class DataRegion {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
-              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
+              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               storageGroupName,
               dataRegionId);
@@ -1604,8 +1603,7 @@ public class DataRegion {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     try {
       logger.info(
-          "async force close all files in storage group: {}",
-          storageGroupName + "-" + dataRegionId);
+          "async force close all files in database: {}", storageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -1626,7 +1624,7 @@ public class DataRegion {
     writeLock("forceCloseAllWorkingTsFileProcessors");
     try {
       logger.info(
-          "force close all processors in storage group: {}", storageGroupName + "-" + dataRegionId);
+          "force close all processors in database: {}", storageGroupName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
@@ -2136,8 +2134,7 @@ public class DataRegion {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    logger.info(
-        "signal closing storage group condition in {}", storageGroupName + "-" + dataRegionId);
+    logger.info("signal closing database condition in {}", storageGroupName + "-" + dataRegionId);
   }
 
   private void executeCompaction() {
@@ -2150,15 +2147,15 @@ public class DataRegion {
   }
 
   /**
-   * count all Tsfiles in the storage group which need to be upgraded
+   * count all TsFiles in the database which need to be upgraded
    *
-   * @return total num of the tsfiles which need to be upgraded in the storage group
+   * @return total num of the tsfiles which need to be upgraded in the database
    */
   public int countUpgradeFiles() {
     return upgradeFileCount.get();
   }
 
-  /** upgrade all files belongs to this storage group */
+  /** upgrade all files belongs to this database */
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
@@ -2270,7 +2267,7 @@ public class DataRegion {
     resources.clear();
   }
 
-  /** merge file under this storage group processor */
+  /** merge file under this database processor */
   public void compact() {
     writeLock("merge");
     try {
@@ -2288,7 +2285,7 @@ public class DataRegion {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * Load a new tsfile to database processor. Tne file may have overlap with other files.
    *
    * <p>that there has no file which is overlapping with the new file.
    *
@@ -2344,7 +2341,7 @@ public class DataRegion {
       logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
-          "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
+          "Failed to append the tsfile {} to database processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);

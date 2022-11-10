@@ -244,7 +244,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -271,7 +271,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -336,7 +336,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -409,7 +409,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -539,10 +539,10 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-**Show devices with storage group**
+**Show devices with database**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 ```json
@@ -550,7 +550,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "expressions": null,
   "columnNames": [
     "devices",
-    "storage group",
+    "database",
     "isAligned"
   ],
   "timestamps": null,

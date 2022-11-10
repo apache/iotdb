@@ -388,7 +388,7 @@ static_configs:
 1. `Overview`：系统概述
    1. `The number of entity`：实体数量，目前包含时间序列的数量
    2. `write point per minute`：每分钟系统累计写入点数
-   3. `storage group used memory`：每个存储组使用的内存大小
+   3. `database used memory`：每个存储组使用的内存大小
 2. `Interface`：接口
    1. `The QPS of Interface`：系统接口每秒钟访问次数
    2. `The time consumed of Interface`：系统接口的平均耗时
@@ -424,8 +424,8 @@ static_configs:
 3. `Region`：Region分布情况
    1. `Total Region in Node`：不同Node的Region总数量
    2. `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
-   3. `Region in Storage Group`(Normal级别)：不同存储组的Region数量，包括SchemaRegion、DataRegion
-   4. `Slot in Storage Group`(Normal级别)：不同存储组的Slot数量，包括DataSlot数量和SchemaSlot数量
+   3. `Region in Database`(Normal级别)：不同数据库的Region数量，包括SchemaRegion、DataRegion
+   4. `Slot in Database`(Normal级别)：不同数据库的Slot数量，包括DataSlot数量和SchemaSlot数量
 4. `System`：系统
    1. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
    2. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
@@ -442,7 +442,7 @@ static_configs:
 1. `Overview`：系统概述
    1. `The number of entity`：实体数量，目前包含时间序列的数量
    2. `write point per minute`：每分钟系统累计写入点数
-   3. `storage group used memory`：每个存储组使用的内存大小
+   3. `database used memory`：每个存储组使用的内存大小
    4. `Memory`：系统内存大小和已经使用的大小
 2. `Interface`：接口
    1. `The QPS of Interface`：系统接口每秒钟访问次数

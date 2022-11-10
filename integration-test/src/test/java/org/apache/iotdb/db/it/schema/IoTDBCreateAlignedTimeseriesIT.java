@@ -76,7 +76,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
     } catch (SQLException ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
     statement.close();
@@ -85,7 +85,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
-    //    // ensure storage group in cache is right after recovering.
+    //    // ensure database in cache is right after recovering.
     //    assertTimeseriesEquals(timeSeriesArray);
   }
 
@@ -108,14 +108,14 @@ public class IoTDBCreateAlignedTimeseriesIT {
       e.printStackTrace();
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
     // todo
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
 
-    // ensure storage group in cache is right after recovering.
+    // ensure database in cache is right after recovering.
     assertTimeseriesEquals(timeSeriesArray);
   }
 

@@ -516,7 +516,7 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("storage group");
+            add("database");
             add("ttl");
           }
         };
@@ -546,7 +546,7 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("storage group");
+            add("database");
           }
         };
     List<Object> values1 =
@@ -579,7 +579,7 @@ public class IoTDBRestServiceTest {
           {
             add("timeseries");
             add("alias");
-            add("storage group");
+            add("database");
             add("dataType");
             add("encoding");
             add("compression");
@@ -638,7 +638,7 @@ public class IoTDBRestServiceTest {
           {
             add("timeseries");
             add("alias");
-            add("storage group");
+            add("database");
             add("dataType");
             add("encoding");
             add("compression");
@@ -770,7 +770,7 @@ public class IoTDBRestServiceTest {
   }
 
   public void showDevicesWithStroage(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show devices with storage group\"}";
+    String sql = "{\"sql\":\"show devices with database\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -779,7 +779,7 @@ public class IoTDBRestServiceTest {
         new ArrayList<Object>() {
           {
             add("devices");
-            add("storage group");
+            add("database");
             add("isAligned");
           }
         };

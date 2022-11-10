@@ -79,7 +79,7 @@ Preparations before the test include starting an IoTDB (single or cluster) insta
 The former means that this method is the first method executed for the IT class and is executed only once. The latter indicates that ```setUp()``` will be executed before each test method in the IT class. 
 
 - Please start IoTDB instance through the factor class, i.e., ```EnvFactory.getEnv().initBeforeClass()```.
-- Data preparation for the test includes registering storage groups, registering time series, and writing time series data as required by the test. It is recommended to implement a separate method within the IT class to prepare the data, such as ```insertData()```. 
+- Data preparation for the test includes registering databases, registering time series, and writing time series data as required by the test. It is recommended to implement a separate method within the IT class to prepare the data, such as ```insertData()```. 
 Please try to take advantage of the ```executeBatch()``` in JDBC or ```insertRecords()``` and ```insertTablets()``` in Session API if multiple statements or operations are to be executed. 
 
 ```java
@@ -137,12 +137,12 @@ The sample code is as follows.
 public void exampleTest() throws Exception {
   try (Connection connection = EnvFactory.getEnv().getConnection();
       Statement statement = connection.createStatement()) {
-    // use execute() to set the storage groups
+    // use execute() to set the databases
     statement.execute("CREATE DATABASE root.sg");
-    // use executeQuery() query the storage groups
+    // use executeQuery() query the databases
     try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
+        String storageGroupPath = resultSet.getString("database");
         Assert.assertEquals("root.sg", storageGroupPath);
       } else {
         Assert.fail("This ResultSet is empty.");

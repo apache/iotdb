@@ -552,7 +552,7 @@ service IDataNodeRPCService {
   common.TSStatus setSystemStatus(string status)
 
   /**
-   * Config node will Set the TTL for the storage group on a list of data nodes.
+   * Config node will Set the TTL for the database on a list of data nodes.
    */
   common.TSStatus setTTL(common.TSetTTLReq req)
   

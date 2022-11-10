@@ -25,13 +25,13 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** The storageGroupInfo records the total memory cost of the Storage Group. */
+/** The storageGroupInfo records the total memory cost of the database. */
 public class DataRegionInfo {
 
   private final DataRegion dataRegion;
 
   /**
-   * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
+   * The total database memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
    * primitive arrays and TEXT values
    */
   private final AtomicLong memoryCost;

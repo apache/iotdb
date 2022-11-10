@@ -28,14 +28,14 @@ import java.util.Iterator;
 public interface ISchemaFile {
 
   /**
-   * Get the storage group node, with its segment address of 0.
+   * Get the database node, with its segment address of 0.
    *
    * @return node instance, <b>template name as hash code</b>
    */
   IMNode init() throws MetadataException;
 
   /**
-   * Modify header of schema file corresponding to the storage group node synchronously
+   * Modify header of schema file corresponding to the database node synchronously
    *
    * @param sgNode node to be updated
    * @return true if success
@@ -43,7 +43,7 @@ public interface ISchemaFile {
   boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException;
 
   /**
-   * Only storage group node along with its descendents could be flushed into schema file.
+   * Only database node along with its descendents could be flushed into schema file.
    *
    * @param node
    */

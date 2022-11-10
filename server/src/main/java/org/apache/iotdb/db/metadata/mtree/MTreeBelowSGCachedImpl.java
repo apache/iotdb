@@ -860,17 +860,17 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
-   * current offset
+   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
+   * offset
    */
   @Override
   public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
      2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
-     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
      4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
      The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
     */
@@ -1236,7 +1236,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException {
     IMNode cur = storageGroupMNode;
-    // collect all the LeafMNode in this storage group
+    // collect all the LeafMNode in this database
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
     try {

@@ -269,7 +269,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = client.deleteStorageGroups(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute delete storage group {} in config node, status is {}.",
+            "Failed to execute delete database {} in config node, status is {}.",
             deleteStorageGroupStatement.getPrefixPath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));

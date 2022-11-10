@@ -169,7 +169,7 @@ public class IoTDB implements IoTDBMBean {
     }
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());

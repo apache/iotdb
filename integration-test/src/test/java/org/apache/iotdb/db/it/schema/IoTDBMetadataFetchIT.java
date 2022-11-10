@@ -203,8 +203,7 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show devices root.ln.** with storage group",
-            "show devices root.ln.wf01.wt01.temperature"
+            "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature"
           };
       Set<String>[] standards =
           new Set[] {
@@ -432,9 +431,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "count storage group root.ln.**",
-            "count storage group",
-            "count storage group root.ln.wf01.wt01.status"
+            "count databases root.ln.**",
+            "count databases",
+            "count databases root.ln.wf01.wt01.status"
           };
       String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {

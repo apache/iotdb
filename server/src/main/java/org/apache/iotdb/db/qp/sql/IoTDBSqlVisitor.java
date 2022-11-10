@@ -234,7 +234,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** 2. Data Definition Language (DDL) */
 
-  // Create Storage Group
+  // Create database
   @Override
   public Operator visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupOperator setStorageGroupOperator =
@@ -870,7 +870,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Delete Storage Group
+  // Delete database
 
   @Override
   public Operator visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
@@ -1041,7 +1041,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesOperator);
     }
-    // show devices wtih storage group
+    // show devices wtih database
     if (ctx.WITH() != null) {
       showDevicesOperator.setSgCol(true);
     }
@@ -2235,7 +2235,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSettle(IoTDBSqlParser.SettleContext ctx) {
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
     if (ctx.prefixPath() != null) {
-      // Storage Group
+      // database
       PartialPath sgPath = parsePrefixPath(ctx.prefixPath());
       settleOperator.setSgPath(sgPath);
       settleOperator.setIsSgPath(true);

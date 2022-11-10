@@ -143,8 +143,8 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("delete storage group %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete storage group %s", SchemaConfig.STORAGE_GROUP_1));
+      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
+      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
     }
   }
 

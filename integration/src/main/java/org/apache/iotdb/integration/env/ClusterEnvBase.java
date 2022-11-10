@@ -130,7 +130,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
         if (statement.execute("SHOW TIMESERIES")) {
           ResultSet resultSet = statement.getResultSet();
           if (resultSet.next()) {
-            statement.execute("DELETE STORAGE GROUP root.*");
+            statement.execute("DELETE DATABASE root.*");
             break;
           }
         }

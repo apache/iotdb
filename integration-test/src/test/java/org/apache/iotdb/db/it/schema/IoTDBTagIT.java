@@ -1113,7 +1113,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.size(), count);
 
-      statement.execute("delete storage group root.turbine");
+      statement.execute("delete database root.turbine");
       try (ResultSet rs = statement.executeQuery("show timeseries where 'tag1'='v1'")) {
         assertFalse(rs.next());
       }
