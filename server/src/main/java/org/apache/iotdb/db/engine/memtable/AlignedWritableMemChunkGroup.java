@@ -135,6 +135,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunk.getTVList().rowCount();
   }
 
+  @Override
+  public long getMaxTime() {
+    return memChunk.getMaxTime();
+  }
+
   public AlignedWritableMemChunk getAlignedMemChunk() {
     return memChunk;
   }
