@@ -31,6 +31,8 @@ public class SyncStatus {
   private final MultiLeaderConfig config;
   private final IndexController controller;
   private final LinkedList<PendingBatch> pendingBatches = new LinkedList<>();
+  private final MultiLeaderMemoryManager multiLeaderMemoryManager =
+      MultiLeaderMemoryManager.getInstance();
 
   public SyncStatus(IndexController controller, MultiLeaderConfig config) {
     this.controller = controller;
@@ -40,7 +42,8 @@ public class SyncStatus {
   /** we may block here if the synchronization pipeline is full */
   public void addNextBatch(PendingBatch batch) throws InterruptedException {
     synchronized (this) {
-      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatch()) {
+      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatch()
+          || !multiLeaderMemoryManager.reserve(batch.getSerializedSize(), false)) {
         wait();
       }
       pendingBatches.add(batch);
@@ -61,6 +64,7 @@ public class SyncStatus {
         while (current.isSynced()) {
           controller.updateAndGet(current.getEndIndex());
           iterator.remove();
+          multiLeaderMemoryManager.free(current.getSerializedSize());
           if (iterator.hasNext()) {
             current = iterator.next();
           } else {
@@ -71,6 +75,15 @@ public class SyncStatus {
         notifyAll();
       }
     }
+  }
+
+  public void free() {
+    long size = 0;
+    for (PendingBatch pendingBatch : pendingBatches) {
+      size = pendingBatch.getSerializedSize();
+    }
+    pendingBatches.clear();
+    multiLeaderMemoryManager.free(size);
   }
 
   /** Gets the first index that is not currently synchronized */

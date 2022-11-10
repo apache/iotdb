@@ -243,7 +243,7 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize())) {
+      if (!multiLeaderMemoryManager.reserve(indexedConsensusRequest.getSerializedSize(), true)) {
         return false;
       }
       boolean success;
@@ -268,12 +268,18 @@ public class LogDispatcher {
 
     public void stop() {
       stopped = true;
+      long requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
-        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        requestSize += indexedConsensusRequest.getSerializedSize();
       }
+      pendingRequest.clear();
+      multiLeaderMemoryManager.free(requestSize);
+      requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
-        multiLeaderMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        requestSize += indexedConsensusRequest.getSerializedSize();
       }
+      multiLeaderMemoryManager.free(requestSize);
+      syncStatus.free();
       MetricService.getInstance().removeMetricSet(metrics);
     }
 
