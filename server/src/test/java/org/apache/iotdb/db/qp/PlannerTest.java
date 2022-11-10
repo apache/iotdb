@@ -164,14 +164,14 @@ public class PlannerTest {
     PhysicalPlan plan3 = processor.parseSQLToPhysicalPlan(deleteTSStatement);
     assertEquals(OperatorType.DELETE_TIMESERIES, plan3.getOperatorType());
 
-    String insertStatement = "insert into root.vehicle.d0(timestamp,s0) values(10,100)";
-    PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
-    assertEquals(OperatorType.INSERT, plan4.getOperatorType());
-
-    String deleteStatement =
-        "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
-    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
-    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
+    //    String insertStatement = "insert into root.vehicle.d0(timestamp,s0) values(10,100)";
+    //    PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
+    //    assertEquals(OperatorType.INSERT, plan4.getOperatorType());
+    //
+    //    String deleteStatement =
+    //        "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
+    //    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
+    //    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
     String queryStatement1 =
         "select * from root.vehicle.** where root.vehicle.device1.sensor1 > 50";
@@ -193,9 +193,9 @@ public class PlannerTest {
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
 
-    String insertTimeStatement = "insert into root.vehicle.d0(time,s0) values(10,100)";
-    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
-    assertEquals(OperatorType.INSERT, plan11.getOperatorType());
+    //    String insertTimeStatement = "insert into root.vehicle.d0(time,s0) values(10,100)";
+    //    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
+    //    assertEquals(OperatorType.INSERT, plan11.getOperatorType());
 
     String createTSStatement2 =
         "create timeseries root.a.b.d_1.`1s` with datatype=FLOAT,encoding=RLE";
