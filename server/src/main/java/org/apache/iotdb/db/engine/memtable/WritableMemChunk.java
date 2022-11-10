@@ -246,8 +246,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public long getMinTime() {
-    return list.getMinTime();
+  public long getMaxTime() {
+    return list.getMaxTime();
   }
 
   @Override
@@ -266,6 +266,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     return getSortedTvListForQuery()
         .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
         .getTimestamp();
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return list.rowCount() == 0;
   }
 
   @Override
