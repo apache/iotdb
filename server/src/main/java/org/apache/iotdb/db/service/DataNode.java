@@ -642,10 +642,6 @@ public class DataNode implements DataNodeMBean {
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
     logger.info("Spent {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        config.getSeqTsFileSize(),
-        config.getUnSeqTsFileSize());
   }
 
   public void stop() {

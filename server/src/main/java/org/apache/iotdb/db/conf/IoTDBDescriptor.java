@@ -376,24 +376,6 @@ public class IoTDBDescriptor {
                 "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
     logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
-    long seqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                .trim());
-    if (seqTsFileSize >= 0) {
-      conf.setSeqTsFileSize(seqTsFileSize);
-    }
-
-    long unSeqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                .trim());
-    if (unSeqTsFileSize >= 0) {
-      conf.setUnSeqTsFileSize(unSeqTsFileSize);
-    }
-
     long memTableSizeThreshold =
         Long.parseLong(
             properties
@@ -1458,24 +1440,6 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngineV2.getInstance().rebootTimedService();
-
-      long seqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                  .trim());
-      if (seqTsFileSize >= 0) {
-        conf.setSeqTsFileSize(seqTsFileSize);
-      }
-
-      long unSeqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                  .trim());
-      if (unSeqTsFileSize >= 0) {
-        conf.setUnSeqTsFileSize(unSeqTsFileSize);
-      }
 
       long memTableSizeThreshold =
           Long.parseLong(
