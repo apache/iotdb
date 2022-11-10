@@ -36,6 +36,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -1125,42 +1126,28 @@ public class IoTDBWithoutNullAnyFilterIT {
   @Test
   public void withoutNullColumnsMisMatchSelectedQueryTest() {
     System.out.println("withoutNullColumnsMisMatchSelectedQueryTest");
-    String[] retArray1 =
+    String[] expectedHeader =
         new String[] {
-          "1,true,1,1.0,1",
-          "3,false,null,null,null",
-          "6,true,6,6.0,6",
-          "7,true,null,7.0,null",
-          "8,true,8,8.0,null",
-          "9,false,9,9.0,9",
-          "10,true,10,10.0,10"
+          TIMESTAMP_STR,
+          "root.test.sg1.s1",
+          "root.test.sg1.s2",
+          "root.test.sg1.s3",
+          "root.test.sg1.s4",
         };
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.executeQuery(
-          "select * from root.test.sg1 where s1 is not null && usag is not null");
-      fail();
-    } catch (Exception e) {
-    }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.executeQuery(
-          "select s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.test.sg1 where s1+s2 is not null && s2 is not null");
-      fail();
-    } catch (Exception e) {
-    }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.executeQuery(
-          "select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 where d is not null && tan(s1) is not null && t is not null limit 5");
-      fail();
-    } catch (Exception e) {
-    }
+    String[] retArray =
+        new String[] {
+          "1,true,1,1.0,1,",
+          "3,false,null,null,null,",
+          "6,true,6,6.0,6,",
+          "7,true,null,7.0,null,",
+          "8,true,8,8.0,null,",
+          "9,false,9,9.0,9,",
+          "10,true,10,10.0,10,"
+        };
+    resultSetEqualTest(
+        "select s1, s2, s3, s4 from root.test.sg1 where s1 is not null && usage is null",
+        expectedHeader,
+        retArray);
   }
 
   @Ignore

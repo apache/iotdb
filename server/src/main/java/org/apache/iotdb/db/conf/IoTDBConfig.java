@@ -261,8 +261,7 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
   /** External temporary lib directory for storing downloaded udf JAR files */
-  private String udfTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+  private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
@@ -270,7 +269,7 @@ public class IoTDBConfig {
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
+      triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -1411,10 +1410,15 @@ public class IoTDBConfig {
 
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+    updateUdfTemporaryLibDir();
   }
 
   public String getUdfTemporaryLibDir() {
     return udfTemporaryLibDir;
+  }
+
+  public void updateUdfTemporaryLibDir() {
+    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getTriggerDir() {
@@ -1423,14 +1427,15 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
-  }
-
-  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
-    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
+    updateTriggerTemporaryLibDir();
   }
 
   public String getTriggerTemporaryLibDir() {
     return triggerTemporaryLibDir;
+  }
+
+  public void updateTriggerTemporaryLibDir() {
+    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getMqttDir() {

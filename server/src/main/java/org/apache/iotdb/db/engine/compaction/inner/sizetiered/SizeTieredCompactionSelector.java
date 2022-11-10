@@ -79,6 +79,75 @@ public class SizeTieredCompactionSelector
   }
 
   /**
+   * This method searches for all files on the given level. If there are consecutive files on the
+   * level that meet the system preset conditions (the number exceeds 10 or the total file size
+   * exceeds 2G), a compaction task is created for the batch of files and placed in the
+   * taskPriorityQueue queue , and continue to search for the next batch. If at least one batch of
+   * files to be compacted is found on this layer, it will return false (indicating that it will no
+   * longer search for higher layers), otherwise it will return true.
+   *
+   * @param level the level to be searched
+   * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
+   *     each batch
+   * @return return whether to continue the search to higher levels
+   * @throws IOException
+   */
+  private boolean selectLevelTask(
+      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
+      throws IOException {
+    boolean shouldContinueToSearch = true;
+    List<TsFileResource> selectedFileList = new ArrayList<>();
+    long selectedFileSize = 0L;
+    long targetCompactionFileSize = config.getTargetCompactionFileSize();
+
+    for (TsFileResource currentFile : tsFileResources) {
+      TsFileNameGenerator.TsFileName currentName =
+          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      if (currentName.getInnerCompactionCnt() != level) {
+        if (selectedFileList.size() > 1) {
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          shouldContinueToSearch = false;
+        }
+        selectedFileList = new ArrayList<>();
+        selectedFileSize = 0L;
+        continue;
+      }
+      if (currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
+        selectedFileList.clear();
+        selectedFileSize = 0L;
+        continue;
+      }
+      LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
+      selectedFileList.add(currentFile);
+      selectedFileSize += currentFile.getTsFileSize();
+      LOGGER.debug(
+          "Add tsfile {}, current select file num is {}, size is {}",
+          currentFile,
+          selectedFileList.size(),
+          selectedFileSize);
+      // if the file size or file num reach threshold
+      if (selectedFileSize >= targetCompactionFileSize
+          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
+        // submit the task
+        if (selectedFileList.size() > 1) {
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          shouldContinueToSearch = false;
+        }
+        selectedFileList = new ArrayList<>();
+        selectedFileSize = 0L;
+      }
+    }
+
+    // if next time partition exists
+    // submit a merge task even it does not meet the requirement for file num or file size
+    if (hasNextTimePartition && selectedFileList.size() > 1) {
+      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      shouldContinueToSearch = false;
+    }
+    return shouldContinueToSearch;
+  }
+
+  /**
    * This method searches for a batch of files to be compacted from layer 0 to the highest layer. If
    * there are more than a batch of files to be merged on a certain layer, it does not search to
    * higher layers. It creates a compaction thread for each batch of files and put it into the
@@ -108,67 +177,6 @@ public class SizeTieredCompactionSelector
       LOGGER.error("Exception occurs while selecting files", e);
     }
     return Collections.emptyList();
-  }
-
-  /**
-   * This method searches for all files on the given level. If there are consecutive files on the
-   * level that meet the system preset conditions (the number exceeds 10 or the total file size
-   * exceeds 2G), a compaction task is created for the batch of files and placed in the
-   * taskPriorityQueue queue , and continue to search for the next batch. If at least one batch of
-   * files to be compacted is found on this layer, it will return false (indicating that it will no
-   * longer search for higher layers), otherwise it will return true.
-   *
-   * @param level the level to be searched
-   * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
-   *     each batch
-   * @return return whether to continue the search to higher levels
-   * @throws IOException
-   */
-  private boolean selectLevelTask(
-      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
-      throws IOException {
-    boolean shouldContinueToSearch = true;
-    List<TsFileResource> selectedFileList = new ArrayList<>();
-    long selectedFileSize = 0L;
-    long targetCompactionFileSize = config.getTargetCompactionFileSize();
-
-    for (TsFileResource currentFile : tsFileResources) {
-      TsFileNameGenerator.TsFileName currentName =
-          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level
-          || currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
-        selectedFileList.clear();
-        selectedFileSize = 0L;
-        continue;
-      }
-      LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
-      selectedFileList.add(currentFile);
-      selectedFileSize += currentFile.getTsFileSize();
-      LOGGER.debug(
-          "Add tsfile {}, current select file num is {}, size is {}",
-          currentFile,
-          selectedFileList.size(),
-          selectedFileSize);
-      // if the file size or file num reach threshold
-      if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
-        // submit the task
-        if (selectedFileList.size() > 1) {
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-        }
-        selectedFileList = new ArrayList<>();
-        selectedFileSize = 0L;
-        shouldContinueToSearch = false;
-      }
-    }
-
-    // if next time partition exists
-    // submit a merge task even it does not meet the requirement for file num or file size
-    if (hasNextTimePartition && selectedFileList.size() > 1) {
-      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-      shouldContinueToSearch = false;
-    }
-    return shouldContinueToSearch;
   }
 
   private int searchMaxFileLevel() throws IOException {

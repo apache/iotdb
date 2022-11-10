@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -66,6 +68,17 @@ public class NonAlignedChunkData implements ChunkData {
     this.pageNumber = 0;
     this.byteStream = new PublicBAOS();
     this.stream = new DataOutputStream(byteStream);
+
+    addAttrDataSize();
+  }
+
+  private void addAttrDataSize() { // should be init before serialize, corresponding serializeAttr
+    dataSize += 2 * Byte.BYTES; // isModification and isAligned
+    dataSize += Long.BYTES; // timePartitionSlot
+    int deviceLength = device.getBytes(TSFileConfig.STRING_CHARSET).length;
+    dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
+    dataSize += deviceLength; // device
+    dataSize += chunkHeader.getSerializedSize(); // timeChunkHeader
   }
 
   @Override
@@ -132,7 +145,7 @@ public class NonAlignedChunkData implements ChunkData {
   public void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
     pageNumber += 1;
     dataSize += ReadWriteIOUtils.write(false, stream);
-    pageHeader.serializeTo(stream);
+    dataSize += pageHeader.serializeTo(stream);
     dataSize += ReadWriteIOUtils.write(pageData, stream);
   }
 

@@ -17,10 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 
-public enum AddConfigNodeState {
-  ADD_CONFIG_NODE_PREPARE,
-  ADD_NEW_NODE,
-  REGISTER_SUCCESS
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
+
+public class NullColumnTransformer extends LeafColumnTransformer {
+
+  public NullColumnTransformer() {
+    super(null);
+  }
+
+  @Override
+  public void tryEvaluate() {}
+
+  @Override
+  public void initFromTsBlock(TsBlock input) {
+    initializeColumnCache(new NullColumn(input.getPositionCount()));
+  }
 }
