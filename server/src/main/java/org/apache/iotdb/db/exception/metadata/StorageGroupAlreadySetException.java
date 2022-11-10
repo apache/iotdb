@@ -52,7 +52,7 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   private static String getMessage(String path, boolean hasChild) {
     if (hasChild) {
-      return String.format("some children of %s have already been set to database", path);
+      return String.format("some children of %s have already been created as database", path);
     } else {
       return String.format("%s has already been created as database", path);
     }
