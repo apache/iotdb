@@ -37,15 +37,15 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
@@ -67,13 +67,12 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.persistence.partition.statistics.RegionGroupStatistics;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -444,10 +443,32 @@ public class PartitionManager {
   /**
    * Only leader use this interface
    *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet and organized to Map
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getAllReplicaSetsMap(TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(type).stream()
+        .collect(
+            Collectors.toMap(TRegionReplicaSet::getRegionId, regionReplicaSet -> regionReplicaSet));
+  }
+
+  /**
+   * Only leader use this interface
+   *
    * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     return partitionInfo.getAllReplicaSets();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(type);
   }
 
   /**
@@ -555,7 +576,7 @@ public class PartitionManager {
     // Get static result
     RegionInfoListResp regionInfoListResp =
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
-    Map<TConsensusGroupId, Integer> allLeadership = getAllLeadership();
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
 
     // Get cached result
     regionInfoListResp
@@ -735,55 +756,6 @@ public class PartitionManager {
   }
 
   /**
-   * Get the leadership of each RegionGroup.
-   *
-   * @return Map<RegionGroupId, DataNodeId where the leader located>
-   *     <p>Some RegionGroups that supposed to be occurred in the result map might be nonexistent
-   *     and some leaderId might be -1(leader unknown yet) due to heartbeat latency
-   */
-  public Map<TConsensusGroupId, Integer> getAllLeadership() {
-
-    // TODO: Will be optimized by IOTDB-4341
-
-    Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
-    if (ConfigNodeDescriptor.getInstance()
-        .getConf()
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
-      regionGroupCacheMap.forEach(
-          (consensusGroupId, regionGroupCache) -> {
-            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-              int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
-              if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
-                result.put(consensusGroupId, -1);
-              } else {
-                result.put(consensusGroupId, leaderDataNodeId);
-              }
-            }
-          });
-      getLoadManager()
-          .getRouteBalancer()
-          .getRouteMap()
-          .forEach(
-              (consensusGroupId, regionReplicaSet) ->
-                  result.put(
-                      consensusGroupId,
-                      regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId()));
-    } else {
-      regionGroupCacheMap.forEach(
-          (consensusGroupId, regionGroupCache) -> {
-            int leaderDataNodeId = regionGroupCache.getStatistics().getLeaderDataNodeId();
-            if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
-              result.put(consensusGroupId, -1);
-            } else {
-              result.put(consensusGroupId, leaderDataNodeId);
-            }
-          });
-    }
-    return result;
-  }
-
-  /**
    * Filter the RegionGroups in the specified StorageGroup through the RegionGroupStatus
    *
    * @param storageGroup The specified StorageGroup
@@ -834,35 +806,15 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  public void cacheHeartbeatSample(
-      int belongedDataNodeId,
-      TConsensusGroupId regionGroupId,
-      RegionHeartbeatSample regionHeartbeatSample) {
-    regionGroupCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-        .cacheHeartbeatSample(belongedDataNodeId, regionHeartbeatSample);
-    regionGroupCacheMap.get(regionGroupId).updateRegionGroupStatistics();
-  }
-
-  /** Recover the regionGroupCacheMap when the ConfigNode-Leader is switched */
-  public void recoverRegionGroupCacheMap() {
-    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
-        partitionInfo.getRegionGroupStatisticsMap();
+  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  public void initRegionGroupHeartbeatCache() {
     regionGroupCacheMap.clear();
-
     getAllReplicaSets()
         .forEach(
-            regionReplicaSet -> {
-              TConsensusGroupId groupId = regionReplicaSet.getRegionId();
-              regionGroupCacheMap.put(
-                  groupId,
-                  new RegionGroupCache(
-                      groupId,
-                      regionGroupStatisticsMap.getOrDefault(
-                          groupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics())));
-            });
-
-    LOGGER.info("Inherit RegionGroupStatistics: {}", regionGroupStatisticsMap);
+            regionReplicaSet ->
+                regionGroupCacheMap.put(
+                    regionReplicaSet.getRegionId(),
+                    new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

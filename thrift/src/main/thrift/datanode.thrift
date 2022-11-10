@@ -118,14 +118,16 @@ struct TSendPlanNodeResp {
   3: optional common.TSStatus status
 }
 
-struct TFetchFragmentInstanceStateReq {
+struct TFetchFragmentInstanceInfoReq {
   1: required TFragmentInstanceId fragmentInstanceId
 }
 
 // TODO: need to supply more fields according to implementation
-struct TFragmentInstanceStateResp {
+struct TFragmentInstanceInfoResp {
   1: required string state
-  2: optional list<string> failedMessages
+  2: optional i64 endTime
+  3: optional list<string> failedMessages
+  4: optional list<binary> failureInfoList
 }
 
 struct TCancelQueryReq {
@@ -160,8 +162,8 @@ struct TDisableDataNodeReq {
 }
 
 struct TCreateFunctionInstanceReq {
-  1: binary udfInformation
-  2: binary jarFile
+  1: required binary udfInformation
+  2: optional binary jarFile
 }
 
 struct TDropFunctionInstanceReq {
@@ -171,7 +173,7 @@ struct TDropFunctionInstanceReq {
 
 struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
-  2: required binary jarFile
+  2: optional binary jarFile
 }
 
 struct TActiveTriggerInstanceReq {
@@ -311,6 +313,17 @@ struct TDeactivateTemplateReq{
   2: required map<string, list<i32>> templateSetInfo
 }
 
+struct TCountPathsUsingTemplateReq{
+  1: required i32 templateId
+  2: required binary patternTree
+  3: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCountPathsUsingTemplateResp{
+  1: required common.TSStatus status
+  2: optional i32 count
+}
+
 struct TCreatePipeOnDataNodeReq{
   1: required binary pipeInfo
 }
@@ -319,6 +332,20 @@ struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
+    3: optional i64 createTime
+}
+
+// ====================================================
+// CQ
+// ====================================================
+struct TExecuteCQ {
+  1: required string queryBody
+  2: required i64 startTime
+  3: required i64 endTime
+  4: required i64 timeout
+  5: required string zoneId
+  6: required string cqId
+  7: required string username
 }
 
 service IDataNodeRPCService {
@@ -335,7 +362,7 @@ service IDataNodeRPCService {
   */
   TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
-  TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
+  TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
   TCancelResp cancelQuery(TCancelQueryReq req);
 
@@ -591,6 +618,8 @@ service IDataNodeRPCService {
    */
   common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
 
+  TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
+
  /**
   * Create PIPE on DataNode
   */
@@ -600,6 +629,16 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode for rollback
+  */
+  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Execute CQ on DataNode
+  */
+  common.TSStatus executeCQ(TExecuteCQ req)
 }
 
 service MPPDataExchangeService {

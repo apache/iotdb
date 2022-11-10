@@ -37,7 +37,8 @@ struct TDataNodeRegisterResp {
   5: optional binary templateInfo
   6: optional TRatisConfig ratisConfig
   7: optional list<binary> allTriggerInformation
-  8: optional list<binary> allUDFInformation
+  8: optional TCQConfig cqConfig
+  9: optional list<binary> allUDFInformation
 }
 
 struct TGlobalConfig {
@@ -89,10 +90,13 @@ struct TRatisConfig {
   26: required i64 firstElectionTimeoutMax
 }
 
+struct TCQConfig {
+  1: required i64 cqMinEveryIntervalInMs
+}
+
 struct TDataNodeUpdateReq{
   1: required common.TDataNodeLocation dataNodeLocation
 }
-
 
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
@@ -113,6 +117,11 @@ struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeConfiguration>
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
+}
+
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
 }
 
 // StorageGroup
@@ -311,9 +320,10 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required string jarName
-  4: required binary jarFile
-  5: required string jarMD5
+  3: required bool isUsingURI
+  4: optional string jarName
+  5: optional binary jarFile
+  6: optional string jarMD5
 }
 
 struct TDropFunctionReq {
@@ -324,16 +334,6 @@ struct TDropFunctionReq {
 struct TGetUDFTableResp {
   1: required common.TSStatus status
   2: required list<binary> allUDFInformation
-}
-
-// Get jars of the corresponding trigger
-struct TGetUDFJarReq {
-  1: required list<string> jarNameList
-}
-
-struct TGetUDFJarResp {
-  1: required common.TSStatus status
-  2: required list<binary> jarList
 }
 
 // Trigger
@@ -351,15 +351,15 @@ enum TTriggerState {
 struct TCreateTriggerReq {
   1: required string triggerName
   2: required string className,
-  3: required string jarPath,
-  4: required bool usingURI,
-  5: required byte triggerEvent,
-  6: required byte triggerType
-  7: required binary pathPattern,
-  8: required map<string, string> attributes,
-  9: optional binary jarFile,
-  10: optional string jarMD5,
-  11: required i32 failureStrategy
+  3: required byte triggerEvent,
+  4: required byte triggerType
+  5: required binary pathPattern,
+  6: required map<string, string> attributes,
+  7: required i32 failureStrategy
+  8: required bool isUsingURI,
+  9: optional string jarName,
+  10: optional binary jarFile,
+  11: optional string jarMD5,
 }
 
 struct TDropTriggerReq {
@@ -377,12 +377,12 @@ struct TGetTriggerTableResp {
   2: required list<binary> allTriggerInformation
 }
 
-// Get jars of the corresponding trigger
-struct TGetTriggerJarReq {
+// Get jars of the corresponding jarName
+struct TGetJarInListReq {
   1: required list<string> jarNameList
 }
 
-struct TGetTriggerJarResp {
+struct TGetJarInListResp {
   1: required common.TSStatus status
   2: required list<binary> jarList
 }
@@ -507,7 +507,8 @@ struct TShowPipeInfo {
   3: required string role
   4: required string remote
   5: required string status
-  6: required string message
+  6: required string attributes
+  7: required string message
 }
 
 struct TGetAllPipeInfoResp{
@@ -555,10 +556,48 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+// ====================================================
+// CQ
+// ====================================================
+struct TCreateCQReq {
+  1: required string cqId,
+  2: required i64 everyInterval
+  3: required i64 boundaryTime
+  4: required i64 startTimeOffset
+  5: required i64 endTimeOffset
+  6: required byte timeoutPolicy
+  7: required string queryBody
+  8: required string sql
+  9: required string zoneId
+  10: required string username
+}
+
+struct TDropCQReq {
+  1: required string cqId
+}
+
+struct TCQEntry {
+  1: required string cqId
+  2: required string sql
+  3: required byte state
+}
+
+struct TShowCQResp {
+  1: required common.TSStatus status
+  2: required list<TCQEntry> cqList
+}
+
+
 struct TDeactivateSchemaTemplateReq{
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
+}
+
+struct TUnsetSchemaTemplateReq{
+  1: required string queryId
+  2: required string templateName
+  3: required string path
 }
 
 service IConfigNodeRPCService {
@@ -680,9 +719,12 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-  // Node Management TODO: @MarcosZyk add interface annotation
-  // ======================================================
+    // Node Management
+    // ======================================================
 
+  /**
+   * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
+   */
   TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   // ======================================================
@@ -767,6 +809,9 @@ service IConfigNodeRPCService {
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
 
+  /** The ConfigNode-leader using this method to query that if the Non-Seed-ConfigNode has initialized the ConsensusManager */
+  common.TSStatus isConsensusInitialized()
+
   /**
    * Remove the specific ConfigNode from the cluster
    *
@@ -820,7 +865,7 @@ service IConfigNodeRPCService {
   /**
    * Return the UDF jar list of the jar name list
    */
-  TGetUDFJarResp getUDFJar(TGetUDFJarReq req)
+  TGetJarInListResp getUDFJar(TGetJarInListReq req)
 
   // ======================================================
   // Trigger
@@ -859,7 +904,7 @@ service IConfigNodeRPCService {
   /**
      * Return the trigger jar list of the trigger name list
      */
-  TGetTriggerJarResp getTriggerJar(TGetTriggerJarReq req)
+  TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
   // Maintenance Tools
@@ -879,6 +924,9 @@ service IConfigNodeRPCService {
 
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
+
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
   // ======================================================
   // Cluster Tools
@@ -910,20 +958,48 @@ service IConfigNodeRPCService {
   TRegionRouteMapResp getLatestRegionRouteMap()
 
   // ======================================================
-  // Template TODO: @MarcosZyk add interface annotation
+  // Template
   // ======================================================
 
+  /**
+   * Create schema template
+   */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
+  /**
+   * Get all schema template info and template set info for DataNode registeration
+   */
   TGetAllTemplatesResp getAllTemplates()
 
+  /**
+   * Get one schema template info
+   */
   TGetTemplateResp getTemplate(string req)
 
+  /**
+   * Set given schema template to given path
+   */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
+  /**
+   * Get paths setting given schema template
+   */
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  /**
+   * Deactivate schema template from paths matched by given pattern tree in cluster
+   */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
+
+  /**
+   * Unset schema template from given path
+   */
+  common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
+
+  /**
+   * Drop schema template
+   */
+  common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -978,5 +1054,28 @@ service IConfigNodeRPCService {
   /** Get the given storage group's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
+
+  // ====================================================
+  // CQ
+  // ====================================================
+
+  /**
+   * Create a CQ
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   */
+  common.TSStatus createCQ(TCreateCQReq req)
+
+  /**
+   * Drop a CQ
+   *
+   * @return SUCCESS_STATUS if the CQ was removed successfully
+   */
+  common.TSStatus dropCQ(TDropCQReq req)
+
+  /**
+   * Return the trigger table of config leader
+   */
+  TShowCQResp showCQ()
 }
 

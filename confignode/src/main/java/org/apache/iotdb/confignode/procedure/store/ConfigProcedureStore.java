@@ -36,7 +36,7 @@ import java.util.List;
 
 public class ConfigProcedureStore implements IProcedureStore {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
   private volatile boolean isRunning = false;
   private final ProcedureInfo procedureInfo;
@@ -76,7 +76,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   @Override
   public void update(Procedure procedure) {
     UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    ProcedureFactory.ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
+    ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
     if (procedureType != null) {
       updateProcedurePlan.setProcedure(procedure);
     }

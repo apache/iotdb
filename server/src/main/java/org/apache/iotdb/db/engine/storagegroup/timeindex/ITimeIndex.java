@@ -194,6 +194,11 @@ public interface ITimeIndex {
    */
   boolean mayContainsDevice(String device);
 
+  /**
+   * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
+   */
+  long[] getStartAndEndTime(String deviceId);
+
   Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern);
 
   /**

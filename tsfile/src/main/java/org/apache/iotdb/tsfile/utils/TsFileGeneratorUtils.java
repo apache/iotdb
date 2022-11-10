@@ -45,7 +45,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 public class TsFileGeneratorUtils {
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   public static final String testStorageGroup = "root.testsg";
-  private static int alignDeviceOffset = 10000;
+  public static int alignDeviceOffset = 10000;
 
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,

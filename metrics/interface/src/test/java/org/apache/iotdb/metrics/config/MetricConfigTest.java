@@ -65,7 +65,7 @@ public class MetricConfigTest {
     assertEquals("user", reporterConfig.getUsername());
     assertEquals("password", reporterConfig.getPassword());
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
-    assertEquals("metric", reporterConfig.getDatabase());
+    assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
   }
 }

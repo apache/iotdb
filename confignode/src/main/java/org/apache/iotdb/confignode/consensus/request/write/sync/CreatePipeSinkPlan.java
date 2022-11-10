@@ -46,7 +46,7 @@ public class CreatePipeSinkPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.CreatePipeSink.ordinal());
+    stream.writeShort(getType().getPlanType());
     ThriftConfigNodeSerDeUtils.serializeTPipeSinkInfo(pipeSinkInfo, stream);
   }
 

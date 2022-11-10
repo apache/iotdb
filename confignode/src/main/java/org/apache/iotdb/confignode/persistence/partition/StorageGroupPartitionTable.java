@@ -26,7 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -109,6 +109,23 @@ public class StorageGroupPartitionTable {
 
     for (RegionGroup regionGroup : regionGroupMap.values()) {
       result.add(regionGroup.getReplicaSet());
+    }
+
+    return result;
+  }
+  /**
+   * Get all RegionGroups currently owned by this StorageGroup
+   *
+   * @param type The specified TConsensusGroupType
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(TConsensusGroupType type) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        result.add(regionGroup.getReplicaSet());
+      }
     }
 
     return result;
@@ -415,11 +432,18 @@ public class StorageGroupPartitionTable {
   private void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn(
+          "Cannot find RegionGroup for region {} when addRegionNewLocation in {}",
+          regionId,
+          storageGroupName);
       return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
-      LOGGER.info("Node is already in region locations, node: {}, region: {}", node, regionId);
+      LOGGER.info(
+          "Node is already in region locations when addRegionNewLocation in {}, node: {}, region: {}",
+          storageGroupName,
+          node,
+          regionId);
       return;
     }
     regionGroup.getReplicaSet().getDataNodeLocations().add(node);
@@ -428,12 +452,16 @@ public class StorageGroupPartitionTable {
   private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn(
+          "Cannot find RegionGroup for region {} when removeRegionOldLocation in {}",
+          regionId,
+          storageGroupName);
       return;
     }
     if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is Not in region locations, no need to remove it, node: {}, region: {}",
+          "Node is not in region locations when removeRegionOldLocation in {}, no need to remove it, node: {}, region: {}",
+          storageGroupName,
           node,
           regionId);
       return;

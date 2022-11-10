@@ -82,12 +82,8 @@ public class QueryResourceManager {
   }
 
   /** Register a new query. When a query request is created firstly, this method must be invoked. */
-  public long assignQueryId(boolean isDataQuery) {
-    long queryId = queryIdAtom.incrementAndGet();
-    if (isDataQuery) {
-      filePathsManager.addQueryId(queryId);
-    }
-    return queryId;
+  public long assignQueryId() {
+    return queryIdAtom.incrementAndGet();
   }
 
   /**
@@ -218,9 +214,6 @@ public class QueryResourceManager {
 
     // close and delete UDF temp files
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
-
-    // remove query info in QueryTimeManager
-    QueryTimeManager.getInstance().unRegisterQuery(queryId, true);
 
     // remove cached QueryDataSource
     cachedQueryDataSourcesMap.remove(queryId);

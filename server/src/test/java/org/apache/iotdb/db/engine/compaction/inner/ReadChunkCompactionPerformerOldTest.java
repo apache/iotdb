@@ -119,7 +119,7 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId(), true);
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
         TsFileReader readTsFile = new TsFileReader(reader)) {

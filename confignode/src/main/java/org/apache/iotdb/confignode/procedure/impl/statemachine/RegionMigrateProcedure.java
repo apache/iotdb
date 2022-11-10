@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** region migrate procedure */
@@ -121,7 +122,7 @@ public class RegionMigrateProcedure
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
-          // remove consensus group after a node stop, which will be failed, but we will
+          // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
@@ -142,10 +143,10 @@ public class RegionMigrateProcedure
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "{}, Failed state is not support rollback, failed state {}, originalDataNode: {}",
+            "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
             REMOVE_DATANODE_PROCESS,
             state,
-            originalDataNode);
+            getIdWithRpcEndpoint(originalDataNode));
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
@@ -218,7 +219,7 @@ public class RegionMigrateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.REGION_MIGRATE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.REGION_MIGRATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(originalDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);
@@ -283,7 +284,7 @@ public class RegionMigrateProcedure
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
     LOG.info(
-        "{}, ConfigNode received DataNode reported region migrate result: {}",
+        "{}, ConfigNode received region migrate result reported by DataNode: {}",
         REMOVE_DATANODE_PROCESS,
         req);
 
@@ -293,7 +294,7 @@ public class RegionMigrateProcedure
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
         LOG.info(
-            "{}, Region migrate executed failed in DataNode, migrateStatus: {}",
+            "{}, Region migrate failed in DataNode, migrateStatus: {}",
             REMOVE_DATANODE_PROCESS,
             migrateStatus);
         migrateSuccess = false;

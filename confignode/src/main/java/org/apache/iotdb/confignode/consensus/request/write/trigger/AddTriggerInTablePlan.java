@@ -62,7 +62,7 @@ public class AddTriggerInTablePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeShort(getType().getPlanType());
 
     triggerInformation.serialize(stream);
     if (jarFile == null) {

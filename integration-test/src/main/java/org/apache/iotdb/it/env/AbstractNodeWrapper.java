@@ -135,21 +135,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void destroyDir() {
-    for (int i = 0; i < 3; i++) {
+    Exception lastException = null;
+    for (int i = 0; i < 10; i++) {
       try {
         // DO NOT use FileUtils.forceDelete, as it will follow the symbolic link to make libs
         // read-only, which causes permission denied in deletion.
         PathUtils.deleteDirectory(Paths.get(getNodePath()));
         return;
       } catch (IOException ex) {
-        logger.warn("Delete node dir failed. RetryTimes={}", i + 1, ex);
+        lastException = ex;
         try {
-          TimeUnit.SECONDS.sleep(3);
+          TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
           fail("Delete node dir failed. " + e);
         }
       }
     }
+    lastException.printStackTrace();
     fail("Delete node dir failed.");
   }
 
@@ -218,17 +220,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public void changeConfig(Properties properties) {
     try {
+      String commonConfigPath = getCommonConfigPath();
+      Properties commonConfigProperties = new Properties();
+      try (InputStream confInput = Files.newInputStream(Paths.get(commonConfigPath))) {
+        commonConfigProperties.load(confInput);
+      }
       String configPath = getConfigPath();
       Properties configProperties = new Properties();
       try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
         configProperties.load(confInput);
       }
-      updateConfig(configProperties);
+      commonConfigProperties.putAll(configProperties);
+      updateConfig(commonConfigProperties);
       if (properties != null && !properties.isEmpty()) {
-        configProperties.putAll(properties);
+        commonConfigProperties.putAll(properties);
       }
       try (FileWriter confOutput = new FileWriter(configPath)) {
-        configProperties.store(confOutput, null);
+        commonConfigProperties.store(confOutput, null);
       }
     } catch (IOException ex) {
       fail("Change the config of data node failed. " + ex);
@@ -263,6 +271,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected abstract String getConfigPath();
+
+  protected abstract String getCommonConfigPath();
 
   protected abstract void updateConfig(Properties properties);
 

@@ -105,4 +105,11 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), prefixPath, level);
   }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "NodePathsSchemaScanNode-%s:[DataRegion: %s]",
+        this.getPlanNodeId(), this.getRegionReplicaSet());
+  }
 }

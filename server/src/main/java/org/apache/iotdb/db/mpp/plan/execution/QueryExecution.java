@@ -68,6 +68,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -76,6 +77,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -120,6 +122,8 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
+  private AtomicBoolean stopped;
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -155,16 +159,22 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              logger.info("[ReleaseQueryResource] state is: {}", state);
+              logger.debug("[ReleaseQueryResource] state is: {}", state);
               releaseResource();
             }
           }
         });
+    this.stopped = new AtomicBoolean(false);
+  }
+
+  @FunctionalInterface
+  interface ISourceHandleSupplier<T> {
+    T get() throws IoTDBException;
   }
 
   public void start() {
     if (skipExecute()) {
-      logger.info("[SkipExecute]");
+      logger.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
         stateMachine.transitionToFailed(new RuntimeException(analysis.getFailMessage()));
       } else {
@@ -282,7 +292,7 @@ public class QueryExecution implements IQueryExecution {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery()) {
-      logger.info(
+      logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
   }
@@ -291,8 +301,8 @@ public class QueryExecution implements IQueryExecution {
   public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-    if (isQuery()) {
-      logger.info(
+    if (isQuery() && logger.isDebugEnabled()) {
+      logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
@@ -309,8 +319,11 @@ public class QueryExecution implements IQueryExecution {
 
   // Stop the workers for this query
   public void stop() {
-    if (this.scheduler != null) {
-      this.scheduler.stop();
+    // only stop once
+    if (stopped.compareAndSet(false, true)) {
+      if (this.scheduler != null) {
+        this.scheduler.stop();
+      }
     }
   }
 
@@ -341,8 +354,7 @@ public class QueryExecution implements IQueryExecution {
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */
-  @Override
-  public Optional<TsBlock> getBatchResult() throws IoTDBException {
+  private <T> Optional<T> getResult(ISourceHandleSupplier<T> dataSupplier) throws IoTDBException {
     checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
@@ -358,10 +370,7 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          // Once the resultHandle is finished, we should transit the state of this query to
-          // FINISHED.
-          // So that the corresponding cleanup work could be triggered.
-          logger.info("[ResultHandleFinished]");
+          logger.debug("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
@@ -369,7 +378,8 @@ public class QueryExecution implements IQueryExecution {
         ListenableFuture<?> blocked = resultHandle.isBlocked();
         blocked.get();
         if (!resultHandle.isFinished()) {
-          TsBlock res = resultHandle.receive();
+          // use the getSerializedTsBlock instead of receive to get ByteBuffer result
+          T res = dataSupplier.get();
           if (res == null) {
             continue;
           }
@@ -395,6 +405,24 @@ public class QueryExecution implements IQueryExecution {
         throw t;
       }
     }
+  }
+
+  @Override
+  public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    return getResult(this::getDeserializedTsBlock);
+  }
+
+  private TsBlock getDeserializedTsBlock() {
+    return resultHandle.receive();
+  }
+
+  @Override
+  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    return getResult(this::getSerializedTsBlock);
+  }
+
+  private ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    return resultHandle.getSerializedTsBlock();
   }
 
   /** @return true if there is more tsblocks, otherwise false */
@@ -556,6 +584,16 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getQueryId() {
     return context.getQueryId().getId();
+  }
+
+  @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
+  public Optional<String> getExecuteSQL() {
+    return Optional.ofNullable(context.getSql());
   }
 
   public String toString() {

@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.constant.TestConstant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -299,8 +298,6 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   @Test
-  // todo : add back when finishes new udf management
-  @Ignore
   public void testUDFClassName() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "
@@ -352,8 +349,6 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   @Test
-  // todo : add back when finishes new udf management
-  @Ignore
   public void testUDFAttribute() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -543,11 +538,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testAliasInAlterClause() {
     String[] alias = {
-      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "\"\\\\test\"",
+      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "`\\\\test`",
     };
 
     String[] res = {
-      "b", "test", "test.1", "1`1", "test", "test", "\\\\test",
+      "b", "test", "`test.1`", "`1``1`", "test", "test", "`\\\\test`",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -252,11 +252,30 @@ public class MetricServiceTest {
     metricService.remove(MetricType.TIMER, "timer6", "tag", "value");
     assertEquals(4, metricService.getAllTimers().size());
     assertEquals(20, metricService.getAllMetricKeys().size());
+
+    // test remove same key and different value counter
+    Counter removeCounter1 =
+        metricService.getOrCreateCounter("remove", MetricLevel.IMPORTANT, "tag", "value1");
+    assertNotNull(removeCounter1);
+    Counter removeCounter2 =
+        metricService.getOrCreateCounter("remove", MetricLevel.IMPORTANT, "tag", "value2");
+    assertNotNull(removeCounter2);
+    assertEquals(6, metricService.getAllCounters().size());
+    assertEquals(22, metricService.getAllMetricKeys().size());
+    metricService.remove(MetricType.COUNTER, "remove", "tag", "value1");
+    assertEquals(5, metricService.getAllCounters().size());
+    assertEquals(21, metricService.getAllMetricKeys().size());
+    removeCounter2 =
+        metricService.getOrCreateCounter("remove", MetricLevel.IMPORTANT, "tag", "value1");
+    assertNotNull(removeCounter2);
+    assertEquals(6, metricService.getAllCounters().size());
+    assertEquals(22, metricService.getAllMetricKeys().size());
   }
 
   private void testOtherSituation() {
     assertThrows(IllegalArgumentException.class, this::getOrCreateDifferentMetricsWithSameName);
 
+    // forbidden to register same name but different type metrics
     Timer timer =
         metricService.getOrCreateTimer("same_name", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(timer);

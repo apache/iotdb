@@ -36,14 +36,13 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
+import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -54,6 +53,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class NewIoTDB implements NewIoTDBMBean {
@@ -87,6 +87,7 @@ public class NewIoTDB implements NewIoTDBMBean {
   }
 
   public void active() {
+    processPid();
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
       checks.verify();
@@ -110,6 +111,13 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
 
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {
@@ -166,7 +174,6 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(SettleService.getINSTANCE());
     }
     registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     // bind predefined metrics
@@ -184,7 +191,7 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(MPPRestService.getInstance());
+      registerManager.register(RestService.getInstance());
     }
   }
 

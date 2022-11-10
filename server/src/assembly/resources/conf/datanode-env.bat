@@ -77,29 +77,15 @@ if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
+@REM if the heap size is larger than 16GB, we will forbid writing the heap dump file
+if %desired_yg_in_mb% GTR 16384 (
+	set IOTDB_ALLOW_HEAP_DUMP="false"
+) else set IOTDB_ALLOW_HEAP_DUMP="true"
+
 @REM Maximum heap size
 @REM set MAX_HEAP_SIZE="2G"
 @REM Minimum heap size
 @REM set HEAP_NEWSIZE="2G"
-
-IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
-	rem detect Java 8 or 11
-	IF "%JAVA_VERSION%" == "8" (
-		java -d64 -version >nul 2>&1
-		set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
-		goto end_config_setting
-	) ELSE (
-		goto detect_jdk11_bit_version
-	)
-)
-
-:detect_jdk11_bit_version
-for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
-	@rem echo %%j
-	@rem echo %%k
-	@rem echo %%l
-	set BIT_VERSION=%%l
-)
 
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
@@ -118,7 +104,6 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
-:end_config_setting
 @REM set gc log.
 IF "%1" equ "printgc" (
 	IF "%JAVA_VERSION%" == "8" (

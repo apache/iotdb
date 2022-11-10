@@ -51,6 +51,8 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 元数据模板在创建后，需执行挂载操作，方可用于相应路径下的序列创建与数据写入。
 
+**挂载模板前，需确保存相关储组已经创建。**
+
 **推荐将模板挂载在存储组节点上，不建议将模板挂载到存储组上层的节点上。**
 
 挂载元数据模板的 SQL 语句如下所示：
@@ -183,11 +185,25 @@ IoTDB> show paths using schema template t1
 IoTDB> delete timeseries of schema template t1 from root.sg1.d1
 ```
 
+或
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.d1
+```
+
 解除操作支持批量处理，SQL语句如下所示：
 
 ```shell
 IoTDB> delete timeseries of schema template t1 from root.sg1.*, root.sg2.*
 ```
+
+或
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.*, root.sg2.*
+```
+
+若解除命令不指定模板名称，则会将给定路径涉及的所有模板使用情况均解除。
 
 ## 卸载元数据模板
 

@@ -23,8 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.OperatePipeRPCHandler;
+import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
 import java.util.ArrayList;
@@ -173,6 +176,24 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
             countDownLatch);
+      case PRE_CREATE_PIPE:
+      case OPERATE_PIPE:
+      case ROLLBACK_OPERATE_PIPE:
+        return new OperatePipeRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
+      case COUNT_PATHS_USING_TEMPLATE:
+        return new CountPathsUsingTemplateRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -192,8 +213,8 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_REGION_ROUTE_MAP:
       case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
-      case PRE_CREATE_PIPE:
-      case OPERATE_PIPE:
+      case UPDATE_TEMPLATE:
+      case CHANGE_REGION_LEADER:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,
