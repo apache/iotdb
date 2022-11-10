@@ -312,20 +312,6 @@ public class DataNodeRemoveHandler {
   public TSStatus deleteOldRegionPeer(
       TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
-    // When DataReplicationFactor==1, execute deleteOldRegionPeer method will cause error
-    // User must delete the related data manually
-    // TODO if multi-leader supports deleteOldRegionPeer when DataReplicationFactor==1?
-    if (CONF.getDataReplicationFactor() == 1
-        && TConsensusGroupType.DataRegion.equals(regionId.getType())) {
-      String errorMessage =
-          "deleteOldRegionPeer is not supported for dataRegion when DataReplicationFactor equals 1, "
-              + "you are supposed to delete the region data of datanode manually";
-      LOGGER.info("{}, {}", REMOVE_DATANODE_PROCESS, errorMessage);
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(errorMessage);
-      return status;
-    }
-
     TSStatus status;
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
