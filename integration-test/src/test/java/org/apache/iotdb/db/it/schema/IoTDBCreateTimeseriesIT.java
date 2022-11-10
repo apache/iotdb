@@ -95,7 +95,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String res = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
+        String res = resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE);
         resultList.add(res);
       }
     }

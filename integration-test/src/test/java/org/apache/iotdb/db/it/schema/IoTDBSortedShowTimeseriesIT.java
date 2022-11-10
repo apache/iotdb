@@ -172,15 +172,15 @@ public class IoTDBSortedShowTimeseriesIT {
         String ans =
             resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
@@ -198,15 +198,15 @@ public class IoTDBSortedShowTimeseriesIT {
         String ans =
             resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
@@ -250,15 +250,15 @@ public class IoTDBSortedShowTimeseriesIT {
         String ans =
             resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","
@@ -299,15 +299,15 @@ public class IoTDBSortedShowTimeseriesIT {
         String ans =
             resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COLUMN_COMPRESSION)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
                 + ","

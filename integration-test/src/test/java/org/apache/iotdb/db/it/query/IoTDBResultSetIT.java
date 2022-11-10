@@ -160,15 +160,15 @@ public class IoTDBResultSetIT {
     String expectedHeader =
         ColumnHeaderConstant.COLUMN_TIMESERIES
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS
+            + ColumnHeaderConstant.COLUMN_ALIAS
             + ","
-            + ColumnHeaderConstant.COLUMN_STORAGE_GROUP
+            + ColumnHeaderConstant.COLUMN_DATABASE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ColumnHeaderConstant.COLUMN_DATATYPE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING
+            + ColumnHeaderConstant.COLUMN_ENCODING
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION
+            + ColumnHeaderConstant.COLUMN_COMPRESSION
             + ","
             + ColumnHeaderConstant.COLUMN_TAGS
             + ","
@@ -232,7 +232,7 @@ public class IoTDBResultSetIT {
             + ","
             + ColumnHeaderConstant.COLUMN_VALUE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ColumnHeaderConstant.COLUMN_DATATYPE
             + ",";
     resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
   }

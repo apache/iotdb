@@ -94,7 +94,7 @@ public class IoTDBCreateStorageGroupIT {
     List<String> resultList = new ArrayList<>();
     try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String storageGroupPath = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
+        String storageGroupPath = resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE);
         resultList.add(storageGroupPath);
       }
     }

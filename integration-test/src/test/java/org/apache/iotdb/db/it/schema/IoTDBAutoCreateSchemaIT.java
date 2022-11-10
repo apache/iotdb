@@ -196,7 +196,7 @@ public class IoTDBAutoCreateSchemaIT {
     resultList.clear();
     try (ResultSet resultSet = statement.executeQuery("show databases")) {
       while (resultSet.next()) {
-        resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP));
+        resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE));
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));

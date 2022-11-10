@@ -33,12 +33,12 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_STORAGE_GROUP = "database";
+  public static final String COLUMN_DATABASE = "database";
   public static final String COLUMN_TIMESERIES = "timeseries";
-  public static final String COLUMN_TIMESERIES_ALIAS = "alias";
-  public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
-  public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
-  public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
+  public static final String COLUMN_ALIAS = "alias";
+  public static final String COLUMN_DATATYPE = "dataType";
+  public static final String COLUMN_ENCODING = "encoding";
+  public static final String COLUMN_COMPRESSION = "compression";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
@@ -137,23 +137,23 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT));
+          new ColumnHeader(COLUMN_DATATYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTimeSeriesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ALIAS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_ALIAS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATATYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_ENCODING, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_COMPRESSION, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TAGS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
@@ -163,12 +163,12 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showStorageGroupColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -184,9 +184,9 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showNodesInSchemaTemplateHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT));
+          new ColumnHeader(COLUMN_DATATYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_ENCODING, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_COMPRESSION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showChildNodesColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
