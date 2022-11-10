@@ -257,13 +257,9 @@ public class ConfigNodeDescriptor {
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()).trim());
 
-    conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()).trim());
+    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
 
-    conf.setTemporaryLibDir(
-        properties.getProperty("udf_temporary_lib_dir", conf.getTemporaryLibDir()).trim());
-
-    conf.setTriggerLibDir(
-        properties.getProperty("trigger_lib_dir", conf.getTriggerLibDir()).trim());
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
 
     conf.setTimePartitionInterval(
         Long.parseLong(
