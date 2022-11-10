@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sync.receiver.load;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -53,12 +52,6 @@ public class DeletionLoader implements ILoader {
       throw new PipeDataLoadException("storage engine readonly");
     }
     try {
-      if (!config.isMppMode()) {
-        StorageEngine.getInstance()
-            .delete(deletion.getPath(), deletion.getStartTime(), deletion.getEndTime(), 0, null);
-        return;
-      }
-
       Statement statement = generateStatement();
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =

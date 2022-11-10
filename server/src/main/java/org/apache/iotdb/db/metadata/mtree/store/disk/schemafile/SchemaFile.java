@@ -60,8 +60,8 @@ public class SchemaFile implements ISchemaFile {
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
   // attributes for this schema file
-  private String filePath;
-  private String logPath;
+  private final String filePath;
+  private final String logPath;
   private String storageGroupName;
   private long dataTTL;
   private boolean isEntity;
@@ -80,12 +80,11 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
-    String folderPath =
-        SchemaFileConfig.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId;
+    String dirPath = getDirPath(sgName, schemaRegionId);
 
     this.storageGroupName = sgName;
-    this.filePath = folderPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
-    this.logPath = folderPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
+    this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
+    this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -100,8 +99,8 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = SystemFileFactory.INSTANCE.getFile(folderPath);
-      folder.mkdirs();
+      File dir = SystemFileFactory.INSTANCE.getFile(dirPath);
+      dir.mkdirs();
       pmtFile.createNewFile();
     }
 
@@ -149,6 +148,14 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
     // only be called to sketch a Schema File
     return new SchemaFile(file);
+  }
+
+  private static String getDirPath(String sgName, int schemaRegionId) {
+    return SchemaFileConfig.SCHEMA_FOLDER
+        + File.separator
+        + sgName
+        + File.separator
+        + schemaRegionId;
   }
 
   // region Interface Implementation
@@ -401,6 +408,55 @@ public class SchemaFile implements ISchemaFile {
   public long getTargetSegmentOnTest(long srcSegAddr, String key)
       throws IOException, MetadataException {
     return ((PageManager) pageManager).getTargetSegmentAddressOnTest(srcSegAddr, key);
+  }
+
+  // endregion
+
+  // region Snapshot
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    File schemaFileSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    try {
+      sync();
+      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating schema file snapshot.",
+            schemaFileSnapshot.getName());
+        return false;
+      }
+      Files.copy(Paths.get(filePath), schemaFileSnapshot.toPath());
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create SchemaFile snapshot due to {}", e.getMessage(), e);
+      schemaFileSnapshot.delete();
+      return false;
+    }
+  }
+
+  public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
+      throws IOException, MetadataException {
+    File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    if (!snapshot.exists()) {
+      throw new SchemaFileNotExists(snapshot.getPath());
+    }
+    File schemaFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_FILE_NAME);
+    File schemaLogFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
+    Files.deleteIfExists(schemaFile.toPath());
+    Files.deleteIfExists(schemaLogFile.toPath());
+    Files.createLink(schemaFile.toPath(), snapshot.toPath());
+    return new SchemaFile(
+        sgName,
+        schemaRegionId,
+        false,
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        false);
   }
 
   // endregion

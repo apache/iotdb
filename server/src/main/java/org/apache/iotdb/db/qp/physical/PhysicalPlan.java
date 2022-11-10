@@ -25,12 +25,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -313,18 +307,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       PhysicalPlan plan;
       // TODO-Cluster: support more plans
       switch (type) {
-        case INSERT:
-          plan = new InsertRowPlan();
-          break;
-        case BATCHINSERT:
-          plan = new InsertTabletPlan();
-          break;
-        case MULTI_BATCH_INSERT:
-          plan = new InsertMultiTabletsPlan();
-          break;
-        case DELETE:
-          plan = new DeletePlan();
-          break;
         case SET_STORAGE_GROUP:
           plan = new SetStorageGroupPlan();
           break;
@@ -420,12 +402,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case STORAGE_GROUP_MNODE:
           plan = new StorageGroupMNodePlan();
-          break;
-        case BATCH_INSERT_ROWS:
-          plan = new InsertRowsPlan();
-          break;
-        case BATCH_INSERT_ONE_DEVICE:
-          plan = new InsertRowsOfOneDevicePlan();
           break;
         case CREATE_TRIGGER:
           plan = new CreateTriggerPlan();

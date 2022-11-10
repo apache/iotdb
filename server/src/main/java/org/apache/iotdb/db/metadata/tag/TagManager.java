@@ -23,17 +23,11 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -232,53 +226,11 @@ public class TagManager {
         }
       }
     }
-
-    // if ordered by heat, we sort all the timeseries by the descending order of the last insert
-    // timestamp
-    if (plan.isOrderByHeat()) {
-      List<DataRegion> list;
-      try {
-        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
-            lockListAndProcessorToSeriesMapPair =
-                StorageEngine.getInstance()
-                    .mergeLock(
-                        allMatchedNodes.stream()
-                            .map(IMeasurementMNode::getMeasurementPath)
-                            .collect(toList()));
-        list = lockListAndProcessorToSeriesMapPair.left;
-        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
-            lockListAndProcessorToSeriesMapPair.right;
-
-        try {
-          // init QueryDataSource cache
-          QueryResourceManager.getInstance()
-              .initQueryDataSourceCache(processorToSeriesMap, context, null);
-        } catch (Exception e) {
-          logger.error("Meet error when init QueryDataSource ", e);
-          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
-        } finally {
-          StorageEngine.getInstance().mergeUnLock(list);
-        }
-
-        allMatchedNodes =
-            allMatchedNodes.stream()
-                .sorted(
-                    Comparator.comparingLong(
-                            (IMeasurementMNode mNode) ->
-                                LastCacheManager.getLastTimeStamp(mNode, context))
-                        .reversed()
-                        .thenComparing(IMNode::getFullPath))
-                .collect(toList());
-      } catch (StorageEngineException | QueryProcessException e) {
-        throw new MetadataException(e);
-      }
-    } else {
-      // otherwise, we just sort them by the alphabetical order
-      allMatchedNodes =
-          allMatchedNodes.stream()
-              .sorted(Comparator.comparing(IMNode::getFullPath))
-              .collect(toList());
-    }
+    // we just sort them by the alphabetical order
+    allMatchedNodes =
+        allMatchedNodes.stream()
+            .sorted(Comparator.comparing(IMNode::getFullPath))
+            .collect(toList());
 
     return allMatchedNodes;
   }

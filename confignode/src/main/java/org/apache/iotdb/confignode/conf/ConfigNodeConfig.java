@@ -105,16 +105,19 @@ public class ConfigNodeConfig {
   private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
 
   /** External lib directory for UDF, stores user-uploaded JAR files */
-  private String udfLibDir =
+  private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /** External lib directory for Trigger, stores user-uploaded JAR files */
-  private String triggerLibDir =
+  /** External temporary lib directory for storing downloaded udf JAR files */
+  private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
+  /** External lib directory for trigger, stores user-uploaded JAR files */
+  private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded JAR files */
-  private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+  /** External temporary lib directory for storing downloaded trigger JAR files */
+  private String triggerTemporaryLibDir =
+      triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
@@ -241,9 +244,10 @@ public class ConfigNodeConfig {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
     extLibDir = addHomeDir(extLibDir);
-    udfLibDir = addHomeDir(udfLibDir);
-    temporaryLibDir = addHomeDir(temporaryLibDir);
-    triggerLibDir = addHomeDir(triggerLibDir);
+    udfDir = addHomeDir(udfDir);
+    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
+    triggerDir = addHomeDir(triggerDir);
+    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -443,18 +447,6 @@ public class ConfigNodeConfig {
     this.systemDir = systemDir;
   }
 
-  public String getSystemUdfDir() {
-    return getSystemDir() + File.separator + "udf" + File.separator;
-  }
-
-  public String getUdfLibDir() {
-    return udfLibDir;
-  }
-
-  public void setUdfLibDir(String udfLibDir) {
-    this.udfLibDir = udfLibDir;
-  }
-
   public String getExtLibDir() {
     return extLibDir;
   }
@@ -463,20 +455,38 @@ public class ConfigNodeConfig {
     this.extLibDir = extLibDir;
   }
 
-  public String getTriggerLibDir() {
-    return triggerLibDir;
+  public String getUdfDir() {
+    return udfDir;
   }
 
-  public void setTriggerLibDir(String triggerLibDir) {
-    this.triggerLibDir = triggerLibDir;
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
+    updateUdfTemporaryLibDir();
   }
 
-  public String getTemporaryLibDir() {
-    return temporaryLibDir;
+  public String getUdfTemporaryLibDir() {
+    return udfTemporaryLibDir;
   }
 
-  public void setTemporaryLibDir(String temporaryLibDir) {
-    this.temporaryLibDir = temporaryLibDir;
+  public void updateUdfTemporaryLibDir() {
+    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
+    updateTriggerTemporaryLibDir();
+  }
+
+  public String getTriggerTemporaryLibDir() {
+    return triggerTemporaryLibDir;
+  }
+
+  public void updateTriggerTemporaryLibDir() {
+    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public int getSchemaReplicationFactor() {

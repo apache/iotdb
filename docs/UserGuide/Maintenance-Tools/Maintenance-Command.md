@@ -253,6 +253,29 @@ Total line number = 6
 It costs 0.011s
 ```
 
+View the details of all nodes:
+
+```
+SHOW CLUSTER DETAILS
+```
+
+Eg:
+```
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     1|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
+|     2|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     3|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+Total line number = 6
+It costs 0.340s
+```
+
 After a node is stopped, its status will change, as shown below:
 
 ```

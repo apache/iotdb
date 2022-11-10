@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -82,17 +83,18 @@ public class RegionMigrateProcedure
       return Flow.NO_MORE_STATE;
     }
     TSStatus tsStatus;
+    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
         case CREATE_NEW_REGION_PEER:
-          env.getDataNodeRemoveHandler().createNewRegionPeer(consensusGroupId, destDataNode);
+          handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
@@ -101,13 +103,11 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
-          env.getDataNodeRemoveHandler().changeRegionLeader(consensusGroupId, originalDataNode);
+          handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
@@ -116,9 +116,7 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .deleteOldRegionPeer(originalDataNode, consensusGroupId);
+          tsStatus = handler.deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
@@ -127,8 +125,7 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
-          env.getDataNodeRemoveHandler()
-              .updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
+          handler.updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

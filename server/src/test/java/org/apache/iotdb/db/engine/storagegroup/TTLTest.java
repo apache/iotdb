@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -35,26 +36,22 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -64,6 +61,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -72,14 +70,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
+  private DataRegionId dataRegionId1 = new DataRegionId(1);
   private String sg2 = "root.TTL_SG2";
+  private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
   private DataRegion dataRegion;
   private String s1 = "s1";
@@ -110,7 +108,7 @@ public class TTLTest {
     dataRegion =
         new DataRegion(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-            sg1,
+            String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
             sg1);
     IoTDB.schemaProcessor.createTimeseries(
@@ -148,65 +146,64 @@ public class TTLTest {
   public void testTTLWrite()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
-    InsertRowPlan plan = new InsertRowPlan();
-    plan.setDevicePath(new PartialPath(sg1));
-    plan.setTime(System.currentTimeMillis());
-    plan.setMeasurements(new String[] {"s1"});
-    plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
-    plan.setValues(new Object[] {1L});
-    plan.setMeasurementMNodes(
-        new IMeasurementMNode[] {
-          MeasurementMNode.getMeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
-        });
-    plan.transferType();
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(sg1),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            System.currentTimeMillis(),
+            new Object[] {1L},
+            false);
+    node.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
-    dataRegion.insert(plan);
+    dataRegion.insert(node);
 
     dataRegion.setDataTTL(1000);
     // with ttl
-    plan.setTime(System.currentTimeMillis() - 1001);
+    node.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
     try {
-      dataRegion.insert(plan);
+      dataRegion.insert(node);
     } catch (OutOfTTLException e) {
       caught = true;
     }
     assertTrue(caught);
-    plan.setTime(System.currentTimeMillis() - 900);
-    dataRegion.insert(plan);
+    node.setTime(System.currentTimeMillis() - 900);
+    dataRegion.insert(node);
   }
 
   private void prepareData()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
-    InsertRowPlan plan = new InsertRowPlan();
-    plan.setDevicePath(new PartialPath(sg1));
-    plan.setTime(System.currentTimeMillis());
-    plan.setMeasurements(new String[] {"s1"});
-    plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
-    plan.setValues(new Object[] {1L});
-    plan.setMeasurementMNodes(
-        new IMeasurementMNode[] {
-          MeasurementMNode.getMeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
-        });
-    plan.transferType();
+      throws WriteProcessException, IllegalPathException, TriggerExecutionException {
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(sg1),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            System.currentTimeMillis(),
+            new Object[] {1L},
+            false);
+    node.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
     // sequence data
     for (int i = 1000; i < 2000; i++) {
-      plan.setTime(initTime - 2000 + i);
-      dataRegion.insert(plan);
+      node.setTime(initTime - 2000 + i);
+      dataRegion.insert(node);
       if ((i + 1) % 300 == 0) {
         dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
     for (int i = 0; i < 1000; i++) {
-      plan.setTime(initTime - 2000 + i);
-      dataRegion.insert(plan);
+      node.setTime(initTime - 2000 + i);
+      dataRegion.insert(node);
       if ((i + 1) % 300 == 0) {
         dataRegion.syncCloseAllWorkingTsFileProcessors();
       }
@@ -379,56 +376,39 @@ public class TTLTest {
   }
 
   @Test
-  public void testParseSetTTL() throws QueryProcessException {
-    Planner planner = new Planner();
-    SetTTLPlan plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
-    assertEquals(sg1, plan.getStorageGroup().getFullPath());
-    assertEquals(10000, plan.getDataTTL());
+  public void testParseSetTTL() {
+    SetTTLStatement statement1 =
+        (SetTTLStatement)
+            StatementGenerator.createStatement(
+                "SET TTL TO " + sg1 + " 10000", ZoneId.systemDefault());
+    assertEquals(sg1, statement1.getStorageGroupPath().getFullPath());
+    assertEquals(10000, statement1.getTTL());
 
-    plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
-    assertEquals(sg2, plan.getStorageGroup().getFullPath());
-    assertEquals(Long.MAX_VALUE, plan.getDataTTL());
+    UnSetTTLStatement statement2 =
+        (UnSetTTLStatement)
+            StatementGenerator.createStatement("UNSET TTL TO " + sg2, ZoneId.systemDefault());
+    assertEquals(sg2, statement2.getStorageGroupPath().getFullPath());
+    assertEquals(Long.MAX_VALUE, statement2.getTTL());
   }
 
   @Test
-  public void testParseShowTTL() throws QueryProcessException {
-    Planner planner = new Planner();
-    ShowTTLPlan plan = (ShowTTLPlan) planner.parseSQLToPhysicalPlan("SHOW ALL TTL");
-    assertTrue(plan.getStorageGroups().isEmpty());
+  public void testParseShowTTL() {
+    ShowTTLStatement statement1 =
+        (ShowTTLStatement)
+            StatementGenerator.createStatement("SHOW ALL TTL", ZoneId.systemDefault());
+    assertTrue(statement1.getPaths().isEmpty());
 
     List<String> sgs = new ArrayList<>();
     sgs.add("root.sg1");
     sgs.add("root.sg2");
     sgs.add("root.sg3");
-    plan = (ShowTTLPlan) planner.parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
+    ShowTTLStatement statement2 =
+        (ShowTTLStatement)
+            StatementGenerator.createStatement(
+                "SHOW TTL ON root.sg1,root.sg2,root.sg3", ZoneId.systemDefault());
     assertEquals(
         sgs,
-        plan.getStorageGroups().stream()
-            .map(PartialPath::getFullPath)
-            .collect(Collectors.toList()));
-  }
-
-  @Test
-  public void testShowTTL()
-      throws IOException, QueryProcessException, QueryFilterOptimizationException,
-          StorageEngineException, MetadataException, InterruptedException {
-    IoTDB.schemaProcessor.setTTL(new PartialPath(sg1), ttl);
-
-    ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
-    PlanExecutor executor = new PlanExecutor();
-    QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      String sg = rowRecord.getFields().get(0).getStringValue();
-      if (sg.equals(sg1)) {
-        assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
-      } else if (sg.equals(sg2)) {
-        assertNull(rowRecord.getFields().get(1));
-      } else {
-        fail();
-      }
-    }
+        statement2.getPaths().stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
   }
 
   @Test

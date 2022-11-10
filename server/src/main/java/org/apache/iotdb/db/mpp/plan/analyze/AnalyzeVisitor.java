@@ -1240,7 +1240,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       // construct insert rows statement
       // construct insert statement
-      InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          new InsertRowsOfOneDeviceStatement();
       List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
@@ -1249,7 +1250,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         System.arraycopy(measurementList, 0, measurements, 0, measurements.length);
         statement.setMeasurements(measurements);
         statement.setTime(timeArray[i]);
-        statement.setDataTypes(new TSDataType[measurementList.length]);
+        TSDataType[] dataTypes = new TSDataType[measurementList.length];
+        Arrays.fill(dataTypes, TSDataType.TEXT);
+        statement.setDataTypes(dataTypes);
         Object[] values = new Object[measurementList.length];
         System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
         statement.setValues(values);
@@ -1257,8 +1260,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setNeedInferType(true);
         insertRowStatementList.add(statement);
       }
-      insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-      return insertRowsStatement.accept(this, context);
+      insertRowsOfOneDeviceStatement.setInsertRowStatementList(insertRowStatementList);
+      return insertRowsOfOneDeviceStatement.accept(this, context);
     }
   }
 
@@ -1958,7 +1961,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowClusterStatement showClusterStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(showClusterStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    if (showClusterStatement.isDetails()) {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterDetailsHeader());
+    } else {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    }
     return analysis;
   }
 

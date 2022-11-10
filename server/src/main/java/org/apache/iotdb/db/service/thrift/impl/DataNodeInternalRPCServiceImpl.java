@@ -71,6 +71,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceFailureInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
@@ -141,12 +142,12 @@ import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
@@ -287,15 +288,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
+  public TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req) {
     FragmentInstanceId instanceId = FragmentInstanceId.fromThrift(req.fragmentInstanceId);
     FragmentInstanceInfo info = FragmentInstanceManager.getInstance().getInstanceInfo(instanceId);
     if (info != null) {
-      TFragmentInstanceStateResp resp = new TFragmentInstanceStateResp(info.getState().toString());
+      TFragmentInstanceInfoResp resp = new TFragmentInstanceInfoResp(info.getState().toString());
+      resp.setEndTime(info.getEndTime());
       resp.setFailedMessages(ImmutableList.of(info.getMessage()));
-      return resp;
+      try {
+        List<ByteBuffer> failureInfoList = new ArrayList<>();
+        for (FragmentInstanceFailureInfo failureInfo : info.getFailureInfoList()) {
+          failureInfoList.add(failureInfo.serialize());
+        }
+        resp.setFailureInfoList(failureInfoList);
+        return resp;
+      } catch (IOException e) {
+        return resp;
+      }
     } else {
-      return new TFragmentInstanceStateResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
+      return new TFragmentInstanceInfoResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
     }
   }
 
@@ -1482,7 +1493,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");
     } catch (Exception e) {
-      LOGGER.error("stop Data Node error", e);
+      LOGGER.error("Stop Data Node error", e);
       status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

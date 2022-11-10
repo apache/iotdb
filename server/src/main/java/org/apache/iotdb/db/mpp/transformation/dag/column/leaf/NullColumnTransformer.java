@@ -16,24 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
-import org.apache.iotdb.commons.path.PartialPath;
+package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 
-public interface VirtualPartitioner {
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 
-  /**
-   * use device id to determine storage group id
-   *
-   * @param deviceId device id
-   * @return data region id
-   */
-  int deviceToDataRegionId(PartialPath deviceId);
+public class NullColumnTransformer extends LeafColumnTransformer {
 
-  /**
-   * get total number of data region
-   *
-   * @return total number of data region
-   */
-  int getPartitionCount();
+  public NullColumnTransformer() {
+    super(null);
+  }
+
+  @Override
+  public void tryEvaluate() {}
+
+  @Override
+  public void initFromTsBlock(TsBlock input) {
+    initializeColumnCache(new NullColumn(input.getPositionCount()));
+  }
 }

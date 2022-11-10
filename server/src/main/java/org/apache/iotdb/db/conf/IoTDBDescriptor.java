@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
@@ -375,24 +375,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
     logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
-
-    long seqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                .trim());
-    if (seqTsFileSize >= 0) {
-      conf.setSeqTsFileSize(seqTsFileSize);
-    }
-
-    long unSeqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                .trim());
-    if (unSeqTsFileSize >= 0) {
-      conf.setUnSeqTsFileSize(unSeqTsFileSize);
-    }
 
     long memTableSizeThreshold =
         Long.parseLong(
@@ -1457,25 +1439,7 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
-      StorageEngine.getInstance().rebootTimedService();
-
-      long seqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                  .trim());
-      if (seqTsFileSize >= 0) {
-        conf.setSeqTsFileSize(seqTsFileSize);
-      }
-
-      long unSeqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                  .trim());
-      if (unSeqTsFileSize >= 0) {
-        conf.setUnSeqTsFileSize(unSeqTsFileSize);
-      }
+      StorageEngineV2.getInstance().rebootTimedService();
 
       long memTableSizeThreshold =
           Long.parseLong(
@@ -1591,7 +1555,7 @@ public class IoTDBDescriptor {
 
   private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion =
-        properties.getProperty("write_read_schema_free_memory_proportion");
+        properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1685,14 +1649,34 @@ public class IoTDBDescriptor {
   private void initStorageEngineAllocate(Properties properties) {
     String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
     String[] proportions = allocationRatio.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForWrite = Integer.parseInt(proportions[0].trim());
     int proportionForCompaction = Integer.parseInt(proportions[1].trim());
-    conf.setWriteProportion(
+
+    double writeProportion =
+        ((double) (proportionForWrite) / (double) (proportionForCompaction + proportionForWrite));
+
+    String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
+    proportions = allocationRatioForWrite.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
+
+    double memtableProportionForWrite =
         ((double) (proportionForMemTable)
-            / (double) (proportionForCompaction + proportionForMemTable)));
+            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+    Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
+    double timePartitionInfoForWrite =
+        ((double) (proportionForTimePartitionInfo)
+            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+    conf.setWriteProportionForMemtable(writeProportion * memtableProportionForWrite);
+
+    conf.setAllocateMemoryForTimePartitionInfo(
+        (long)
+            ((writeProportion * timePartitionInfoForWrite)
+                * conf.getAllocateMemoryForStorageEngine()));
+
     conf.setCompactionProportion(
         ((double) (proportionForCompaction)
-            / (double) (proportionForCompaction + proportionForMemTable)));
+            / (double) (proportionForCompaction + proportionForWrite)));
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {
@@ -1789,9 +1773,7 @@ public class IoTDBDescriptor {
   }
 
   private void loadTriggerProps(Properties properties) {
-    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
-    conf.setTriggerTemporaryLibDir(
-        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()));
     conf.setRetryNumToFindStatefulTrigger(
         Integer.parseInt(
             properties.getProperty(

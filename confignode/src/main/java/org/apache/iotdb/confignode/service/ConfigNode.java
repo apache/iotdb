@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -205,9 +204,6 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
-
-    // Setup UDFService
-    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
 
     registerManager.register(MetricService.getInstance());
     // bind predefined metric sets

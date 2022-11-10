@@ -385,6 +385,7 @@ public class CompactionTaskManager implements IService {
       init = true;
     }
     currentTaskNum = new AtomicInteger(0);
+    init = true;
     logger.info("Compaction task manager started.");
   }
 
