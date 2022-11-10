@@ -326,7 +326,7 @@ It costs 0.012s
 
 + 缩容一个 ConfigNode：
 ```
-./cluster0/confignode/sbin/remove-confignode.sh -r 0.0.0.0:22279
+./cluster0/confignode/sbin/remove-confignode.sh 127.0.0.1:22279
 ```
 
 + 缩容一个 DataNode：
