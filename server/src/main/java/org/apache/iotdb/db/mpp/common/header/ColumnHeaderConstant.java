@@ -33,7 +33,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_STORAGE_GROUP = "database";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
