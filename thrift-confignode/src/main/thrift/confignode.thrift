@@ -809,6 +809,9 @@ service IConfigNodeRPCService {
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
 
+  /** The ConfigNode-leader using this method to query that if the Non-Seed-ConfigNode has initialized the ConsensusManager */
+  common.TSStatus isConsensusInitialized()
+
   /**
    * Remove the specific ConfigNode from the cluster
    *

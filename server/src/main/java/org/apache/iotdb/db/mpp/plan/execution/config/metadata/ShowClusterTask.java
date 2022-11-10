@@ -44,12 +44,16 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterTask implements IConfigTask {
 
-  public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
+  private final ShowClusterStatement showClusterStatement;
+
+  public ShowClusterTask(ShowClusterStatement showClusterStatement) {
+    this.showClusterStatement = showClusterStatement;
+  }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showCluster();
+    return configTaskExecutor.showCluster(showClusterStatement);
   }
 
   private static void buildTsBlock(

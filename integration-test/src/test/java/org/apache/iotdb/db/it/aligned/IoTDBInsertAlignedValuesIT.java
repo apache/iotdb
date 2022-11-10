@@ -51,12 +51,12 @@ public class IoTDBInsertAlignedValuesIT {
   public void setUp() throws Exception {
     autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 

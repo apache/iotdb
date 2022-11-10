@@ -43,6 +43,7 @@ public enum DataNodeRequestType {
   DELETE_OLD_REGION_PEER,
 
   UPDATE_REGION_ROUTE_MAP,
+  CHANGE_REGION_LEADER,
 
   /** PartitionCache */
   INVALIDATE_PARTITION_CACHE,

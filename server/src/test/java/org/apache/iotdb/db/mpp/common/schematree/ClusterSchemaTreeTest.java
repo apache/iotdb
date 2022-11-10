@@ -37,6 +37,7 @@ import org.mockito.internal.util.collections.Sets;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -566,5 +567,29 @@ public class ClusterSchemaTreeTest {
       schemaTreeList.add(schemaTree);
     }
     return schemaTreeList;
+  }
+
+  @Test
+  public void testNestedDevice() throws Exception {
+    List<MeasurementPath> measurementPathList = new ArrayList<>();
+
+    MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
+
+    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.a.s1");
+    measurementPath.setMeasurementSchema(schema1);
+    measurementPathList.add(measurementPath);
+
+    measurementPath = new MeasurementPath("root.sg.d1.s1");
+    measurementPath.setMeasurementSchema(schema1);
+    measurementPath.setUnderAlignedEntity(true);
+    measurementPathList.add(measurementPath);
+
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    schemaTree.appendMeasurementPaths(measurementPathList);
+
+    Assert.assertTrue(
+        schemaTree
+            .searchDeviceSchemaInfo(new PartialPath("root.sg.d1"), Collections.singletonList("s1"))
+            .isAligned());
   }
 }

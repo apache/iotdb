@@ -46,7 +46,7 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private long memorySizeForWrite;
+  private long memorySizeForMemtable;
   private long memorySizeForCompaction;
   private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -55,8 +55,8 @@ public class SystemInfo {
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-  private double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  private double FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+  private double REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -106,14 +106,14 @@ public class SystemInfo {
           REJECT_THERSHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
-        if (totalStorageGroupMemCost < memorySizeForWrite) {
+        if (totalStorageGroupMemCost < memorySizeForMemtable) {
           return true;
         } else {
           throw new WriteProcessRejectException(
               "Total Storage Group MemCost "
                   + totalStorageGroupMemCost
                   + " is over than memorySizeForWriting "
-                  + memorySizeForWrite);
+                  + memorySizeForMemtable);
         }
       } else {
         return false;
@@ -198,12 +198,13 @@ public class SystemInfo {
   }
 
   public void allocateWriteMemory() {
-    memorySizeForWrite =
-        (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
+    memorySizeForMemtable =
+        (long)
+            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   @TestOnly
@@ -284,15 +285,15 @@ public class SystemInfo {
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForWrite -= estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    memorySizeForMemtable -= estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForWrite += estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    memorySizeForMemtable += estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public long getTotalMemTableSize() {
