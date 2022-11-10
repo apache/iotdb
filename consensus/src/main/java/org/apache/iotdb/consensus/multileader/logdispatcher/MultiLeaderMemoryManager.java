@@ -43,7 +43,7 @@ public class MultiLeaderMemoryManager {
         (memorySize) -> {
           long remainSize =
               (fromQueue ? maxMemorySizeForQueueInByte : maxMemorySizeInByte) - memorySize;
-          if (memorySize > remainSize) {
+          if (size > remainSize) {
             logger.debug(
                 "consensus memory limited. required: {}, used: {}, total: {}",
                 size,
