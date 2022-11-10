@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 
+/** Time partition info records necessary info of a time partition for a data region */
 public class TimePartitionInfo {
   DataRegionId dataRegionId;
 

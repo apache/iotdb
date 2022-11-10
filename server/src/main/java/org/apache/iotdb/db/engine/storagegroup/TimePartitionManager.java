@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/** Manage all the time partitions for all data regions and control the total memory of them */
 public class TimePartitionManager {
   final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
 
