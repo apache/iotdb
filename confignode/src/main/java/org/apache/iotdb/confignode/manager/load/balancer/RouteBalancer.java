@@ -205,12 +205,14 @@ public class RouteBalancer {
       Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
       regionRouteMap
           .getRegionLeaderMap()
-          .values()
           .forEach(
-              leaderId ->
+              (consensusGroupId, leaderId) -> {
+                if (TConsensusGroupType.DataRegion.equals(consensusGroupId.getType())) {
                   leaderCounter
                       .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
-                      .getAndIncrement());
+                      .getAndIncrement();
+                }
+              });
 
       int newLeaderId = -1;
       int minCount = Integer.MAX_VALUE;
