@@ -196,13 +196,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree;
 
-      long t1 = System.nanoTime();
+      long startTime = System.nanoTime();
       if (queryStatement.isGroupByTag()) {
         schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
-      QueryStatistics.getInstance().addCost(QueryStatistics.SCHEMA_FETCHER, System.nanoTime() - t1);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.SCHEMA_FETCHER, System.nanoTime() - startTime);
 
       logger.debug("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -281,10 +282,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeOutput(analysis, queryStatement, outputExpressions);
 
       // fetch partition information
-      long t2 = System.nanoTime();
       analyzeDataPartition(analysis, queryStatement, schemaTree);
-      QueryStatistics.getInstance()
-          .addCost(QueryStatistics.PARTITION_FETCHER, System.nanoTime() - t2);
 
     } catch (StatementAnalyzeException e) {
       logger.error("Meet error when analyzing the query statement: ", e);
@@ -370,7 +368,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .computeIfAbsent(schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
           .add(queryParam);
     }
+
+    long startTime = System.nanoTime();
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+    QueryStatistics.getInstance()
+        .addCost(QueryStatistics.PARTITION_FETCHER, System.nanoTime() - startTime);
     analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;
@@ -1116,7 +1118,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .computeIfAbsent(schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
           .add(queryParam);
     }
-    return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+    long startTime = System.nanoTime();
+    DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+    QueryStatistics.getInstance()
+        .addCost(QueryStatistics.PARTITION_FETCHER, System.nanoTime() - startTime);
+    return dataPartition;
   }
 
   private void analyzeInto(
