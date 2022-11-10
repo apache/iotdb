@@ -78,7 +78,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
@@ -2013,19 +2012,6 @@ public class DataRegion {
 
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());
-    }
-  }
-
-  private void tryToDeleteLastCache(
-      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws WriteProcessException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
-      return;
-    }
-    try {
-      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
-    } catch (MetadataException e) {
-      throw new WriteProcessException(e);
     }
   }
 

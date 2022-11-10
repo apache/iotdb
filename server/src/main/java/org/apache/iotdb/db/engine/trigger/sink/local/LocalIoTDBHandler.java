@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -82,16 +81,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
 
   @Override
   public void onEvent(LocalIoTDBEvent event)
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-    InsertRowPlan plan = new InsertRowPlan();
-    plan.setNeedInferType(false);
-    plan.setDevicePath(device);
-    plan.setMeasurements(measurements);
-    plan.setDataTypes(dataTypes);
-    plan.setTime(event.getTimestamp());
-    plan.setValues(event.getValues());
-    executeNonQuery(plan);
-  }
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {}
 
   private void executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {

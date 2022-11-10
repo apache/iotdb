@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
@@ -54,7 +53,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class PlannerTest {
 
@@ -233,28 +231,6 @@ public class PlannerTest {
     String createTSStatement =
         "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     processor.parseSQLToPhysicalPlan(createTSStatement);
-  }
-
-  @Test
-  public void insertStatementWithNullValue() throws QueryProcessException {
-    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(10,NaN)";
-    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
-
-    assertTrue(physicalPlan instanceof InsertRowPlan);
-    assertEquals("NaN", ((InsertRowPlan) physicalPlan).getValues()[0]);
-    // Later we will use Double.parseDouble so we have to ensure that it is parsed right
-    assertEquals(Double.NaN, Double.parseDouble("NaN"), 1e-15);
-  }
-
-  @Test
-  public void insertStatementWithNegativeTimeStamp()
-      throws QueryProcessException, MetadataException {
-    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(-1000, 111)";
-    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
-
-    assertTrue(physicalPlan instanceof InsertRowPlan);
-    assertEquals(-1000, ((InsertRowPlan) physicalPlan).getTime());
-    assertEquals("111", ((InsertRowPlan) physicalPlan).getValues()[0]);
   }
 
   @Test
