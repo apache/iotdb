@@ -350,17 +350,27 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
-    return pageWriter.getPointNumber() >= pointNum
-        || pageWriter.estimateMaxMemSize() >= size
-        || pageWriter.getPointNumber() == 0;
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag) {
+    if (flag && pageWriter.getPointNumber() == 0) {
+      // return true if there is no unsealed page
+      return true;
+    }
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
   }
 
   @Override
-  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum) {
+  public long getPointNumOfUnsealedPage() {
+    return pageWriter.getPointNumber();
+  }
+
+  @Override
+  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean flag) {
+    if (flag && statistics.getCount() + pageWriter.getPointNumber() == 0) {
+      // return true if there is no unsealed chunk
+      return true;
+    }
     return estimateMaxSeriesMemSize() >= size
-        || statistics.getCount() >= pointNum
-        || (statistics.getCount() == 0 && pageWriter.getPointNumber() == 0);
+        || statistics.getCount() + pageWriter.getPointNumber() >= pointNum;
   }
 
   public TSDataType getDataType() {

@@ -165,10 +165,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
-    Chunk chunk =
-        readerCacheMap
-            .get(chunkMetadataElement.fileElement.resource)
-            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+    Chunk chunk = chunkMetadataElement.chunk;
     ChunkReader chunkReader = new ChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
     ChunkHeader chunkHeader = chunk.getHeader();
@@ -192,6 +189,15 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
               isLastPage,
               chunkMetadataElement.priority));
     }
+    chunkMetadataElement.clearChunks();
+  }
+
+  @Override
+  void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    chunkMetadataElement.chunk =
+        readerCacheMap
+            .get(chunkMetadataElement.fileElement.resource)
+            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
   }
 
   /**

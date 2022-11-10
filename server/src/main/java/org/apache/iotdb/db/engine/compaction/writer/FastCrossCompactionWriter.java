@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.compaction.writer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -42,40 +43,68 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {}
+      throws IOException {
+    throw new RuntimeException("Does not support this method in FastCrossCompactionWriter");
+  }
 
   /**
-   * Flush chunk to tsfile directly. Return whether the chunk is flushed to tsfile successfully or
-   * not. Return false if the unsealed chunk is too small or the end time of chunk exceeds the end
-   * time of file, else return true. Notice: if sub-value measurement is null, then flush empty
-   * value chunk.
+   * Flush nonAligned chunk to tsfile directly. Return whether the chunk is flushed to tsfile
+   * successfully or not. Return false if the unsealed chunk is too small or the end time of chunk
+   * exceeds the end time of file, else return true.
    */
-  public boolean flushChunk(
-      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
+  @Override
+  public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
-    checkTimeAndMayFlushChunkToCurrentFile(iChunkMetadata.getStartTime(), subTaskId);
+    checkTimeAndMayFlushChunkToCurrentFile(chunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    boolean isUnsealedChunkLargeEnough =
-        chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
-            chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction);
-    if (!isUnsealedChunkLargeEnough
-        || (iChunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
+    if (!checkIsChunkSatisfied(chunkMetadata, fileIndex, subTaskId)) {
       // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
       // chunk
       return false;
     }
 
-    flushChunkToFileWriter(
+    flushNonAlignedChunkToFileWriter(
+        targetFileWriters.get(fileIndex), chunk, chunkMetadata, subTaskId);
+
+    isDeviceExistedInTargetFiles[fileIndex] = true;
+    isEmptyFile[fileIndex] = false;
+    lastTime[subTaskId] = chunkMetadata.getEndTime();
+    return true;
+  }
+
+  /**
+   * Flush aligned chunk to tsfile directly. Return whether the chunk is flushed to tsfile
+   * successfully or not. Return false if the unsealed chunk is too small or the end time of chunk
+   * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
+   * flush empty value chunk.
+   */
+  @Override
+  public boolean flushAlignedChunk(
+      Chunk timeChunk,
+      IChunkMetadata timeChunkMetadata,
+      List<Chunk> valueChunks,
+      List<IChunkMetadata> valueChunkMetadatas,
+      int subTaskId)
+      throws IOException {
+    checkTimeAndMayFlushChunkToCurrentFile(timeChunkMetadata.getStartTime(), subTaskId);
+    int fileIndex = seqFileIndexArray[subTaskId];
+    if (!checkIsChunkSatisfied(timeChunkMetadata, fileIndex, subTaskId)) {
+      // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize the
+      // chunk
+      return false;
+    }
+
+    flushAlignedChunkToFileWriter(
         targetFileWriters.get(fileIndex),
-        chunkWriters[subTaskId],
-        reader,
-        iChunkMetadata,
+        timeChunk,
+        timeChunkMetadata,
+        valueChunks,
+        valueChunkMetadatas,
         subTaskId);
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
-    lastTime[subTaskId] = iChunkMetadata.getEndTime();
+    lastTime[subTaskId] = timeChunkMetadata.getEndTime();
     return true;
   }
 
@@ -93,12 +122,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       int subTaskId)
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
-    if (!checkIsPageSatisfied(timePageHeader, subTaskId)) {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    if (!checkIsPageSatisfied(timePageHeader, fileIndex, subTaskId)) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
-    int fileIndex = seqFileIndexArray[subTaskId];
     flushAlignedPageToChunkWriter(
         targetFileWriters.get(fileIndex),
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
@@ -123,12 +152,12 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
     checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);
-    if (!checkIsPageSatisfied(pageHeader, subTaskId)) {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    if (!checkIsPageSatisfied(pageHeader, fileIndex, subTaskId)) {
       // unsealed page is too small or page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
-    int fileIndex = seqFileIndexArray[subTaskId];
     flushNonAlignedPageToChunkWriter(
         targetFileWriters.get(fileIndex),
         (ChunkWriterImpl) chunkWriters[subTaskId],
@@ -142,11 +171,24 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     return true;
   }
 
-  private boolean checkIsPageSatisfied(PageHeader pageHeader, int subTaskId) {
-    int fileIndex = seqFileIndexArray[subTaskId];
+  private boolean checkIsChunkSatisfied(
+      IChunkMetadata chunkMetadata, int fileIndex, int subTaskId) {
+    boolean isUnsealedChunkLargeEnough =
+        chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
+            chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction, true);
+    if (!isUnsealedChunkLargeEnough
+        || (chunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
+            && fileIndex != targetFileWriters.size() - 1)) {
+      // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
+      return false;
+    }
+    return true;
+  }
+
+  private boolean checkIsPageSatisfied(PageHeader pageHeader, int fileIndex, int subTaskId) {
     boolean isUnsealedPageLargeEnough =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction);
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     if (!isUnsealedPageLargeEnough
         || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
             && fileIndex != targetFileWriters.size() - 1)) {

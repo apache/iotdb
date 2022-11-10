@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+
+import java.util.List;
 
 public class ChunkMetadataElement {
   public IChunkMetadata chunkMetadata;
@@ -33,6 +36,10 @@ public class ChunkMetadataElement {
 
   public FileElement fileElement;
 
+  public Chunk chunk;
+
+  public List<Chunk> valueChunks;
+
   public ChunkMetadataElement(
       IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;
@@ -40,5 +47,10 @@ public class ChunkMetadataElement {
     this.startTime = chunkMetadata.getStartTime();
     this.isLastChunk = isLastChunk;
     this.fileElement = fileElement;
+  }
+
+  public void clearChunks() {
+    chunk = null;
+    valueChunks = null;
   }
 }

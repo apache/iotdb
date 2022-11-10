@@ -198,18 +198,13 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-
     List<PageHeader> timePageHeaders = new ArrayList<>();
     List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
     List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
     List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
 
     // deserialize time chunk
-    ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-    Chunk timeChunk =
-        readerCacheMap.get(chunkMetadataElement.fileElement.resource).readMemChunk(chunkMetadata);
+    Chunk timeChunk = chunkMetadataElement.chunk;
 
     ChunkReader chunkReader = new ChunkReader(timeChunk);
     ByteBuffer chunkDataBuffer = timeChunk.getData();
@@ -228,22 +223,18 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     }
 
     // deserialize value chunks
-    List<Chunk> valueChunks = new ArrayList<>();
-    for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-      chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getValueChunkMetadataList().get(i);
-      if (chunkMetadata == null) {
+    List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
+    for (int i = 0; i < valueChunks.size(); i++) {
+      Chunk valueChunk = valueChunks.get(i);
+      if (valueChunk == null) {
         // value chunk has been deleted completely
         valuePageHeaders.add(null);
         compressedValuePageDatas.add(null);
-        valueChunks.add(null);
         continue;
       }
-      Chunk valueChunk =
-          readerCacheMap.get(chunkMetadataElement.fileElement.resource).readMemChunk(chunkMetadata);
       chunkReader = new ChunkReader(valueChunk);
       chunkDataBuffer = valueChunk.getData();
       chunkHeader = valueChunk.getHeader();
-      valueChunks.add(valueChunk);
 
       valuePageHeaders.add(new ArrayList<>());
       compressedValuePageDatas.add(new ArrayList<>());
@@ -285,6 +276,30 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
     }
+    chunkMetadataElement.clearChunks();
+  }
+
+  @Override
+  void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    chunkMetadataElement.chunk =
+        readerCacheMap
+            .get(chunkMetadataElement.fileElement.resource)
+            .readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+    List<Chunk> valueChunks = new ArrayList<>();
+    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (valueChunkMetadata == null) {
+        // value chunk has been deleted completely
+        valueChunks.add(null);
+        continue;
+      }
+      valueChunks.add(
+          readerCacheMap
+              .get(chunkMetadataElement.fileElement.resource)
+              .readMemChunk((ChunkMetadata) valueChunkMetadata));
+    }
+    chunkMetadataElement.valueChunks = valueChunks;
   }
 
   /**

@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -47,16 +47,23 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public boolean flushChunk(
-      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId)
-      throws IOException {
+  public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) {
+    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+  }
+
+  @Override
+  public boolean flushAlignedChunk(
+      Chunk timeChunk,
+      IChunkMetadata timeChunkMetadata,
+      List<Chunk> valueChunks,
+      List<IChunkMetadata> valueChunkMetadatas,
+      int subTaskId) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 
   @Override
   public boolean flushNonAlignedPage(
-      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
-      throws IOException, PageException {
+      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 
@@ -66,8 +73,7 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       PageHeader timePageHeader,
       List<ByteBuffer> compressedValuePageDatas,
       List<PageHeader> valuePageHeaders,
-      int subTaskId)
-      throws IOException, PageException {
+      int subTaskId) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
   }
 }

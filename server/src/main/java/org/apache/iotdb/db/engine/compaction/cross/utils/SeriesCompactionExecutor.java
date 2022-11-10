@@ -27,6 +27,8 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
@@ -117,12 +119,7 @@ public abstract class SeriesCompactionExecutor {
   protected abstract void compactFiles()
       throws PageException, IOException, WriteProcessException, IllegalPathException;
 
-  /**
-   * Compact chunks in chunk metadata queue.
-   *
-   * @throws IOException
-   * @throws PageException
-   */
+  /** Compact chunks in chunk metadata queue. */
   protected void compactChunks()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!chunkMetadataQueue.isEmpty()) {
@@ -153,6 +150,7 @@ public abstract class SeriesCompactionExecutor {
   private void compactWithOverlapChunks(List<ChunkMetadataElement> overlappedChunkMetadatas)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     for (ChunkMetadataElement overlappedChunkMetadata : overlappedChunkMetadatas) {
+      readChunk(overlappedChunkMetadata);
       deserializeChunkIntoQueue(overlappedChunkMetadata);
     }
     compactPages();
@@ -164,11 +162,26 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    if (compactionWriter.flushChunk(
-        chunkMetadataElement.chunkMetadata,
-        readerCacheMap.get(chunkMetadataElement.fileElement.resource),
-        subTaskId)) {
-      // flush chunk successfully
+    readChunk(chunkMetadataElement);
+    boolean success;
+    if (chunkMetadataElement.chunkMetadata instanceof AlignedChunkMetadata) {
+      success =
+          compactionWriter.flushAlignedChunk(
+              chunkMetadataElement.chunk,
+              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata).getTimeChunkMetadata(),
+              chunkMetadataElement.valueChunks,
+              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+                  .getValueChunkMetadataList(),
+              subTaskId);
+    } else {
+      success =
+          compactionWriter.flushNonAlignedChunk(
+              chunkMetadataElement.chunk,
+              (ChunkMetadata) chunkMetadataElement.chunkMetadata,
+              subTaskId);
+    }
+    if (success) {
+      // flush chunk successfully, then remove this chunk
       removeChunk(chunkMetadataQueue.peek());
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
@@ -180,6 +193,8 @@ public abstract class SeriesCompactionExecutor {
 
   abstract void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
+
+  abstract void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException;
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
   abstract void deserializeFileIntoQueue(List<FileElement> fileElements)
@@ -529,6 +544,7 @@ public abstract class SeriesCompactionExecutor {
       for (ChunkMetadataElement newOverlappedChunkMetadata :
           findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
         summary.CHUNK_OVERLAP++;
+        readChunk(newOverlappedChunkMetadata);
         deserializeChunkIntoQueue(newOverlappedChunkMetadata);
         hasNewOverlappedChunks = true;
       }

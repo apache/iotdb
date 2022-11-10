@@ -268,7 +268,7 @@ public class TimeChunkWriter {
   }
 
   public long getPointNum() {
-    return statistics.getCount();
+    return statistics.getCount() + pageWriter.getPointNumber();
   }
 
   /**

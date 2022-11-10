@@ -361,11 +361,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum) {
-    if (timeChunkWriter.estimateMaxSeriesMemSize() >= size
-        || timeChunkWriter.getPointNum() >= pointNum
-        || (timeChunkWriter.getPointNum() == 0
-            && timeChunkWriter.getPageWriter().getPointNumber() == 0)) {
+  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean flag) {
+    if ((flag && timeChunkWriter.getPointNum() == 0)
+        || (timeChunkWriter.getPointNum() >= pointNum
+            || timeChunkWriter.estimateMaxSeriesMemSize() >= size)) {
       return true;
     }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
@@ -377,9 +376,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
-    if (timeChunkWriter.checkIsUnsealedPageOverThreshold(size, pointNum)
-        || timeChunkWriter.getPageWriter().getPointNumber() == 0) {
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag) {
+    if ((flag && timeChunkWriter.getPageWriter().getPointNumber() == 0)
+        || timeChunkWriter.checkIsUnsealedPageOverThreshold(size, pointNum)) {
       return true;
     }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
@@ -388,6 +387,11 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       }
     }
     return false;
+  }
+
+  @Override
+  public long getPointNumOfUnsealedPage() {
+    return timeChunkWriter.getPageWriter().getPointNumber();
   }
 
   public ValueChunkWriter getValueChunkWriterByIndex(int valueIndex) {

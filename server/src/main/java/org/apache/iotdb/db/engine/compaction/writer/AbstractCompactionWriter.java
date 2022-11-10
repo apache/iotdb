@@ -26,12 +26,11 @@ import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -178,47 +177,59 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     chunkPointNumArray[subTaskId] = 0;
   }
 
-  public abstract boolean flushChunk(
-      IChunkMetadata iChunkMetadata, TsFileSequenceReader reader, int subTaskId) throws IOException;
+  public abstract boolean flushNonAlignedChunk(
+      Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;
 
-  protected void flushChunkToFileWriter(
-      TsFileIOWriter targetWriter,
-      IChunkWriter iChunkWriter,
-      TsFileSequenceReader reader,
-      IChunkMetadata iChunkMetadata,
+  public abstract boolean flushAlignedChunk(
+      Chunk timeChunk,
+      IChunkMetadata timeChunkMetadata,
+      List<Chunk> valueChunks,
+      List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
+      throws IOException;
+
+  protected void flushNonAlignedChunkToFileWriter(
+      TsFileIOWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
     synchronized (targetWriter) {
       // seal last chunk to file writer
-      iChunkWriter.writeToFileWriter(targetWriter);
+      chunkWriters[subTaskId].writeToFileWriter(targetWriter);
       chunkPointNumArray[subTaskId] = 0;
-      if (iChunkMetadata instanceof AlignedChunkMetadata) {
-        AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) iChunkMetadata;
-        // flush time chunk
-        ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-        targetWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
-        // flush value chunks
-        for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-          IChunkMetadata valueChunkMetadata =
-              alignedChunkMetadata.getValueChunkMetadataList().get(i);
-          if (valueChunkMetadata == null) {
-            // sub sensor does not exist in current file or value chunk has been deleted completely
-            AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
-            ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
-            targetWriter.writeEmptyValueChunk(
-                valueChunkWriter.getMeasurementId(),
-                valueChunkWriter.getCompressionType(),
-                valueChunkWriter.getDataType(),
-                valueChunkWriter.getEncodingType(),
-                valueChunkWriter.getStatistics());
-            continue;
-          }
-          chunkMetadata = (ChunkMetadata) valueChunkMetadata;
-          targetWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
+      targetWriter.writeChunk(chunk, chunkMetadata);
+    }
+  }
+
+  protected void flushAlignedChunkToFileWriter(
+      TsFileIOWriter targetWriter,
+      Chunk timeChunk,
+      IChunkMetadata timeChunkMetadata,
+      List<Chunk> valueChunks,
+      List<IChunkMetadata> valueChunkMetadatas,
+      int subTaskId)
+      throws IOException {
+    synchronized (targetWriter) {
+      AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriters[subTaskId];
+      // seal last chunk to file writer
+      alignedChunkWriter.writeToFileWriter(targetWriter);
+      chunkPointNumArray[subTaskId] = 0;
+
+      // flush time chunk
+      targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
+
+      // flush value chunks
+      for (int i = 0; i < valueChunks.size(); i++) {
+        if (valueChunks.get(i) == null) {
+          // sub sensor does not exist in current file or value chunk has been deleted completely
+          ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
+          targetWriter.writeEmptyValueChunk(
+              valueChunkWriter.getMeasurementId(),
+              valueChunkWriter.getCompressionType(),
+              valueChunkWriter.getDataType(),
+              valueChunkWriter.getEncodingType(),
+              valueChunkWriter.getStatistics());
+          continue;
         }
-      } else {
-        ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
-        targetWriter.writeChunk(reader.readMemChunk(chunkMetadata), chunkMetadata);
+        targetWriter.writeChunk(valueChunks.get(i), (ChunkMetadata) valueChunkMetadatas.get(i));
       }
     }
   }
@@ -295,7 +306,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
       // if chunk point num reaches the check point, then check if the chunk size over threshold
       lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
-      if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum)) {
+      if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, iChunkWriter, subTaskId);
         lastCheckIndex = 0;
         if (enableMetrics) {
