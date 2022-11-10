@@ -825,7 +825,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   // high Cognitive Complexity
-
   protected QueryDataSet processAuthorQuery(AuthorPlan plan) throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();

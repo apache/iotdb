@@ -81,7 +81,7 @@ public class IoTDBAutoCreateSchemaIT {
   @Test
   public void insertTest1() throws ClassNotFoundException {
     String[] sqls = {
-      "SET STORAGE GROUP TO root.sg0",
+      "CREATE DATABASE root.sg0",
       "INSERT INTO root.sg0.d1(timestamp,s2) values(1,123.123)",
       "INSERT INTO root.sg0.d1(timestamp,s3) values(1,\"abc\")",
     };
@@ -162,7 +162,7 @@ public class IoTDBAutoCreateSchemaIT {
     String storageGroup = "root.sg2.a.b.c";
     String timeSeriesPrefix = "root.sg2.a.b";
 
-    statement.execute(String.format("SET storage group TO %s", storageGroup));
+    statement.execute(String.format("CREATE DATABASE %s", storageGroup));
     try {
       statement.execute(
           String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
@@ -194,7 +194,7 @@ public class IoTDBAutoCreateSchemaIT {
     Assert.assertFalse(resultList.contains(timeSeriesPrefix + "c"));
 
     resultList.clear();
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (ResultSet resultSet = statement.executeQuery("show databases")) {
       while (resultSet.next()) {
         resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP));
       }

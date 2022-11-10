@@ -58,10 +58,10 @@ public class IoTDBMetadataFetchIT {
 
       String[] insertSqls =
           new String[] {
-            "SET STORAGE GROUP TO root.ln.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln.wf01.wt02",
-            "SET STORAGE GROUP TO root.ln1.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln2.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt02",
+            "CREATE DATABASE root.ln1.wf01.wt01",
+            "CREATE DATABASE root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
                 + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3' ",
@@ -164,9 +164,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show storage group",
-            "show storage group root.ln.wf01.**",
-            "show storage group root.ln.wf01.wt01.status"
+            "show databases",
+            "show databases root.ln.wf01.**",
+            "show databases root.ln.wf01.wt01.status"
           };
       Set<String>[] standards =
           new Set[] {

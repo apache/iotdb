@@ -77,7 +77,7 @@ public class MemTableFlushTask {
   /**
    * @param memTable the memTable to flush
    * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
-   * @param storageGroup current storage group
+   * @param storageGroup current database
    */
   public MemTableFlushTask(
       IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
@@ -87,7 +87,7 @@ public class MemTableFlushTask {
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
     LOGGER.debug(
-        "flush task of Storage group {} memtable is created, flushing to file {}.",
+        "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
         writer.getFile().getName());
   }
@@ -148,7 +148,7 @@ public class MemTableFlushTask {
     }
     encodingTaskQueue.put(new TaskEnd());
     LOGGER.debug(
-        "Storage group {} memtable flushing into file {}: data sort time cost {} ms.",
+        "Database {} memtable flushing into file {}: data sort time cost {} ms.",
         storageGroup,
         writer.getFile().getName(),
         sortTime);
@@ -185,7 +185,7 @@ public class MemTableFlushTask {
             "flush");
 
     LOGGER.info(
-        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        "Database {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup,
         memTable,
         System.currentTimeMillis() - start);
@@ -199,7 +199,7 @@ public class MemTableFlushTask {
         @Override
         public void run() {
           LOGGER.debug(
-              "Storage group {} memtable flushing to file {} starts to encoding data.",
+              "Database {} memtable flushing to file {} starts to encoding data.",
               storageGroup,
               writer.getFile().getName());
           while (true) {
@@ -219,7 +219,7 @@ public class MemTableFlushTask {
                   @SuppressWarnings("squid:S2142")
                   InterruptedException e) {
                 LOGGER.error(
-                    "Storage group {} memtable flushing to file {}, encoding task is interrupted.",
+                    "Database {} memtable flushing to file {}, encoding task is interrupted.",
                     storageGroup,
                     writer.getFile().getName(),
                     e);

@@ -57,7 +57,7 @@ public class StorageGroupPartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupPartitionTable.class);
 
   private volatile boolean isPredeleted = false;
-  // The name of storage group
+  // The name of database
   private String storageGroupName;
 
   // RegionGroup

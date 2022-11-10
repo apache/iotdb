@@ -92,8 +92,8 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("set storage group to " + SchemaConfig.STORAGE_GROUP_0);
-      statement.execute("set storage group to " + SchemaConfig.STORAGE_GROUP_1);
+      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_0);
+      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_1);
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00));
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_01));

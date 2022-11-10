@@ -78,8 +78,7 @@ public class IoTDBAuthorizationIT {
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
         Assert.assertThrows(
             SQLException.class,
             () ->
@@ -93,7 +92,7 @@ public class IoTDBAuthorizationIT {
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL on root.**");
 
-        userStmt.execute("SET STORAGE GROUP TO root.a");
+        userStmt.execute("CREATE DATABASE root.a");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
         userStmt.execute("SELECT * from root.a");
@@ -103,8 +102,7 @@ public class IoTDBAuthorizationIT {
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b");
 
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.b"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.b"));
         Assert.assertThrows(
             SQLException.class,
             () ->
@@ -135,12 +133,12 @@ public class IoTDBAuthorizationIT {
           Statement userStmt = userCon.createStatement()) {
 
         Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.sgtest"));
+            SQLException.class, () -> userStmt.execute("CREATE DATABASE root.sgtest"));
 
         adminStmt.execute("GRANT USER sgtest PRIVILEGES SET_STORAGE_GROUP ON root.sgtest");
 
         try {
-          userStmt.execute("SET STORAGE GROUP TO root.sgtest");
+          userStmt.execute("CREATE DATABASE root.sgtest");
         } catch (SQLException e) {
           fail(e.getMessage());
         }
@@ -428,26 +426,22 @@ public class IoTDBAuthorizationIT {
           Statement userStmt = userCon.createStatement()) {
 
         // grant and revoke the user the privilege to create time series
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
-        userStmt.execute("SET STORAGE GROUP TO root.a");
+        userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         // no privilege to create this one
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.b"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.b"));
         // privilege already exists
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a"));
         // no privilege to create this one any more
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
         // no privilege to create timeseries
-        Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("SET STORAGE GROUP TO root.a"));
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
         // no privilege to create this one any more
@@ -478,7 +472,7 @@ public class IoTDBAuthorizationIT {
 
         // revoke the privilege to delete time series
         adminStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
-        adminStmt.execute("SET STORAGE GROUP TO root.b");
+        adminStmt.execute("CREATE DATABASE root.b");
         adminStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN");
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.a.**");
         userStmt.execute("DELETE TIMESERIES root.b.a");
@@ -504,7 +498,7 @@ public class IoTDBAuthorizationIT {
           Statement userStmt = userCon.createStatement()) {
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
-        userStmt.execute("SET STORAGE GROUP TO root.a");
+        userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
 
@@ -558,7 +552,7 @@ public class IoTDBAuthorizationIT {
             "GRANT ROLE admin PRIVILEGES SET_STORAGE_GROUP,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
         adminStmt.execute("GRANT admin TO tempuser");
 
-        userStmt.execute("SET STORAGE GROUP TO root.a");
+        userStmt.execute("CREATE DATABASE root.a");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("CREATE TIMESERIES root.a.c WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp,b,c) VALUES (1,100,1000)");
@@ -595,7 +589,7 @@ public class IoTDBAuthorizationIT {
         Statement adminStmt = adminCon.createStatement()) {
 
       adminStmt.execute("CREATE USER tempuser 'temppw'");
-      adminStmt.execute("SET STORAGE GROUP TO root.a");
+      adminStmt.execute("CREATE DATABASE root.a");
       int privilegeCnt = 500;
       for (int i = 0; i < privilegeCnt; i++) {
         adminStmt.execute("CREATE TIMESERIES root.a.b" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");

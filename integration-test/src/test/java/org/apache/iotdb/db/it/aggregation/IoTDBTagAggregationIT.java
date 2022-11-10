@@ -47,9 +47,9 @@ import static org.junit.Assert.fail;
 public class IoTDBTagAggregationIT {
   private static final String[] DATASET =
       new String[] {
-        "set storage group to root.sg.a;",
-        "set storage group to root.sg.b;",
-        "set storage group to root.sg2.c;",
+        "CREATE DATABASE root.sg.a;",
+        "CREATE DATABASE root.sg.b;",
+        "CREATE DATABASE root.sg2.c;",
         "create timeseries root.sg.a.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
         "create timeseries root.sg.b.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
         "create timeseries root.sg.a.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",

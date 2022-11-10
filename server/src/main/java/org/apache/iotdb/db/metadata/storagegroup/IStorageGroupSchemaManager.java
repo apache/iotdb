@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// This class declares all the interfaces for storage group management.
+// This class declares all the interfaces for database management.
 public interface IStorageGroupSchemaManager {
 
   void init() throws MetadataException, IOException;
@@ -41,37 +41,35 @@ public interface IStorageGroupSchemaManager {
   void clear() throws IOException;
 
   /**
-   * Set storage group of the given path to MTree.
+   * create database of the given path to MTree.
    *
-   * @param path storage group path
+   * @param path database path
    */
   void setStorageGroup(PartialPath path) throws MetadataException;
 
-  /**
-   * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
-   */
+  /** Delete databases of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3" */
   void deleteStorageGroup(PartialPath storageGroup) throws MetadataException;
 
   void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException;
 
-  /** Check if the given path is storage group or not. */
+  /** Check if the given path is database or not. */
   boolean isStorageGroup(PartialPath path);
 
-  /** Check whether the given path contains a storage group */
+  /** Check whether the given path contains a database */
   boolean checkStorageGroupByPath(PartialPath path);
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param path only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException;
 
   /**
-   * Get the storage group that given path pattern matches or belongs to.
+   * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")

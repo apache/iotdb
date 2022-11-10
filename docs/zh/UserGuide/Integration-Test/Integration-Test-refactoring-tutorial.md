@@ -126,9 +126,9 @@ public void exampleTest() throws Exception {
   try (Connection connection = EnvFactory.getEnv().getConnection();
       Statement statement = connection.createStatement()) {
     // 使用 execute() 方法设置存储组
-    statement.execute("set storage group to root.sg");
+    statement.execute("CREATE DATABASE root.sg");
     // 使用 executeQuery() 方法查询存储组
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (ResultSet resultSet = statement.executeQuery("show databases")) {
       if (resultSet.next()) {
         String storageGroupPath = resultSet.getString("storage group");
         Assert.assertEquals("root.sg", storageGroupPath);

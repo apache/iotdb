@@ -95,7 +95,7 @@ public class IoTDBTriggerManagementIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.test");
+      statement.execute("CREATE DATABASE root.test");
       statement.execute(
           "CREATE TIMESERIES root.test.stateless.a with datatype=INT32,encoding=PLAIN");
       statement.execute(

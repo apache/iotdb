@@ -461,7 +461,7 @@ IoTDB 还支持通过 `GROUP BY TAGS` 语句根据时间序列中定义的标签
 `d8` 和 `d9` 设备目前处于调试阶段，还未被分配到具体的城市和车间，所以其相应的标签值为空值。
 
 ```SQL
-set storage group to root.factory1;
+CREATE DATABASE root.factory1;
 create timeseries root.factory1.d1.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d2.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d3.temperature with datatype=FLOAT tags(city=Beijing, workshop=w2);

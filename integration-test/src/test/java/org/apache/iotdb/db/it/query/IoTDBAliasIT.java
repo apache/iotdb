@@ -50,7 +50,7 @@ public class IoTDBAliasIT {
 
   private static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d1.s2(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d2.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -64,13 +64,13 @@ public class IoTDBAliasIT {
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(200, 20.2, 21.8, 81.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(300, 45.3, 23.4, 82.0)",
         "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)",
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1)",
         "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (1, -2, 2)",
         "INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (2, -3, 3)",
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg2.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg2.d2.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",

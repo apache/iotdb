@@ -22,7 +22,7 @@
 # Background
 
 The storage group is specified by the user display.
-Use the statement "SET STORAGE GROUP TO" to specify the storage group.
+Use the statement "CREATE DATABASE" to create the database.
 Each storage group has a corresponding StorageGroupProcessor.
 
 To ensure eventually consistency, a insert lock (exclusive lock) is used to synchronize each insert request in each storage group.

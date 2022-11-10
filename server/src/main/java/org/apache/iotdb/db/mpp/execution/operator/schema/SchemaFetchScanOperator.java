@@ -118,7 +118,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      // to indicate this binary data is storage group info
+      // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 1, outputStream);
 
       schemaTree.serialize(outputStream);

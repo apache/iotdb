@@ -121,7 +121,7 @@ public abstract class SchemaBasicTest {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
@@ -2376,7 +2376,7 @@ public abstract class SchemaBasicTest {
           e.getMessage());
     } catch (StorageGroupAlreadySetException e) {
       Assert.assertEquals(
-          "some children of root.ln have already been set to storage group", e.getMessage());
+          "some children of root.ln have already been created as database", e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
@@ -2478,7 +2478,7 @@ public abstract class SchemaBasicTest {
       fail();
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.a have already been set to storage group", e.getMessage());
+          "some children of root.a have already been created as database", e.getMessage());
       Assert.assertFalse(schemaProcessor.isPathExist(new PartialPath("root.a.d")));
     }
   }

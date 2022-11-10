@@ -45,8 +45,8 @@ public class ListDataSetTest {
   private final Planner processor = new Planner();
 
   private final String[] sqls = {
-    "SET STORAGE GROUP TO root.vehicle",
-    "SET STORAGE GROUP TO root.test",
+    "CREATE DATABASE root.vehicle",
+    "CREATE DATABASE root.test",
     "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -76,7 +76,7 @@ public class ListDataSetTest {
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
     String[] results = new String[] {"0\troot.test", "0\troot.vehicle"};
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show storage group");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("SHOW DATABASES");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
     Assert.assertEquals("[storage group]", dataSet.getPaths().toString());

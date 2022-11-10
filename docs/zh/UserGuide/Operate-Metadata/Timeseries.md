@@ -372,7 +372,7 @@ create aligned timeseries root.sg1.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes
 支持查询：
 
 ```
-IoTDB> show storage group where tag1='v1'
+IoTDB> show databases where tag1='v1'
 Msg: 401: Error occurred while parsing SQL to physical plan: line 1:19 mismatched input 'where' expecting {<EOF>, ';'}
 IoTDB> show timeseries where tag1='v1'
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+

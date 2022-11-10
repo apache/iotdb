@@ -74,7 +74,7 @@ syncStatement
 
 // Create Storage Group
 createStorageGroup
-    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    : CREATE DATABASE prefixPath storageGroupAttributesClause?
     | CREATE (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause?
     ;
 

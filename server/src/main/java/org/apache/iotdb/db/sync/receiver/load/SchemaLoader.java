@@ -58,7 +58,7 @@ public class SchemaLoader implements ILoader {
     } catch (QueryProcessException e) {
       if (e.getCause() instanceof StorageGroupAlreadySetException) {
         logger.warn(
-            "Sync receiver try to set storage group "
+            "Sync receiver try to create database "
                 + ((StorageGroupAlreadySetException) e.getCause()).getStorageGroupPath()
                 + " that has already been set");
       } else {

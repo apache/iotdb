@@ -117,7 +117,7 @@ void close()
 
 #### Storage Group Management
 
-* Set storage group
+* CREATE DATABASE
 
 ```java
 void setStorageGroup(String storageGroupId)    

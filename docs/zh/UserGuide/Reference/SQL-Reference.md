@@ -42,8 +42,8 @@ It costs 0.417s
 * 设置存储组
 
 ``` SQL
-SET STORAGE GROUP TO <FullPath>
-Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
+CREATE DATABASE <FullPath>
+Eg: IoTDB > CREATE DATABASE root.ln.wf01.wt01
 Note: FullPath can not include wildcard `*` or `**`
 ```
 * 删除存储组
@@ -258,18 +258,18 @@ Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 * 显示存储组语句
 
 ```
-SHOW STORAGE GROUP
-Eg: IoTDB > SHOW STORAGE GROUP
+SHOW DATABASES
+Eg: IoTDB > SHOW DATABASES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定存储组语句
 
 ```
-SHOW STORAGE GROUP <PathPattern>
-Eg: IoTDB > SHOW STORAGE GROUP root.*
-Eg: IoTDB > SHOW STORAGE GROUP root.**
-Eg: IoTDB > SHOW STORAGE GROUP root.ln
+SHOW DATABASES <PathPattern>
+Eg: IoTDB > SHOW DATABASES root.*
+Eg: IoTDB > SHOW DATABASES root.**
+Eg: IoTDB > SHOW DATABASES root.ln
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 

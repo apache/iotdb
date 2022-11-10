@@ -69,7 +69,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
           "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
 
-    statement.execute("SET STORAGE GROUP TO root.sg1");
+    statement.execute("CREATE DATABASE root.sg1");
     try {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
@@ -97,7 +97,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
           "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
 
-    statement.execute("SET STORAGE GROUP TO root.sg1");
+    statement.execute("CREATE DATABASE root.sg1");
     try {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
