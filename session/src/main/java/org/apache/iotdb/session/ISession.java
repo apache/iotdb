@@ -73,6 +73,13 @@ public interface ISession extends AutoCloseable {
   void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException;
