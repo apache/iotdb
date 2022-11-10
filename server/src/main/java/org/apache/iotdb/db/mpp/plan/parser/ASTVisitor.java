@@ -628,7 +628,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesStatement);
     }
-    // show devices wtih database
+    // show devices with database
     if (ctx.WITH() != null) {
       showDevicesStatement.setSgCol(true);
     }
