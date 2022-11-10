@@ -62,13 +62,18 @@ public class LocalSyncManager implements ISyncManager {
     unsealedResources.forEach(o -> devices.addAll(o.getDevices()));
     sealedResources.forEach(o -> devices.addAll(o.getDevices()));
 
+    String measurementId = deletion.getPath().getTailNode();
+    measurementId =
+        measurementId.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+            ? IoTDBConstant.ONE_LEVEL_PATH_WILDCARD
+            : measurementId;
     for (String device : devices) {
       try {
         PartialPath path =
-            new PartialPath(device).concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-        if (deletion.getPath().overlapWith(path)) {
+            new PartialPath(device).concatNode(measurementId); // TODO: speed up PartialPath
+        if (deletion.getPath().include(path)) {
           Deletion splitDeletion =
-              new Deletion(deletion.getPath(), 0, deletion.getStartTime(), deletion.getEndTime());
+              new Deletion(path, 0, deletion.getStartTime(), deletion.getEndTime());
           syncPipe.collectRealTimeDeletion(
               splitDeletion, dataRegion.getStorageGroupName(), dataRegionId);
         }
