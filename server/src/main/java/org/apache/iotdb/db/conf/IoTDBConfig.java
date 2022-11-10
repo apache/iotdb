@@ -150,15 +150,15 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportion = 0.8;
+  private double writeProportionForMemtable = 0.8;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
-   * report to system.
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
+   * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -501,6 +501,8 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
+  /** Memory allocated proportion for time partition info */
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -2108,6 +2110,14 @@ public class IoTDBConfig {
     this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
   }
 
+  public long getAllocateMemoryForTimePartitionInfo() {
+    return allocateMemoryForTimePartitionInfo;
+  }
+
+  public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
+  }
+
   public boolean isEnableQueryMemoryEstimation() {
     return enableQueryMemoryEstimation;
   }
@@ -3269,12 +3279,12 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public double getWriteProportion() {
-    return writeProportion;
+  public double getWriteProportionForMemtable() {
+    return writeProportionForMemtable;
   }
 
-  public void setWriteProportion(double writeProportion) {
-    this.writeProportion = writeProportion;
+  public void setWriteProportionForMemtable(double writeProportionForMemtable) {
+    this.writeProportionForMemtable = writeProportionForMemtable;
   }
 
   public double getCompactionProportion() {
