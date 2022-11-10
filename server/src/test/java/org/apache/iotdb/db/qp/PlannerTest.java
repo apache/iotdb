@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -207,16 +206,18 @@ public class PlannerTest {
     PhysicalPlan plan13 = processor.parseSQLToPhysicalPlan(queryStatement2);
     assertEquals(OperatorType.QUERY, plan13.getOperatorType());
 
-    String insertStatementException = "insert into root.vehicle.d0(timestamp,s0,s1) values(10,100)";
-    try {
-      processor.parseSQLToPhysicalPlan(insertStatementException);
-    } catch (Exception e) {
-      assertEquals(
-          new SQLParserException(
-                  "the measurementList's size 2 is not consistent with the valueList's size 1")
-              .getMessage(),
-          e.getMessage());
-    }
+    //    String insertStatementException = "insert into root.vehicle.d0(timestamp,s0,s1)
+    // values(10,100)";
+    //    try {
+    //      processor.parseSQLToPhysicalPlan(insertStatementException);
+    //    } catch (Exception e) {
+    //      assertEquals(
+    //          new SQLParserException(
+    //                  "the measurementList's size 2 is not consistent with the valueList's size
+    // 1")
+    //              .getMessage(),
+    //          e.getMessage());
+    //    }
   }
 
   @Test
