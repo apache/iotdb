@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
@@ -163,13 +164,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private volatile boolean initialized = false;
   private boolean isClearing = false;
 
-  private String schemaRegionDirPath;
-  private String storageGroupFullPath;
-  private SchemaRegionId schemaRegionId;
+  private final String storageGroupDirPath;
+  private final String schemaRegionDirPath;
+  private final String storageGroupFullPath;
+  private final SchemaRegionId schemaRegionId;
 
+  // the log file writer
+  private boolean usingMLog = true;
   // the log file seriesPath
-  private String logFilePath;
-  private File logFile;
+  //  private String logFilePath;
+  //  private File logFile;
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
   private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
@@ -194,6 +198,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
+
+    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     int cacheSize = config.getSchemaRegionDeviceNodeCacheSize();
     mNodeCache =
@@ -226,25 +233,50 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       return;
     }
 
-    String sgDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgDirPath);
+    initDir();
+
+    try {
+      // do not write log when recover
+      isRecovering = true;
+
+      tagManager = new TagManager(schemaRegionDirPath);
+      mtree =
+          new MTreeBelowSGCachedImpl(
+              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
+
+      if (!(config.isClusterMode()
+          && config
+              .getSchemaRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.RATIS_CONSENSUS))) {
+        usingMLog = true;
+        initMLog();
+      } else {
+        usingMLog = false;
+      }
+
+      isRecovering = false;
+    } catch (IOException e) {
+      logger.error(
+          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
+          storageGroupFullPath,
+          e);
+    }
+    initialized = true;
+  }
+
+  private void initDir() throws SchemaDirCreationFailureException {
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", sgDirPath);
+        logger.info("create storage group schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create storage group schema folder {} failed.", sgDirPath);
-          throw new SchemaDirCreationFailureException(sgDirPath);
+          logger.error("create storage group schema folder {} failed.", storageGroupDirPath);
+          throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
     }
 
-    schemaRegionDirPath =
-        config.getSchemaDir()
-            + File.separator
-            + storageGroupFullPath
-            + File.separator
-            + schemaRegionId.getId();
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
@@ -256,39 +288,21 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         }
       }
     }
-    logFilePath = schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG;
+  }
 
-    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+  private void initMLog() throws IOException {
+    int lineNumber = initFromLog();
 
-    try {
-      // do not write log when recover
-      isRecovering = true;
-
-      tagManager = new TagManager(schemaRegionDirPath);
-      mtree =
-          new MTreeBelowSGCachedImpl(
-              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
-
-      int lineNumber = initFromLog(logFile);
-
-      logWriter =
-          new SchemaLogWriter<>(
-              schemaRegionDirPath,
-              MetadataConstant.METADATA_LOG,
-              new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
-              config.getSyncMlogPeriodInMs() == 0);
-      isRecovering = false;
-    } catch (IOException e) {
-      logger.error(
-          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupFullPath,
-          e);
-    }
-    initialized = true;
+    logWriter =
+        new SchemaLogWriter<>(
+            schemaRegionDirPath,
+            MetadataConstant.METADATA_LOG,
+            new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
+            config.getSyncMlogPeriodInMs() == 0);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
-    if (!isRecovering) {
+    if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
     }
   }
@@ -311,7 +325,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @return line number of the logFile
    */
   @SuppressWarnings("squid:S3776")
-  private int initFromLog(File logFile) throws IOException {
+  private int initFromLog() throws IOException {
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(
+            schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG);
+
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
@@ -430,16 +448,103 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    // todo implement this
-    throw new UnsupportedOperationException(
-        "Schema_File mode currently doesn't support snapshot feature.");
+    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    boolean isSuccess = true;
+    long startTime = System.currentTimeMillis();
+
+    long mtreeSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    logger.info(
+        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - mtreeSnapshotStartTime);
+
+    long tagSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    logger.info(
+        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - tagSnapshotStartTime);
+
+    logger.info(
+        "Snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - startTime);
+    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+
+    return isSuccess;
   }
 
+  // currently, this method is only used for cluster-ratis mode
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    // todo implement this
-    throw new UnsupportedOperationException(
-        "Schema_File mode currently doesn't support snapshot feature.");
+    clear();
+
+    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    long startTime = System.currentTimeMillis();
+
+    try {
+      usingMLog = false;
+
+      isRecovering = true;
+
+      long tagSnapshotStartTime = System.currentTimeMillis();
+      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      logger.info(
+          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - tagSnapshotStartTime);
+
+      long mtreeSnapshotStartTime = System.currentTimeMillis();
+      mtree =
+          MTreeBelowSGCachedImpl.loadFromSnapshot(
+              latestSnapshotRootDir,
+              storageGroupMNode,
+              schemaRegionId.getId(),
+              measurementMNode -> {
+                if (measurementMNode.getOffset() == -1) {
+                  return;
+                }
+                try {
+                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+                } catch (IOException e) {
+                  logger.error(
+                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      schemaRegionId);
+                }
+              },
+              tagManager::readTags);
+      logger.info(
+          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - mtreeSnapshotStartTime);
+
+      isRecovering = false;
+      initialized = true;
+
+      logger.info(
+          "Snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - startTime);
+      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
+    } catch (IOException | MetadataException e) {
+      logger.error(
+          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
+          schemaRegionId,
+          e.getMessage(),
+          e);
+      try {
+        initialized = false;
+        isRecovering = true;
+        init();
+      } catch (MetadataException metadataException) {
+        logger.error(
+            "Error occurred during initializing schemaRegion {}",
+            schemaRegionId,
+            metadataException);
+      }
+    }
   }
 
   // endregion

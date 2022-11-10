@@ -36,12 +36,21 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public interface IMTreeBelowSG {
   void clear();
+
+  /**
+   * Create MTree snapshot
+   *
+   * @param snapshotDir specify snapshot directory
+   * @return false if failed to create snapshot; true if success
+   */
+  boolean createSnapshot(File snapshotDir);
 
   IMeasurementMNode createTimeseries(
       PartialPath path,
