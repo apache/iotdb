@@ -23,8 +23,9 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.UnaryColumnTransformer;
@@ -271,10 +272,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
   private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer) {
     if (columnTransformer instanceof LeafColumnTransformer) {
       // Time column is always calculated, we ignore it here. Constant column is ignored.
-      if (columnTransformer instanceof IdentityColumnTransformer) {
-        return 1;
-      } else {
+      if (columnTransformer instanceof ConstantColumnTransformer
+          || columnTransformer instanceof TimeColumnTransformer) {
         return 0;
+      } else {
+        return 1;
       }
     } else if (columnTransformer instanceof UnaryColumnTransformer) {
       return Math.max(

@@ -51,17 +51,18 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
 
   @Override
   protected final void checkType() {
-    if (firstColumnTransformer.isReturnTypeNumeric()
-            && secondColumnTransformer.isReturnTypeNumeric()
-            && thirdColumnTransformer.isReturnTypeNumeric()
-        || firstColumnTransformer.typeEquals(TypeEnum.BINARY)
-            && secondColumnTransformer.typeEquals(TypeEnum.BINARY)
-            && thirdColumnTransformer.typeEquals(TypeEnum.BINARY)) {
+    if ((firstColumnTransformer.getType().getTypeEnum())
+            .equals(secondColumnTransformer.getType().getTypeEnum())
+        && (firstColumnTransformer.getType().getTypeEnum())
+            .equals(thirdColumnTransformer.getType().getTypeEnum())) {
       return;
     }
 
-    throw new UnsupportedOperationException(
-        String.format("The Type of three subExpression should be all Numeric or Text"));
+    if (firstColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || secondColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || thirdColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException("Unsupported Type");
+    }
   }
 
   protected abstract void doTransform(

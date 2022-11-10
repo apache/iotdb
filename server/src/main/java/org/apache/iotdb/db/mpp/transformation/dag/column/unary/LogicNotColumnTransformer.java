@@ -44,7 +44,7 @@ public class LogicNotColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
-    if (!(childColumnTransformer.typeEquals(TypeEnum.BOOLEAN))) {
+    if (!(childColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN))) {
       throw new UnsupportedOperationException(
           "Unsupported Type: " + childColumnTransformer.getType().getTypeEnum());
     }

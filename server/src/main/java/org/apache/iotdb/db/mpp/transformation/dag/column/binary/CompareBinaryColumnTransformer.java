@@ -71,11 +71,10 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   @Override
   protected void checkType() {
     // Boolean type can only be compared by == or !=
-    if (leftTransformer.typeNotEquals(TypeEnum.BOOLEAN)
-        && rightTransformer.typeNotEquals(TypeEnum.BOOLEAN)) {
-      return;
+    if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || rightTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
-    throw new UnsupportedOperationException("Unsupported Type");
   }
 
   protected int compare(double d1, double d2) {

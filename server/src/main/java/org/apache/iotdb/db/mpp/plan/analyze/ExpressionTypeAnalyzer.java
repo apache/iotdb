@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -196,9 +195,7 @@ public class ExpressionTypeAnalyzer {
       final TSDataType rightExpressionDataType =
           process(compareBinaryExpression.getRightExpression(), null);
 
-      if (leftExpressionDataType != null
-          && rightExpressionDataType != null
-          && !leftExpressionDataType.equals(rightExpressionDataType)) {
+      if (!leftExpressionDataType.equals(rightExpressionDataType)) {
         final String leftExpressionString = compareBinaryExpression.getLeftExpression().toString();
         final String rightExpressionString =
             compareBinaryExpression.getRightExpression().toString();
@@ -292,11 +289,6 @@ public class ExpressionTypeAnalyzer {
       return setExpressionType(constantOperand, constantOperand.getDataType());
     }
 
-    @Override
-    public TSDataType visitNullOperand(NullOperand nullOperand, Void context) {
-      return null;
-    }
-
     private TSDataType setExpressionType(Expression expression, TSDataType type) {
       expressionTypes.put(NodeRef.of(expression), type);
       return type;
@@ -305,7 +297,7 @@ public class ExpressionTypeAnalyzer {
     private void checkInputExpressionDataType(
         String expressionString, TSDataType actual, TSDataType... expected) {
       for (TSDataType type : expected) {
-        if (actual == null || actual.equals(type)) {
+        if (actual.equals(type)) {
           return;
         }
       }

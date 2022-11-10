@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -248,10 +247,6 @@ public class Analysis {
   }
 
   public TSDataType getType(Expression expression) {
-    // NULL_Operand needn't check
-    if (expression.getExpressionType() == ExpressionType.NULL) {
-      return null;
-    }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression not analyzed: %s", expression);
     return type;

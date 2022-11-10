@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -52,7 +51,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.binary.LogicOrColumnTra
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.BetweenColumnTransformer;
@@ -301,21 +299,6 @@ public class ColumnTransformerVisitor
                   new ConstantColumnTransformer(
                       TypeFactory.getType(context.getType(constantOperand)),
                       TransformUtils.transformConstantOperandToColumn(constantOperand));
-              context.leafList.add(columnTransformer);
-              return columnTransformer;
-            });
-    res.addReferenceCount();
-    return res;
-  }
-
-  @Override
-  public ColumnTransformer visitNullOperand(
-      NullOperand nullOperand, ColumnTransformerVisitorContext context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            nullOperand,
-            e -> {
-              NullColumnTransformer columnTransformer = new NullColumnTransformer();
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });

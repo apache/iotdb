@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -558,13 +558,18 @@ public class ExpressionAnalyzer {
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
         if (actualPaths.size() == 0) {
-          return Collections.singletonList(new NullOperand());
+          throw new SemanticException(
+              String.format(
+                  "the path '%s' in %s clause does not exist",
+                  concatPath, isWhere ? "WHERE" : "HAVING"));
         }
         noStarPaths.addAll(actualPaths);
       }
       return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (predicate instanceof LeafOperand) {
+    } else if (predicate instanceof TimestampOperand) {
       // do nothing in the case of "where time > 5"
+      return Collections.singletonList(predicate);
+    } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);
     } else {
       throw new IllegalArgumentException(
@@ -674,7 +679,7 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (actualPaths.isEmpty()) {
-        return Collections.emptyList();
+        return new ArrayList<>();
       }
       List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -755,7 +760,10 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        return Collections.singletonList(new NullOperand());
+        throw new MeasurementNotExistException(
+            String.format(
+                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
+                measurement, devicePath));
       }
       return reconstructTimeSeriesOperands(noStarPaths);
     } else if (predicate instanceof TimestampOperand) {
@@ -834,10 +842,7 @@ public class ExpressionAnalyzer {
       Pair<Filter, Boolean> childResultPair =
           extractGlobalTimeFilter(
               ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
-      if (childResultPair.left != null) {
-        return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
-      }
-      return new Pair<>(null, true);
+      return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
     } else if (predicate.isCompareBinaryExpression()) {
       Filter timeInLeftFilter =
           constructTimeFilter(
@@ -960,7 +965,7 @@ public class ExpressionAnalyzer {
       return resultExpressions;
     } else if (expression instanceof TimeSeriesOperand) {
       return Collections.singletonList(expression);
-    } else if (expression instanceof LeafOperand) {
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return Collections.emptyList();
     } else {
       throw new IllegalArgumentException(
@@ -1069,7 +1074,7 @@ public class ExpressionAnalyzer {
         return new TimeSeriesOperand(newPath);
       }
       return expression;
-    } else if (expression instanceof LeafOperand) {
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
       // do nothing
       return expression;
     } else {
@@ -1092,8 +1097,6 @@ public class ExpressionAnalyzer {
       return false;
     } else if (expression instanceof ConstantOperand) {
       return false;
-    } else if (expression instanceof NullOperand) {
-      return true;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
@@ -1186,7 +1189,7 @@ public class ExpressionAnalyzer {
         measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
       }
       return new TimeSeriesOperand(measurementWithSchema);
-    } else if (expression instanceof LeafOperand) {
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return expression;
     } else {
       throw new IllegalArgumentException(
