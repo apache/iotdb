@@ -81,7 +81,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private int rowCount = 0;
 
-  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
+  // when this plan is sub-plan split from another InsertTabletNode, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
   // means that the first 3

@@ -25,12 +25,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
@@ -54,7 +52,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class PlannerTest {
 
@@ -166,14 +163,14 @@ public class PlannerTest {
     PhysicalPlan plan3 = processor.parseSQLToPhysicalPlan(deleteTSStatement);
     assertEquals(OperatorType.DELETE_TIMESERIES, plan3.getOperatorType());
 
-    String insertStatement = "insert into root.vehicle.d0(timestamp,s0) values(10,100)";
-    PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
-    assertEquals(OperatorType.INSERT, plan4.getOperatorType());
-
-    String deleteStatement =
-        "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
-    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
-    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
+    //    String insertStatement = "insert into root.vehicle.d0(timestamp,s0) values(10,100)";
+    //    PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
+    //    assertEquals(OperatorType.INSERT, plan4.getOperatorType());
+    //
+    //    String deleteStatement =
+    //        "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
+    //    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
+    //    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
     String queryStatement1 =
         "select * from root.vehicle.** where root.vehicle.device1.sensor1 > 50";
@@ -195,9 +192,9 @@ public class PlannerTest {
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
 
-    String insertTimeStatement = "insert into root.vehicle.d0(time,s0) values(10,100)";
-    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
-    assertEquals(OperatorType.INSERT, plan11.getOperatorType());
+    //    String insertTimeStatement = "insert into root.vehicle.d0(time,s0) values(10,100)";
+    //    PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
+    //    assertEquals(OperatorType.INSERT, plan11.getOperatorType());
 
     String createTSStatement2 =
         "create timeseries root.a.b.d_1.`1s` with datatype=FLOAT,encoding=RLE";
@@ -209,16 +206,18 @@ public class PlannerTest {
     PhysicalPlan plan13 = processor.parseSQLToPhysicalPlan(queryStatement2);
     assertEquals(OperatorType.QUERY, plan13.getOperatorType());
 
-    String insertStatementException = "insert into root.vehicle.d0(timestamp,s0,s1) values(10,100)";
-    try {
-      processor.parseSQLToPhysicalPlan(insertStatementException);
-    } catch (Exception e) {
-      assertEquals(
-          new SQLParserException(
-                  "the measurementList's size 2 is not consistent with the valueList's size 1")
-              .getMessage(),
-          e.getMessage());
-    }
+    //    String insertStatementException = "insert into root.vehicle.d0(timestamp,s0,s1)
+    // values(10,100)";
+    //    try {
+    //      processor.parseSQLToPhysicalPlan(insertStatementException);
+    //    } catch (Exception e) {
+    //      assertEquals(
+    //          new SQLParserException(
+    //                  "the measurementList's size 2 is not consistent with the valueList's size
+    // 1")
+    //              .getMessage(),
+    //          e.getMessage());
+    //    }
   }
 
   @Test
@@ -233,28 +232,6 @@ public class PlannerTest {
     String createTSStatement =
         "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     processor.parseSQLToPhysicalPlan(createTSStatement);
-  }
-
-  @Test
-  public void insertStatementWithNullValue() throws QueryProcessException {
-    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(10,NaN)";
-    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
-
-    assertTrue(physicalPlan instanceof InsertRowPlan);
-    assertEquals("NaN", ((InsertRowPlan) physicalPlan).getValues()[0]);
-    // Later we will use Double.parseDouble so we have to ensure that it is parsed right
-    assertEquals(Double.NaN, Double.parseDouble("NaN"), 1e-15);
-  }
-
-  @Test
-  public void insertStatementWithNegativeTimeStamp()
-      throws QueryProcessException, MetadataException {
-    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(-1000, 111)";
-    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
-
-    assertTrue(physicalPlan instanceof InsertRowPlan);
-    assertEquals(-1000, ((InsertRowPlan) physicalPlan).getTime());
-    assertEquals("111", ((InsertRowPlan) physicalPlan).getValues()[0]);
   }
 
   @Test

@@ -30,7 +30,7 @@ public class WALInfoEntry extends WALEntry {
   /** wal entry type 1 byte, memTable id 8 bytes */
   public static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
 
-  /** extra info for InsertTabletPlan type value */
+  /** extra info for InsertTablet type value */
   private TabletInfo tabletInfo;
 
   public WALInfoEntry(long memTableId, WALEntryValue value, boolean wait) {

@@ -21,16 +21,12 @@ package org.apache.iotdb.db.wal.buffer;
 /** Type of {@link WALEntry}, including info type and signal type */
 public enum WALEntryType {
   // region info entry type
-  /** {@link org.apache.iotdb.db.qp.physical.crud.InsertRowPlan} */
   @Deprecated
   INSERT_ROW_PLAN((byte) 0),
-  /** {@link org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan} */
   @Deprecated
   INSERT_TABLET_PLAN((byte) 1),
-  /** {@link org.apache.iotdb.db.qp.physical.crud.DeletePlan} */
   @Deprecated
   DELETE_PLAN((byte) 2),
-  /** snapshot of {@link org.apache.iotdb.db.engine.memtable.IMemTable} */
   MEMORY_TABLE_SNAPSHOT((byte) 3),
   /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode} */
   INSERT_ROW_NODE((byte) 4),

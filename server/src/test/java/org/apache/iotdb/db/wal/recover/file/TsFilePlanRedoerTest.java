@@ -616,7 +616,7 @@ public class TsFilePlanRedoerTest {
     tsFileResource.updateStartTime(DEVICE2_NAME, 3);
     tsFileResource.updateEndTime(DEVICE2_NAME, 4);
 
-    // generate DeletePlan
+    // generate DeleteDataNode
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
@@ -624,7 +624,7 @@ public class TsFilePlanRedoerTest {
             Long.MIN_VALUE,
             Long.MAX_VALUE);
 
-    // redo DeletePlan, vsg processor is used to test IdTable, don't test IdTable here
+    // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
     File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
     assertFalse(modsFile.exists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);

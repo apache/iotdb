@@ -30,8 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -52,7 +50,6 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -78,9 +75,6 @@ import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -88,7 +82,6 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -106,7 +99,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -118,7 +110,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -1749,101 +1740,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process
-  /** get schema for device. Attention!!! Only support insertPlan */
-  @Override
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDevicePath();
-    String[] measurementList = plan.getMeasurements();
-    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-    IMNode deviceMNode;
-
-    // 1. get device node, set using template if accessed.
-    deviceMNode = getDeviceInTemplateIfUsingTemplate(devicePath, measurementList);
-    boolean isDeviceInTemplate = deviceMNode != null;
-    // get logical device node, may be in template. will be multiple if overlap is allowed.
-    if (!isDeviceInTemplate) {
-      deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
-    }
-    try {
-      // check insert non-aligned InsertPlan for aligned timeseries
-      if (deviceMNode.isEntity()) {
-        if (plan.isAligned()) {
-          if (!deviceMNode.getAsEntityMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "timeseries under this device are not aligned, "
-                    + "please use non-aligned interface",
-                devicePath.getFullPath());
-          }
-        } else {
-          if (deviceMNode.getAsEntityMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "timeseries under this device are aligned, " + "please use aligned interface",
-                devicePath.getFullPath());
-          }
-        }
-      }
-
-      // 2. get schema of each measurement
-      IMeasurementMNode measurementMNode;
-      for (int i = 0; i < measurementList.length; i++) {
-        try {
-          // get MeasurementMNode, auto create if absent
-          Pair<IMNode, IMeasurementMNode> pair =
-              getMeasurementMNodeForInsertPlan(plan, i, deviceMNode, isDeviceInTemplate);
-          deviceMNode = pair.left;
-          measurementMNode = pair.right;
-
-          // check type is match
-          if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-            try {
-              SchemaRegionUtils.checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
-            } catch (DataTypeMismatchException mismatchException) {
-              logger.warn(mismatchException.getMessage());
-              if (!config.isEnablePartialInsert()) {
-                throw mismatchException;
-              } else {
-                // mark failed measurement
-                plan.markFailedMeasurementInsertion(i, mismatchException);
-                continue;
-              }
-            }
-            measurementMNodes[i] = measurementMNode;
-            // set measurementName instead of alias
-            measurementList[i] = measurementMNode.getName();
-          }
-        } catch (MetadataException e) {
-          if (config.isClusterMode()) {
-            logger.debug(
-                "meet error when check {}.{}, message: {}",
-                devicePath,
-                measurementList[i],
-                e.getMessage());
-          } else {
-            logger.warn(
-                "meet error when check {}.{}, message: {}",
-                devicePath,
-                measurementList[i],
-                e.getMessage());
-          }
-          if (config.isEnablePartialInsert()) {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, e);
-          } else {
-            throw e;
-          }
-        }
-      }
-    } finally {
-      if (!isDeviceInTemplate) {
-        mtree.unPinMNode(deviceMNode);
-      }
-    }
-
-    return deviceMNode;
-  }
 
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
@@ -1855,132 +1751,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();
-  }
-
-  private IMNode getDeviceInTemplateIfUsingTemplate(
-      PartialPath devicePath, String[] measurementList) throws MetadataException, IOException {
-    // 1. get device node, set using template if accessed.
-    IMNode deviceMNode = null;
-
-    // check every measurement path
-    int index = mtree.getMountedNodeIndexOnMeasurementPath(devicePath, measurementList);
-    if (index == devicePath.getNodeLength()) {
-      return null;
-    }
-
-    // this measurement is in template, need to assure mounted node exists and set using
-    // template.
-    // Without allowing overlap of template and MTree, this block run only once
-    String[] mountedPathNodes = Arrays.copyOfRange(devicePath.getNodes(), 0, index + 1);
-    IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
-    try {
-      if (!mountedNode.isUseTemplate()) {
-        mountedNode = setUsingSchemaTemplate(mountedNode);
-      }
-    } finally {
-      mtree.unPinMNode(mountedNode);
-    }
-
-    if (index < devicePath.getNodeLength() - 1) {
-      deviceMNode =
-          mountedNode
-              .getUpperTemplate()
-              .getPathNodeInTemplate(
-                  new PartialPath(
-                      Arrays.copyOfRange(
-                          devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
-    }
-
-    return deviceMNode;
-  }
-
-  private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
-      InsertPlan plan, int loc, IMNode deviceMNode, boolean isDeviceInTemplate)
-      throws MetadataException {
-    PartialPath devicePath = plan.getDevicePath();
-    String[] measurementList = plan.getMeasurements();
-    String measurement = measurementList[loc];
-    IMeasurementMNode measurementMNode = null;
-    if (isDeviceInTemplate) {
-      measurementMNode = deviceMNode.getChild(measurement).getAsMeasurementMNode();
-    } else {
-      measurementMNode = getMeasurementMNode(deviceMNode, measurement);
-      if (measurementMNode == null) {
-        measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
-      }
-    }
-    if (measurementMNode == null) {
-      if (!config.isAutoCreateSchemaEnabled() || isDeviceInTemplate) {
-        throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurement);
-      } else {
-        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (!plan.isAligned()) {
-            internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
-          } else {
-            internalAlignedCreateTimeseries(
-                devicePath,
-                Collections.singletonList(measurement),
-                Collections.singletonList(plan.getDataTypes()[loc]));
-          }
-          // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
-          deviceMNode = mtree.getNodeByPath(devicePath);
-          mtree.unPinMNode(deviceMNode);
-          measurementMNode = getMeasurementMNode(deviceMNode, measurement);
-        } else {
-          throw new MetadataException(
-              String.format(
-                  "Only support insertRow and insertTablet, plan is [%s]", plan.getOperatorType()));
-        }
-      }
-    }
-    return new Pair<>(deviceMNode, measurementMNode);
-  }
-
-  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
-  private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
-      throws MetadataException {
-    Template curTemplate = deviceMNode.getUpperTemplate();
-
-    if (curTemplate == null) {
-      return null;
-    }
-
-    IMeasurementSchema schema = curTemplate.getSchema(measurement);
-
-    if (schema == null) {
-      return null;
-    }
-
-    if (!deviceMNode.isUseTemplate()) {
-      deviceMNode = setUsingSchemaTemplate(deviceMNode);
-    }
-
-    return MeasurementMNode.getMeasurementMNode(
-        deviceMNode.getAsEntityMNode(), measurement, schema, null);
-  }
-
-  /** create timeseries ignoring PathAlreadyExistException */
-  private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
-      throws MetadataException {
-    createTimeseries(
-        path,
-        dataType,
-        getDefaultEncoding(dataType),
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-  }
-
-  /** create aligned timeseries ignoring PathAlreadyExistException */
-  private void internalAlignedCreateTimeseries(
-      PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
-      throws MetadataException {
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
-    for (TSDataType dataType : dataTypes) {
-      encodings.add(getDefaultEncoding(dataType));
-      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    }
-    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
 
   // endregion

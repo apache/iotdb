@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.dto;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.influxdb.meta.IInfluxDBMetaManager;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -145,16 +141,6 @@ public class IoTDBPoint {
 
   public List<Object> getValues() {
     return values;
-  }
-
-  public InsertRowPlan convertToInsertRowPlan()
-      throws IllegalPathException, IoTDBConnectionException, QueryProcessException {
-    return new InsertRowPlan(
-        new PartialPath(getDeviceId()),
-        getTime(),
-        getMeasurements().toArray(new String[0]),
-        DataTypeUtils.getValueBuffer(getTypes(), getValues()),
-        false);
   }
 
   /**

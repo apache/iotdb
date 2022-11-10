@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -475,17 +473,5 @@ public class TemplateTest {
           "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
           e.getMessage());
     }
-  }
-
-  private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)
-      throws IllegalPathException {
-    long time = 110L;
-    TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT64};
-
-    String[] columns = new String[1];
-    columns[0] = "1";
-
-    return new InsertRowPlan(
-        new PartialPath(prefixPath), time, new String[] {measurement}, dataTypes, columns);
   }
 }
