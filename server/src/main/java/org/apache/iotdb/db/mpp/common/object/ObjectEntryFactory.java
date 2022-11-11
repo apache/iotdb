@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.object;
+package org.apache.iotdb.db.mpp.common.object;
 
-import org.apache.iotdb.db.mpp.execution.object.entry.SchemaFetchObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 
 public class ObjectEntryFactory {
 

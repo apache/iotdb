@@ -19,11 +19,24 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-public class ObjectQueryConstant {
+import org.apache.iotdb.db.mpp.common.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-  // object transport protocol
-  public static final byte[] BATCH_CONTINUE_SYMBOL = new byte[] {0};
-  public static final byte[] BATCH_END_SYMBOL = new byte[] {1};
-  public static final byte OBJECT_START_SYMBOL = 0;
-  public static final byte NO_MORE_OBJECT_SYMBOL = 1;
+public abstract class ObjectSourceOperator<T extends ObjectEntry> extends ObjectQueryOperator<T>
+    implements SourceOperator {
+
+  protected PlanNodeId sourceId;
+
+  public ObjectSourceOperator(
+      PlanNodeId sourceId, OperatorContext operatorContext, String queryId) {
+    super(operatorContext, queryId);
+    this.sourceId = sourceId;
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return sourceId;
+  }
 }

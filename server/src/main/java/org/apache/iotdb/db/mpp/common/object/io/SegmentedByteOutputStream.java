@@ -17,32 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.object;
+package org.apache.iotdb.db.mpp.common.object.io;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
-public enum ObjectType {
-  SCHEMA_FETCH((byte) 0);
+public class SegmentedByteOutputStream extends OutputStream {
 
-  private final byte type;
+  private final List<ByteBuffer> bufferList = new ArrayList<>();
 
-  ObjectType(byte type) {
-    this.type = type;
+  private final int bufferSize;
+
+  private ByteBuffer workingBuffer;
+
+  public SegmentedByteOutputStream(int bufferSize) {
+    this.bufferSize = bufferSize;
+    workingBuffer = ByteBuffer.allocate(bufferSize);
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
-    outputStream.write(type);
-  }
-
-  public static ObjectType deserialize(InputStream inputStream) throws IOException {
-    byte type = (byte) inputStream.read();
-    switch (type) {
-      case 0:
-        return SCHEMA_FETCH;
-      default:
-        throw new IllegalArgumentException("Unrecognized object type " + type);
+  @Override
+  public void write(int b) throws IOException {
+    if (!workingBuffer.hasRemaining()) {
+      getNewBuffer();
     }
+    workingBuffer.put((byte) b);
+  }
+
+  public List<ByteBuffer> getBufferList() {
+    getNewBuffer();
+    return bufferList;
+  }
+
+  private void getNewBuffer() {
+    workingBuffer.flip();
+    bufferList.add(workingBuffer);
+    workingBuffer = ByteBuffer.allocate(bufferSize);
   }
 }

@@ -17,25 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.object;
+package org.apache.iotdb.db.mpp.common.object;
 
-import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
-public abstract class ObjectScanOperator<T extends ObjectEntry> extends ObjectQueryOperator<T>
-    implements SourceOperator {
+public enum ObjectType {
+  SCHEMA_FETCH((byte) 0);
 
-  protected PlanNodeId sourceId;
+  private final byte type;
 
-  public ObjectScanOperator(PlanNodeId sourceId, OperatorContext operatorContext, String queryId) {
-    super(operatorContext, queryId);
-    this.sourceId = sourceId;
+  ObjectType(byte type) {
+    this.type = type;
   }
 
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
+  public void serialize(OutputStream outputStream) throws IOException {
+    outputStream.write(type);
+  }
+
+  public static ObjectType deserialize(InputStream inputStream) throws IOException {
+    byte type = (byte) inputStream.read();
+    switch (type) {
+      case 0:
+        return SCHEMA_FETCH;
+      default:
+        throw new IllegalArgumentException("Unrecognized object type " + type);
+    }
   }
 }

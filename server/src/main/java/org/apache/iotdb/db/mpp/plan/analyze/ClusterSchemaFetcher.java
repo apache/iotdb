@@ -29,14 +29,14 @@ import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
+import org.apache.iotdb.db.mpp.common.object.ObjectResultHandler;
+import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
-import org.apache.iotdb.db.mpp.execution.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -48,8 +48,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -60,7 +58,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -129,29 +126,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
-        IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
-        while (queryExecution.hasNextResult()) {
-          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-          // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock;
-          try {
-            tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-          } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
-          }
-          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-            break;
-          }
-          Column column = tsBlock.get().getColumn(0);
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            SchemaFetchObjectEntry objectEntry =
-                objectPool.get(queryExecution.getQueryId(), column.getInt(i));
+        ObjectResultHandler<SchemaFetchObjectEntry> objectResultHandler =
+            new ObjectResultHandler<>(coordinator.getQueryExecution(queryId), objectPool);
+        try {
+          while (objectResultHandler.hasNextResult()) {
+            SchemaFetchObjectEntry objectEntry = objectResultHandler.getNextResult();
             if (objectEntry.isReadingStorageGroupInfo()) {
               result.setStorageGroups(objectEntry.getStorageGroupList());
             } else {
               result.mergeSchemaTree(objectEntry.getSchemaTree());
             }
           }
+        } catch (IoTDBException e) {
+          throw new RuntimeException("Fetch Schema failed. ", e);
         }
         return result;
       }

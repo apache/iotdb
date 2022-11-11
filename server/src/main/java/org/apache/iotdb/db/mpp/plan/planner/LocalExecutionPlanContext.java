@@ -66,6 +66,8 @@ public class LocalExecutionPlanContext {
 
   private boolean isSourceOnSameNode;
 
+  private boolean needObjectBinary;
+
   public LocalExecutionPlanContext(
       TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
     this.typeProvider = typeProvider;
@@ -177,5 +179,13 @@ public class LocalExecutionPlanContext {
 
   public void setSourceOnSameNode(boolean sourceOnSameNode) {
     isSourceOnSameNode = sourceOnSameNode;
+  }
+
+  public boolean isNeedObjectBinary() {
+    return needObjectBinary;
+  }
+
+  public void setNeedObjectBinary(boolean needObjectBinary) {
+    this.needObjectBinary = needObjectBinary;
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.object;
+package org.apache.iotdb.db.mpp.common.object;
 
 import java.util.ArrayList;
 import java.util.Collections;

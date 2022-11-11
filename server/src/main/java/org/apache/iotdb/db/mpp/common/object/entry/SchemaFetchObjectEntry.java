@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.object.entry;
+package org.apache.iotdb.db.mpp.common.object.entry;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.mpp.common.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.ObjectType;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
-import org.apache.iotdb.db.mpp.execution.object.ObjectType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;

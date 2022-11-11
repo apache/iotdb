@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.mpp.execution.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.object.ObjectScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
@@ -40,7 +40,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public class SchemaFetchScanOperator extends ObjectScanOperator<SchemaFetchObjectEntry>
+public class SchemaFetchScanOperator extends ObjectSourceOperator<SchemaFetchObjectEntry>
     implements SourceOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);

@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
-import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
+import org.apache.iotdb.db.mpp.common.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.ObjectTsBlockTransformer;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -37,8 +35,6 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
 
   protected final String queryId;
   protected final MPPObjectPool objectPool = MPPObjectPool.getInstance();
-
-  private final List<TSDataType> outputDataTypes = Collections.singletonList(TSDataType.INT32);
 
   ObjectQueryOperator(OperatorContext operatorContext, String queryId) {
     this.operatorContext = operatorContext;
@@ -60,20 +56,12 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
     if (objectEntryList == null) {
       return null;
     }
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    int objectId;
-    for (ObjectEntry objectEntry : objectEntryList) {
-      if (objectEntry.isRegistered()) {
-        objectId = objectEntry.getId();
-      } else {
-        objectId = objectPool.put(queryId, objectEntry).getId();
-      }
-      builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeInt(objectId);
-      builder.declarePosition();
-    }
-
-    return builder.build();
+    return ObjectTsBlockTransformer.transformToObjectIndexTsBlock(
+        objectEntryList,
+        objectEntry ->
+            objectEntry.isRegistered()
+                ? objectEntry.getId()
+                : objectPool.put(queryId, objectEntry).getId());
   }
 
   @Override

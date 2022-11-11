@@ -61,7 +61,6 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperato
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
@@ -951,33 +950,6 @@ public class OperatorMemoryTest {
     } finally {
       instanceNotificationExecutor.shutdown();
     }
-  }
-
-  @Test
-  public void SchemaFetchMergeOperatorTest() {
-    List<Operator> children = new ArrayList<>(4);
-
-    long expectedMaxReturnSize = 0;
-    long expectedMaxPeekMemory = 0;
-    long expectedRetainedSize = 0;
-
-    for (int i = 0; i < 4; i++) {
-      Operator child = Mockito.mock(Operator.class);
-      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
-      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
-      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
-      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, child.calculateMaxPeekMemory());
-      expectedMaxReturnSize = Math.max(expectedMaxReturnSize, child.calculateMaxReturnSize());
-      expectedRetainedSize += child.calculateRetainedSizeAfterCallingNext();
-      children.add(child);
-    }
-
-    SchemaFetchMergeOperator operator =
-        new SchemaFetchMergeOperator(Mockito.mock(OperatorContext.class), "", children, null);
-
-    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
-    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

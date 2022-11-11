@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.object;
 
-import org.apache.iotdb.db.mpp.execution.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.ObjectEntry;
+import org.apache.iotdb.db.mpp.common.object.ObjectTsBlockTransformer;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -45,10 +45,7 @@ public abstract class ObjectProcessOperator<T extends ObjectEntry> extends Objec
       return Collections.emptyList();
     }
 
-    List<T> objectEntryList = new ArrayList<>(tsBlock.getPositionCount());
-    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      objectEntryList.add(objectPool.get(queryId, tsBlock.getColumn(0).getInt(i)));
-    }
-    return objectEntryList;
+    return ObjectTsBlockTransformer.transformToObjectList(
+        tsBlock, index -> objectPool.get(queryId, index));
   }
 }

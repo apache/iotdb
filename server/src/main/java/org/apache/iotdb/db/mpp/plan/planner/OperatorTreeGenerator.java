@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.object.ObjectDeserializeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.object.ObjectMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSerializeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
@@ -99,7 +100,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperato
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchSGScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
@@ -116,6 +117,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -1589,21 +1591,53 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSchemaFetchMerge(
       SchemaFetchMergeNode node, LocalExecutionPlanContext context) {
+    context.setNeedObjectBinary(!context.isSinkOnSameNode());
+
     List<Operator> children =
         node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
-    OperatorContext operatorContext =
+
+    children.add(
+        processSchemaFetchSGScan(
+            new PlanNodeId(node.getPlanNodeId().getId() + "-sg-scan"),
+            context,
+            node.getStorageGroupList()));
+
+    return processObjectMerge(node.getPlanNodeId(), children, context);
+  }
+
+  private Operator processObjectMerge(
+      PlanNodeId planNodeId, List<Operator> children, LocalExecutionPlanContext context) {
+    OperatorContext mergeOperatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(), planNodeId, ObjectMergeOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(mergeOperatorContext, 1);
+    return new ObjectMergeOperator(mergeOperatorContext, children);
+  }
+
+  private Operator processSchemaFetchSGScan(
+      PlanNodeId planNodeId, LocalExecutionPlanContext context, List<String> storageGroupList) {
+    OperatorContext sgScanOperatorContext =
         context
             .getInstanceContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaFetchMergeOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new SchemaFetchMergeOperator(
-        operatorContext,
-        context.getInstanceContext().getId().getQueryId().getId(),
-        children,
-        node.getStorageGroupList());
+                planNodeId,
+                SchemaFetchSGScanOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(sgScanOperatorContext, 1);
+    SchemaFetchSGScanOperator sgScanOperator =
+        new SchemaFetchSGScanOperator(
+            planNodeId,
+            sgScanOperatorContext,
+            context.getInstanceContext().getId().getQueryId().getId(),
+            storageGroupList);
+    if (context.isNeedObjectBinary()) {
+      return processObjectSerialize(
+          new PlanNodeId(planNodeId.getId() + "-serialize"), sgScanOperator, context);
+    } else {
+      return sgScanOperator;
+    }
   }
 
   @Override
@@ -1970,39 +2004,57 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitObjectDeserialize(
       ObjectDeserializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    if (context.isSourceOnSameNode()) {
+    // The ObjectDeserializeNode is only planned on ExchangeNode.
+    // If the source is on the same DataNode, there's no need to deserialize an Object since the
+    // object can be used directly in same process.
+    // If the source is on another DataNode and the ancestor of this node doesn't need to process
+    // deserialized object, there's no need to deserialize too.
+    if (context.isSourceOnSameNode() || context.isNeedObjectBinary()) {
       return child;
     } else {
-      OperatorContext operatorContext =
-          context
-              .getInstanceContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  ObjectDeserializeNode.class.getSimpleName());
-      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-      return new ObjectDeserializeOperator(
-          operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
+      return processObjectDeserialize(node.getPlanNodeId(), child, context);
     }
+  }
+
+  private Operator processObjectDeserialize(
+      PlanNodeId planNodeId, Operator child, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                planNodeId,
+                ObjectDeserializeNode.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new ObjectDeserializeOperator(
+        operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
   }
 
   @Override
   public Operator visitObjectSerialize(
       ObjectSerializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    if (context.isSinkOnSameNode()) {
-      return child;
+    // The ObjectSerializeNode is only planned beneath ExchangeNode.
+    // If the sink is on another DataNode, there's need to serialize an Object for network
+    // transport.
+    // If the sink is on the same DataNode and the ancestor of this node need the binary data of
+    // object, there's need to serialize too.
+    if (!context.isSinkOnSameNode() || context.isNeedObjectBinary()) {
+      return processObjectSerialize(node.getPlanNodeId(), child, context);
     } else {
-      OperatorContext operatorContext =
-          context
-              .getInstanceContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  ObjectSerializeNode.class.getSimpleName());
-      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-      return new ObjectSerializeOperator(
-          operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
+      return child;
     }
+  }
+
+  private Operator processObjectSerialize(
+      PlanNodeId planNodeId, Operator child, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(), planNodeId, ObjectSerializeNode.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new ObjectSerializeOperator(
+        operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
   }
 }
