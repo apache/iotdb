@@ -106,48 +106,63 @@ public class PageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
     if (filter == null || filter.satisfy(getStatistics())) {
-      while (timeDecoder.hasNext(timeBuffer)) {
-        long timestamp = timeDecoder.readLong(timeBuffer);
-        switch (dataType) {
-          case BOOLEAN:
+      switch (dataType) {
+        case BOOLEAN:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
               pageData.putBoolean(timestamp, aBoolean);
             }
-            break;
-          case INT32:
+          }
+          break;
+        case INT32:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             int anInt = valueDecoder.readInt(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
               pageData.putInt(timestamp, anInt);
             }
-            break;
-          case INT64:
+          }
+          break;
+        case INT64:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             long aLong = valueDecoder.readLong(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
               pageData.putLong(timestamp, aLong);
             }
-            break;
-          case FLOAT:
+          }
+          break;
+        case FLOAT:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             float aFloat = valueDecoder.readFloat(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
               pageData.putFloat(timestamp, aFloat);
             }
-            break;
-          case DOUBLE:
+          }
+          break;
+        case DOUBLE:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             double aDouble = valueDecoder.readDouble(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
               pageData.putDouble(timestamp, aDouble);
             }
-            break;
-          case TEXT:
+          }
+          break;
+        case TEXT:
+          while (timeDecoder.hasNext(timeBuffer)) {
+            long timestamp = timeDecoder.readLong(timeBuffer);
             Binary aBinary = valueDecoder.readBinary(valueBuffer);
             if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
               pageData.putBinary(timestamp, aBinary);
             }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
-        }
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
     return pageData.flip();
