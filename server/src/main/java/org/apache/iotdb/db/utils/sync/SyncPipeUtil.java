@@ -28,11 +28,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSinkFactory;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
@@ -51,27 +49,6 @@ public class SyncPipeUtil {
 
     pipeSink.setAttribute(createPipeSinkStatement.getAttributes());
     return pipeSink;
-  }
-
-  // TODO(sync): delete this in new-standalone version
-  public static PipeInfo parseCreatePipePlanAsPipeInfo(CreatePipePlan plan, long pipeCreateTime)
-      throws PipeException {
-    boolean syncDelOp = false;
-    for (Pair<String, String> pair : plan.getPipeAttributes()) {
-      pair.left = pair.left.toLowerCase();
-      if ("syncdelop".equals(pair.left)) {
-        syncDelOp = Boolean.parseBoolean(pair.right);
-      } else {
-        throw new PipeException(String.format("Can not recognition attribute %s", pair.left));
-      }
-    }
-
-    return new TsFilePipeInfo(
-        plan.getPipeName(),
-        plan.getPipeSinkName(),
-        pipeCreateTime,
-        plan.getDataStartTimestamp(),
-        syncDelOp);
   }
 
   public static PipeInfo parseCreatePipeStatementAsPipeInfo(

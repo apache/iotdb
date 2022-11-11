@@ -26,7 +26,6 @@ import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
@@ -67,7 +66,6 @@ public class IoTDBSyncSenderIT {
   private final Map<String, List<PipeData>> resultMap = new HashMap<>();
   private static final TsFilePipeData simpleTsFilePipeData =
       new TsFilePipeData("path", "tsfile", 0L);
-  private static final SchemaPipeData simpleSchemaPipeData = new SchemaPipeData(null, 0L);
   private static final DeletionPipeData simpleDeletionPipeData =
       new DeletionPipeData(new Deletion(new PartialPath(), 0L, 0L), 0L);
 
@@ -101,33 +99,6 @@ public class IoTDBSyncSenderIT {
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.cleanEnv();
-  }
-
-  private void prepareSchema() throws Exception { // 8 schema plans
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.sg1");
-      statement.execute("set storage group to root.sg2");
-      statement.execute("create timeseries root.sg1.d1.s1 with datatype=int32, encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s2 with datatype=float, encoding=RLE");
-      statement.execute("create timeseries root.sg1.d1.s3 with datatype=TEXT, encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d2.s4 with datatype=int64, encoding=PLAIN");
-      statement.execute("create timeseries root.sg2.d1.s0 with datatype=int32, encoding=PLAIN");
-      statement.execute("create timeseries root.sg2.d2.s1 with datatype=boolean, encoding=PLAIN");
-    }
-
-    List<PipeData> resultList = new ArrayList<>();
-    for (int i = 0; i < 4; i++) {
-      resultList.add(simpleSchemaPipeData);
-    }
-    resultMap.put("schemaWithDel3InHistory", resultList); // del3 in history
-
-    resultList = new ArrayList<>();
-    for (int i = 0; i < 8; i++) {
-      resultList.add(simpleSchemaPipeData);
-    }
-    resultMap.put("schema", resultList); // del3 do not in history
   }
 
   private void prepareIns1() throws Exception { // add one seq tsfile in sg1
@@ -236,9 +207,6 @@ public class IoTDBSyncSenderIT {
     for (int i = 0; i < 3; i++) {
       resultList.add(simpleDeletionPipeData);
     }
-    for (int i = 0; i < 2; i++) {
-      resultList.add(simpleSchemaPipeData);
-    }
     resultMap.put("del3", resultList);
   }
 
@@ -286,9 +254,6 @@ public class IoTDBSyncSenderIT {
 
   private void checkInsOnlyResult(List<PipeData> list) { // check ins1, ins2, ins3
     Assert.assertEquals(13, list.size());
-    for (int i = 0; i < 8; i++) {
-      Assert.assertTrue(list.get(i) instanceof SchemaPipeData);
-    }
     for (int i = 9; i < list.size(); i++) {
       Assert.assertTrue(list.get(i) instanceof TsFilePipeData);
     }
@@ -311,7 +276,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testHistoryInsert() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
       prepareIns2();
       prepareIns3();
@@ -338,7 +303,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testHistoryAndRealTimeInsert() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
       prepareIns2();
 
@@ -366,7 +331,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testStopAndStartInsert() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
 
       preparePipeAndSetMock(); // realtime
@@ -397,7 +362,6 @@ public class IoTDBSyncSenderIT {
     try {
       preparePipeAndSetMock(); // realtime
       startPipe();
-      prepareSchema();
       prepareIns1();
       stopPipe();
       prepareIns2();
@@ -424,7 +388,6 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testHistoryDel() {
     try {
-      prepareSchema(); // history
       prepareIns1();
       prepareIns2();
       prepareIns3();
@@ -457,7 +420,6 @@ public class IoTDBSyncSenderIT {
   @Ignore
   public void testRealtimeDel() {
     try {
-      prepareSchema(); // history
       prepareIns1();
 
       preparePipeAndSetMock(); // realtime
@@ -492,7 +454,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testRestartWhileRunning() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
       prepareIns2();
 
@@ -520,7 +482,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testRestartWhileStopping() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
 
       preparePipeAndSetMock(); // realtime
@@ -550,7 +512,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testRestartWithDel() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
       prepareDel1();
 
@@ -587,7 +549,7 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testRestartWithUnsealedTsFile() {
     try {
-      prepareSchema(); // history
+      // history
       prepareIns1();
       prepareIns2();
       prepareDel1();

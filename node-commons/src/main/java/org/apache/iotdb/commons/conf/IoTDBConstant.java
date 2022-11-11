@@ -179,24 +179,9 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  // sync module
-  // TODO(sync): delete this in new-standalone version
-  public static final String COLUMN_PIPESERVER_STATUS = "enable";
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_TYPE = "type";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_MSG = "message";
-
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
-  public static final String SYNC_SENDER_ROLE = "sender";
-  public static final String SYNC_RECEIVER_ROLE = "receiver";
 
   // sdt parameters
   public static final String LOSS = "loss";
