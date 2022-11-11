@@ -61,10 +61,10 @@ public class ColumnHeaderConstant {
 
   // column names for count statement
   public static final String COLUMN = "Column";
-  public static final String COUNT_DEVICES = "Count(Devices)";
-  public static final String COUNT_NODES = "Count(Nodes)";
-  public static final String COUNT_TIMESERIES = "Count(Timeseries)";
-  public static final String COUNT_DATABASE = "Count(Database)";
+  public static final String COUNT_DEVICES = "count(devices)";
+  public static final String COUNT_NODES = "count(nodes)";
+  public static final String COUNT_TIMESERIES = "count(timeseries)";
+  public static final String COUNT_DATABASE = "count(database)";
 
   // column names for show cluster and show cluster details statements
   public static final String NODE_ID = "NodeID";
