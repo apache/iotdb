@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -58,7 +59,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -1082,7 +1082,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TSpaceQuota spaceQuota = new TSpaceQuota();
     spaceQuota.setDeviceNum(setSpaceQuotaStatement.getDeviceNum());
     spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
-    spaceQuota.setDisk(setSpaceQuotaStatement.getDiskSize());
+    spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
     req.setSpaceLimit(spaceQuota);
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {

@@ -295,6 +295,7 @@ public class IoTDBConstant {
 
   // quota
   public static final String SPACE_QUOTA_DISK = "disk";
+  public static final String SPACE_QUOTA_UNLIMITED = "unlimited";
 
   // client version number
   public enum ClientVersion {

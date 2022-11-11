@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence;
+package org.apache.iotdb.confignode.persistence.quota;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
@@ -42,18 +42,44 @@ public class QuotaInfo implements SnapshotProcessor {
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
   private final Map<String, TSpaceQuota> useSpaceQuota;
   private final Map<Integer, Integer> regionDisk;
+  private final SpaceQuotaPersistence spaceQuotaPersistence;
 
   public QuotaInfo() {
     spaceQuotaLimit = new HashMap<>();
     useSpaceQuota = new HashMap<>();
     regionDisk = new HashMap<>();
+    spaceQuotaPersistence = SpaceQuotaPersistence.getInstance();
+    init();
   }
 
   public TSStatus setSpaceQuota(SetSpaceQuotaPlan setSpaceQuotaPlan) {
     for (String storageGroup : setSpaceQuotaPlan.getPrefixPathList()) {
-      spaceQuotaLimit.put(storageGroup, setSpaceQuotaPlan.getSpaceLimit());
+      TSpaceQuota spaceQuota = setSpaceQuotaPlan.getSpaceLimit();
+      // “0” means that the user has not reset the value of the space quota type
+      // So the old values are still used
+      if (spaceQuotaLimit.containsKey(storageGroup)) {
+        if (spaceQuota.getDeviceNum() == 0) {
+          spaceQuota.setDeviceNum(spaceQuotaLimit.get(storageGroup).getDeviceNum());
+        }
+        if (spaceQuota.getTimeserieNum() == 0) {
+          spaceQuota.setTimeserieNum(spaceQuotaLimit.get(storageGroup).getTimeserieNum());
+        }
+        if (spaceQuota.getDiskSize() == 0) {
+          spaceQuota.setDiskSize(spaceQuotaLimit.get(storageGroup).getDiskSize());
+        }
+      }
+      spaceQuotaLimit.put(storageGroup, spaceQuota);
+      try {
+        spaceQuotaPersistence.saveSpaceQuota(storageGroup, spaceQuotaLimit.get(storageGroup));
+      } catch (IOException e) {
+        logger.error("An error was encountered while persisting data.{}", setSpaceQuotaPlan, e);
+      }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private void init() {
+    spaceQuotaPersistence.init(spaceQuotaLimit);
   }
 
   // TODO: add Snapshot

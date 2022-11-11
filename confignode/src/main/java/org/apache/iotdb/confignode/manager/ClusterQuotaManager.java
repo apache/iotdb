@@ -18,15 +18,22 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
-import org.apache.iotdb.confignode.persistence.QuotaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 // TODO: Manage quotas for storage groups
 public class ClusterQuotaManager {
@@ -47,6 +54,14 @@ public class ClusterQuotaManager {
             .getConsensusManager()
             .write(new SetSpaceQuotaPlan(req.getStorageGroup(), req.getSpaceLimit()));
     if (response.getStatus() != null) {
+      if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+            configManager.getNodeManager().getRegisteredDataNodeLocations();
+        AsyncClientHandler<TSetSpaceQuotaReq, TSStatus> clientHandler =
+            new AsyncClientHandler<>(DataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
+        AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+      }
       return response.getStatus();
     } else {
       LOGGER.warn(

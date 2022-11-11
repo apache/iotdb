@@ -1312,7 +1312,7 @@ public class ConfigPhysicalPlanSerDeTest {
     TSpaceQuota spaceQuota = new TSpaceQuota();
     spaceQuota.setDeviceNum(2);
     spaceQuota.setTimeserieNum(3);
-    spaceQuota.setDisk(1024);
+    spaceQuota.setDiskSize(1024);
     SetSpaceQuotaPlan plan =
         new SetSpaceQuotaPlan(Collections.singletonList("root.sg"), spaceQuota);
     SetSpaceQuotaPlan deserializedPlan =

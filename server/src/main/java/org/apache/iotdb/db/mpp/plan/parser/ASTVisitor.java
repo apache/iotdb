@@ -2169,6 +2169,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SQLParserException(
+          "The tenant function is not enabled. If you want to use, change quota in the configuration file_ The enable configuration item is 'true'");
+    }
+
     SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
     List<String> paths = new ArrayList<>();
@@ -2185,15 +2190,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
-      setSpaceQuotaStatement.setDeviceNum(
-          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+      if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setTimeSeriesNum(-1);
+      } else {
+        setSpaceQuotaStatement.setDeviceNum(
+            Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+      }
     }
     if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
-      setSpaceQuotaStatement.setTimeSeriesNum(
-          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+      if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDiskSize(-1);
+      } else {
+        setSpaceQuotaStatement.setTimeSeriesNum(
+            Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+      }
     }
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
-      setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+      if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDeviceNum(-1);
+      } else {
+        setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+      }
     }
     return setSpaceQuotaStatement;
   }
@@ -2204,16 +2221,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     switch (unit) {
       case "M":
       case "m":
-        return disk * 1024;
+        return disk;
       case "G":
       case "g":
-        return disk * 1024 * 1024;
+        return disk * 1024;
       case "T":
       case "t":
-        return disk * 1024 * 1024 * 1024;
+        return disk * 1024 * 1024;
       case "P":
       case "p":
-        return disk * 1024 * 1024 * 1024 * 1024;
+        return disk * 1024 * 1024 * 1024;
       default:
         throw new SQLParserException(
             "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");
