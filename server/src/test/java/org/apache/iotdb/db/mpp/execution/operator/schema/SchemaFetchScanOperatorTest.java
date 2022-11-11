@@ -25,9 +25,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.execution.object.MPPObjectPool;
+import org.apache.iotdb.db.mpp.execution.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -35,9 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -45,8 +44,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -75,7 +72,13 @@ public class SchemaFetchScanOperatorTest {
 
     SchemaFetchScanOperator schemaFetchScanOperator =
         new SchemaFetchScanOperator(
-            null, null, "", patternTree, Collections.emptyMap(), schemaRegion, false);
+            null,
+            null,
+            "SCHEMA_FETCH_TEST",
+            patternTree,
+            Collections.emptyMap(),
+            schemaRegion,
+            false);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
@@ -83,10 +86,10 @@ public class SchemaFetchScanOperatorTest {
 
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
-    Binary binary = tsBlock.getColumn(0).getBinary(0);
-    InputStream inputStream = new ByteArrayInputStream(binary.getValues());
-    Assert.assertEquals(1, ReadWriteIOUtils.readByte(inputStream));
-    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
+    SchemaFetchObjectEntry objectEntry =
+        MPPObjectPool.getInstance().get("SCHEMA_FETCH_TEST", tsBlock.getColumn(0).getInt(0));
+    Assert.assertFalse(objectEntry.isReadingStorageGroupInfo());
+    ISchemaTree schemaTree = objectEntry.getSchemaTree();
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
