@@ -396,6 +396,8 @@ public class PartitionManager {
       if (!allotmentMap.isEmpty()) {
         CreateRegionGroupsPlan createRegionGroupsPlan =
             getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
+        LOGGER.info("[CreateRegionGroups] Starting to create the following RegionGroups:");
+        createRegionGroupsPlan.planLog(LOGGER);
         result =
             getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
       } else {

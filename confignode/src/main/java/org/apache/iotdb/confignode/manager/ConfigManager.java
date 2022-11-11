@@ -626,7 +626,8 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    LOGGER.debug(
+    // TODO: set debug
+    LOGGER.info(
         "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
         getOrCreateDataPartitionReq.getPartitionSlotsMap(),
         resp);
