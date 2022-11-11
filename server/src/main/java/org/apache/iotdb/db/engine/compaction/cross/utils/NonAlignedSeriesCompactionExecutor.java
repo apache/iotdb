@@ -84,19 +84,6 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
     hasStartMeasurement = false;
   }
 
-  protected void startMeasurement() throws IOException {
-    if (!hasStartMeasurement && !chunkMetadataQueue.isEmpty()) {
-      ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
-      MeasurementSchema measurementSchema =
-          readerCacheMap
-              .get(firstChunkMetadataElement.fileElement.resource)
-              .getMeasurementSchema(
-                  Collections.singletonList(firstChunkMetadataElement.chunkMetadata));
-      compactionWriter.startMeasurement(Collections.singletonList(measurementSchema), subTaskId);
-      hasStartMeasurement = true;
-    }
-  }
-
   @Override
   protected void compactFiles()
       throws PageException, IOException, WriteProcessException, IllegalPathException {
@@ -105,13 +92,6 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
       // read chunk metadatas from files and put them into chunk metadata queue
       deserializeFileIntoQueue(overlappedFiles);
-
-      // for nonAligned sensors, only after getting chunkMetadatas can we create schema to start
-      // measurement; for aligned sensors, we get all schemas of value sensors and
-      // startMeasurement() in the previous process, because we need to get all chunk metadatas of
-      // sensors and their schemas under the current device, but since the compaction process is
-      // to read a batch of overlapped files each time, which may not contain all the sensors.
-      startMeasurement();
 
       compactChunks();
     }
@@ -198,6 +178,23 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)
             .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+
+    if (!hasStartMeasurement) {
+      // for nonAligned sensors, only after getting chunkMetadatas can we create schema to start
+      // measurement; for aligned sensors, we get all schemas of value sensors and
+      // startMeasurement() in the previous process, because we need to get all chunk metadatas of
+      // sensors and their schemas under the current device, but since the compaction process is
+      // to read a batch of overlapped files each time, which may not contain all the sensors.
+      ChunkHeader header = chunkMetadataElement.chunk.getHeader();
+      MeasurementSchema schema =
+          new MeasurementSchema(
+              header.getMeasurementID(),
+              header.getDataType(),
+              header.getEncodingType(),
+              header.getCompressionType());
+      compactionWriter.startMeasurement(Collections.singletonList(schema), subTaskId);
+      hasStartMeasurement = true;
+    }
   }
 
   /**
