@@ -72,6 +72,7 @@ public class ObjectTsBlockTransformer {
         builder.getColumnBuilder(0).writeBinary(new Binary(BATCH_CONTINUE_SYMBOL));
       }
       builder.declarePosition();
+      tsBlockList.add(builder.build());
     }
     return tsBlockList;
   }

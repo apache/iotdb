@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -42,6 +44,11 @@ public class SchemaFetchSGScanOperator extends ObjectSourceOperator<SchemaFetchO
       List<String> storageGroupList) {
     super(sourceId, operatorContext, queryId);
     this.storageGroupList = storageGroupList;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    return NOT_BLOCKED;
   }
 
   @Override

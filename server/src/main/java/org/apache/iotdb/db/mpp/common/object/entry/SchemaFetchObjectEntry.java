@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaFetchObjectEntry extends ObjectEntry {
@@ -95,6 +96,7 @@ public class SchemaFetchObjectEntry extends ObjectEntry {
     if (type == 0) {
       isReadingStorageGroupInfo = true;
       int size = ReadWriteIOUtils.readInt(dataInputStream);
+      storageGroupList = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         storageGroupList.add(ReadWriteIOUtils.readString(dataInputStream));
       }
