@@ -82,9 +82,6 @@ public abstract class PipeData {
       case DELETION:
         pipeData = new DeletionPipeData();
         break;
-      case SCHEMA:
-        pipeData = new SchemaPipeData();
-        break;
       default:
         logger.error("Deserialize PipeData error because Unknown type {}.", type);
         throw new UnsupportedOperationException(
@@ -103,6 +100,5 @@ public abstract class PipeData {
   public enum PipeDataType {
     TSFILE,
     DELETION,
-    SCHEMA
   }
 }
