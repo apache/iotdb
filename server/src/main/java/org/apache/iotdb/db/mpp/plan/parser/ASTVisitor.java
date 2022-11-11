@@ -3051,7 +3051,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement)
       throws SQLParserException {
-    if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
+    if (ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 

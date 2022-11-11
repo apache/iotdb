@@ -1267,7 +1267,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
       queryOp.setWhereComponent(whereComponent);
     }
-    queryOp.setEnableTracing(ctx.TRACING() != null);
+    queryOp.setEnableTracing(false);
     // 4. Check whether it's a select-into clause
     return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
@@ -2508,7 +2508,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeOperator operator)
       throws SQLParserException {
-    if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
+    if (ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 
