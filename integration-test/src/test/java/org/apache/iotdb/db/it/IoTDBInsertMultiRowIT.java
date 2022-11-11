@@ -145,7 +145,7 @@ public class IoTDBInsertMultiRowIT {
   public void testInsertMultiRowWithNull() {
     try (Statement st1 = connection.createStatement()) {
       st1.execute(
-          "insert into root.t1.wf01.wt01(timestamp, s1, s2) values(100, null, 1), (101, null, 2)");
+          "insert into root.t1.d99.wt01(timestamp, s1, s2) values(100, null, 1), (101, null, 2)");
       fail();
     } catch (SQLException e) {
       assertTrue(
