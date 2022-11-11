@@ -92,4 +92,8 @@ public class ObjectResultHandler<T extends ObjectEntry> {
       }
     }
   }
+
+  public void closeAndCleanUp() {
+    MPPObjectPool.getInstance().clear(queryExecution.getQueryId());
+  }
 }

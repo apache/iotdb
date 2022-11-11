@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
@@ -125,6 +126,10 @@ public class FragmentInstanceExecution {
             // close the driver after sinkHandle is aborted or closed because in driver.close() it
             // will try to call ISinkHandle.setNoMoreTsBlocks()
             driver.close();
+
+            // release object generated during object query
+            MPPObjectPool.getInstance().clear(driver.getInfo().getQueryId().getId());
+
             // help for gc
             driver = null;
             if (newState.isFailed()) {

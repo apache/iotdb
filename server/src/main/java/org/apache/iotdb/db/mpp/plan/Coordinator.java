@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.QueryIdGenerator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
@@ -203,7 +202,6 @@ public class Coordinator {
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = System.currentTimeMillis() - queryExecution.getStartExecutionTime();
-          MPPObjectPool.getInstance().clear(queryExecution.getQueryId());
           if (costTime >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",

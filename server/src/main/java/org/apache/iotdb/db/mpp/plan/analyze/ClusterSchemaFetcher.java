@@ -139,6 +139,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           }
         } catch (IoTDBException e) {
           throw new RuntimeException("Fetch Schema failed. ", e);
+        } finally {
+          objectResultHandler.closeAndCleanUp();
         }
         return result;
       }

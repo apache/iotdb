@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.db.mpp.common.object;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MPPObjectPool {
 
-  private final Map<String, List<ObjectEntry>> objectPool = new ConcurrentHashMap<>();
+  private final Map<String, QueryObjectPool> queryPool = new ConcurrentHashMap<>();
 
   private MPPObjectPool() {}
 
@@ -42,28 +40,43 @@ public class MPPObjectPool {
     return MPPObjectPoolHolder.INSTANCE;
   }
 
-  public synchronized <T extends ObjectEntry> T put(String queryId, T objectEntry) {
-    List<ObjectEntry> queryObjectList =
-        objectPool.computeIfAbsent(queryId, k -> Collections.synchronizedList(new ArrayList<>()));
-    queryObjectList.add(objectEntry);
-    objectEntry.setId(queryObjectList.size() - 1);
-    return objectEntry;
+  public <T extends ObjectEntry> T put(String queryId, T objectEntry) {
+    return queryPool.computeIfAbsent(queryId, k -> new QueryObjectPool()).put(objectEntry);
   }
 
-  @SuppressWarnings("unchecked")
   public <T extends ObjectEntry> T get(String queryId, int objectId) {
-    List<ObjectEntry> queryObjectList = objectPool.get(queryId);
-    if (queryObjectList == null) {
+    QueryObjectPool queryObjectPool = queryPool.get(queryId);
+    if (queryObjectPool == null) {
       return null;
+    } else {
+      return queryObjectPool.get(objectId);
     }
-    return (T) queryObjectList.get(objectId);
   }
 
   public void clear(String queryId) {
-    objectPool.remove(queryId);
+    queryPool.remove(queryId);
   }
 
   public void clear() {
-    objectPool.clear();
+    queryPool.clear();
+  }
+
+  private static class QueryObjectPool {
+
+    private final AtomicInteger indexGenerator = new AtomicInteger(0);
+
+    private final Map<Integer, ObjectEntry> objectPool = new ConcurrentHashMap<>();
+
+    public <T extends ObjectEntry> T put(T objectEntry) {
+      int id = indexGenerator.getAndIncrement();
+      objectEntry.setId(id);
+      objectPool.put(id, objectEntry);
+      return objectEntry;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends ObjectEntry> T get(int objectId) {
+      return (T) objectPool.remove(objectId);
+    }
   }
 }
