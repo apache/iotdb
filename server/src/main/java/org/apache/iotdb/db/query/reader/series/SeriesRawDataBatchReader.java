@@ -104,58 +104,48 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public boolean hasNextBatch() throws IOException {
     long startTime = System.nanoTime();
 
-    if (hasCachedBatchData) {
-      QUERY_STATISTICS.addCost(
-          QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
-      return true;
-    }
-
-    /*
-     * consume page data firstly
-     */
-    if (readPageData()) {
-      hasCachedBatchData = true;
-      QUERY_STATISTICS.addCost(
-          QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
-      return true;
-    }
-
-    /*
-     * consume chunk data secondly
-     */
-    if (readChunkData()) {
-      hasCachedBatchData = true;
-      QUERY_STATISTICS.addCost(
-          QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
-      return true;
-    }
-
-    /*
-     * consume next file finally
-     */
-    while (seriesReader.hasNextFile()) {
-      if (readChunkData()) {
-        hasCachedBatchData = true;
-        QUERY_STATISTICS.addCost(
-            QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
+    try {
+      if (hasCachedBatchData) {
         return true;
       }
-    }
 
-    QUERY_STATISTICS.addCost(
-        QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
-    return hasCachedBatchData;
+      /*
+       * consume page data firstly
+       */
+      if (readPageData()) {
+        hasCachedBatchData = true;
+        return true;
+      }
+
+      /*
+       * consume chunk data secondly
+       */
+      if (readChunkData()) {
+        hasCachedBatchData = true;
+        return true;
+      }
+
+      /*
+       * consume next file finally
+       */
+      while (seriesReader.hasNextFile()) {
+        if (readChunkData()) {
+          hasCachedBatchData = true;
+          return true;
+        }
+      }
+      return hasCachedBatchData;
+    } finally {
+      QUERY_STATISTICS.addCost(
+          QueryStatistics.SERIES_RAW_DATA_BATCH_READER_HAS_NEXT, System.nanoTime() - startTime);
+    }
   }
 
   @Override
   public BatchData nextBatch() throws IOException {
-    long startTime = System.nanoTime();
 
     if (hasCachedBatchData || hasNextBatch()) {
       hasCachedBatchData = false;
-
-      QUERY_STATISTICS.addCost(
-          QueryStatistics.SERIES_RAW_DATA_BATCH_READER_NEXT, System.nanoTime() - startTime);
       return batchData;
     }
     throw new IOException("no next batch");

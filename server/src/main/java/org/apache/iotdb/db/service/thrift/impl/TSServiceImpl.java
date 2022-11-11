@@ -855,10 +855,7 @@ public class TSServiceImpl implements TSIService.Iface {
       resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
     } else {
       try {
-        long startTime = System.nanoTime();
         TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
-        QueryStatistics.getInstance()
-            .addCost(QueryStatistics.QUERY_EXECUTION, System.nanoTime() - startTime);
         resp.setQueryDataSet(tsQueryDataSet);
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
@@ -1035,10 +1032,16 @@ public class TSServiceImpl implements TSIService.Iface {
   private TSQueryDataSet fillRpcReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
       throws TException, AuthException, IOException, InterruptedException, QueryProcessException {
-    WatermarkEncoder encoder = getWatermarkEncoder(userName);
-    return queryDataSet instanceof DirectAlignByTimeDataSet
-        ? ((DirectAlignByTimeDataSet) queryDataSet).fillBuffer(fetchSize, encoder)
-        : QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+    long startTime = System.nanoTime();
+    try {
+      WatermarkEncoder encoder = getWatermarkEncoder(userName);
+      return queryDataSet instanceof DirectAlignByTimeDataSet
+          ? ((DirectAlignByTimeDataSet) queryDataSet).fillBuffer(fetchSize, encoder)
+          : QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.QUERY_EXECUTION, System.nanoTime() - startTime);
+    }
   }
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(

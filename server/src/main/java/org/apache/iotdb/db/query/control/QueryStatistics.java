@@ -49,8 +49,6 @@ public class QueryStatistics {
 
   public static final String INIT_QUERY_DATASET = "InitQueryDataset";
   public static final String QUERY_EXECUTION = "QueryExecution";
-  public static final String SERIES_RAW_DATA_BATCH_READER_NEXT =
-      "SeriesRawDataBatchReader.nextBatch()";
   public static final String SERIES_RAW_DATA_BATCH_READER_HAS_NEXT =
       "SeriesRawDataBatchReader.hasNextBatch()";
   public static final String PAGE_READER = "PageReader";
