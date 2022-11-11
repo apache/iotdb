@@ -284,7 +284,7 @@ public class IOTDBLoadTsFileIT {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
-          String device = resultSet.getString(ColumnHeaderConstant.DEVICES);
+          String device = resultSet.getString(ColumnHeaderConstant.DEVICE);
           Assert.assertEquals(
               isAligned.get(device), resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }

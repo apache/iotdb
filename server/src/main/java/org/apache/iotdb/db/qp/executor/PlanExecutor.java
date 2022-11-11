@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
@@ -67,8 +66,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsUsingTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -85,7 +82,6 @@ import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -106,7 +102,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -127,15 +122,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_SCHEMA_TEMPLATE;
@@ -295,12 +281,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPathsSetSchemaTemplate((ShowPathsSetTemplatePlan) showPlan);
       case PATHS_USING_SCHEMA_TEMPLATE:
         return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
-      case PIPESINK:
-        return processShowPipeSink((ShowPipeSinkPlan) showPlan);
-      case PIPESINKTYPE:
-        return processShowPipeSinkType();
-      case PIPE:
-        return processShowPipes((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -765,63 +745,6 @@ public class PlanExecutor implements IPlanExecutor {
     rowRecord.addField(itemField);
     rowRecord.addField(valueField);
     listDataSet.putRecord(rowRecord);
-  }
-
-  private QueryDataSet processShowPipeSink(ShowPipeSinkPlan plan) {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_PIPESINK_NAME, false),
-                new PartialPath(COLUMN_PIPESINK_TYPE, false),
-                new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
-    boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SyncService.getInstance().getAllPipeSink()) {
-      if (showAll || plan.getPipeSinkName().equals(pipeSink.getPipeSinkName())) {
-        RowRecord record = new RowRecord(0);
-        record.addField(Binary.valueOf(pipeSink.getPipeSinkName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipeSink.getType().name()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
-        listDataSet.putRecord(record);
-      }
-    }
-    return listDataSet;
-  }
-
-  private QueryDataSet processShowPipeSinkType() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(new PartialPath(COLUMN_PIPESINK_TYPE, false)),
-            Arrays.asList(TSDataType.TEXT));
-    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
-      RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(pipeSinkType.name()), TSDataType.TEXT);
-      listDataSet.putRecord(record);
-    }
-    return listDataSet;
-  }
-
-  private QueryDataSet processShowPipes(ShowPipePlan plan) {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_PIPE_CREATE_TIME, false),
-                new PartialPath(COLUMN_PIPE_NAME, false),
-                new PartialPath(COLUMN_PIPE_ROLE, false),
-                new PartialPath(COLUMN_PIPE_REMOTE, false),
-                new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_MSG, false)),
-            Arrays.asList(
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT));
-    SyncService.getInstance().showPipe(plan, listDataSet);
-    // sort by create time
-    listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));
-    return listDataSet;
   }
 
   // high Cognitive Complexity

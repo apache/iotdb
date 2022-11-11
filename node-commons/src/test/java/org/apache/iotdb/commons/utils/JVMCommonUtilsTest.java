@@ -15,19 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-public class ShowPipeSinkPlan extends ShowPlan {
-  private String pipeSinkName;
+package org.apache.iotdb.commons.utils;
 
-  public ShowPipeSinkPlan(String pipeSinkName) {
-    super(ShowContentType.PIPESINK);
-    this.pipeSinkName = pipeSinkName;
-  }
+import org.junit.Assert;
+import org.junit.Test;
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+public class JVMCommonUtilsTest {
+
+  @Test
+  public void getJdkVersionTest() {
+    try {
+      System.setProperty("java.version", "1.8.0_233");
+      Assert.assertEquals(8, JVMCommonUtils.getJdkVersion());
+      System.setProperty("java.version", "11.0.16");
+      Assert.assertEquals(11, JVMCommonUtils.getJdkVersion());
+      System.setProperty("java.version", "11.0.8-internal");
+      Assert.assertEquals(11, JVMCommonUtils.getJdkVersion());
+      System.setProperty("java.version", "17-internal");
+      Assert.assertEquals(17, JVMCommonUtils.getJdkVersion());
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 }

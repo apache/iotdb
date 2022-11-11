@@ -43,7 +43,6 @@ public class ColumnHeaderConstant {
   public static final String DATATYPE = "DataType";
   public static final String ENCODING = "Encoding";
   public static final String COMPRESSION = "Compression";
-  public static final String DEVICES = "Devices";
   public static final String TAGS = "Tags";
   public static final String ATTRIBUTES = "Attributes";
   public static final String IS_ALIGNED = "IsAligned";
@@ -144,13 +143,13 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DEVICES, TSDataType.TEXT),
+          new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DEVICES, TSDataType.TEXT),
+          new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTTLColumnHeaders =

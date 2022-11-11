@@ -130,7 +130,7 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.DEVICES)
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));
@@ -202,7 +202,7 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.DEVICES)
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
                 + ","
                 + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));

@@ -180,7 +180,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowDeviceTest() {
     String expectedHeader =
-        ColumnHeaderConstant.DEVICES + "," + ColumnHeaderConstant.IS_ALIGNED + ",";
+        ColumnHeaderConstant.DEVICE + "," + ColumnHeaderConstant.IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 

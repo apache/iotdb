@@ -32,7 +32,6 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -54,11 +53,6 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   // region Interfaces of PipeSink
-
-  @Override
-  public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
-    return RpcUtils.SUCCESS_STATUS;
-  }
 
   @Override
   public TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {

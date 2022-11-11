@@ -3200,8 +3200,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
 
-    CreatePipeSinkStatement createPipeSinkStatement =
-        new CreatePipeSinkStatement(StatementType.CREATE_PIPESINK);
+    CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
 
     if (ctx.pipeSinkName != null) {
       createPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));

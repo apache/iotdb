@@ -174,8 +174,8 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
+    int timeMillis = 0;
     while (!taskExecutionPool.isTerminated()) {
-      int timeMillis = 0;
       try {
         Thread.sleep(200);
       } catch (InterruptedException e) {
