@@ -29,17 +29,17 @@
 SELECT [LAST] selectExpr [, selectExpr] ...
     [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
+    [ALIGN BY {TIME | DEVICE}]
     [WHERE whereCondition]
-    [GROUP BY { 
+    [GROUP BY {
         ([startTime, endTime), interval, slidingStep) |
         LEVEL = levelNum [, levelNum] ...
     }]
     [HAVING havingCondition]
-    [FILL ({PREVIOUS | LINEAR | constant})]
     [ORDER BY sortKey {ASC | DESC}]
-    [LIMIT rowLimit] [OFFSET rowOffset]
+    [FILL ({PREVIOUS | LINEAR | constant})]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
-    [ALIGN BY DEVICE]
+    [LIMIT rowLimit] [OFFSET rowOffset]
 ```
 
 ## 语法说明
@@ -55,12 +55,18 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 ### `INTO` 子句
 
 - `SELECT INTO` 用于将查询结果写入一系列指定的时间序列中。`INTO` 子句指定了查询结果写入的目标时间序列。
-- 详细说明及示例见文档 [SELECT INTO](../Process-Data/Select-Into.md) 。
+- 详细说明及示例见文档 [SELECT INTO](Select-Into.md) 。
 
 ### `FROM` 子句
 
 - `FROM` 子句包含要查询的一个或多个时间序列的路径前缀，支持使用通配符。
 - 在执行查询时，会将 `FROM` 子句中的路径前缀和 `SELECT` 子句中的后缀进行拼接得到完整的查询目标序列。
+
+### `ALIGN BY` 子句
+
+- 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
+- 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。
+- 详细说明及示例见文档 [查询对齐模式](./Align-By.md) 。
 
 ### `WHERE` 子句
 
@@ -84,30 +90,28 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 - `HAVING` 要和聚合函数以及 `GROUP BY` 子句一起使用。
 - 详细说明及示例见文档 [聚合结果过滤](./Having-Condition.md) 。
 
+### `ORDER BY` 子句
+
+- `ORDER BY` 子句用户指定结果集的排序方式。
+- 按时间对齐模式下：默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
+- 按设备对齐模式下：默认按照设备名的字典序升序排列，每个设备内部按照时间戳大小升序排列，可以通过 `ORDER BY` 子句调整设备列和时间列的排序优先级。
+- 详细说明及示例见文档 [结果集排序](./Order-By.md) 。
+
 ### `FILL` 子句
 
 - `FILL` 子句用于指定数据缺失情况下的填充模式，允许用户按照特定的方法对任何查询的结果集填充空值。
 - 详细说明及示例见文档 [结果集补空值](./Fill.md) 。
-
-### `ORDER BY` 子句
-
-- `ORDER BY` 子句用户指定结果集的排序方式。
-- 默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
-
-### `LIMIT` 和 `OFFSET` 子句
-
-- `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
-- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
 
 ### `SLIMIT` 和 `SOFFSET` 子句
 
 - `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列无效。
 - 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
 
-### `ALIGN BY` 子句
+### `LIMIT` 和 `OFFSET` 子句
 
-- 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
-- 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。详细说明及示例见文档 [按设备对齐查询](./Align-By.md) 。
+- `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
+- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
+
 
 ## SQL 示例
 

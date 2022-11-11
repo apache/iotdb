@@ -1,25 +1,52 @@
 <!--
 
-​    Licensed to the Apache Software Foundation (ASF) under one
-​    or more contributor license agreements.  See the NOTICE file
-​    distributed with this work for additional information
-​    regarding copyright ownership.  The ASF licenses this file
-​    to you under the Apache License, Version 2.0 (the
-​    "License"); you may not use this file except in compliance
-​    with the License.  You may obtain a copy of the License at
-​    
-​        http://www.apache.org/licenses/LICENSE-2.0
-​    
-​    Unless required by applicable law or agreed to in writing,
-​    software distributed under the License is distributed on an
-​    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-​    KIND, either express or implied.  See the License for the
-​    specific language governing permissions and limitations
-​    under the License.
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
 # 字符串处理
+
+目前 IoTDB 支持下列字符串处理函数：
+
+| 函数名          | 输入序列类型 | 必要的属性参数                       | 输出序列类型 | 功能描述                                  |
+| --------------- | ------------ | ------------------------------------ | ------------ | ----------------------------------------- |
+| STRING_CONTAINS | TEXT         | `s`: 待搜寻的字符串                  | BOOLEAN      | 判断字符串中是否存在`s`                   |
+| STRING_MATCHES  | TEXT         | `regex`: Java 标准库风格的正则表达式 | BOOLEAN      | 判断字符串是否能够被正则表达式`regex`匹配 |
+
+例如：
+
+```   sql
+select s1, string_contains(s1, 's'='warn'), string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
+```
+
+结果：
+
+``` 
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_contains(root.sg1.d4.s1, "s"="warn")|string_matches(root.sg1.d4.s1, "regex"="[^\\s]+37229")|
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                       true|                                                 false|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                      false|                                                  true|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                       true|                                                 false|
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
 
 ## Length
 
