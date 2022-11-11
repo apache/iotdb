@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
@@ -68,7 +67,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsUsingTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -126,9 +124,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
@@ -295,10 +290,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPathsSetSchemaTemplate((ShowPathsSetTemplatePlan) showPlan);
       case PATHS_USING_SCHEMA_TEMPLATE:
         return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
-      case PIPESINK:
-        return processShowPipeSink((ShowPipeSinkPlan) showPlan);
-      case PIPESINKTYPE:
-        return processShowPipeSinkType();
       case PIPE:
         return processShowPipes((ShowPipePlan) showPlan);
       default:
@@ -765,40 +756,6 @@ public class PlanExecutor implements IPlanExecutor {
     rowRecord.addField(itemField);
     rowRecord.addField(valueField);
     listDataSet.putRecord(rowRecord);
-  }
-
-  private QueryDataSet processShowPipeSink(ShowPipeSinkPlan plan) {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_PIPESINK_NAME, false),
-                new PartialPath(COLUMN_PIPESINK_TYPE, false),
-                new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
-    boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SyncService.getInstance().getAllPipeSink()) {
-      if (showAll || plan.getPipeSinkName().equals(pipeSink.getPipeSinkName())) {
-        RowRecord record = new RowRecord(0);
-        record.addField(Binary.valueOf(pipeSink.getPipeSinkName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipeSink.getType().name()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
-        listDataSet.putRecord(record);
-      }
-    }
-    return listDataSet;
-  }
-
-  private QueryDataSet processShowPipeSinkType() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(new PartialPath(COLUMN_PIPESINK_TYPE, false)),
-            Arrays.asList(TSDataType.TEXT));
-    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
-      RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(pipeSinkType.name()), TSDataType.TEXT);
-      listDataSet.putRecord(record);
-    }
-    return listDataSet;
   }
 
   private QueryDataSet processShowPipes(ShowPipePlan plan) {

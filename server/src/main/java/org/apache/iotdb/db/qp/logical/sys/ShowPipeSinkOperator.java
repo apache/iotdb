@@ -22,9 +22,9 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+// TODO: remove this
 public class ShowPipeSinkOperator extends ShowOperator {
   private String pipeSinkName;
 
@@ -40,6 +40,6 @@ public class ShowPipeSinkOperator extends ShowOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new ShowPipeSinkPlan(pipeSinkName);
+    return null;
   }
 }

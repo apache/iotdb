@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkTypePlan;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -68,8 +67,7 @@ public class IoTDBSyncSenderIT {
   private final Map<String, List<PipeData>> resultMap = new HashMap<>();
   private static final TsFilePipeData simpleTsFilePipeData =
       new TsFilePipeData("path", "tsfile", 0L);
-  private static final SchemaPipeData simpleSchemaPipeData =
-      new SchemaPipeData(new ShowPipeSinkTypePlan(), 0L);
+  private static final SchemaPipeData simpleSchemaPipeData = new SchemaPipeData(null, 0L);
   private static final DeletionPipeData simpleDeletionPipeData =
       new DeletionPipeData(new Deletion(new PartialPath(), 0L, 0L), 0L);
 

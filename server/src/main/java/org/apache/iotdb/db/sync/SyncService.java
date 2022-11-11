@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -138,14 +137,6 @@ public class SyncService implements IService {
 
   public PipeSink getPipeSink(String name) throws PipeSinkException {
     return syncInfoFetcher.getPipeSink(name);
-  }
-
-  // TODO(sync): delete this in new-standalone version
-  public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
-    TSStatus status = syncInfoFetcher.addPipeSink(plan);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeSinkException(status.message);
-    }
   }
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)

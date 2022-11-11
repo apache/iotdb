@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropPipeSinkPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class DropPipeSinkOperator extends Operator {
@@ -38,6 +37,6 @@ public class DropPipeSinkOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new DropPipeSinkPlan(pipeSinkName);
+    return null;
   }
 }
