@@ -1892,10 +1892,10 @@ var config = {
 							['Operators-Functions/Constant','常序列生成'],
 							['Operators-Functions/Selection','选择函数'],
 							['Operators-Functions/Continuous-Interval','区间查询'],
-							['Operators-Functions/Lambda','Lambda 表达式'],
-							['Operators-Functions/Time-Series','时间序列处理'],
-							['Operators-Functions/Sample','采样函数'],
 							['Operators-Functions/Variation-Trend','趋势计算'],
+							['Operators-Functions/Sample','采样函数'],
+							['Operators-Functions/Time-Series','时间序列处理'],
+							['Operators-Functions/Lambda','Lambda 表达式'],
 
 							// IoTDB-Quality
 							['Operators-Functions/Data-Profiling','数据画像'],
