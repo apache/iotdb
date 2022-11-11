@@ -1251,7 +1251,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setMeasurements(measurements);
         statement.setTime(timeArray[i]);
         TSDataType[] dataTypes = new TSDataType[measurementList.length];
-        Arrays.fill(dataTypes, TSDataType.TEXT);
         statement.setDataTypes(dataTypes);
         Object[] values = new Object[measurementList.length];
         System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
