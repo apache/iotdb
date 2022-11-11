@@ -851,7 +851,7 @@ The configuration is located in 'iotdb-rest.properties'.
 
 
 
-* Set 'enable_REST_service' to 'true' to enable the module, and 'false' to disable the module. By default, this value is' false '.
+* Set 'enable_rest_service' to 'true' to enable the module, and 'false' to disable the module. By default, this value is' false '.
 
 ```properties
 enable_rest_service=true
@@ -861,6 +861,12 @@ enable_rest_service=true
 
 ```properties
 rest_service_port=18080
+```
+
+* Set 'enable_swagger' to 'true' to display rest service interface information through swagger, and 'false' to do not display the rest service interface information through the swagger. By default, this value is' false '.
+
+```properties
+enable_swagger=false
 ```
 
 * The maximum number of rows in the result set that can be returned by a query. When the number of rows in the returned result set exceeds the limit, the status code `411` is returned.
