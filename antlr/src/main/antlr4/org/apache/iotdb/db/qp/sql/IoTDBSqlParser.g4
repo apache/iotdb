@@ -74,7 +74,7 @@ syncStatement
 
 // Create Storage Group
 createStorageGroup
-    : CREATE DATABASE prefixPath storageGroupAttributesClause?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
     | CREATE (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause?
     ;
 
@@ -291,7 +291,7 @@ showStorageGroup
 
 // Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH STORAGE GROUP | WITH DATABASE)? limitClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? limitClause?
     ;
 
 // Show Timeseries
