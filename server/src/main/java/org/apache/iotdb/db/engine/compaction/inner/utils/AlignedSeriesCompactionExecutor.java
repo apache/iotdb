@@ -166,7 +166,7 @@ public class AlignedSeriesCompactionExecutor {
       while (batchDataIterator.hasNext()) {
         TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
         long time = batchDataIterator.currentTime();
-        chunkWriter.write(time, pointsData);
+        chunkWriter.write(time, pointsData, true);
         ++remainingPointInChunkWriter;
 
         targetResource.updateStartTime(device, time);

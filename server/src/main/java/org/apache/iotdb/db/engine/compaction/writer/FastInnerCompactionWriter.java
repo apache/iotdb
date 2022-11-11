@@ -5,6 +5,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -27,6 +28,22 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     throw new RuntimeException("Does not support this method in FastInnerCompactionWriter");
   }
 
+  @Override
+  public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
+    // write points into page without checking page size
+    if (isAlign) {
+      ((AlignedChunkWriterImpl) chunkWriters[subTaskId])
+          .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector(), false);
+      ;
+    } else {
+      ((ChunkWriterImpl) chunkWriters[subTaskId])
+          .write(timeValuePair.getTimestamp(), timeValuePair.getValue());
+    }
+
+    chunkPointNumArray[subTaskId]++;
+    isEmptyFile = false;
+  }
+
   /**
    * Flush nonAligned chunk to tsfile directly. Return whether the chunk is flushed to tsfile
    * successfully or not. Return false if there is unsealed chunk or current chunk is not large
@@ -35,6 +52,12 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
+    if (chunkPointNumArray[subTaskId] != 0
+        && chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
+            targetChunkSize, targetChunkPointNum, false)) {
+      // if there is unsealed chunk which is large enough, then seal chunk
+      sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+    }
     if (chunkPointNumArray[subTaskId] != 0 || !checkIsChunkLargeEnough(chunk)) {
       // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
       return false;
@@ -61,6 +84,12 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       int subTaskId)
       throws IOException {
     if (chunkPointNumArray[subTaskId] != 0
+        && chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
+            targetChunkSize, targetChunkPointNum, false)) {
+      // if there is unsealed chunk which is large enough, then seal chunk
+      sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+    }
+    if (chunkPointNumArray[subTaskId] != 0
         || !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
       // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
       return false;
@@ -86,7 +115,14 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       List<PageHeader> valuePageHeaders,
       int subTaskId)
       throws IOException, PageException {
-    if (chunkWriters[subTaskId].getPointNumOfUnsealedPage() != 0
+    boolean isUnsealedPageOverThreshold =
+        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
+            targetPageSize, targetPagePointNum, true);
+    if (isUnsealedPageOverThreshold) {
+      // seal page
+      chunkWriters[subTaskId].sealCurrentPage();
+    }
+    if (!isUnsealedPageOverThreshold
         || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
       // there is unsealed page or current page is not large enough , then deserialize the page
       return false;
@@ -114,8 +150,14 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
-    if (chunkWriters[subTaskId].getPointNumOfUnsealedPage() != 0
-        || !checkIsPageLargeEnough(pageHeader)) {
+    boolean isUnsealedPageOverThreshold =
+        chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
+            targetPageSize, targetPagePointNum, true);
+    if (isUnsealedPageOverThreshold) {
+      // seal page
+      chunkWriters[subTaskId].sealCurrentPage();
+    }
+    if (!isUnsealedPageOverThreshold || !checkIsPageLargeEnough(pageHeader)) {
       // there is unsealed page or current page is not large enough , then deserialize the page
       return false;
     }

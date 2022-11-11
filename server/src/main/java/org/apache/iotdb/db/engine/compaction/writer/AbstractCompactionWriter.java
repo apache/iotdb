@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -108,7 +107,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
-  protected void writeDataPoint(Long timestamp, TsPrimitiveType value, IChunkWriter iChunkWriter) {
+  protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter iChunkWriter) {
     if (iChunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
@@ -134,37 +133,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
       }
     } else {
-      AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
-      for (TsPrimitiveType val : value.getVector()) {
-        if (val == null) {
-          chunkWriter.write(timestamp, null, true);
-        } else {
-          TSDataType tsDataType = chunkWriter.getCurrentValueChunkType();
-          switch (tsDataType) {
-            case TEXT:
-              chunkWriter.write(timestamp, val.getBinary(), false);
-              break;
-            case DOUBLE:
-              chunkWriter.write(timestamp, val.getDouble(), false);
-              break;
-            case BOOLEAN:
-              chunkWriter.write(timestamp, val.getBoolean(), false);
-              break;
-            case INT64:
-              chunkWriter.write(timestamp, val.getLong(), false);
-              break;
-            case INT32:
-              chunkWriter.write(timestamp, val.getInt(), false);
-              break;
-            case FLOAT:
-              chunkWriter.write(timestamp, val.getFloat(), false);
-              break;
-            default:
-              throw new UnsupportedOperationException("Unknown data type " + tsDataType);
-          }
-        }
-      }
-      chunkWriter.write(timestamp);
+      AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
+      alignedChunkWriter.write(timestamp, value.getVector(), true);
     }
   }
 
@@ -251,9 +221,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
 
     chunkPointNumArray[subTaskId] += pageHeader.getStatistics().getCount();
-
-    // check chunk size and may open a new chunk
-    checkChunkSizeAndMayOpenANewChunk(targetWriter, chunkWriter, subTaskId, true);
   }
 
   public abstract boolean flushAlignedPage(
@@ -290,9 +257,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
 
     chunkPointNumArray[subTaskId] += timePageHeader.getStatistics().getCount();
-
-    // check chunk size and may open a new chunk
-    checkChunkSizeAndMayOpenANewChunk(targetWriter, alignedChunkWriter, subTaskId, true);
   }
 
   private void writeRateLimit(long bytesLength) {

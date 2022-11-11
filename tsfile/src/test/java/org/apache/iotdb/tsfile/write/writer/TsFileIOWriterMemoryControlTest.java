@@ -1284,7 +1284,7 @@ public class TsFileIOWriterMemoryControlTest {
       for (int j = 0; j < seriesNum; ++j) {
         record.get(j).add(new Pair<>(i, points[j]));
       }
-      chunkWriter.write(i, points);
+      chunkWriter.write(i, points, true);
     }
     return chunkWriter;
   }

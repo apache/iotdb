@@ -137,6 +137,10 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         valuePageHeaders,
         subTaskId);
 
+    // check chunk size and may open a new chunk
+    checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
+
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
@@ -164,6 +168,10 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
         compressedPageData,
         pageHeader,
         subTaskId);
+
+    // check chunk size and may open a new chunk
+    checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
