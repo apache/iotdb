@@ -72,8 +72,6 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
-  private boolean useDataBaseAsHeader = true;
-
   /** Sync directory, including the log and hardlink tsfiles */
   private String syncFolder =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
@@ -328,13 +326,5 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
-  }
-
-  public boolean isUseDataBaseAsHeader() {
-    return useDataBaseAsHeader;
-  }
-
-  public void setUseDataBaseAsHeader(boolean useDataBaseAsHeader) {
-    this.useDataBaseAsHeader = useDataBaseAsHeader;
   }
 }

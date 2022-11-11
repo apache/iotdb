@@ -36,8 +36,7 @@ public class ColumnHeaderConstant {
   public static final String DEVICE = "Device";
 
   // column names for schema statement
-  public static final String DATABASE =
-      commonConfig.isUseDataBaseAsHeader() ? "database" : "storage group";
+  public static final String DATABASE = "Database";
   public static final String TIMESERIES = "Timeseries";
   public static final String ALIAS = "Alias";
   public static final String DATATYPE = "DataType";
@@ -149,8 +148,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DEVICE, TSDataType.TEXT),
-          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
+          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
