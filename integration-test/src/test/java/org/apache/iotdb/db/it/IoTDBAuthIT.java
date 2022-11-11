@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -792,8 +793,14 @@ public class IoTDBAuthIT {
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
       while (resultSet.next()) {
-        result.add(resultSet.getString("Time") + ", " + resultSet.getString("root.sg1.d1.s1"));
-        result.add(resultSet.getString("Time") + ", " + resultSet.getString("root.sg1.d1.s2"));
+        result.add(
+            resultSet.getString(ColumnHeaderConstant.TIME)
+                + ", "
+                + resultSet.getString("root.sg1.d1.s1"));
+        result.add(
+            resultSet.getString(ColumnHeaderConstant.TIME)
+                + ", "
+                + resultSet.getString("root.sg1.d1.s2"));
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));

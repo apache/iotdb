@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -69,7 +70,7 @@ public class IoTDBSimpleQueryIT {
 
       try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.s1")) {
         if (resultSet.next()) {
-          assertEquals("PLAIN", resultSet.getString("encoding").toUpperCase());
+          assertEquals("PLAIN", resultSet.getString(ColumnHeaderConstant.ENCODING).toUpperCase());
         }
       }
 
@@ -124,7 +125,7 @@ public class IoTDBSimpleQueryIT {
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
         while (resultSet.next()) {
-          String path = resultSet.getString("timeseries");
+          String path = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
           assertEquals(results[count], path);
           count++;
         }
@@ -540,7 +541,7 @@ public class IoTDBSimpleQueryIT {
           statement.executeQuery("select * from root.** order by time desc")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString("Time")
+              resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
                   + resultSet.getString("root.sg1.d0.s0")
                   + ","

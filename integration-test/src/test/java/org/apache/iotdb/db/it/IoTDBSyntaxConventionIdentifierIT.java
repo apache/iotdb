@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -117,8 +118,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
-          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-          expectedResult.remove(resultSet.getString("timeseries"));
+          Assert.assertTrue(
+              expectedResult.contains(resultSet.getString(ColumnHeaderConstant.TIMESERIES)));
+          expectedResult.remove(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
         Assert.assertEquals(0, expectedResult.size());
       }
@@ -250,8 +252,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
-          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-          expectedResult.remove(resultSet.getString("timeseries"));
+          Assert.assertTrue(
+              expectedResult.contains(resultSet.getString(ColumnHeaderConstant.TIMESERIES)));
+          expectedResult.remove(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
         Assert.assertEquals(0, expectedResult.size());
       }

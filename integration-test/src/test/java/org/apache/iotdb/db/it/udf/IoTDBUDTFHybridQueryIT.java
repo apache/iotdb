@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.udf;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -238,7 +239,7 @@ public class IoTDBUDTFHybridQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString("s1 + 1")
                   + ","

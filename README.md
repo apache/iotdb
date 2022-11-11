@@ -277,7 +277,7 @@ In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <P
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
+|                   Timeseries|Alias|Database|DataType|Encoding|Compression|Tags|Attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|

@@ -139,14 +139,14 @@ public class IoTDBResultSetIT {
 
   @Test
   public void emptyQueryTest1() {
-    String expectedHeader = ColumnHeaderConstant.COLUMN_TIME + ",";
+    String expectedHeader = ColumnHeaderConstant.TIME + ",";
     resultSetEqualTest("select * from root.sg1.d1", expectedHeader, emptyResultSet);
   }
 
   @Test
   public void emptyQueryTest2() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIME
+        ColumnHeaderConstant.TIME
             + ","
             + "root.t1.wf01.wt02.grade,"
             + "root.t1.wf01.wt02.temperature,"
@@ -158,21 +158,21 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowTimeseriesTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIMESERIES
+        ColumnHeaderConstant.TIMESERIES
             + ","
-            + ColumnHeaderConstant.COLUMN_ALIAS
+            + ColumnHeaderConstant.ALIAS
             + ","
-            + ColumnHeaderConstant.COLUMN_DATABASE
+            + ColumnHeaderConstant.DATABASE
             + ","
-            + ColumnHeaderConstant.COLUMN_DATATYPE
+            + ColumnHeaderConstant.DATATYPE
             + ","
-            + ColumnHeaderConstant.COLUMN_ENCODING
+            + ColumnHeaderConstant.ENCODING
             + ","
-            + ColumnHeaderConstant.COLUMN_COMPRESSION
+            + ColumnHeaderConstant.COMPRESSION
             + ","
-            + ColumnHeaderConstant.COLUMN_TAGS
+            + ColumnHeaderConstant.TAGS
             + ","
-            + ColumnHeaderConstant.COLUMN_ATTRIBUTES
+            + ColumnHeaderConstant.ATTRIBUTES
             + ",";
     resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
   }
@@ -180,7 +180,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowDeviceTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_DEVICES + "," + ColumnHeaderConstant.COLUMN_IS_ALIGNED + ",";
+        ColumnHeaderConstant.DEVICES + "," + ColumnHeaderConstant.IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 
@@ -226,13 +226,13 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyLastQueryTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIME
+        ColumnHeaderConstant.TIME
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ColumnHeaderConstant.TIMESERIES
             + ","
-            + ColumnHeaderConstant.COLUMN_VALUE
+            + ColumnHeaderConstant.VALUE
             + ","
-            + ColumnHeaderConstant.COLUMN_DATATYPE
+            + ColumnHeaderConstant.DATATYPE
             + ",";
     resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
   }

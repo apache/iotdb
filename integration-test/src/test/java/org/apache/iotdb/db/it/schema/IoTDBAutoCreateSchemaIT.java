@@ -187,7 +187,7 @@ public class IoTDBAutoCreateSchemaIT {
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
+        String str = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
         resultList.add(str);
       }
     }
@@ -196,7 +196,7 @@ public class IoTDBAutoCreateSchemaIT {
     resultList.clear();
     try (ResultSet resultSet = statement.executeQuery("show databases")) {
       while (resultSet.next()) {
-        resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE));
+        resultList.add(resultSet.getString(ColumnHeaderConstant.DATABASE));
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));

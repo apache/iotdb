@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -561,7 +562,7 @@ public class IoTDBNestedQueryIT {
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
@@ -575,13 +576,13 @@ public class IoTDBNestedQueryIT {
               + ITERATION_TIMES;
       try (ResultSet rs = statement.executeQuery(query)) {
         Assert.assertTrue(rs.next());
-        Assert.assertEquals("1", rs.getString("Time"));
+        Assert.assertEquals("1", rs.getString(ColumnHeaderConstant.TIME));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
@@ -592,7 +593,7 @@ public class IoTDBNestedQueryIT {
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
@@ -606,13 +607,13 @@ public class IoTDBNestedQueryIT {
               + ITERATION_TIMES;
       try (ResultSet rs = statement.executeQuery(query)) {
         Assert.assertTrue(rs.next());
-        Assert.assertEquals("1", rs.getString("Time"));
+        Assert.assertEquals("1", rs.getString(ColumnHeaderConstant.TIME));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
         Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));

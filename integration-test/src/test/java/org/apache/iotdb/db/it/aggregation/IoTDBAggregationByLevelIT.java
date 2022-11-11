@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.aggregation;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -421,7 +422,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(temperature) as ct from root.sg1.d1, root.sg1.d2 GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -432,7 +434,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(temperature) as ct from root.sg1.* GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -444,7 +447,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(*) as ct from root.sg1.d1 GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }

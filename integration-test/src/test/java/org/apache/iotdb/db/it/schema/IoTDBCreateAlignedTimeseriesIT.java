@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -125,13 +126,13 @@ public class IoTDBCreateAlignedTimeseriesIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
       while (resultSet.next()) {
         String ActualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertEquals(timeSeriesArray[count], ActualResult);
         count++;
       }

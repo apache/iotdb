@@ -98,7 +98,7 @@ public class SyntaxConventionRelatedExample {
       ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
       List<String> timeseriesList = new ArrayList<>();
       while (resultSet.next()) {
-        timeseriesList.add(resultSet.getString("timeseries"));
+        timeseriesList.add(resultSet.getString("Timeseries"));
       }
       for (String path : timeseriesList) {
         for (int i = 0; i <= 10; i++) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -94,7 +95,7 @@ public class IoTDBFilterNullIT {
           statementIsNull.executeQuery("select * from root.testNullFilter.d1 where s1 is null")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString("Time")
+              resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
                   + resultSet.getString("root.testNullFilter.d1.s1")
                   + ","
@@ -113,7 +114,7 @@ public class IoTDBFilterNullIT {
                 "select * from root.testNullFilter.d1 where s1 is not null")) {
           while (resultSet.next()) {
             String ans =
-                resultSet.getString("Time")
+                resultSet.getString(ColumnHeaderConstant.TIME)
                     + ","
                     + resultSet.getString("root.testNullFilter.d1.s1")
                     + ","

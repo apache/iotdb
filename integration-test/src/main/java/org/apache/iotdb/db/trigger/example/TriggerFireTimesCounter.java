@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.trigger.example;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -39,7 +40,7 @@ public class TriggerFireTimesCounter implements Trigger {
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
-    String counterName = attributes.getString("name");
+    String counterName = attributes.getString(ColumnHeaderConstant.NAME);
     TXT_PATH =
         System.getProperty("user.dir")
             + File.separator

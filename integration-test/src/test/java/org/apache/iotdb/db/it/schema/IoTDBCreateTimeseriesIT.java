@@ -85,7 +85,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
+        String str = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
         resultList.add(str);
       }
     }
@@ -95,7 +95,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String res = resultSet.getString(ColumnHeaderConstant.COLUMN_DATABASE);
+        String res = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(res);
       }
     }
