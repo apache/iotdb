@@ -110,8 +110,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1242,7 +1240,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       // construct insert rows statement
       // construct insert statement
-      InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          new InsertRowsOfOneDeviceStatement();
       List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
@@ -1251,7 +1250,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         System.arraycopy(measurementList, 0, measurements, 0, measurements.length);
         statement.setMeasurements(measurements);
         statement.setTime(timeArray[i]);
-        statement.setDataTypes(new TSDataType[measurementList.length]);
+        TSDataType[] dataTypes = new TSDataType[measurementList.length];
+        Arrays.fill(dataTypes, TSDataType.TEXT);
+        statement.setDataTypes(dataTypes);
         Object[] values = new Object[measurementList.length];
         System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
         statement.setValues(values);
@@ -1259,8 +1260,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setNeedInferType(true);
         insertRowStatementList.add(statement);
       }
-      insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-      return insertRowsStatement.accept(this, context);
+      insertRowsOfOneDeviceStatement.setInsertRowStatementList(insertRowStatementList);
+      return insertRowsOfOneDeviceStatement.accept(this, context);
     }
   }
 
@@ -1640,14 +1641,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
             TSDataType dataType = timeseriesMetadata.getTSDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
-              ChunkHeader chunkHeader =
-                  getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata);
+              Pair<CompressionType, TSEncoding> pair =
+                  reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
               MeasurementSchema measurementSchema =
                   new MeasurementSchema(
                       timeseriesMetadata.getMeasurementId(),
                       dataType,
-                      chunkHeader.getEncodingType(),
-                      chunkHeader.getCompressionType());
+                      pair.getRight(),
+                      pair.getLeft());
               device2Schemas
                   .computeIfAbsent(device, o -> new HashMap<>())
                   .put(measurementSchema, tsFile);
@@ -1695,13 +1696,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       resource.setStatus(TsFileResourceStatus.CLOSED);
       return resource;
     }
-  }
-
-  private ChunkHeader getChunkHeaderByTimeseriesMetadata(
-      TsFileSequenceReader reader, TimeseriesMetadata timeseriesMetadata) throws IOException {
-    IChunkMetadata chunkMetadata = timeseriesMetadata.getChunkMetadataList().get(0);
-    reader.position(chunkMetadata.getOffsetOfChunkHeader());
-    return reader.readChunkHeader(reader.readMarker());
   }
 
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
@@ -1967,7 +1961,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowClusterStatement showClusterStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(showClusterStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    if (showClusterStatement.isDetails()) {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterDetailsHeader());
+    } else {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    }
     return analysis;
   }
 

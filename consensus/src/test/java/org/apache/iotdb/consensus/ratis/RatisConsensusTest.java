@@ -221,6 +221,24 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), gid, 10, 210);
   }
 
+  @Test
+  public void transferLeader() throws Exception {
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    int leaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
+
+    ConsensusGenericResponse resp =
+        servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
+    Assert.assertTrue(resp.isSuccess());
+
+    int newLeaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
+    Assert.assertEquals((leaderIndex + 1) % 3, newLeaderIndex);
+  }
+
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 

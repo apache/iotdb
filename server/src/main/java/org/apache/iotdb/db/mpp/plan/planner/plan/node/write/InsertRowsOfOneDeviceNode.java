@@ -153,7 +153,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
         this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
       }
     }
-    storeMeasurementsAndDataType();
+    if (!this.hasFailedMeasurements()) {
+      storeMeasurementsAndDataType();
+    }
   }
 
   @Override
@@ -197,7 +199,13 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
 
   private void storeMeasurementsAndDataType() {
     Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
+    /*
+    Traverse from end to start. For example, consider this sql:
+      "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0), (2, 'hello')"
+    we want the type of 's1' to be inferred as FLOAT(1.0) rather than TEXT('hello').
+     */
+    for (int i = insertRowNodeList.size() - 1; i >= 0; i--) {
+      InsertRowNode insertRowNode = insertRowNodeList.get(i);
       List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
       Map<String, TSDataType> subMap =
           measurements.stream()

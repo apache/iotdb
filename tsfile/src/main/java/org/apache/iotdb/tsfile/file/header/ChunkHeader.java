@@ -21,10 +21,13 @@ package org.apache.iotdb.tsfile.file.header;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -189,6 +192,24 @@ public class ChunkHeader {
         chunkHeaderSize - Integer.BYTES - 1 + ReadWriteForEncodingUtils.uVarIntSize(dataSize);
     return new ChunkHeader(
         chunkType, measurementID, dataSize, chunkHeaderSize, dataType, type, encoding);
+  }
+
+  /**
+   * Used by {@link
+   * TsFileSequenceReader#readTimeseriesCompressionTypeAndEncoding(TimeseriesMetadata)} to only
+   * decode data size, {@link CompressionType} and {@link TSEncoding}.
+   *
+   * @param inputStream
+   * @return
+   * @throws IOException
+   */
+  public static Pair<CompressionType, TSEncoding> deserializeCompressionTypeAndEncoding(
+      InputStream inputStream) throws IOException {
+    ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    inputStream.skip(Byte.BYTES); // skip Data type
+    CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
+    TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
+    return new Pair<>(type, encoding);
   }
 
   public int getSerializedSize() {

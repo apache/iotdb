@@ -35,10 +35,9 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Intermediate result for most of ExecOperators. The Tablet contains data from one or more columns
+ * Intermediate result for most of ExecOperators. The TsBlock contains data from one or more columns
  * and constructs them as a row based view The columns can be series, aggregation result for one
- * series or scalar value (such as deviceName). The Tablet also contains the metadata to describe
- * the columns.
+ * series or scalar value (such as deviceName).
  */
 public class TsBlock {
 

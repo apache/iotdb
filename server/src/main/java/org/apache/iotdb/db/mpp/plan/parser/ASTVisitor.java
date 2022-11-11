@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -2243,6 +2244,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowClusterDetails(IoTDBSqlParser.ShowClusterDetailsContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    showClusterStatement.setDetails(true);
+    return showClusterStatement;
+  }
+
+  @Override
   public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
     DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
@@ -2547,6 +2555,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
+    } else if (constantContext.NULL_LITERAL() != null) {
+      return new NullOperand();
     } else {
       throw new SQLParserException("Unsupported constant operand: " + text);
     }

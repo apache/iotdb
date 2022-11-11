@@ -594,7 +594,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -642,10 +642,6 @@ public class DataNode implements DataNodeMBean {
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
     logger.info("Spent {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        config.getSeqTsFileSize(),
-        config.getUnSeqTsFileSize());
   }
 
   public void stop() {

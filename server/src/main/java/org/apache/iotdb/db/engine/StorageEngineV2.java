@@ -687,19 +687,6 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
-  //  public TSStatus setTTL(TSetTTLReq req) {
-  //    Map<String, List<DataRegionId>> localDataRegionInfo =
-  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
-  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
-  //    for (DataRegionId dataRegionId : dataRegionIdList) {
-  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-  //      if (dataRegion != null) {
-  //        dataRegion.setDataTTL(req.TTL);
-  //      }
-  //    }
-  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  //  }
-
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();
@@ -790,6 +777,35 @@ public class StorageEngineV2 implements IService {
     }
 
     return status;
+  }
+
+  /** reboot timed flush sequence/unsequence memetable thread */
+  public void rebootTimedService() throws ShutdownException {
+    logger.info("Start rebooting all timed service.");
+
+    // exclude ttl check thread
+    stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    stopTimedServiceAndThrow(
+        unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+
+    logger.info("Stop all timed service successfully, and now restart them.");
+
+    startTimedService();
+
+    logger.info("Reboot all timed service successfully");
+  }
+
+  private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
+      throws ShutdownException {
+    if (pool != null) {
+      pool.shutdownNow();
+      try {
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("{} still doesn't exit after 30s", poolName);
+        throw new ShutdownException(e);
+      }
+    }
   }
 
   static class InstanceHolder {

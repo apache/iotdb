@@ -81,7 +81,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private int rowCount = 0;
 
-  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
+  // when this plan is sub-plan split from another InsertTabletNode, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
   // means that the first 3
@@ -1010,7 +1010,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int result = Objects.hash(super.hashCode(), rowCount, range);
     result = 31 * result + Arrays.hashCode(times);
     result = 31 * result + Arrays.hashCode(bitMaps);
-    result = 31 * result + Arrays.hashCode(columns);
+    result = 31 * result + Arrays.deepHashCode(columns);
     return result;
   }
 
