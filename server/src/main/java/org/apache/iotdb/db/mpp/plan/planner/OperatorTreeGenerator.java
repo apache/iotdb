@@ -2004,7 +2004,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitObjectDeserialize(
       ObjectDeserializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    // The ObjectDeserializeNode is only planned on ExchangeNode.
+    // The ObjectDeserializeNode is only planned on SourceNode.
     // If the source is on the same DataNode, there's no need to deserialize an Object since the
     // object can be used directly in same process.
     // If the source is on another DataNode and the ancestor of this node doesn't need to process
@@ -2034,7 +2034,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitObjectSerialize(
       ObjectSerializeNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChildren().get(0).accept(this, context);
-    // The ObjectSerializeNode is only planned beneath ExchangeNode.
+    // The ObjectSerializeNode is only planned beneath SinkNode.
     // If the sink is on another DataNode, there's need to serialize an Object for network
     // transport.
     // If the sink is on the same DataNode and the ancestor of this node need the binary data of

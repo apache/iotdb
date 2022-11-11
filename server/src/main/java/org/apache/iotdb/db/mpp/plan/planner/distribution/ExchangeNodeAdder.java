@@ -143,25 +143,28 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     node.getChildren()
         .forEach(
             child -> {
-              ObjectSerializeNode serializeNode =
-                  new ObjectSerializeNode(context.queryContext.getQueryId().genPlanNodeId());
-              serializeNode.addChild(child);
-              ExchangeNode exchangeNode =
-                  new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-              exchangeNode.setChild(serializeNode);
-              exchangeNode.setOutputColumnNames(serializeNode.getOutputColumnNames());
-              ObjectDeserializeNode deserializeNode =
-                  new ObjectDeserializeNode(context.queryContext.getQueryId().genPlanNodeId());
-              deserializeNode.addChild(exchangeNode);
-              newNode.addChild(deserializeNode);
+              if (!nodeDistribution.region.equals(
+                  context.getNodeDistribution(child.getPlanNodeId()).region)) {
+                ObjectSerializeNode serializeNode =
+                    new ObjectSerializeNode(context.queryContext.getQueryId().genPlanNodeId());
+                serializeNode.addChild(child);
+                ExchangeNode exchangeNode =
+                    new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+                exchangeNode.setChild(serializeNode);
+                exchangeNode.setOutputColumnNames(serializeNode.getOutputColumnNames());
+                ObjectDeserializeNode deserializeNode =
+                    new ObjectDeserializeNode(context.queryContext.getQueryId().genPlanNodeId());
+                deserializeNode.addChild(exchangeNode);
+                newNode.addChild(deserializeNode);
+              } else {
+                newNode.addChild(child);
+              }
             });
+    // this serializeNode is right the child of sinkNode
     ObjectSerializeNode serializeNode =
         new ObjectSerializeNode(context.queryContext.getQueryId().genPlanNodeId());
     serializeNode.addChild(newNode);
-    ExchangeNode exchangeNode = new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-    exchangeNode.setChild(serializeNode);
-    exchangeNode.setOutputColumnNames(serializeNode.getOutputColumnNames());
-    return exchangeNode;
+    return serializeNode;
   }
 
   @Override

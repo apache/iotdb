@@ -73,10 +73,14 @@ public class ObjectSerializeOperator implements ProcessOperator {
 
     if (tsBlockBufferQueue.isEmpty()) {
       TsBlock tsBlock = child.next();
-      for (TsBlock result :
-          ObjectTsBlockTransformer.transformToObjectBinaryTsBlockList(
-              tsBlock, index -> objectPool.get(queryId, index))) {
-        tsBlockBufferQueue.offer(result);
+      if (ObjectTsBlockTransformer.isObjectIndexTsBlock(tsBlock)) {
+        for (TsBlock result :
+            ObjectTsBlockTransformer.transformToObjectBinaryTsBlockList(
+                tsBlock, index -> objectPool.get(queryId, index))) {
+          tsBlockBufferQueue.offer(result);
+        }
+      } else {
+        tsBlockBufferQueue.offer(tsBlock);
       }
     }
 
