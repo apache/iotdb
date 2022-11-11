@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -58,6 +59,10 @@ public class LocalSyncManager implements ISyncManager {
       Deletion deletion,
       List<TsFileResource> unsealedResources,
       List<TsFileResource> sealedResources) {
+    if (!((TsFilePipeInfo) syncPipe.getPipeInfo()).isSyncDelOp()) {
+      return;
+    }
+
     Set<String> devices = new HashSet<>();
     unsealedResources.forEach(o -> devices.addAll(o.getDevices()));
     sealedResources.forEach(o -> devices.addAll(o.getDevices()));
