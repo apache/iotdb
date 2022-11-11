@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import java.util.HashMap;
 import java.util.Map;
 
+// TODO: remove this
 public class CreatePipeOperator extends Operator {
   private String pipeName;
   private String pipeSinkName;

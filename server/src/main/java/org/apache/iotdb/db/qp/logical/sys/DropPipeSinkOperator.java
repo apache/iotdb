@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+// TODO: remove this
 public class DropPipeSinkOperator extends Operator {
   private String pipeSinkName;
 
