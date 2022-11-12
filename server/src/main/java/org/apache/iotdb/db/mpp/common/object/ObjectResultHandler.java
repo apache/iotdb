@@ -69,7 +69,7 @@ public class ObjectResultHandler<T extends ObjectEntry> {
       return;
     }
     TsBlock tsBlock = queryResult.get();
-    if (ObjectTsBlockTransformer.isObjectIndexTsBlock(tsBlock)) {
+    if (ObjectTsBlockTransformer.isObjectIdTsBlock(tsBlock)) {
       Column column = tsBlock.getColumn(0);
       for (int i = 0; i < column.getPositionCount(); i++) {
         nextBatchQueue.offer(objectPool.get(queryExecution.getQueryId(), column.getInt(i)));

@@ -71,13 +71,13 @@ public class ObjectDeserializeOperator implements ProcessOperator {
     if (tsBlock == null || tsBlock.isEmpty()) {
       return null;
     }
-    if (ObjectTsBlockTransformer.isObjectIndexTsBlock(tsBlock)) {
+    if (ObjectTsBlockTransformer.isObjectIdTsBlock(tsBlock)) {
       return tsBlock;
     }
 
     tsBlockCollector.collect(tsBlock);
     if (tsBlockCollector.isFull()) {
-      return ObjectTsBlockTransformer.transformToObjectIndexTsBlock(
+      return ObjectTsBlockTransformer.transformToObjectIdTsBlock(
           tsBlockCollector, objectEntry -> objectPool.put(queryId, objectEntry).getId());
     } else {
       return null;

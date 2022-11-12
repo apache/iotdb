@@ -56,7 +56,7 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
     if (objectEntryList == null) {
       return null;
     }
-    return ObjectTsBlockTransformer.transformToObjectIndexTsBlock(
+    return ObjectTsBlockTransformer.transformToObjectIdTsBlock(
         objectEntryList,
         objectEntry ->
             objectEntry.isRegistered()

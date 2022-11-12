@@ -43,7 +43,7 @@ public class ObjectTsBlockTransformer {
 
   private ObjectTsBlockTransformer() {}
 
-  public static boolean isObjectIndexTsBlock(TsBlock tsBlock) {
+  public static boolean isObjectIdTsBlock(TsBlock tsBlock) {
     return tsBlock.getColumn(0).getDataType() == OBJECT_INDEX_COLUMN_TYPE.get(0);
   }
 
@@ -52,10 +52,10 @@ public class ObjectTsBlockTransformer {
   }
 
   public static List<TsBlock> transformToObjectBinaryTsBlockList(
-      TsBlock objectIndexTsBlock, Function<Integer, ObjectEntry> objectProvider) {
-    List<ObjectEntry> objectEntryList = new ArrayList<>(objectIndexTsBlock.getPositionCount());
-    for (int i = 0; i < objectIndexTsBlock.getPositionCount(); i++) {
-      objectEntryList.add(objectProvider.apply(objectIndexTsBlock.getColumn(0).getInt(i)));
+      TsBlock objectIdTsBlock, Function<Integer, ObjectEntry> objectProvider) {
+    List<ObjectEntry> objectEntryList = new ArrayList<>(objectIdTsBlock.getPositionCount());
+    for (int i = 0; i < objectIdTsBlock.getPositionCount(); i++) {
+      objectEntryList.add(objectProvider.apply(objectIdTsBlock.getColumn(0).getInt(i)));
     }
     List<ByteBuffer> bufferList = ObjectSerDeserUtil.serializeBatchObject(objectEntryList);
     List<TsBlock> tsBlockList = new ArrayList<>(bufferList.size());
@@ -77,7 +77,7 @@ public class ObjectTsBlockTransformer {
     return tsBlockList;
   }
 
-  public static TsBlock transformToObjectIndexTsBlock(
+  public static TsBlock transformToObjectIdTsBlock(
       List<? extends ObjectEntry> objectEntryList, Function<ObjectEntry, Integer> indexProvider) {
     TsBlockBuilder builder = new TsBlockBuilder(OBJECT_INDEX_COLUMN_TYPE);
     for (ObjectEntry objectEntry : objectEntryList) {
@@ -88,7 +88,7 @@ public class ObjectTsBlockTransformer {
     return builder.build();
   }
 
-  public static TsBlock transformToObjectIndexTsBlock(
+  public static TsBlock transformToObjectIdTsBlock(
       ObjectBinaryTsBlockCollector collector, Function<ObjectEntry, Integer> indexProvider) {
     List<ByteBuffer> bufferList = collector.consumeObjectBinary();
     List<ObjectEntry> objectEntryList = ObjectSerDeserUtil.deserializeBatchObject(bufferList);
@@ -102,10 +102,10 @@ public class ObjectTsBlockTransformer {
   }
 
   public static <T extends ObjectEntry> List<T> transformToObjectList(
-      TsBlock objectIndexTsBlock, Function<Integer, T> objectProvider) {
-    List<T> objectEntryList = new ArrayList<>(objectIndexTsBlock.getPositionCount());
-    for (int i = 0; i < objectIndexTsBlock.getPositionCount(); i++) {
-      objectEntryList.add(objectProvider.apply(objectIndexTsBlock.getColumn(0).getInt(i)));
+      TsBlock objectIdTsBlock, Function<Integer, T> objectProvider) {
+    List<T> objectEntryList = new ArrayList<>(objectIdTsBlock.getPositionCount());
+    for (int i = 0; i < objectIdTsBlock.getPositionCount(); i++) {
+      objectEntryList.add(objectProvider.apply(objectIdTsBlock.getColumn(0).getInt(i)));
     }
     return objectEntryList;
   }
