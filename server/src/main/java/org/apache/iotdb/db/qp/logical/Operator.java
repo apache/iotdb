@@ -79,7 +79,7 @@ public abstract class Operator {
 
   @Override
   public String toString() {
-    return SQLConstant.tokenNames.get(tokenIntType);
+    return SQLConstant.w.get(tokenIntType);
   }
 
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
