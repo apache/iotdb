@@ -141,25 +141,11 @@ public class IoTDBConstant {
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_DATABASE = "database";
-  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
-
-  public static final String COLUMN_TASK_NAME = "task name";
-  public static final String COLUMN_CREATED_TIME = "created time";
-  public static final String COLUMN_PROGRESS = "progress";
-  public static final String COLUMN_CANCELLED = "cancelled";
-  public static final String COLUMN_DONE = "done";
 
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
-
-  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
-  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
-  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
-  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
@@ -234,14 +220,6 @@ public class IoTDBConstant {
 
   // ratis
   public static final int RAFT_LOG_BASIC_SIZE = 48;
-
-  // change tsFile name
-  public static final int FILE_NAME_SUFFIX_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
-  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
-  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
-  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
   // inner space compaction
   public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";

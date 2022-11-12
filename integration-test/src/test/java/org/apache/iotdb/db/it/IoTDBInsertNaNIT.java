@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -184,7 +185,7 @@ public class IoTDBInsertNaNIT {
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
-          if ((resultSet.getString("timeseries")).contains("root.cycle.d0.s0")) {
+          if ((resultSet.getString(ColumnHeaderConstant.TIMESERIES)).contains("root.cycle.d0.s0")) {
             exist = true;
           }
         }

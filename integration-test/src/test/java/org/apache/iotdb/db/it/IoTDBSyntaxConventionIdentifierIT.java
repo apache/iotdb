@@ -1008,8 +1008,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
   //        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
   //        while (resultSet.next()) {
-  //          Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
-  //          expectedResult.remove(resultSet.getString("template name"));
+  //          Assert.assertTrue(expectedResult.contains(resultSet.getString("TemplateName")));
+  //          expectedResult.remove(resultSet.getString("TemplateName"));
   //        }
   //        Assert.assertEquals(0, expectedResult.size());
   //      }
