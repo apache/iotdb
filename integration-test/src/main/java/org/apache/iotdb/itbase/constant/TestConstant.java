@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.itbase.constant;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -43,13 +44,13 @@ public class TestConstant {
   public static final String s4 = "s4";
   public static final String s5 = "s5";
   public static final String d1 = "root.vehicle.d1";
-  public static final String TIMESTAMP_STR = "Time";
+  public static final String TIMESTAMP_STR = ColumnHeaderConstant.TIME;
   public static boolean testFlag = true;
   public static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
   public static String[] booleanValue = new String[] {"true", "false"};
-  public static final String TIMESEIRES_STR = "timeseries";
-  public static final String VALUE_STR = "value";
-  public static final String DATA_TYPE_STR = "dataType";
+  public static final String TIMESEIRES_STR = ColumnHeaderConstant.TIMESERIES;
+  public static final String VALUE_STR = ColumnHeaderConstant.VALUE;
+  public static final String DATA_TYPE_STR = ColumnHeaderConstant.DATATYPE;
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final double DELTA = 1e-6;
   public static final double NULL = Double.MIN_VALUE;
