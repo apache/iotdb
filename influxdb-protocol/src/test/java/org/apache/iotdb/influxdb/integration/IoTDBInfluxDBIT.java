@@ -165,7 +165,7 @@ public class IoTDBInfluxDBIT {
         new Query(
             "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
     QueryResult result = influxDB.query(query);
-    QueryResult.Series series = result.getResults().get(0).getSeriIoTDBInsertNaNITes().get(0);
+    QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     String[] retArray = new String[] {"time", "name", "sex", "province", "country", "score", "tel"};
     Set<String> columnNames = new HashSet<>(Arrays.asList(retArray));
