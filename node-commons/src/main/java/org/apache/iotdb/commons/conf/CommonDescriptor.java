@@ -127,13 +127,6 @@ public class CommonDescriptor {
                     "disk_space_warning_threshold",
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
-
-    config.setUseDataBaseAsHeader(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "use_database_as_header", String.valueOf(config.isUseDataBaseAsHeader()))
-                .trim()));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
