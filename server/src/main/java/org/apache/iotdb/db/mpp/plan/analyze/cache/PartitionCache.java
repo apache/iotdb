@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -105,8 +105,8 @@ public class PartitionCache {
 
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
-  private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+  private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
           .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   public PartitionCache() {
@@ -186,7 +186,7 @@ public class PartitionCache {
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths) throws IOException, TException {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
@@ -217,7 +217,7 @@ public class PartitionCache {
       StorageGroupCacheResult<?> result, List<String> devicePaths)
       throws IOException, MetadataException, TException {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       storageGroupCacheLock.writeLock().lock();
       // try to check whether storage group need to be created
       result.reset();
@@ -411,7 +411,7 @@ public class PartitionCache {
         // verify that there are not hit in cache
         if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
           try (ConfigNodeClient client =
-              configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+              configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());

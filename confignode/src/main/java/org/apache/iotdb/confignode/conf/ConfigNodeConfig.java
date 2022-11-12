@@ -47,7 +47,7 @@ public class ConfigNodeConfig {
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   // TODO: Read from iotdb-confignode.properties
-  private int partitionRegionId = 0;
+  private int configNodeRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
@@ -299,12 +299,12 @@ public class ConfigNodeConfig {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public int getPartitionRegionId() {
-    return partitionRegionId;
+  public int getConfigNodeRegionId() {
+    return configNodeRegionId;
   }
 
-  public void setPartitionRegionId(int partitionRegionId) {
-    this.partitionRegionId = partitionRegionId;
+  public void setConfigNodeRegionId(int configNodeRegionId) {
+    this.configNodeRegionId = configNodeRegionId;
   }
 
   public int getSeriesPartitionSlotNum() {

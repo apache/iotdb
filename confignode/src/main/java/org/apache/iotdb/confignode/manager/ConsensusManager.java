@@ -21,15 +21,15 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -66,7 +66,7 @@ public class ConsensusManager {
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(IManager configManager, PartitionRegionStateMachine stateMachine)
+  public ConsensusManager(IManager configManager, ConfigNodeRegionStateMachine stateMachine)
       throws IOException {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
@@ -77,9 +77,9 @@ public class ConsensusManager {
   }
 
   /** ConsensusLayer local implementation */
-  private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
+  private void setConsensusLayer(ConfigNodeRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
-    consensusGroupId = new PartitionRegionId(CONF.getPartitionRegionId());
+    consensusGroupId = new ConfigNodeRegionId(CONF.getConfigNodeRegionId());
 
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       consensusImpl =
@@ -260,11 +260,11 @@ public class ConsensusManager {
   }
 
   /**
-   * Remove a ConfigNode Peer out of PartitionRegion
+   * Remove a ConfigNode Peer out of ConfigNodeRegion
    *
    * @param tConfigNodeLocation config node location
    * @return True if successfully removePeer. False if another ConfigNode is being removed to the
-   *     PartitionRegion
+   *     ConfigNodeRegion
    */
   public boolean removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
     return consensusImpl
