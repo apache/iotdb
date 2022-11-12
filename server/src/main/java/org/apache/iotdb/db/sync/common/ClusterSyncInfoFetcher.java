@@ -20,7 +20,7 @@ package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
@@ -47,9 +47,9 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfoFetcher.class);
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   // region Interfaces of PipeSink
@@ -67,7 +67,7 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public PipeSink getPipeSink(String name) throws PipeSinkException {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq().setPipeSinkName(name);
       TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
       if (resp.getPipeSinkInfoList().isEmpty()) {
@@ -113,7 +113,7 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public List<PipeInfo> getAllPipeInfos() {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetAllPipeInfoResp resp = configNodeClient.getAllPipeInfo();
       return resp.getAllPipeInfo().stream()
           .map(PipeInfo::deserializePipeInfo)

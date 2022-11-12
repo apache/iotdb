@@ -2780,7 +2780,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowRegion(IoTDBSqlParser.ShowRegionContext ctx) {
     ShowRegionStatement showRegionStatement = new ShowRegionStatement();
-    // TODO: Maybe add a show partition region in the future
+    // TODO: Maybe add a show ConfigNode region in the future
     if (ctx.DATA() != null) {
       showRegionStatement.setRegionType(TConsensusGroupType.DataRegion);
     } else if (ctx.SCHEMA() != null) {

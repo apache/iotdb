@@ -21,14 +21,14 @@ package org.apache.iotdb.commons.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public class PartitionRegionId extends ConsensusGroupId {
+public class ConfigNodeRegionId extends ConsensusGroupId {
 
-  public PartitionRegionId(int id) {
+  public ConfigNodeRegionId(int id) {
     this.id = id;
   }
 
   @Override
   public TConsensusGroupType getType() {
-    return TConsensusGroupType.PartitionRegion;
+    return TConsensusGroupType.ConfigNodeRegion;
   }
 }

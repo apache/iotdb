@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -62,9 +62,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private IAuthorCache iAuthorCache;
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
@@ -114,7 +114,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Construct request using statement
       TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
@@ -148,7 +148,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
 
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Construct request using statement
       TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
@@ -199,7 +199,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       TLoginReq req = new TLoginReq(username, password);
       TPermissionInfoResp status = null;
       try (ConfigNodeClient configNodeClient =
-          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         // Send request to some API server
         status = configNodeClient.login(req);
       } catch (TException | IOException e) {
@@ -226,7 +226,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (TException | IOException e) {

@@ -407,7 +407,7 @@ public class StorageGroupPartitionTable {
         return dataPartitionTable.getSeriesSlotList();
       case SchemaRegion:
         return schemaPartitionTable.getSeriesSlotList();
-      case PartitionRegion:
+      case ConfigNodeRegion:
       default:
         return Stream.concat(
                 schemaPartitionTable.getSeriesSlotList().stream(),
