@@ -59,14 +59,14 @@ def test_non_time_query():
         session.close()
 
     assert list(df.columns) == [
-        "timeseries",
-        "alias",
-        "database",
-        "dataType",
-        "encoding",
-        "compression",
-        "tags",
-        "attributes",
+        "Timeseries",
+        "Alias",
+        "Database",
+        "DataType",
+        "Encoding",
+        "Compression",
+        "Tags",
+        "Attributes",
     ]
     assert_array_equal(
         df.values,
