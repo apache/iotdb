@@ -54,7 +54,7 @@ public class MPPObjectPool {
   }
 
   public void clear(String queryId) {
-    queryPool.remove(queryId);
+    //    queryPool.remove(queryId);
   }
 
   public void clear() {
