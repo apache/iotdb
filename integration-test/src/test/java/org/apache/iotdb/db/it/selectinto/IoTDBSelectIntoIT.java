@@ -85,9 +85,9 @@ public class IoTDBSelectIntoIT {
         "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"
       };
 
-  protected static final String selectIntoHeader = "source column,target timeseries,written,";
+  protected static final String selectIntoHeader = "SourceColumn,TargetTimeseries,Written,";
   protected static final String selectIntoAlignByDeviceHeader =
-      "source device,source column,target timeseries,written,";
+      "SourceDevice,SourceColumn,TargetTimeseries,Written,";
 
   protected static final String[] rawDataSet =
       new String[] {
