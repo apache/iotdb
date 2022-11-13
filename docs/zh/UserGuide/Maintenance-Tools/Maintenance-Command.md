@@ -147,7 +147,7 @@ IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
@@ -169,7 +169,7 @@ IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
