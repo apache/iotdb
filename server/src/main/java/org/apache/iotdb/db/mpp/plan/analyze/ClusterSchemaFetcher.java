@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -70,6 +71,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+  private final ClusterPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
 
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
@@ -114,26 +116,50 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
     }
+
     if (fullPathList.isEmpty()) {
       return executeSchemaFetchQuery(
           new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
     }
+
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+
     String[] measurement = new String[1];
     schemaCache.takeReadLock();
     try {
+      ClusterSchemaTree cachedSchema;
       for (PartialPath fullPath : fullPathList) {
         measurement[0] = fullPath.getMeasurement();
-        schemaTree.mergeSchemaTree(schemaCache.get(fullPath.getDevicePath(), measurement));
+        cachedSchema = schemaCache.get(fullPath.getDevicePath(), measurement);
+        if (cachedSchema.isEmpty()) {
+          filteredPatternTree.appendFullPath(fullPath);
+        } else {
+          schemaTree.mergeSchemaTree(cachedSchema);
+        }
       }
     } finally {
       schemaCache.releaseReadLock();
     }
+
     filteredPatternTree.constructTree();
-    schemaTree.mergeSchemaTree(
-        executeSchemaFetchQuery(
-            new SchemaFetchStatement(filteredPatternTree, templateMap, withTags)));
-    return schemaTree;
+    if (filteredPatternTree.isEmpty()) {
+      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+      schemaTree.setStorageGroups(
+          new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet()));
+      return schemaTree;
+    } else {
+      ClusterSchemaTree fetchedSchemaTree =
+          executeSchemaFetchQuery(
+              new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
+      schemaCache.takeReadLock();
+      try {
+        schemaCache.put(fetchedSchemaTree);
+      } finally {
+        schemaCache.releaseReadLock();
+      }
+      fetchedSchemaTree.mergeSchemaTree(schemaTree);
+      return fetchedSchemaTree;
+    }
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
