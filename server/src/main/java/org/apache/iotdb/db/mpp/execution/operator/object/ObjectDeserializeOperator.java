@@ -84,7 +84,7 @@ public class ObjectDeserializeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return !tsBlockCollector.isEmpty() || child.hasNext();
+    return child.hasNext();
   }
 
   @Override

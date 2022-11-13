@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +75,11 @@ public class SchemaFetchScanOperator extends ObjectSourceOperator<SchemaFetchObj
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    return NOT_BLOCKED;
   }
 
   @Override
