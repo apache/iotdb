@@ -128,6 +128,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SERVER_RPC_RT;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
@@ -384,7 +385,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
-    return executeStatementV2(req);
+    long startTime = System.nanoTime();
+    try {
+      return executeStatementV2(req);
+    } finally {
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -445,6 +451,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
     }
   }
 

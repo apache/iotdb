@@ -82,6 +82,8 @@ public class QueryStatistics {
   public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
   public static final String DISPATCHER = "Dispatcher";
 
+  public static final String SERVER_RPC_RT = "ServerRpcRT";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");
