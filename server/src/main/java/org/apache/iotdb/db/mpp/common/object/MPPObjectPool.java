@@ -19,29 +19,15 @@
 
 package org.apache.iotdb.db.mpp.common.object;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MPPObjectPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MPPObjectPool.class);
-
-  private final Map<String, QueryObjectPoolReference> queryPool = new ConcurrentHashMap<>();
-  private final ReferenceQueue<QueryObjectPool> referenceQueue = new ReferenceQueue<>();
-
-  private final ExecutorService executorService =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor("MPP-Object-Release-Task");
-  private volatile boolean hasReleaseTask = false;
+  private final Map<String, QueryObjectPool> queryPool = new ConcurrentHashMap<>();
 
   private MPPObjectPool() {}
 
@@ -57,76 +43,38 @@ public class MPPObjectPool {
   }
 
   public QueryObjectPool getQueryObjectPool(String queryId) {
-    QueryObjectPoolReference reference = queryPool.get(queryId);
-    QueryObjectPool queryObjectPool = null;
-    if (reference != null) {
-      queryObjectPool = reference.get();
-    }
-
-    if (queryObjectPool == null) {
-      queryObjectPool = new QueryObjectPool(queryId);
-      QueryObjectPool finalQueryObjectPool = queryObjectPool;
-      return queryPool
-          .compute(
-              queryId,
-              (k, v) ->
-                  v == null || v.get() == null
-                      ? new QueryObjectPoolReference(queryId, finalQueryObjectPool, referenceQueue)
-                      : v)
-          .get();
-    } else {
-      return queryObjectPool;
-    }
+    return queryPool.compute(
+        queryId,
+        (k, v) -> {
+          QueryObjectPool queryObjectPool;
+          if (v == null) {
+            queryObjectPool = new QueryObjectPool(queryId);
+          } else {
+            queryObjectPool = v;
+          }
+          queryObjectPool.incReferenceCount();
+          return queryObjectPool;
+        });
   }
 
   public void clearQueryObjectPool(String queryId) {
-    if (hasReleaseTask) {
-      return;
-    }
-    QueryObjectPoolReference reference = queryPool.get(queryId);
-    if (reference == null || reference.get() != null) {
-      return;
-    }
-    synchronized (this) {
-      if (hasReleaseTask) {
-        return;
-      }
-      reference = queryPool.get(queryId);
-      if (reference == null || reference.get() != null) {
-        return;
-      }
-      hasReleaseTask = true;
-      executorService.submit(this::executeClearQueryObjectPool);
-    }
-  }
-
-  public void executeClearQueryObjectPool() {
-    try {
-      QueryObjectPoolReference reference = (QueryObjectPoolReference) referenceQueue.poll();
-      while (reference != null) {
-        queryPool.compute(
-            reference.getQueryId(), (k, v) -> v == null || v.get() == null ? null : v);
-        reference = (QueryObjectPoolReference) referenceQueue.poll();
-      }
-    } catch (Throwable e) {
-      LOGGER.error(e.getMessage(), e);
-    }
-    hasReleaseTask = false;
-  }
-
-  @TestOnly
-  boolean isHasReleaseTask() {
-    return hasReleaseTask;
+    queryPool.compute(
+        queryId,
+        (k, v) -> {
+          if (v == null) {
+            return null;
+          }
+          v.decReferenceCount();
+          if (v.getReferenceCount() == 0) {
+            return null;
+          } else {
+            return v;
+          }
+        });
   }
 
   @TestOnly
   boolean hasQueryObjectPool(String queryId) {
-    QueryObjectPoolReference reference = queryPool.get(queryId);
-    return reference != null && reference.get() != null;
-  }
-
-  @TestOnly
-  boolean hasQueryObjectPoolReference(String queryId) {
     return queryPool.containsKey(queryId);
   }
 
@@ -137,6 +85,8 @@ public class MPPObjectPool {
   public static class QueryObjectPool {
 
     private final String queryId;
+
+    private final AtomicInteger referenceCount = new AtomicInteger(0);
 
     private final AtomicInteger indexGenerator = new AtomicInteger(0);
 
@@ -161,20 +111,17 @@ public class MPPObjectPool {
     public String getQueryId() {
       return queryId;
     }
-  }
 
-  private static class QueryObjectPoolReference extends WeakReference<QueryObjectPool> {
-
-    private final String queryId;
-
-    private QueryObjectPoolReference(
-        String queryId, QueryObjectPool referent, ReferenceQueue<? super QueryObjectPool> q) {
-      super(referent, q);
-      this.queryId = queryId;
+    private int getReferenceCount() {
+      return referenceCount.get();
     }
 
-    private String getQueryId() {
-      return queryId;
+    private void incReferenceCount() {
+      referenceCount.getAndIncrement();
+    }
+
+    private void decReferenceCount() {
+      referenceCount.decrementAndGet();
     }
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
@@ -128,8 +127,7 @@ public class FragmentInstanceExecution {
             driver.close();
 
             // release object generated during object query
-            context.setQueryObjectPool(null);
-            MPPObjectPool.getInstance().clearQueryObjectPool(driver.getInfo().getQueryId().getId());
+            context.releaseQueryObjectPool();
 
             // help for gc
             driver = null;

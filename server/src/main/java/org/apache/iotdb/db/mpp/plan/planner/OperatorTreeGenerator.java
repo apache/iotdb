@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
-import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
@@ -1646,12 +1645,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SchemaFetchScanOperator.class.getSimpleName());
-    operatorContext
-        .getInstanceContext()
-        .setQueryObjectPool(
-            MPPObjectPool.getInstance()
-                .getQueryObjectPool(
-                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
+    operatorContext.getInstanceContext().registerQueryObjectPool();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new SchemaFetchScanOperator(
         node.getPlanNodeId(),
@@ -2026,12 +2020,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 planNodeId,
                 ObjectDeserializeNode.class.getSimpleName());
-    operatorContext
-        .getInstanceContext()
-        .setQueryObjectPool(
-            MPPObjectPool.getInstance()
-                .getQueryObjectPool(
-                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
+    operatorContext.getInstanceContext().registerQueryObjectPool();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new ObjectDeserializeOperator(operatorContext, child);
   }
@@ -2059,12 +2048,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getInstanceContext()
             .addOperatorContext(
                 context.getNextOperatorId(), planNodeId, ObjectSerializeNode.class.getSimpleName());
-    operatorContext
-        .getInstanceContext()
-        .setQueryObjectPool(
-            MPPObjectPool.getInstance()
-                .getQueryObjectPool(
-                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
+    operatorContext.getInstanceContext().registerQueryObjectPool();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new ObjectSerializeOperator(operatorContext, child);
   }

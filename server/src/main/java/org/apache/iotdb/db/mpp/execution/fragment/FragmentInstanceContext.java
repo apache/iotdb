@@ -236,8 +236,15 @@ public class FragmentInstanceContext extends QueryContext {
     return sessionInfo;
   }
 
-  public void setQueryObjectPool(MPPObjectPool.QueryObjectPool queryObjectPool) {
-    this.queryObjectPool = queryObjectPool;
+  public void registerQueryObjectPool() {
+    if (queryObjectPool == null) {
+      queryObjectPool =
+          MPPObjectPool.getInstance().getQueryObjectPool(getId().getQueryId().getId());
+    }
+  }
+
+  public void releaseQueryObjectPool() {
+    MPPObjectPool.getInstance().clearQueryObjectPool(getId().getQueryId().getId());
   }
 
   public MPPObjectPool.QueryObjectPool getQueryObjectPool() {

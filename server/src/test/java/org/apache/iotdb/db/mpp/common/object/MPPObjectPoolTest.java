@@ -30,32 +30,17 @@ public class MPPObjectPoolTest {
     objectPool.clear();
 
     String queryId = "TEST";
-    MPPObjectPool.QueryObjectPool queryObjectPool = objectPool.getQueryObjectPool(queryId);
+    objectPool.getQueryObjectPool(queryId);
     Assert.assertTrue(objectPool.hasQueryObjectPool(queryId));
     objectPool.clearQueryObjectPool(queryId);
-    Assert.assertTrue(objectPool.hasQueryObjectPool(queryId));
-    Assert.assertFalse(objectPool.isHasReleaseTask());
-
-    System.gc();
-    Assert.assertTrue(objectPool.hasQueryObjectPool(queryId));
-    objectPool.clearQueryObjectPool(queryId);
-    Assert.assertTrue(objectPool.hasQueryObjectPool(queryId));
-    Assert.assertFalse(objectPool.isHasReleaseTask());
-
-    queryObjectPool = null;
-    System.gc();
     Assert.assertFalse(objectPool.hasQueryObjectPool(queryId));
-    Assert.assertTrue(objectPool.hasQueryObjectPoolReference(queryId));
-    Assert.assertFalse(objectPool.isHasReleaseTask());
 
+    objectPool.getQueryObjectPool(queryId);
+    objectPool.getQueryObjectPool(queryId);
     objectPool.clearQueryObjectPool(queryId);
-    Assert.assertTrue(objectPool.isHasReleaseTask());
-    while (objectPool.isHasReleaseTask()) ;
-    Assert.assertFalse(objectPool.hasQueryObjectPool(queryId));
-    Assert.assertFalse(objectPool.hasQueryObjectPoolReference(queryId));
-
-    queryObjectPool = objectPool.getQueryObjectPool(queryId);
     Assert.assertTrue(objectPool.hasQueryObjectPool(queryId));
+    objectPool.clearQueryObjectPool(queryId);
+    Assert.assertFalse(objectPool.hasQueryObjectPool(queryId));
 
     objectPool.clear();
   }

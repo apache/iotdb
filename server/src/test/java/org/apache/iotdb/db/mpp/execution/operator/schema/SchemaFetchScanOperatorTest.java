@@ -135,8 +135,7 @@ public class SchemaFetchScanOperatorTest {
       PlanNodeId planNodeId1 = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, SchemaFetchScanOperator.class.getSimpleName());
-      fragmentInstanceContext.setQueryObjectPool(
-          MPPObjectPool.getInstance().getQueryObjectPool(queryId));
+      fragmentInstanceContext.registerQueryObjectPool();
       return fragmentInstanceContext.getOperatorContexts().get(0);
     } finally {
       instanceNotificationExecutor.shutdown();
