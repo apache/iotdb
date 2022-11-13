@@ -415,6 +415,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) {
+    long startTimeNanos = System.nanoTime();
     long startTime = System.currentTimeMillis();
     boolean finished = false;
     try {
@@ -451,7 +452,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
-      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 
