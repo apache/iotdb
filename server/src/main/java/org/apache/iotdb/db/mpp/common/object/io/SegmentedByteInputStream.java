@@ -59,13 +59,18 @@ public class SegmentedByteInputStream extends InputStream {
     int position;
     int delta;
     while (len > 0) {
-      if (workingBuffer.remaining() >= len) {
+      if (workingBuffer.remaining() > len) {
         position = workingBuffer.position();
         workingBuffer.get(b, off, len);
         delta = workingBuffer.position() - position;
       } else {
         delta = workingBuffer.remaining();
         workingBuffer.get(b, off, delta);
+      }
+      count += delta;
+      off += delta;
+      len -= delta;
+      if (workingBuffer.remaining() <= 0) {
         if (index == bufferList.size() - 1) {
           break;
         } else {
@@ -73,9 +78,6 @@ public class SegmentedByteInputStream extends InputStream {
           workingBuffer = bufferList.get(index);
         }
       }
-      count += len;
-      off += delta;
-      len -= delta;
     }
     return count;
   }
