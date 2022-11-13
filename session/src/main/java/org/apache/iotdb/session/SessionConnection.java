@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
+import org.apache.iotdb.rpc.RpcRT;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.SessionTimeoutException;
@@ -366,6 +367,7 @@ public class SessionConnection {
     execReq.setFetchSize(session.fetchSize);
     execReq.setTimeout(timeout);
     TSExecuteStatementResp execResp;
+    long startTime = System.nanoTime();
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
       execResp = client.executeQueryStatement(execReq);
@@ -383,6 +385,8 @@ public class SessionConnection {
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    } finally {
+      RpcRT.getInstance().addCost(System.nanoTime() - startTime);
     }
     return new SessionDataSet(
         sql,

@@ -230,6 +230,7 @@ public class IoTDBRpcDataSet {
     rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     req.setTimeout(timeout);
+    long startTime = System.nanoTime();
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 
@@ -244,6 +245,8 @@ public class IoTDBRpcDataSet {
     } catch (TException e) {
       throw new IoTDBConnectionException(
           "Cannot fetch result from server, because of network connection: {} ", e);
+    } finally {
+      RpcRT.getInstance().addCost(System.nanoTime() - startTime);
     }
   }
 
