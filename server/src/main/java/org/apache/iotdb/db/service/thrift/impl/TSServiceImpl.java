@@ -654,6 +654,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    long startTimeNanos = System.nanoTime();
     IClientSession session = SESSION_MANAGER.getCurrSession();
     try {
       TSStatus loginStatus = checkLoginStatus(session);
@@ -683,6 +684,9 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(
               e, "\"" + req.getStatement() + "\". " + OperationType.EXECUTE_QUERY_STATEMENT));
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 
@@ -1005,6 +1009,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
+    long startTimeNanos = System.nanoTime();
     try {
       IClientSession session = SESSION_MANAGER.getCurrSession();
       TSStatus loginStatus = checkLoginStatus(session);
@@ -1026,6 +1031,9 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } catch (Exception e) {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 

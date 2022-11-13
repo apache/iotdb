@@ -53,6 +53,8 @@ public class QueryStatistics {
       "SeriesRawDataBatchReader.hasNextBatch()";
   public static final String PAGE_READER = "PageReader";
 
+  public static final String SERVER_RPC_RT = "ServerRpcRT";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");
