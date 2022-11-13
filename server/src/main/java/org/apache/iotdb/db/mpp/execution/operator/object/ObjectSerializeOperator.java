@@ -38,16 +38,15 @@ public class ObjectSerializeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final String queryId;
-  private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
+  private MPPObjectPool.QueryObjectPool objectPool;
 
   private final Operator child;
 
   private final Queue<TsBlock> tsBlockBufferQueue = new LinkedList<>();
 
-  public ObjectSerializeOperator(OperatorContext operatorContext, String queryId, Operator child) {
+  public ObjectSerializeOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = operatorContext;
-    this.queryId = queryId;
+    this.objectPool = operatorContext.getInstanceContext().getQueryObjectPool();
     this.child = child;
   }
 
@@ -78,8 +77,7 @@ public class ObjectSerializeOperator implements ProcessOperator {
       }
       if (ObjectTsBlockTransformer.isObjectIdTsBlock(tsBlock)) {
         for (TsBlock result :
-            ObjectTsBlockTransformer.transformToObjectBinaryTsBlockList(
-                tsBlock, index -> objectPool.get(queryId, index))) {
+            ObjectTsBlockTransformer.transformToObjectBinaryTsBlockList(tsBlock, objectPool::get)) {
           tsBlockBufferQueue.offer(result);
         }
       } else {
@@ -117,5 +115,10 @@ public class ObjectSerializeOperator implements ProcessOperator {
     return child.calculateMaxReturnSize()
         - calculateMaxReturnSize()
         + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public void close() throws Exception {
+    objectPool = null;
   }
 }

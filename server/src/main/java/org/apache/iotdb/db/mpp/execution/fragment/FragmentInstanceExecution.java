@@ -128,7 +128,8 @@ public class FragmentInstanceExecution {
             driver.close();
 
             // release object generated during object query
-            MPPObjectPool.getInstance().clear(driver.getInfo().getQueryId().getId());
+            context.setQueryObjectPool(null);
+            MPPObjectPool.getInstance().clearQueryObjectPool(driver.getInfo().getQueryId().getId());
 
             // help for gc
             driver = null;

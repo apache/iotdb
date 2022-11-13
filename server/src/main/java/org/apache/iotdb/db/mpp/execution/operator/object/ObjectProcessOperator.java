@@ -33,7 +33,7 @@ public abstract class ObjectProcessOperator<T extends ObjectEntry> extends Objec
     implements ProcessOperator {
 
   public ObjectProcessOperator(OperatorContext operatorContext, String queryId) {
-    super(operatorContext, queryId);
+    super(operatorContext);
   }
 
   protected List<T> getNextObjectBatchFromChild(Operator childOperator) {
@@ -45,7 +45,6 @@ public abstract class ObjectProcessOperator<T extends ObjectEntry> extends Objec
       return Collections.emptyList();
     }
 
-    return ObjectTsBlockTransformer.transformToObjectList(
-        tsBlock, index -> objectPool.get(queryId, index));
+    return ObjectTsBlockTransformer.transformToObjectList(tsBlock, objectPool::get);
   }
 }

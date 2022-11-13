@@ -33,12 +33,11 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
 
   protected final OperatorContext operatorContext;
 
-  protected final String queryId;
-  protected final MPPObjectPool objectPool = MPPObjectPool.getInstance();
+  protected MPPObjectPool.QueryObjectPool objectPool;
 
-  ObjectQueryOperator(OperatorContext operatorContext, String queryId) {
+  ObjectQueryOperator(OperatorContext operatorContext) {
     this.operatorContext = operatorContext;
-    this.queryId = queryId;
+    this.objectPool = operatorContext.getInstanceContext().getQueryObjectPool();
   }
 
   @Override
@@ -59,9 +58,7 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
     return ObjectTsBlockTransformer.transformToObjectIdTsBlock(
         objectEntryList,
         objectEntry ->
-            objectEntry.isRegistered()
-                ? objectEntry.getId()
-                : objectPool.put(queryId, objectEntry).getId());
+            objectEntry.isRegistered() ? objectEntry.getId() : objectPool.put(objectEntry).getId());
   }
 
   @Override
@@ -72,4 +69,9 @@ abstract class ObjectQueryOperator<T extends ObjectEntry> implements Operator {
   protected abstract boolean hasNextBatch();
 
   protected abstract List<T> nextBatch();
+
+  @Override
+  public void close() throws Exception {
+    objectPool = null;
+  }
 }

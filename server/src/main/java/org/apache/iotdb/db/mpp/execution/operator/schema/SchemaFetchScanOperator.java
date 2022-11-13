@@ -58,12 +58,11 @@ public class SchemaFetchScanOperator extends ObjectSourceOperator<SchemaFetchObj
   public SchemaFetchScanOperator(
       PlanNodeId planNodeId,
       OperatorContext context,
-      String queryId,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
       boolean withTags) {
-    super(planNodeId, context, queryId);
+    super(planNodeId, context);
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;

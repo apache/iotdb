@@ -38,11 +38,8 @@ public class SchemaFetchSGScanOperator extends ObjectSourceOperator<SchemaFetchO
   private boolean isFinished = false;
 
   public SchemaFetchSGScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext operatorContext,
-      String queryId,
-      List<String> storageGroupList) {
-    super(sourceId, operatorContext, queryId);
+      PlanNodeId sourceId, OperatorContext operatorContext, List<String> storageGroupList) {
+    super(sourceId, operatorContext);
     this.storageGroupList = storageGroupList;
   }
 

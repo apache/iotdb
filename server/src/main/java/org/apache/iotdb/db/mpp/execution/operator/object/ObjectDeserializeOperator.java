@@ -36,18 +36,16 @@ public class ObjectDeserializeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final String queryId;
-  private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
+  private MPPObjectPool.QueryObjectPool objectPool;
 
   private final Operator child;
 
   private final ObjectTsBlockTransformer.ObjectBinaryTsBlockCollector tsBlockCollector =
       ObjectTsBlockTransformer.createObjectBinaryTsBlockCollector();
 
-  public ObjectDeserializeOperator(
-      OperatorContext operatorContext, String queryId, Operator child) {
+  public ObjectDeserializeOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = operatorContext;
-    this.queryId = queryId;
+    this.objectPool = operatorContext.getInstanceContext().getQueryObjectPool();
     this.child = child;
   }
 
@@ -78,7 +76,7 @@ public class ObjectDeserializeOperator implements ProcessOperator {
     tsBlockCollector.collect(tsBlock);
     if (tsBlockCollector.isFull()) {
       return ObjectTsBlockTransformer.transformToObjectIdTsBlock(
-          tsBlockCollector, objectEntry -> objectPool.put(queryId, objectEntry).getId());
+          tsBlockCollector, objectEntry -> objectPool.put(objectEntry).getId());
     } else {
       return null;
     }
@@ -108,5 +106,10 @@ public class ObjectDeserializeOperator implements ProcessOperator {
   public long calculateRetainedSizeAfterCallingNext() {
     return (long) (tsBlockCollector.size()) * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES
         + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public void close() throws Exception {
+    objectPool = null;
   }
 }

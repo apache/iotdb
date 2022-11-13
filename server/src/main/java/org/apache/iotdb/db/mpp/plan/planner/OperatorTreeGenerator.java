@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
@@ -1626,11 +1627,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SchemaFetchSGScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(sgScanOperatorContext, 1);
     SchemaFetchSGScanOperator sgScanOperator =
-        new SchemaFetchSGScanOperator(
-            planNodeId,
-            sgScanOperatorContext,
-            context.getInstanceContext().getId().getQueryId().getId(),
-            storageGroupList);
+        new SchemaFetchSGScanOperator(planNodeId, sgScanOperatorContext, storageGroupList);
     if (context.isNeedObjectBinary()) {
       return processObjectSerialize(
           new PlanNodeId(planNodeId.getId() + "-serialize"), sgScanOperator, context);
@@ -1649,11 +1646,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SchemaFetchScanOperator.class.getSimpleName());
+    operatorContext
+        .getInstanceContext()
+        .setQueryObjectPool(
+            MPPObjectPool.getInstance()
+                .getQueryObjectPool(
+                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new SchemaFetchScanOperator(
         node.getPlanNodeId(),
         operatorContext,
-        context.getInstanceContext().getId().getQueryId().getId(),
         node.getPatternTree(),
         node.getTemplateMap(),
         ((SchemaDriverContext) (context.getInstanceContext().getDriverContext())).getSchemaRegion(),
@@ -2024,9 +2026,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 planNodeId,
                 ObjectDeserializeNode.class.getSimpleName());
+    operatorContext
+        .getInstanceContext()
+        .setQueryObjectPool(
+            MPPObjectPool.getInstance()
+                .getQueryObjectPool(
+                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new ObjectDeserializeOperator(
-        operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
+    return new ObjectDeserializeOperator(operatorContext, child);
   }
 
   @Override
@@ -2052,8 +2059,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getInstanceContext()
             .addOperatorContext(
                 context.getNextOperatorId(), planNodeId, ObjectSerializeNode.class.getSimpleName());
+    operatorContext
+        .getInstanceContext()
+        .setQueryObjectPool(
+            MPPObjectPool.getInstance()
+                .getQueryObjectPool(
+                    operatorContext.getInstanceContext().getId().getQueryId().getId()));
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new ObjectSerializeOperator(
-        operatorContext, context.getInstanceContext().getId().getQueryId().getId(), child);
+    return new ObjectSerializeOperator(operatorContext, child);
   }
 }

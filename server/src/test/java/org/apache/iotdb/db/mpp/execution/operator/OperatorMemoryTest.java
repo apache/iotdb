@@ -935,7 +935,6 @@ public class OperatorMemoryTest {
           new SchemaFetchScanOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              "",
               null,
               null,
               null,

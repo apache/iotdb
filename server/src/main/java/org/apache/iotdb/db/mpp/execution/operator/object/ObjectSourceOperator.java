@@ -29,9 +29,8 @@ public abstract class ObjectSourceOperator<T extends ObjectEntry> extends Object
 
   protected PlanNodeId sourceId;
 
-  public ObjectSourceOperator(
-      PlanNodeId sourceId, OperatorContext operatorContext, String queryId) {
-    super(operatorContext, queryId);
+  public ObjectSourceOperator(PlanNodeId sourceId, OperatorContext operatorContext) {
+    super(operatorContext);
     this.sourceId = sourceId;
   }
 

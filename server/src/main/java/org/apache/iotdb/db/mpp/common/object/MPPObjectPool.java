@@ -19,13 +19,28 @@
 
 package org.apache.iotdb.db.mpp.common.object;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MPPObjectPool {
 
-  private final Map<String, QueryObjectPool> queryPool = new ConcurrentHashMap<>();
+  private static final Logger LOGGER = LoggerFactory.getLogger(MPPObjectPool.class);
+
+  private final Map<String, QueryObjectPoolReference> queryPool = new ConcurrentHashMap<>();
+  private final ReferenceQueue<QueryObjectPool> referenceQueue = new ReferenceQueue<>();
+
+  private final ExecutorService executorService =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor("MPP-Object-Release-Task");
+  private volatile boolean hasReleaseTask = false;
 
   private MPPObjectPool() {}
 
@@ -40,32 +55,71 @@ public class MPPObjectPool {
     return MPPObjectPoolHolder.INSTANCE;
   }
 
-  public <T extends ObjectEntry> T put(String queryId, T objectEntry) {
-    return queryPool.computeIfAbsent(queryId, k -> new QueryObjectPool()).put(objectEntry);
-  }
+  public QueryObjectPool getQueryObjectPool(String queryId) {
+    QueryObjectPoolReference reference = queryPool.get(queryId);
+    QueryObjectPool queryObjectPool = null;
+    if (reference != null) {
+      queryObjectPool = reference.get();
+    }
 
-  public <T extends ObjectEntry> T get(String queryId, int objectId) {
-    QueryObjectPool queryObjectPool = queryPool.get(queryId);
     if (queryObjectPool == null) {
-      return null;
+      queryObjectPool = new QueryObjectPool(queryId);
+      QueryObjectPool finalQueryObjectPool = queryObjectPool;
+      return queryPool
+          .compute(
+              queryId,
+              (k, v) ->
+                  v == null || v.get() == null
+                      ? new QueryObjectPoolReference(queryId, finalQueryObjectPool, referenceQueue)
+                      : v)
+          .get();
     } else {
-      return queryObjectPool.get(objectId);
+      return queryObjectPool;
     }
   }
 
-  public void clear(String queryId) {
-    //    queryPool.remove(queryId);
+  public void clearQueryObjectPool(String queryId) {
+    if (hasReleaseTask || !queryPool.containsKey(queryId)) {
+      return;
+    }
+    synchronized (this) {
+      if (hasReleaseTask || !queryPool.containsKey(queryId)) {
+        return;
+      }
+      hasReleaseTask = true;
+      executorService.submit(this::executeClearQueryObjectPool);
+    }
+  }
+
+  public void executeClearQueryObjectPool() {
+    try {
+      QueryObjectPoolReference reference = (QueryObjectPoolReference) referenceQueue.poll();
+      while (reference != null) {
+        queryPool.compute(
+            reference.getQueryId(), (k, v) -> v == null || v.get() == null ? null : v);
+        reference = (QueryObjectPoolReference) referenceQueue.poll();
+      }
+    } catch (Throwable e) {
+      LOGGER.error(e.getMessage(), e);
+    }
+    hasReleaseTask = false;
   }
 
   public void clear() {
     queryPool.clear();
   }
 
-  private static class QueryObjectPool {
+  public static class QueryObjectPool {
+
+    private final String queryId;
 
     private final AtomicInteger indexGenerator = new AtomicInteger(0);
 
     private final Map<Integer, ObjectEntry> objectPool = new ConcurrentHashMap<>();
+
+    private QueryObjectPool(String queryId) {
+      this.queryId = queryId;
+    }
 
     public <T extends ObjectEntry> T put(T objectEntry) {
       int id = indexGenerator.getAndIncrement();
@@ -77,6 +131,25 @@ public class MPPObjectPool {
     @SuppressWarnings("unchecked")
     public <T extends ObjectEntry> T get(int objectId) {
       return (T) objectPool.remove(objectId);
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+  }
+
+  private static class QueryObjectPoolReference extends WeakReference<QueryObjectPool> {
+
+    private final String queryId;
+
+    private QueryObjectPoolReference(
+        String queryId, QueryObjectPool referent, ReferenceQueue<? super QueryObjectPool> q) {
+      super(referent, q);
+      this.queryId = queryId;
+    }
+
+    private String getQueryId() {
+      return queryId;
     }
   }
 }

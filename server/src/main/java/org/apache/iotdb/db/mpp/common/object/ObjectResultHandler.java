@@ -34,16 +34,16 @@ public class ObjectResultHandler<T extends ObjectEntry> {
 
   private final IQueryExecution queryExecution;
 
-  private final MPPObjectPool objectPool;
-
   private final ObjectTsBlockTransformer.ObjectBinaryTsBlockCollector collector =
       ObjectTsBlockTransformer.createObjectBinaryTsBlockCollector();
 
   private final Queue<T> nextBatchQueue = new ArrayDeque<>();
 
+  private MPPObjectPool.QueryObjectPool objectPool;
+
   public ObjectResultHandler(IQueryExecution queryExecution, MPPObjectPool objectPool) {
     this.queryExecution = queryExecution;
-    this.objectPool = objectPool;
+    this.objectPool = objectPool.getQueryObjectPool(queryExecution.getQueryId());
   }
 
   public boolean hasNextResult() throws IoTDBException {
@@ -72,7 +72,7 @@ public class ObjectResultHandler<T extends ObjectEntry> {
     if (ObjectTsBlockTransformer.isObjectIdTsBlock(tsBlock)) {
       Column column = tsBlock.getColumn(0);
       for (int i = 0; i < column.getPositionCount(); i++) {
-        nextBatchQueue.offer(objectPool.get(queryExecution.getQueryId(), column.getInt(i)));
+        nextBatchQueue.offer(objectPool.get(column.getInt(i)));
       }
     } else {
       collector.collect(tsBlock);
@@ -94,6 +94,7 @@ public class ObjectResultHandler<T extends ObjectEntry> {
   }
 
   public void closeAndCleanUp() {
-    MPPObjectPool.getInstance().clear(queryExecution.getQueryId());
+    objectPool = null;
+    MPPObjectPool.getInstance().clearQueryObjectPool(queryExecution.getQueryId());
   }
 }

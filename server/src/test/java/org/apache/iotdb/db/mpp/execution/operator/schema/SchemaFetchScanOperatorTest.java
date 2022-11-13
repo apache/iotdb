@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -47,7 +54,10 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class SchemaFetchScanOperatorTest {
 
@@ -63,6 +73,7 @@ public class SchemaFetchScanOperatorTest {
 
   @Test
   public void testSchemaFetchResult() throws Exception {
+    String queryId = "1";
     ISchemaRegion schemaRegion = prepareSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -73,8 +84,7 @@ public class SchemaFetchScanOperatorTest {
     SchemaFetchScanOperator schemaFetchScanOperator =
         new SchemaFetchScanOperator(
             null,
-            null,
-            "SCHEMA_FETCH_TEST",
+            prepareOperatorContext(queryId),
             patternTree,
             Collections.emptyMap(),
             schemaRegion,
@@ -87,7 +97,7 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     SchemaFetchObjectEntry objectEntry =
-        MPPObjectPool.getInstance().get("SCHEMA_FETCH_TEST", tsBlock.getColumn(0).getInt(0));
+        MPPObjectPool.getInstance().getQueryObjectPool(queryId).get(tsBlock.getColumn(0).getInt(0));
     Assert.assertFalse(objectEntry.isReadingStorageGroupInfo());
     ISchemaTree schemaTree = objectEntry.getSchemaTree();
 
@@ -110,6 +120,27 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertEquals(
         Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
+  }
+
+  private OperatorContext prepareOperatorContext(String queryId) {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId1, SchemaFetchScanOperator.class.getSimpleName());
+      fragmentInstanceContext.setQueryObjectPool(
+          MPPObjectPool.getInstance().getQueryObjectPool(queryId));
+      return fragmentInstanceContext.getOperatorContexts().get(0);
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
   }
 
   private ISchemaRegion prepareSchemaRegion() throws Exception {
