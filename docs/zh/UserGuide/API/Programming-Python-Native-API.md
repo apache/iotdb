@@ -77,15 +77,15 @@ session.close()
 
 ### 数据定义接口 DDL
 
-#### 存储组管理
+#### Database 管理
 
-* 设置存储组
+* 设置 database
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* 删除单个或多个存储组
+* 删除单个或多个 database
 
 ```python
 session.delete_storage_group(group_name)

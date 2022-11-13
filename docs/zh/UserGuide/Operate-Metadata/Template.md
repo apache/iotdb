@@ -53,7 +53,7 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 **挂载模板前，需确保存相关储组已经创建。**
 
-**推荐将模板挂载在存储组节点上，不建议将模板挂载到存储组上层的节点上。**
+**推荐将模板挂载在 database 节点上，不建议将模板挂载到 database 上层的节点上。**
 
 挂载元数据模板的 SQL 语句如下所示：
 
@@ -63,7 +63,7 @@ IoTDB> set schema template t1 to root.sg1.d1
 
 ## 激活元数据模板
 
-挂载好元数据模板后，且系统开启自动注册序列功能的情况下，即可直接进行数据的写入。例如存储组为 root.sg1，模板 t1 被挂载到了节点 root.sg1.d1，那么可直接向时间序列（如 root.sg1.d1.temperature 和 root.sg1.d1.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+挂载好元数据模板后，且系统开启自动注册序列功能的情况下，即可直接进行数据的写入。例如 database 为 root.sg1，模板 t1 被挂载到了节点 root.sg1.d1，那么可直接向时间序列（如 root.sg1.d1.temperature 和 root.sg1.d1.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
 
 **注意**：在插入数据之前或系统未开启自动注册序列功能，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列即激活模板：
 

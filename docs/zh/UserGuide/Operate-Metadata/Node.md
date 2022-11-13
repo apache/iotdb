@@ -180,10 +180,10 @@ It costs 0.001s
 
 其中，`isAligned`表示该设备下的时间序列是否对齐。
 
-查看设备及其存储组信息，可以使用 `SHOW DEVICES WITH DATABASE` 语句。
+查看设备及其 database 信息，可以使用 `SHOW DEVICES WITH DATABASE` 语句。
 
-* `SHOW DEVICES WITH DATABASE` 语句显示当前所有的设备信息和其所在的存储组，等价于 `SHOW DEVICES root.**`。
-* `SHOW DEVICES <PathPattern> WITH DATABASE` 语句规定了 `PathPattern`，返回给定的路径模式所匹配的设备信息和其所在的存储组。
+* `SHOW DEVICES WITH DATABASE` 语句显示当前所有的设备信息和其所在的 database，等价于 `SHOW DEVICES root.**`。
+* `SHOW DEVICES <PathPattern> WITH DATABASE` 语句规定了 `PathPattern`，返回给定的路径模式所匹配的设备信息和其所在的 database。
 
 SQL 语句如下所示：
 

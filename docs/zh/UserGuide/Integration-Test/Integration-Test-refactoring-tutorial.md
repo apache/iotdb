@@ -73,7 +73,7 @@ public class IoTDBAlignByDeviceIT {
 
 测试前的准备工作包括启动 IoTDB（单机或集群）实例和测试用的数据准备。这些逻辑在setUp方法内实现。其中setUp方法前需要添加```@BeforeClass``` 或 ```@Before``` 标签，前者表示该方法为当前集成测试执行的第 1 个方法，并且在集成测试运行时只执行 1 次，后者表示在运行当前集成测试的每 1 个测试方法前，该方法都会被执行 1 次。
 - IoTDB 实例启动通过调用工厂类来实现，即```EnvFactory.getEnv().initBeforeClass()```。
-- 测试用的数据准备包括按测试需要提前注册存储组、注册时间序列、写入时间序列数据等。建议在测试类内实现单独的方法来准备数据，如insertData()。若需要写入多条数据，请使用批量写入的接口（JDBC中的executeBatch接口，或Session API 中的 insertRecords、insertTablets 等接口）。
+- 测试用的数据准备包括按测试需要提前注册 database 、注册时间序列、写入时间序列数据等。建议在测试类内实现单独的方法来准备数据，如insertData()。若需要写入多条数据，请使用批量写入的接口（JDBC中的executeBatch接口，或Session API 中的 insertRecords、insertTablets 等接口）。
 
 ```java
 @BeforeClass

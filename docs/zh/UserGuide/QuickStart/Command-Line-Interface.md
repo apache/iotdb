@@ -157,7 +157,7 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
-9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建存储组、添加用户、角色等功能
+9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建 database、添加用户、角色等功能
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
@@ -228,7 +228,7 @@ Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {s
 
 假设用户希望对一个新启动的 IoTDB 进行如下操作：
 
-1. 创建名为 root.demo 的存储组
+1. 创建名为 root.demo 的 database
 
 2. 创建名为 root.demo.s1 的时间序列
 

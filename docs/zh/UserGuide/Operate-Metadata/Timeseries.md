@@ -82,7 +82,7 @@ IoTDB> drop timeseries root.ln.wf02.*
 
   SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
-时间序列信息具体包括：时间序列路径名，存储组，Measurement 别名，数据类型，编码方式，压缩方式，属性和标签。
+时间序列信息具体包括：时间序列路径名，database，Measurement 别名，数据类型，编码方式，压缩方式，属性和标签。
 
 示例：
 

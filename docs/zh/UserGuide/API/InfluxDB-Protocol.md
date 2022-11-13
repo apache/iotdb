@@ -130,7 +130,7 @@ database 和 measurement 之间的每一层都代表一个 tag。如果 tag key 
 
 **tag key 对应顺序关系的持久化方案**
 
-存储组为`root.TAG_INFO`，分别用存储组下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key及其对应的顺序关系。
+Database 为`root.TAG_INFO`，分别用 database 下的 `database_name`, `measurement_name`, `tag_name` 和 `tag_order` 测点来存储 tag key及其对应的顺序关系。
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+

@@ -31,19 +31,19 @@
 IoTDB > CREATE DATABASE root.ln
 ```
 
-需要注意的是，存储组的父子节点都不能再设置存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
+需要注意的是，database 的父子节点都不能再设置 database。例如在已经有`root.ln`和`root.sgcc`这两个 database 的情况下，创建`root.ln.wf01` database 是不可行的。系统将给出相应的错误提示，如下所示：
 
 ```
 IoTDB> CREATE DATABASE root.ln.wf01
 Msg: 300: root.ln has already been created as database.
 ```
-存储组节点名只支持中英文字符、数字、下划线的组合，如果想设置为纯数字或者包含其他字符，需要用反引号(``)把存储组名称引起来。
+Database 节点名只支持中英文字符、数字、下划线的组合，如果想设置为纯数字或者包含其他字符，需要用反引号(``)把 database 名称引起来。
 
-还需注意，如果在 Windows 系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
+还需注意，如果在 Windows 系统上部署，database 名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-## 查看存储组
+## 查看 database
 
-在存储组创建后，我们可以使用 [SHOW DATABASES](../Reference/SQL-Reference.md) 语句和 [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
+在 database 创建后，我们可以使用 [SHOW DATABASES](../Reference/SQL-Reference.md) 语句和 [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) 来查看 database，SQL 语句如下所示：
 
 ```
 IoTDB> show databases
@@ -75,7 +75,7 @@ IoTDB > DELETE DATABASE root.sgcc
 IoTDB > DELETE DATABASE root.**
 ```
 
-## 统计存储组数量
+## 统计 database 数量
 
 用户可以使用`COUNT DATABASES <PathPattern>`语句统计数据库的数量，允许指定`PathPattern` 用来统计匹配该`PathPattern` 的数据库的数量
 

@@ -132,8 +132,8 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 datanode 的节点数量                          | data_node{name="total",status="Registered",} 3.0                             |
 | partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
 | region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | database 的 DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | database 的 schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ##### 1.3.3.6.2. 弱一致性
 | Metric       | Tag                                                                                          | level     | 说明                                                 | 示例                                                                                                             |
@@ -388,7 +388,7 @@ static_configs:
 1. `Overview`：系统概述
    1. `The number of entity`：实体数量，目前包含时间序列的数量
    2. `write point per minute`：每分钟系统累计写入点数
-   3. `database used memory`：每个存储组使用的内存大小
+   3. `database used memory`：每个 database 使用的内存大小
 2. `Interface`：接口
    1. `The QPS of Interface`：系统接口每秒钟访问次数
    2. `The time consumed of Interface`：系统接口的平均耗时
@@ -442,7 +442,7 @@ static_configs:
 1. `Overview`：系统概述
    1. `The number of entity`：实体数量，目前包含时间序列的数量
    2. `write point per minute`：每分钟系统累计写入点数
-   3. `database used memory`：每个存储组使用的内存大小
+   3. `database used memory`：每个 database 使用的内存大小
    4. `Memory`：系统内存大小和已经使用的大小
 2. `Interface`：接口
    1. `The QPS of Interface`：系统接口每秒钟访问次数

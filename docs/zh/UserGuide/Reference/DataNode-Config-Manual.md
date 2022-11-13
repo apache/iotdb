@@ -1280,7 +1280,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| default\_storage\_group\_level |
 |:---:|:---|
-|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的存储组，将序列路径的哪一层当做存储组。例如，如果我们接到一个新序列 root.sg0.d1.s2, 并且 level=1， 那么 root.sg0 被视为存储组（因为 root 是 level 0 层）|
+|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的 database，将序列路径的哪一层当做 database。例如，如果我们接到一个新序列 root.sg0.d1.s2, 并且 level=1， 那么 root.sg0 被视为database（因为 root 是 level 0 层）|
 |取值| Int32 |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
@@ -1660,7 +1660,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| time\_partition\_interval\_for\_storage  |
 |:---:|:-----------------------------------------|
-|描述| 用于存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：毫秒 |
+|描述| 用于 database 分区的时间段长度，用户指定的 database 下会使用该时间段进行分区，单位：毫秒 |
 |类型| Int64                                    |
 |默认值| 604800000                                 |
 |改后生效方式| 仅允许在第一次启动服务前修改                           |
@@ -1669,7 +1669,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |   名字   | data\_region\_num                                                                                                                                                    |
 |:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|   描述   | 每一个用户定义存储组下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined database number] |
+|   描述   | 每一个用户定义 database 下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined database number] |
 |   类型   | INT32                                                                                                                                                                |
 |  默认值   | 1                                                                                                                                                                    |
 | 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                                                                                       |

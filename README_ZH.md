@@ -230,7 +230,7 @@ IoTDB>
 现在，让我们介绍创建 timeseries、插入数据和查询数据的方法。
 
 
-IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个存储组拥有。
+IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个 database 拥有。
 在定义 timeseries 之前，我们应该先使用 CREATE DATABASE 来创建一个数据库，下面是一个例子:
 
 ```
@@ -249,7 +249,7 @@ IoTDB> SHOW DATABASES
 Total line number = 1
 ```
 
-在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
+在设置 database 之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
 在创建 timeseries 时，我们应该定义它的数据类型和编码方案。这里我们创建两个 timeseries:
 
 
