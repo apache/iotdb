@@ -17,25 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.object;
+package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class ObjectMergeOperator implements ProcessOperator {
+public class CommonMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
 
   private int currentIndex;
 
-  public ObjectMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  public CommonMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.currentIndex = 0;

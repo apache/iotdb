@@ -39,9 +39,9 @@ import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.object.ObjectDeserializeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.object.ObjectMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSerializeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.CommonMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
@@ -102,7 +102,6 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOper
 import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchSGScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
@@ -500,9 +499,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SchemaQueryMergeOperator.class.getSimpleName());
+                CommonMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    return new CommonMergeOperator(operatorContext, children);
   }
 
   @Override
@@ -1611,9 +1610,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context
             .getInstanceContext()
             .addOperatorContext(
-                context.getNextOperatorId(), planNodeId, ObjectMergeOperator.class.getSimpleName());
+                context.getNextOperatorId(), planNodeId, CommonMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(mergeOperatorContext, 1);
-    return new ObjectMergeOperator(mergeOperatorContext, children);
+    return new CommonMergeOperator(mergeOperatorContext, children);
   }
 
   private Operator processSchemaFetchSGScan(

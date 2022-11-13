@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.CommonMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -62,7 +63,6 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
@@ -860,8 +860,7 @@ public class OperatorMemoryTest {
   }
 
   @Test
-  public void SchemaQueryMergeOperatorTest() {
-    QueryId queryId = new QueryId("stub_query");
+  public void CommonMergeOperatorTest() {
     List<Operator> children = new ArrayList<>(4);
 
     long expectedMaxReturnSize = 0;
@@ -879,9 +878,8 @@ public class OperatorMemoryTest {
       children.add(child);
     }
 
-    SchemaQueryMergeOperator operator =
-        new SchemaQueryMergeOperator(
-            queryId.genPlanNodeId(), Mockito.mock(OperatorContext.class), children);
+    CommonMergeOperator operator =
+        new CommonMergeOperator(Mockito.mock(OperatorContext.class), children);
 
     assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
