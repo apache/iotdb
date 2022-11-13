@@ -89,7 +89,7 @@ public class ObjectDeserializeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return tsBlockCollector.isEmpty() && child.isFinished();
+    return child.isFinished();
   }
 
   @Override
