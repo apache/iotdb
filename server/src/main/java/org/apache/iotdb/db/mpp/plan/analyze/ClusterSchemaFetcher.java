@@ -100,10 +100,40 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
+    List<PartialPath> fullPathList = new ArrayList<>();
+    PathPatternTree filteredPatternTree = new PathPatternTree();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+      if (pattern.hasWildcard()) {
+        filteredPatternTree.appendFullPath(pattern);
+      } else {
+        if (withTags) {
+          filteredPatternTree.appendFullPath(pattern);
+        } else {
+          fullPathList.add(pattern);
+        }
+      }
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    if (fullPathList.isEmpty()) {
+      return executeSchemaFetchQuery(
+          new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
+    }
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    String[] measurement = new String[1];
+    schemaCache.takeReadLock();
+    try {
+      for (PartialPath fullPath : fullPathList) {
+        measurement[0] = fullPath.getMeasurement();
+        schemaTree.mergeSchemaTree(schemaCache.get(fullPath.getDevicePath(), measurement));
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+    }
+    filteredPatternTree.constructTree();
+    schemaTree.mergeSchemaTree(
+        executeSchemaFetchQuery(
+            new SchemaFetchStatement(filteredPatternTree, templateMap, withTags)));
+    return schemaTree;
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {

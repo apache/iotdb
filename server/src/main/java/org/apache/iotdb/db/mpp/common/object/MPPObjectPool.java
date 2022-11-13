@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.object;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,11 +80,19 @@ public class MPPObjectPool {
   }
 
   public void clearQueryObjectPool(String queryId) {
-    if (hasReleaseTask || !queryPool.containsKey(queryId)) {
+    if (hasReleaseTask) {
+      return;
+    }
+    QueryObjectPoolReference reference = queryPool.get(queryId);
+    if (reference == null || reference.get() != null) {
       return;
     }
     synchronized (this) {
-      if (hasReleaseTask || !queryPool.containsKey(queryId)) {
+      if (hasReleaseTask) {
+        return;
+      }
+      reference = queryPool.get(queryId);
+      if (reference == null || reference.get() != null) {
         return;
       }
       hasReleaseTask = true;
@@ -103,6 +112,22 @@ public class MPPObjectPool {
       LOGGER.error(e.getMessage(), e);
     }
     hasReleaseTask = false;
+  }
+
+  @TestOnly
+  boolean isHasReleaseTask() {
+    return hasReleaseTask;
+  }
+
+  @TestOnly
+  boolean hasQueryObjectPool(String queryId) {
+    QueryObjectPoolReference reference = queryPool.get(queryId);
+    return reference != null && reference.get() != null;
+  }
+
+  @TestOnly
+  boolean hasQueryObjectPoolReference(String queryId) {
+    return queryPool.containsKey(queryId);
   }
 
   public void clear() {
