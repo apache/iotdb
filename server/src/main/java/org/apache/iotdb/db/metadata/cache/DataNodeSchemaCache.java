@@ -119,13 +119,21 @@ public class DataNodeSchemaCache {
 
   public void put(ISchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      SchemaCacheEntry schemaCacheEntry =
-          new SchemaCacheEntry(
-              (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.getTagMap(),
-              measurementPath.isUnderAlignedEntity());
-      cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+      putSingleMeasurementPath(measurementPath);
     }
+  }
+
+  public void put(MeasurementPath measurementPath) {
+    putSingleMeasurementPath(measurementPath);
+  }
+
+  private void putSingleMeasurementPath(MeasurementPath measurementPath) {
+    SchemaCacheEntry schemaCacheEntry =
+        new SchemaCacheEntry(
+            (MeasurementSchema) measurementPath.getMeasurementSchema(),
+            measurementPath.getTagMap(),
+            measurementPath.isUnderAlignedEntity());
+    cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {

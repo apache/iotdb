@@ -1601,10 +1601,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             context,
             node.getStorageGroupList()));
 
-    return processObjectMerge(node.getPlanNodeId(), children, context);
+    return processCommonMerge(node.getPlanNodeId(), children, context);
   }
 
-  private Operator processObjectMerge(
+  private Operator processCommonMerge(
       PlanNodeId planNodeId, List<Operator> children, LocalExecutionPlanContext context) {
     OperatorContext mergeOperatorContext =
         context
