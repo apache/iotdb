@@ -160,10 +160,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       ClusterSchemaTree fetchedSchemaTree =
           executeSchemaFetchQuery(
               new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
-      fetchedSchemaTree.mergeSchemaTree(schemaTree);
       if (fetchedSchemaTree.isEmpty()) {
-        return fetchedSchemaTree;
+        schemaTree.setStorageGroups(new ArrayList<>(storageGroups));
+        return schemaTree;
       }
+      fetchedSchemaTree.mergeSchemaTree(schemaTree);
+      storageGroups.addAll(fetchedSchemaTree.getStorageGroups());
+      fetchedSchemaTree.setStorageGroups(new ArrayList<>(storageGroups));
       schemaCache.takeReadLock();
       try {
         // only cache the schema fetched by full path
@@ -175,12 +178,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           }
           schemaCache.put(measurementPathList.get(0));
         }
-        schemaCache.put(fetchedSchemaTree);
       } finally {
         schemaCache.releaseReadLock();
       }
-      storageGroups.addAll(fetchedSchemaTree.getStorageGroups());
-      fetchedSchemaTree.setStorageGroups(new ArrayList<>(storageGroups));
       return fetchedSchemaTree;
     }
   }
