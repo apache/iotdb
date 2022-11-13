@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,6 +123,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
     }
 
+    PathPatternTree cachedFullPathPatternTree = new PathPatternTree();
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     String[] measurement = new String[1];
@@ -134,6 +136,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         if (cachedSchema.isEmpty()) {
           filteredPatternTree.appendFullPath(fullPath);
         } else {
+          cachedFullPathPatternTree.appendFullPath(fullPath);
           schemaTree.mergeSchemaTree(cachedSchema);
         }
       }
@@ -141,11 +144,17 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       schemaCache.releaseReadLock();
     }
 
+    cachedFullPathPatternTree.constructTree();
+    Set<String> storageGroups = new HashSet<>();
+    if (!cachedFullPathPatternTree.isEmpty()) {
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(cachedFullPathPatternTree);
+      storageGroups.addAll(schemaPartition.getSchemaPartitionMap().keySet());
+    }
+
     filteredPatternTree.constructTree();
     if (filteredPatternTree.isEmpty()) {
-      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-      schemaTree.setStorageGroups(
-          new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet()));
+      schemaTree.setStorageGroups(new ArrayList<>(storageGroups));
       return schemaTree;
     } else {
       ClusterSchemaTree fetchedSchemaTree =
@@ -158,6 +167,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaCache.releaseReadLock();
       }
       fetchedSchemaTree.mergeSchemaTree(schemaTree);
+      storageGroups.addAll(fetchedSchemaTree.getStorageGroups());
+      fetchedSchemaTree.setStorageGroups(new ArrayList<>(storageGroups));
       return fetchedSchemaTree;
     }
   }
