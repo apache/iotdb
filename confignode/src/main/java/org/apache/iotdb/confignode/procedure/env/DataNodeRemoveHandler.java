@@ -292,10 +292,10 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
-        "{}, Send action removeRegionPeer finished, regionId: {}, dataNode: {}",
+        "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REMOVE_DATANODE_PROCESS,
         regionId,
-        rpcClientDataNode.getInternalEndPoint());
+        getIdWithRpcEndpoint(rpcClientDataNode));
     return status;
   }
 
