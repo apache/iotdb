@@ -14,6 +14,7 @@ public class TimeMergeToolKit implements MergeSortToolKit {
   long[] startKey;
   long[] endKey;
   long targetKey;
+  int targetIndex;
   TsBlock[] tsBlocks;
   boolean[] tsBlocksEmpty;
 
@@ -47,15 +48,14 @@ public class TimeMergeToolKit implements MergeSortToolKit {
 
   @Override
   public void updateTsBlock(int index, int rowIndex) {
-    if(rowIndex == -1){
+    if (rowIndex == -1) {
       tsBlocks[index] = null;
       tsBlocksEmpty[index] = true;
-    }else{
+    } else {
       tsBlocks[index] = tsBlocks[index].subTsBlock(rowIndex);
       startKey[index] = tsBlocks[index].getTimeByIndex(rowIndex);
     }
   }
-
 
   @Override
   public List<Integer> getTargetTsBlockIndex() {
@@ -66,38 +66,46 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     }
 
     long minEndKey = endKey[0];
+    int index = 0;
     for (int i = 1; i < tsBlockCount; i++) {
-      if (endKey[i] < minEndKey) {
+      if (greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
+        index = i;
       }
     }
     for (int i = 0; i < tsBlockCount; i++) {
-      if (startKey[i] <= minEndKey) {
+      if (greater(minEndKey, startKey[i]) || minEndKey == startKey[i]) {
         targetTsBlockIndex.add(i);
       }
     }
     this.targetKey = minEndKey;
+    this.targetIndex = index;
     return targetTsBlockIndex;
   }
-
 
   /** Comparator */
   @Override
   public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
-    return false;
+    return timeOrdering == Ordering.ASC
+        ? tsBlockIterator.currentTime() <= tsBlocks[targetIndex].getTimeByIndex(0)
+        : tsBlockIterator.currentTime() >= tsBlocks[targetIndex].getTimeByIndex(0);
   }
 
   @Override
   public boolean greater(
-          TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
+      TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
     if (t.currentTime() == s.currentTime()) {
       return deviceOrdering == Ordering.ASC
-              ? ((String) t.currentValue()).compareTo((String) s.currentValue()) > 0
-              : ((String) t.currentValue()).compareTo((String) s.currentValue()) < 0;
+          ? ((String) t.currentValue()).compareTo((String) s.currentValue()) > 0
+          : ((String) t.currentValue()).compareTo((String) s.currentValue()) < 0;
     } else {
       return timeOrdering == Ordering.ASC
-              ? t.currentTime() > s.currentTime()
-              : t.currentTime() < s.currentTime();
+          ? t.currentTime() > s.currentTime()
+          : t.currentTime() < s.currentTime();
     }
+  }
+
+  public boolean greater(long t, long s) {
+    return timeOrdering == Ordering.ASC ? t > s : t < s;
   }
 }

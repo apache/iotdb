@@ -6,6 +6,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public class DeviceMergeToolKit implements MergeSortToolKit {
 
@@ -48,11 +49,11 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
   }
 
   @Override
-  public void updateTsBlock(int index,int rowIndex) {
-    if(rowIndex == -1){
+  public void updateTsBlock(int index, int rowIndex) {
+    if (rowIndex == -1) {
       tsBlocks[index] = null;
       tsBlocksEmpty[index] = true;
-    }else{
+    } else {
       tsBlocks[index] = tsBlocks[index].subTsBlock(rowIndex);
       startKey[index] = tsBlocks[index].getColumn(0).getBinary(0).toString();
     }
@@ -69,8 +70,8 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     String minEndKey = endKey[0];
     int index = 0;
     for (int i = 1; i < tsBlockCount; i++) {
-      if(tsBlocksEmpty[i])continue;
-      if (greater(minEndKey,endKey[i])) {
+      if (tsBlocksEmpty[i]) continue;
+      if (greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
         index = i;
       }
@@ -78,8 +79,8 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     this.targetKey = minEndKey;
     this.targetIndex = index;
     for (int i = 0; i < tsBlockCount; i++) {
-      if(tsBlocksEmpty[i])continue;
-      if (startKey[i].compareTo(minEndKey) <= 0) {
+      if (tsBlocksEmpty[i]) continue;
+      if (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i])) {
         targetTsBlockIndex.add(i);
       }
     }
@@ -87,26 +88,36 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
   }
 
   /** Comparator */
-
   @Override
   public boolean greater(
-          TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
+      TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
     return timeOrdering == Ordering.ASC
-            ? t.currentTime() > s.currentTime()
-            : t.currentTime() < s.currentTime();
+        ? t.currentTime() > s.currentTime()
+        : t.currentTime() < s.currentTime();
   }
 
-  public boolean greater(
-          String t, String s) {
-    return deviceOrdering == Ordering.ASC
-            ? t.compareTo(s)>0
-            : t.compareTo(s)<0;
+  public boolean greater(String t, String s) {
+    return deviceOrdering == Ordering.ASC ? t.compareTo(s) > 0 : t.compareTo(s) < 0;
+  }
+
+  public boolean equals(String t, String s) {
+    return Objects.equals(s, t);
   }
 
   @Override
   public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
-    return timeOrdering == Ordering.ASC?
-            tsBlockIterator.currentTime() < tsBlocks[targetIndex].getTimeByIndex(0)
-            :tsBlockIterator.currentTime() > tsBlocks[targetIndex].getTimeByIndex(0);
+    return deviceOrdering == Ordering.ASC
+        ? tsBlocks[targetIndex]
+                .getColumn(0)
+                .getBinary(0)
+                .toString()
+                .compareTo((String) tsBlockIterator.currentValue())
+            >= 0
+        : tsBlocks[targetIndex]
+                .getColumn(0)
+                .getBinary(0)
+                .toString()
+                .compareTo((String) tsBlockIterator.currentValue())
+            <= 0;
   }
 }
