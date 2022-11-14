@@ -80,7 +80,7 @@ public class SyncStatus {
   public void free() {
     long size = 0;
     for (PendingBatch pendingBatch : pendingBatches) {
-      size = pendingBatch.getSerializedSize();
+      size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
     multiLeaderMemoryManager.free(size);
