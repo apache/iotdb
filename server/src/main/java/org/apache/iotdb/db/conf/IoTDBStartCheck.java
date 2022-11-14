@@ -26,7 +26,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -208,6 +211,36 @@ public class IoTDBStartCheck {
     systemProperties.put(MPP_DATA_EXCHANGE_PORT, mppDataExchangePort);
     systemProperties.put(SCHEMA_REGION_CONSENSUS_PORT, schemaRegionConsensusPort);
     systemProperties.put(DATA_REGION_CONSENSUS_PORT, dataRegionConsensusPort);
+  }
+
+  /**
+   * check and create directory before start IoTDB.
+   *
+   * <p>(1) try to create directory, avoid the inability to create directory at runtime due to lack
+   * of permissions. (2) try to check if the directory is occupied, avoid multiple IoTDB processes
+   * accessing same director.
+   */
+  public void checkDirectory() throws ConfigurationException, IOException {
+    // check data dirs
+    for (String dataDir : config.getDataDirs()) {
+      DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
+    }
+    // check system dir
+    DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
+    // check WAL dir
+    if (!(config.isClusterMode()
+            && config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS))
+        && !config.getWalMode().equals(WALMode.DISABLE)) {
+      for (String walDir : commonConfig.getWalDirs()) {
+        DirectoryChecker.getInstance().registerDirectory(new File(walDir));
+      }
+    }
+    // in cluster mode, check consensus dir
+    if (config.isClusterMode()) {
+      DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
+    }
   }
 
   /**

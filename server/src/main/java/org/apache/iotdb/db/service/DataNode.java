@@ -129,7 +129,9 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
+    config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkDirectory();
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -163,7 +165,6 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    config.setClusterMode(true);
     return true;
   }
 
@@ -175,9 +176,6 @@ public class DataNode implements DataNodeMBean {
 
     // Register services
     JMXService.registerMBean(getInstance(), mbeanName);
-    // set the mpp mode to true
-    config.setMppMode(true);
-    config.setClusterMode(true);
   }
 
   /** register DataNode with ConfigNode */
