@@ -22,6 +22,12 @@ package org.apache.iotdb.rpc;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * When update this class, remember to update the following UserGuide
+ *
+ * docs/UserGuide/API/Status-Codes.md
+ * docs/zh/UserGuide/API/Status-Codes.md
+ */
 public enum TSStatusCode {
   SUCCESS_STATUS(200),
   STILL_EXECUTING_STATUS(201),
