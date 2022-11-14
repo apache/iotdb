@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -459,7 +460,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TSFetchWindowBatchResp resp =
             createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
         resp.setWindowBatchDataSetList(
-            QueryDataSetUtils.convertTsBlocksToWindowBatchDataSetList(queryExecution));
+            QueryDataSetUtils.convertTsBlocksToWindowBatchDataSetList(
+                queryExecution, ((FetchWindowBatchStatement) s).getSamplingIndexes()));
         return resp;
       }
     } catch (Exception e) {
@@ -514,7 +516,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSFetchWindowBatchResp resp =
             createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
-        resp.setWindowBatch(QueryDataSetUtils.convertTsBlocksToWindowBatch(queryExecution));
+        resp.setWindowBatch(
+            QueryDataSetUtils.convertTsBlocksToWindowBatch(
+                queryExecution, ((FetchWindowBatchStatement) s).getSamplingIndexes()));
         return resp;
       }
     } catch (Exception e) {

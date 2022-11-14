@@ -45,7 +45,7 @@ fetch_args = {
     "end_time": 32,
     "interval": 4,
     "sliding_step": 1,
-    "indexes": [0, 3, 5, 9]
+    "indexes": [9, 0, 5, 3]
 }
 
 print(session.fetch_window_batch(ts_path_list, None, fetch_args))

@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * This visitor is used to generate a logical plan for the statement and returns the {@link
@@ -294,16 +295,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitFetchWindowBatch(
       FetchWindowBatchStatement fetchWindowBatchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    List<Integer> sortedSamplingIndexes =
+        fetchWindowBatchStatement.getSamplingIndexes().stream()
+            .sorted()
+            .collect(Collectors.toList());
     planBuilder
         .planRawDataSource(analysis.getSourceExpressions(), Ordering.ASC, null)
         .planTransform(
             analysis.getSourceTransformExpressions(), true, ZoneId.systemDefault(), Ordering.ASC)
-        .planWindowSplit(
-            fetchWindowBatchStatement.getGroupByTimeParameter(),
-            fetchWindowBatchStatement.getSamplingIndexes())
+        .planWindowSplit(fetchWindowBatchStatement.getGroupByTimeParameter(), sortedSamplingIndexes)
         .planWindowConcat(
-            fetchWindowBatchStatement.getGroupByTimeParameter(),
-            fetchWindowBatchStatement.getSamplingIndexes());
+            fetchWindowBatchStatement.getGroupByTimeParameter(), sortedSamplingIndexes);
 
     return planBuilder.getRoot();
   }

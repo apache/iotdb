@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
@@ -400,9 +401,9 @@ public class QueryDataSetUtils {
     return res;
   }
 
-  public static List<List<ByteBuffer>> convertTsBlocksToWindowBatch(IQueryExecution queryExecution)
-      throws IoTDBException {
-    List<List<ByteBuffer>> windowSet = new ArrayList<>();
+  public static List<List<ByteBuffer>> convertTsBlocksToWindowBatch(
+      IQueryExecution queryExecution, List<Integer> samplingIndexes) throws IoTDBException {
+    List<List<ByteBuffer>> sortedWindowBatch = new ArrayList<>();
 
     while (true) {
       Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
@@ -423,14 +424,24 @@ public class QueryDataSetUtils {
         res.add(byteBuffer);
       }
 
-      windowSet.add(res);
+      sortedWindowBatch.add(res);
     }
-    return windowSet;
+
+    List<List<ByteBuffer>> windowBatch = new ArrayList<>(sortedWindowBatch.size());
+    List<Integer> sortedSamplingIndexes =
+        samplingIndexes.stream().sorted().collect(Collectors.toList());
+
+    for (Integer samplingIndex : samplingIndexes) {
+      int mapIndex = sortedSamplingIndexes.indexOf(samplingIndex);
+      windowBatch.add(sortedWindowBatch.get(mapIndex));
+    }
+    return windowBatch;
   }
 
   public static List<TSQueryDataSet> convertTsBlocksToWindowBatchDataSetList(
-      IQueryExecution queryExecution) throws IoTDBException, IOException {
-    List<TSQueryDataSet> windowSet = new ArrayList<>();
+      IQueryExecution queryExecution, List<Integer> samplingIndexes)
+      throws IoTDBException, IOException {
+    List<TSQueryDataSet> sortedWindowBatch = new ArrayList<>();
 
     int columnNum = queryExecution.getOutputValueColumnCount();
     // one time column and each value column has an actual value buffer and a bitmap value to
@@ -626,9 +637,18 @@ public class QueryDataSetUtils {
       tsQueryDataSet.setBitmapList(bitmapList);
       tsQueryDataSet.setValueList(valueList);
 
-      windowSet.add(tsQueryDataSet);
+      sortedWindowBatch.add(tsQueryDataSet);
     }
-    return windowSet;
+
+    List<TSQueryDataSet> windowBatch = new ArrayList<>(sortedWindowBatch.size());
+    List<Integer> sortedSamplingIndexes =
+        samplingIndexes.stream().sorted().collect(Collectors.toList());
+
+    for (Integer samplingIndex : samplingIndexes) {
+      int mapIndex = sortedSamplingIndexes.indexOf(samplingIndex);
+      windowBatch.add(sortedWindowBatch.get(mapIndex));
+    }
+    return windowBatch;
   }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
