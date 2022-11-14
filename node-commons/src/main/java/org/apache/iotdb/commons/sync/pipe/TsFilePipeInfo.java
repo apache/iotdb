@@ -86,7 +86,7 @@ public class TsFilePipeInfo extends PipeInfo {
         "sender",
         pipeSinkName,
         status.name(),
-        String.format("syncDelOp=%s,dataStartTimestamp=%s", syncDelOp, dataStartTimestamp),
+        String.format("SyncDelOp=%s,DataStartTimestamp=%s", syncDelOp, dataStartTimestamp),
         messageType.name());
   }
 
