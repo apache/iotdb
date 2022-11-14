@@ -1625,14 +1625,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 planNodeId,
                 SchemaFetchSGScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(sgScanOperatorContext, 1);
-    SchemaFetchSGScanOperator sgScanOperator =
-        new SchemaFetchSGScanOperator(planNodeId, sgScanOperatorContext, storageGroupList);
-    if (context.isNeedObjectBinary()) {
-      return processObjectSerialize(
-          new PlanNodeId(planNodeId.getId() + "-serialize"), sgScanOperator, context);
-    } else {
-      return sgScanOperator;
-    }
+    return new SchemaFetchSGScanOperator(planNodeId, sgScanOperatorContext, storageGroupList);
   }
 
   @Override
