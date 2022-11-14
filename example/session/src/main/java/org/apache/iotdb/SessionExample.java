@@ -72,8 +72,8 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    List<String> queryPaths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d2.s1");
-    List<Integer> indexes = Arrays.asList(0, 1, 2, 3);
+    List<String> queryPaths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<Integer> indexes = Arrays.asList(1, 2, 6, 7);
     List<SessionDataSet> windowBatch =
         session.fetchWindowBatch(queryPaths, null, 0, 32, 4, 3, indexes);
     for (SessionDataSet window : windowBatch) {

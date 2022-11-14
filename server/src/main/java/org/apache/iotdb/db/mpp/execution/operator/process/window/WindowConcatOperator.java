@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.mpp.execution.operator.process.window;
 
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 
@@ -34,13 +34,11 @@ public class WindowConcatOperator implements ProcessOperator {
   protected final OperatorContext operatorContext;
 
   protected final Operator child;
-  protected TsBlock inputTsBlock;
-  protected boolean canCallNext;
 
   private final ITimeRangeIterator sampleTimeRangeIterator;
   private TimeRange curTimeRange;
 
-  private final TsBlockBuilder resultTsBlockBuilder;
+  private final WindowSliceQueue windowSliceQueue;
 
   public WindowConcatOperator(
       OperatorContext operatorContext,
@@ -50,7 +48,7 @@ public class WindowConcatOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.child = child;
     this.sampleTimeRangeIterator = sampleTimeRangeIterator;
-    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    this.windowSliceQueue = new WindowSliceQueue(outputDataTypes);
   }
 
   @Override
@@ -60,17 +58,45 @@ public class WindowConcatOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    return child.next();
+    if (!child.hasNext()) {
+      curTimeRange = null;
+      return windowSliceQueue.outputWindow();
+    }
+
+    TsBlock inputTsBlock = child.next();
+    if (inputTsBlock == null) {
+      return null;
+    }
+
+    if (curTimeRange == null && sampleTimeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = sampleTimeRangeIterator.nextTimeRange();
+      windowSliceQueue.updateTimeRange(curTimeRange);
+    }
+
+    if (inputTsBlock.getStartTime() > curTimeRange.getMax()) {
+      TsBlock outputWindow = windowSliceQueue.outputWindow();
+      if (sampleTimeRangeIterator.hasNextTimeRange()) {
+        curTimeRange = sampleTimeRangeIterator.nextTimeRange();
+        windowSliceQueue.updateTimeRange(curTimeRange);
+      } else {
+        curTimeRange = null;
+      }
+      windowSliceQueue.processTsBlock(inputTsBlock);
+      return outputWindow;
+    } else {
+      windowSliceQueue.processTsBlock(inputTsBlock);
+      return null;
+    }
   }
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return curTimeRange != null || sampleTimeRangeIterator.hasNextTimeRange();
   }
 
   @Override
   public boolean isFinished() {
-    return child.isFinished();
+    return !this.hasNext();
   }
 
   @Override
