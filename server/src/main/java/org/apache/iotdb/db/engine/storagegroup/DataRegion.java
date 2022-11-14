@@ -1407,6 +1407,7 @@ public class DataRegion {
     if (isEmptyFile) {
       try {
         fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
+        tsFileManager.remove(tsFileProcessor.getTsFileResource(), sequence);
       } catch (IOException e) {
         logger.error(
             "Remove empty file {} error",
