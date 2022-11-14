@@ -151,7 +151,7 @@ public class SyncDataNodeClientPool {
     try {
       if (retryNum < 3){
         TimeUnit.MILLISECONDS.sleep(800L);
-      } else if (retryNum < 6){
+      } else if (retryNum < 5){
         TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
       } else {
         TimeUnit.MILLISECONDS.sleep(3200L);
