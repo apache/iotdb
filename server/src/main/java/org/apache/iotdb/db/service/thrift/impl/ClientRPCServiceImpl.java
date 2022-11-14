@@ -457,8 +457,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSFetchWindowBatchResp resp =
-                createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
-        resp.setWindowBatchDataSetList(QueryDataSetUtils.convertTsBlocksToWindowBatchDataSetList(queryExecution));
+            createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
+        resp.setWindowBatchDataSetList(
+            QueryDataSetUtils.convertTsBlocksToWindowBatchDataSetList(queryExecution));
         return resp;
       }
     } catch (Exception e) {
@@ -492,17 +493,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute fetch window set: {}", req.sessionId, req);
       long queryId =
-              SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
+          SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
-              COORDINATOR.execute(
-                      s,
-                      queryId,
-                      SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-                      "",
-                      PARTITION_FETCHER,
-                      SCHEMA_FETCHER,
-                      config.getQueryTimeoutThreshold());
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -512,14 +513,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSFetchWindowBatchResp resp =
-                createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
+            createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
         resp.setWindowBatch(QueryDataSetUtils.convertTsBlocksToWindowBatch(queryExecution));
         return resp;
       }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSFetchWindowBatchResp(
-              onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;

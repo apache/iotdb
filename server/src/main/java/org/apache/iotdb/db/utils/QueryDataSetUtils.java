@@ -428,8 +428,8 @@ public class QueryDataSetUtils {
     return windowSet;
   }
 
-  public static List<TSQueryDataSet> convertTsBlocksToWindowBatchDataSetList(IQueryExecution queryExecution)
-          throws IoTDBException, IOException {
+  public static List<TSQueryDataSet> convertTsBlocksToWindowBatchDataSetList(
+      IQueryExecution queryExecution) throws IoTDBException, IOException {
     List<TSQueryDataSet> windowSet = new ArrayList<>();
 
     int columnNum = queryExecution.getOutputValueColumnCount();
@@ -584,7 +584,7 @@ public class QueryDataSetUtils {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", type));
+                String.format("Data type %s is not supported.", type));
         }
         if (k != columnNum - 1) {
           rowCount -= currentCount;
