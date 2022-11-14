@@ -172,7 +172,7 @@ public class IoTDBFetchWindowSetIT {
       List<String> queryPaths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d2.s1");
       List<Integer> indexes = Arrays.asList(1, 3, 5, 7);
       List<SessionDataSet> windowSet =
-          session.fetchWindowSet(queryPaths, null, 0, 20, 2, 2, indexes);
+          session.fetchWindowBatch(queryPaths, null, 0, 20, 2, 2, indexes);
       Assert.assertEquals(indexes.size(), windowSet.size());
       for (SessionDataSet window : windowSet) {
         while (window.hasNext()) {

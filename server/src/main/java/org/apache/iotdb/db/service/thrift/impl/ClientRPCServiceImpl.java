@@ -88,8 +88,8 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowBatchReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowBatchResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
@@ -132,7 +132,6 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.SESSION_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
@@ -421,19 +420,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSFetchWindowSetResp fetchWindowSet(TSFetchWindowSetReq req) throws TException {
+  public TSFetchWindowBatchResp fetchWindowBatch(TSFetchWindowBatchReq req) throws TException {
     if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
-      return RpcUtils.getTSFetchWindowSetResp(getNotLoggedInStatus());
+      return RpcUtils.getTSFetchWindowBatchResp(getNotLoggedInStatus());
     }
     long startTime = System.currentTimeMillis();
     try {
-      Statement s =
-          StatementGenerator.createStatement(req, SESSION_MANAGER.getCurrSession().getZoneId());
+      Statement s = StatementGenerator.createStatement(req);
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSFetchWindowSetResp(status);
+        return RpcUtils.getTSFetchWindowBatchResp(status);
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
@@ -458,14 +456,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        TSFetchWindowSetResp resp =
-            createTSFetchWindowSetResp(queryExecution.getDatasetHeader(), queryId);
-        resp.setQueryResultList(QueryDataSetUtils.convertTsBlocksToWindowSet(queryExecution));
+        TSFetchWindowBatchResp resp =
+            createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
+        resp.setWindowBatch(QueryDataSetUtils.convertTsBlocksToWindowBatch(queryExecution));
         return resp;
       }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
-      return RpcUtils.getTSFetchWindowSetResp(
+      return RpcUtils.getTSFetchWindowBatchResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
@@ -1798,12 +1796,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return resp;
   }
 
-  private TSFetchWindowSetResp createTSFetchWindowSetResp(DatasetHeader header, long queryId) {
-    TSFetchWindowSetResp resp = RpcUtils.getTSFetchWindowSetResp(TSStatusCode.SUCCESS_STATUS);
+  private TSFetchWindowBatchResp createTSFetchWindowBatchResp(DatasetHeader header) {
+    TSFetchWindowBatchResp resp = RpcUtils.getTSFetchWindowBatchResp(TSStatusCode.SUCCESS_STATUS);
     resp.setColumnNameList(header.getRespColumns());
     resp.setColumnTypeList(header.getRespDataTypeList());
     resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
-    resp.setQueryId(queryId);
     return resp;
   }
 

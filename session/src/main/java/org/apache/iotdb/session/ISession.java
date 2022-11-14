@@ -441,7 +441,7 @@ public interface ISession extends AutoCloseable {
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
 
-  List<SessionDataSet> fetchWindowSet(
+  List<SessionDataSet> fetchWindowBatch(
       List<String> queryPaths,
       String functionName,
       long startTime,

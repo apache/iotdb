@@ -3264,7 +3264,7 @@ public class Session implements ISession {
   }
 
   @Override
-  public List<SessionDataSet> fetchWindowSet(
+  public List<SessionDataSet> fetchWindowBatch(
       List<String> queryPaths,
       String functionName,
       long startTime,
@@ -3273,7 +3273,7 @@ public class Session implements ISession {
       long slidingStep,
       List<Integer> indexes)
       throws StatementExecutionException {
-    return defaultSessionConnection.fetchWindowSet(
+    return defaultSessionConnection.fetchWindowBatch(
         queryPaths, functionName, startTime, endTime, interval, slidingStep, indexes);
   }
 

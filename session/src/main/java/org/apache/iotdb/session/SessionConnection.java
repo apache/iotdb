@@ -39,8 +39,8 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowBatchReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowBatchResp;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -485,7 +485,7 @@ public class SessionConnection {
         tsExecuteStatementResp.isIgnoreTimeStamp());
   }
 
-  public List<SessionDataSet> fetchWindowSet(
+  public List<SessionDataSet> fetchWindowBatch(
       List<String> queryPaths,
       String functionName,
       long startTime,
@@ -494,31 +494,35 @@ public class SessionConnection {
       long slidingStep,
       List<Integer> indexes)
       throws StatementExecutionException {
-    TSFetchWindowSetReq req =
-        new TSFetchWindowSetReq(
+    TSFetchWindowBatchReq req =
+        new TSFetchWindowBatchReq(
             sessionId,
             statementId,
             queryPaths,
             new TGroupByTimeParameter(startTime, endTime, interval, slidingStep, indexes));
-    TSFetchWindowSetResp resp;
+    if (functionName != null) {
+      req.setFunctionName(functionName);
+    }
+
+    TSFetchWindowBatchResp resp;
     try {
-      resp = client.fetchWindowSet(req);
+      resp = client.fetchWindowBatch(req);
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (TException e) {
       throw new StatementExecutionException("");
     }
 
     List<SessionDataSet> windowSet = new ArrayList<>();
-    for (List<ByteBuffer> queryResult : resp.getQueryResultList()) {
+    for (List<ByteBuffer> window : resp.getWindowBatch()) {
       SessionDataSet sessionDataSet =
           new SessionDataSet(
               resp.columnNameList,
               resp.columnTypeList,
               resp.columnNameIndexMap,
-              resp.queryId,
+              -1,
               statementId,
               sessionId,
-              queryResult);
+              window);
       windowSet.add(sessionDataSet);
     }
     return windowSet;

@@ -400,7 +400,7 @@ public class QueryDataSetUtils {
     return res;
   }
 
-  public static List<List<ByteBuffer>> convertTsBlocksToWindowSet(IQueryExecution queryExecution)
+  public static List<List<ByteBuffer>> convertTsBlocksToWindowBatch(IQueryExecution queryExecution)
       throws IoTDBException {
     List<List<ByteBuffer>> windowSet = new ArrayList<>();
 

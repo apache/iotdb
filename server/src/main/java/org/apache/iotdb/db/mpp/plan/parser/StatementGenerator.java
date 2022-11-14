@@ -70,7 +70,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchWindowSetReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchWindowBatchReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -179,7 +179,7 @@ public class StatementGenerator {
     return lastQueryStatement;
   }
 
-  public static Statement createStatement(TSFetchWindowSetReq fetchWindowSetReq, ZoneId zoneId)
+  public static Statement createStatement(TSFetchWindowBatchReq fetchWindowSetReq)
       throws IllegalPathException {
     FetchWindowSetStatement statement = new FetchWindowSetStatement();
 
