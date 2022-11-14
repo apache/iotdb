@@ -42,7 +42,7 @@ public class WindowSplitOperator implements ProcessOperator {
   protected TsBlock inputTsBlock;
   protected boolean canCallNext;
 
-  private final ITimeRangeIterator sampleTimeRangeIterator;
+  private final ITimeRangeIterator sampleTimeRangeSliceIterator;
   private TimeRange curTimeRange;
 
   private final TsBlockBuilder resultTsBlockBuilder;
@@ -50,11 +50,11 @@ public class WindowSplitOperator implements ProcessOperator {
   public WindowSplitOperator(
       OperatorContext operatorContext,
       Operator child,
-      ITimeRangeIterator sampleTimeRangeIterator,
+      ITimeRangeIterator sampleTimeRangeSliceIterator,
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.sampleTimeRangeIterator = sampleTimeRangeIterator;
+    this.sampleTimeRangeSliceIterator = sampleTimeRangeSliceIterator;
     this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
@@ -73,9 +73,9 @@ public class WindowSplitOperator implements ProcessOperator {
     // reset operator state
     canCallNext = true;
 
-    if (curTimeRange == null && sampleTimeRangeIterator.hasNextTimeRange()) {
+    if (curTimeRange == null && sampleTimeRangeSliceIterator.hasNextTimeRange()) {
       // move to next time window
-      curTimeRange = sampleTimeRangeIterator.nextTimeRange();
+      curTimeRange = sampleTimeRangeSliceIterator.nextTimeRange();
     }
 
     if (!fetchData()) {
@@ -135,7 +135,7 @@ public class WindowSplitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return curTimeRange != null || sampleTimeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || sampleTimeRangeSliceIterator.hasNextTimeRange();
   }
 
   @Override

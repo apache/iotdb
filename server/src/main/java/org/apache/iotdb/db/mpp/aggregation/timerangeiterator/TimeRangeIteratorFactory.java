@@ -80,7 +80,8 @@ public class TimeRangeIteratorFactory {
       long endTime,
       long interval,
       long slidingStep,
-      List<Integer> samplingIndexes) {
+      List<Integer> samplingIndexes,
+      boolean outputPartialTimeWindow) {
     return new SampleWindowIterator(startTime, endTime, interval, slidingStep, samplingIndexes);
   }
 }
