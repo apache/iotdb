@@ -119,8 +119,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     if (fullPathList.isEmpty()) {
-      return executeSchemaFetchQuery(
-          new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
     }
 
     PathPatternTree cachedFullPathPatternTree = new PathPatternTree();
