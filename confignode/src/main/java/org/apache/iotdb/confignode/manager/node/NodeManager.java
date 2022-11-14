@@ -356,6 +356,16 @@ public class NodeManager {
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    if (configManager.getConsensusManager() == null) {
+      TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
+      errorStatus.setMessage(
+          "ConsensusManager of target-ConfigNode is not initialized, "
+              + "please make sure the target-ConfigNode has been started successfully.");
+      return new TConfigNodeRegisterResp()
+          .setStatus(errorStatus)
+          .setConfigNodeId(ERROR_STATUS_NODE_ID);
+    }
+
     // Check global configuration
     TSStatus status = configManager.getConsensusManager().confirmLeader();
 
