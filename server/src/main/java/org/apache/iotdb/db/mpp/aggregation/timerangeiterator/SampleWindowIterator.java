@@ -59,7 +59,7 @@ public class SampleWindowIterator implements ITimeRangeIterator {
   public TimeRange nextTimeRange() {
     while (allTimeRangeIterator.hasNextTimeRange()) {
       TimeRange timeRange = allTimeRangeIterator.nextTimeRange();
-      if (timeRangeIndex + 1 == samplingIndexes.get(sampleIndex)) {
+      if (timeRangeIndex == samplingIndexes.get(sampleIndex)) {
         curTimeRange = timeRange;
         timeRangeIndex++;
         sampleIndex++;
@@ -72,7 +72,7 @@ public class SampleWindowIterator implements ITimeRangeIterator {
 
   @Override
   public boolean isAscending() {
-    throw new UnsupportedOperationException();
+    return true;
   }
 
   @Override
@@ -82,6 +82,6 @@ public class SampleWindowIterator implements ITimeRangeIterator {
 
   @Override
   public long getTotalIntervalNum() {
-    throw new UnsupportedOperationException();
+    return samplingIndexes.size();
   }
 }

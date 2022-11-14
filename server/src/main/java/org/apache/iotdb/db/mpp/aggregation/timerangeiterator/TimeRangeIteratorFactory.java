@@ -82,6 +82,11 @@ public class TimeRangeIteratorFactory {
       long slidingStep,
       List<Integer> samplingIndexes,
       boolean outputPartialTimeWindow) {
-    return new SampleWindowIterator(startTime, endTime, interval, slidingStep, samplingIndexes);
+    if (outputPartialTimeWindow && interval > slidingStep) {
+      return new SampleWindowSliceIterator(
+          startTime, endTime, interval, slidingStep, samplingIndexes);
+    } else {
+      return new SampleWindowIterator(startTime, endTime, interval, slidingStep, samplingIndexes);
+    }
   }
 }

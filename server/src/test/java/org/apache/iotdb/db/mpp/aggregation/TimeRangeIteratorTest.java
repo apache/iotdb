@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class TimeRangeIteratorTest {
 
   private static final long MS_TO_MONTH = 30 * 86400_000L;
@@ -294,9 +296,69 @@ public class TimeRangeIteratorTest {
         res4);
   }
 
-  private void checkRes(ITimeRangeIterator timeRangeIterator, String[] res) {
-    Assert.assertEquals(res.length, timeRangeIterator.getTotalIntervalNum());
+  @Test
+  public void testSampleTimeRange() {
+    String[] res1 = {"[ 0 : 3 ]", "[ 3 : 6 ]", "[ 6 : 9 ]", "[ 9 : 12 ]"};
+    String[] res2 = {"[ 3 : 6 ]", "[ 12 : 15 ]", "[ 18 : 21 ]", "[ 27 : 30 ]"};
+    String[] res3 = {"[ 3 : 6 ]", "[ 6 : 9 ]", "[ 18 : 21 ]", "[ 21 : 24 ]"};
 
+    long startTime = 0, endTime = 32, interval = 4, slidingStep = 3;
+
+    checkRes(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(0, 1, 2, 3), false),
+        res1);
+    checkRes(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(1, 4, 6, 9), false),
+        res2);
+    checkRes(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(1, 2, 6, 7), false),
+        res3);
+  }
+
+  @Test
+  public void testSampleTimeRangeSlice() {
+    String[] res1 = {
+      "[ 0 : 2 ]", "[ 3 : 3 ]", "[ 4 : 5 ]", "[ 6 : 6 ]", "[ 7 : 8 ]", "[ 9 : 9 ]", "[ 10 : 12 ]"
+    };
+    String[] res2 = {
+      "[ 3 : 6 ]",
+      "[ 7 : 11 ]", // pad
+      "[ 12 : 15 ]",
+      "[ 16 : 17 ]", // pad
+      "[ 18 : 21 ]",
+      "[ 22 : 26 ]", // pad
+      "[ 27 : 30 ]"
+    };
+    String[] res3 = {
+      "[ 3 : 5 ]",
+      "[ 6 : 6 ]",
+      "[ 7 : 9 ]",
+      "[ 10 : 17 ]", // pad
+      "[ 18 : 20 ]",
+      "[ 21 : 21 ]",
+      "[ 22 : 24 ]"
+    };
+
+    long startTime = 0, endTime = 32, interval = 4, slidingStep = 3;
+
+    checkResWithoutNum(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(0, 1, 2, 3), true),
+        res1);
+    checkResWithoutNum(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(1, 4, 6, 9), true),
+        res2);
+    checkResWithoutNum(
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            startTime, endTime, interval, slidingStep, Arrays.asList(1, 2, 6, 7), true),
+        res3);
+  }
+
+  private void checkResWithoutNum(ITimeRangeIterator timeRangeIterator, String[] res) {
     boolean isAscending = timeRangeIterator.isAscending();
     int cnt = isAscending ? 0 : res.length - 1;
 
@@ -306,5 +368,10 @@ public class TimeRangeIteratorTest {
       Assert.assertEquals(res[cnt], curTimeRange.toString());
       cnt += isAscending ? 1 : -1;
     }
+  }
+
+  private void checkRes(ITimeRangeIterator timeRangeIterator, String[] res) {
+    Assert.assertEquals(res.length, timeRangeIterator.getTotalIntervalNum());
+    checkResWithoutNum(timeRangeIterator, res);
   }
 }
