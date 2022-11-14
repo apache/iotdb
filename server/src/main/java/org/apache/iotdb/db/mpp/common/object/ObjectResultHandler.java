@@ -24,6 +24,9 @@ import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -31,6 +34,8 @@ import java.util.Optional;
 import java.util.Queue;
 
 public class ObjectResultHandler<T extends ObjectEntry> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ObjectResultHandler.class);
 
   private final IQueryExecution queryExecution;
 
@@ -78,10 +83,12 @@ public class ObjectResultHandler<T extends ObjectEntry> {
       collector.collect(tsBlock);
       while (!collector.isFull()) {
         if (!queryExecution.hasNextResult()) {
-          throw new RuntimeException("Failed to get rest object binary tsblocks");
+          LOGGER.error("Failed to get rest object binary tsblocks");
+          return;
         }
         queryResult = queryExecution.getBatchResult();
         if (!queryResult.isPresent() || queryResult.get().isEmpty()) {
+          LOGGER.error("Failed to get rest object binary tsblocks");
           return;
         }
         collector.collect(queryResult.get());

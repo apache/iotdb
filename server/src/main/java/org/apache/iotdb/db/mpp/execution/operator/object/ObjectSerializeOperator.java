@@ -120,5 +120,6 @@ public class ObjectSerializeOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     objectPool = null;
+    child.close();
   }
 }
