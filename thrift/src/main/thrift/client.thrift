@@ -434,7 +434,8 @@ struct TSFetchWindowBatchResp {
   2: required list<string> columnNameList
   3: required list<string> columnTypeList
   4: required map<string, i32> columnNameIndexMap
-  5: required list<list<binary>> windowBatch
+  5: optional list<list<binary>> windowBatch
+  6: optional list<TSQueryDataSet> windowBatchDataSetList
 }
 
 // The sender and receiver need to check some info to confirm validity
@@ -586,4 +587,6 @@ service IClientRPCService {
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
   TSFetchWindowBatchResp fetchWindowBatch(1:TSFetchWindowBatchReq req);
+
+  TSFetchWindowBatchResp fetchWindowBatchV2(1:TSFetchWindowBatchReq req);
 }

@@ -506,7 +506,7 @@ public class SessionConnection {
 
     TSFetchWindowBatchResp resp;
     try {
-      resp = client.fetchWindowBatch(req);
+      resp = client.fetchWindowBatchV2(req);
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (TException e) {
       throw new StatementExecutionException("");

@@ -457,14 +457,69 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSFetchWindowBatchResp resp =
-            createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
-        resp.setWindowBatch(QueryDataSetUtils.convertTsBlocksToWindowBatch(queryExecution));
+                createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
+        resp.setWindowBatchDataSetList(QueryDataSetUtils.convertTsBlocksToWindowBatchDataSetList(queryExecution));
         return resp;
       }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSFetchWindowBatchResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
+    } finally {
+      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
+      }
+    }
+  }
+
+  @Override
+  public TSFetchWindowBatchResp fetchWindowBatchV2(TSFetchWindowBatchReq req) throws TException {
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
+      return RpcUtils.getTSFetchWindowBatchResp(getNotLoggedInStatus());
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      Statement s = StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSFetchWindowBatchResp(status);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute fetch window set: {}", req.sessionId, req);
+      long queryId =
+              SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+              COORDINATOR.execute(
+                      s,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+                      "",
+                      PARTITION_FETCHER,
+                      SCHEMA_FETCHER,
+                      config.getQueryTimeoutThreshold());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException("error code: " + result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSFetchWindowBatchResp resp =
+                createTSFetchWindowBatchResp(queryExecution.getDatasetHeader());
+        resp.setWindowBatch(QueryDataSetUtils.convertTsBlocksToWindowBatch(queryExecution));
+        return resp;
+      }
+    } catch (Exception e) {
+      // TODO call the coordinator to release query resource
+      return RpcUtils.getTSFetchWindowBatchResp(
+              onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;

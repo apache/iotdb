@@ -284,6 +284,11 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSFetchWindowBatchResp fetchWindowBatchV2(TSFetchWindowBatchReq req) throws TException {
+    return null;
+  }
+
+  @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     BasicOpenSessionResp openSessionResp =
