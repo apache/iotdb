@@ -400,7 +400,7 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
                 PipeStatus.RUNNING.name(),
-                String.format("storageGroup='%s'", identityInfo.getStorageGroup()),
+                String.format("database='%s'", identityInfo.getDatabase()),
                 // TODO: implement receiver message
                 PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);
