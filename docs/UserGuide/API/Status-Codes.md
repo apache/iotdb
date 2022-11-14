@@ -84,6 +84,26 @@ Here is a list of Status Code and related message:
 |334|CREATE_PIPE_SINK_ERROR| Error in creating PIPE sink |
 |335|PIPE_ERROR| PIPE error |
 |336|PIPESERVER_ERROR| PIPE server error |
+|337|SERIES_OVERFLOW| Series number exceeds the threshold |
+|339|TEMPLATE_NOT_EXIST| Schema template does not exist |
+|340|CREATE_TEMPLATE_ERROR| Create schema template error |
+|341|SYNC_FILE_REBASE| Sync TsFile error |
+|342|SYNC_FILE_ERROR| Sync TsFile error |
+|343|VERIFY_METADATA_ERROR| Meet error in validate timeseries schema |
+|344|TIMESERIES_IN_BLACK_LIST| Timeseries is being deleted |
+|349|OVERSIZE_RECORD| Size of record exceeds the threshold of page of SchemaFile |
+|350|SCHEMA_FILE_REDO_LOG_BROKEN| SchemaFile redo log has broken |
+|355|TRIGGER_FIRE_ERROR| Error when firing trigger |
+|360|TRIGGER_LOAD_CLASS_ERROR| Error when load class of trigger |
+|361|TRIGGER_DOWNLOAD_ERROR| Error when download trigger from ConfigNode |
+|362|CREATE_TRIGGER_INSTANCE_ERROR| Error when create trigger instance |
+|363|ACTIVE_TRIGGER_INSTANCE_ERROR| Error when activate trigger instance |
+|364|DROP_TRIGGER_INSTANCE_ERROR| Error when drop trigger instance |
+|365|UPDATE_TRIGGER_LOCATION_ERROR| Error when move stateful trigger to new datanode |
+|370|UDF_LOAD_CLASS_ERROR| Error when loading UDF class |
+|371|UDF_DOWNLOAD_ERROR| Error when download UDF class from ConfigNode |
+|372|CREATE_FUNCTION_ON_DATANODE_ERROR| Error when create UDF on DataNode |
+|373|DROP_FUNCTION_ON_DATANODE_ERROR| Error when drop a UDF on DataNode |
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
@@ -99,6 +119,10 @@ Here is a list of Status Code and related message:
 |412|WRITE_PROCESS_ERROR|Writing data related error|
 |413|WRITE_PROCESS_REJECT|Writing data rejected error|
 |414|QUERY_ID_NOT_EXIST|Kill query with non existent queryId|
+|415|SNAPSHOT_DIR_NOT_LEGAL|Snapshot dir name is illegal |
+|416|SEMANTIC_ERROR|SQL semantic error|
+|417|LOAD_PIECE_OF_TSFILE_ERROR|Error when load a piece of TsFile when loading|
+|423|MEMORY_NOT_ENOUGH|Not enough memory for task execution in MPP|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |501|CLOSE_OPERATION_ERROR|Meet error in close operation|
 |502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
@@ -107,19 +131,34 @@ Here is a list of Status Code and related message:
 |505|SHUT_DOWN_ERROR|Meet error while shutdown|
 |506|MULTIPLE_ERROR|Meet error when executing multiple statements|
 |507|SESSION_EXPIRED|Session expired|
+|508|TSBLOCK_SERIALIZE_ERROR|TsBlock serialization error|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation, please add privilege|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+|605|USER_NOT_EXIST_ERROR|User does not exist|
+|606|ROLE_NOT_EXIST_ERROR|Role does not exist|
+|607|AUTHENTICATION_ERROR|Error in authentication|
+|608|CLEAR_PERMISSION_CACHE_ERROR|Error when clear the permission cache|
 |700|PARTITION_NOT_READY|Partition table not ready|
 |701|TIME_OUT|Operation timeout|
 |702|NO_LEADER|No leader|
 |703|UNSUPPORTED_OPERATION|Unsupported operation|
-|704|NODE_READ_ONLY|Node read only|
-|705|CONSISTENCY_FAILURE|Consistency check failure|
 |706|NO_CONNECTION|Can not get connection error|
 |707|NEED_REDIRECTION|Need direction|
+|709|ALL_RETRY_FAILED|All retry failed|
+|710|MIGRATE_REGION_ERROR|Error when migrate region|
+|711|CREATE_REGION_ERROR|Create region error|
+|712|DELETE_REGION_ERROR|Delete region error|
+|713|PARTITION_CACHE_UPDATE_FAIL|Update partition cache failed|
+|714|DESERIALIZE_PIECE_OF_TSFILE_ERROR|Error when deserialize a piece of TsFile|
+|715|CONSENSUS_NOT_INITIALIZED|Consensus is not initialized and cannot provide service|
 |800|CONFIG_ERROR|Configuration error|
+|901|DATANODE_ALREADY_REGISTERED|DataNode already registered in cluster |
+|902|CREATE_DATABASE_ERROR|Create Database failed|
+|903|DATABASE_ALREADY_EXISTS|Database already exist|
+|904|NOT_ENOUGH_DATA_NODE|The number of DataNode is not enough|
+|905|ERROR_GLOBAL_CONFIG|Global config in cluster does not consistent|
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.

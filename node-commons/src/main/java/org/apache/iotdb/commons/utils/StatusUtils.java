@@ -79,7 +79,6 @@ public class StatusUtils {
         status.setMessage("Path already exist.");
         break;
       case PATH_NOT_EXIST_ERROR:
-      case PATH_NOT_EXIST_ERROR:
         status.setMessage("Path does not exist.");
         break;
       case UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR:
@@ -189,9 +188,6 @@ public class StatusUtils {
         break;
       case NO_CONNECTION:
         status.setMessage("Node cannot be reached.");
-        break;
-      case PARSE_LOG_ERROR:
-        status.setMessage("Parse log error.");
         break;
       default:
         status.setMessage("");

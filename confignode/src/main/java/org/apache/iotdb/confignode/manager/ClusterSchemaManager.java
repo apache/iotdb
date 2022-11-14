@@ -125,7 +125,7 @@ public class ClusterSchemaManager {
       if (metadataException instanceof IllegalPathException) {
         result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
       return result;

@@ -347,7 +347,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
-      return createTLoadResp(new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+      return createTLoadResp(
+          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
 
     TSStatus resultStatus =
@@ -971,7 +972,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (result) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return RpcUtils.getStatus(TSStatusCode.CACHE_UPDATE_FAIL);
+      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_FAIL);
     }
   }
 
@@ -1063,7 +1064,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
-    return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+    return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
   }
 
   @Override

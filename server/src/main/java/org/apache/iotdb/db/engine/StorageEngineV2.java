@@ -715,7 +715,7 @@ public class StorageEngineV2 implements IService {
               "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.TSFILE_RUNTIME_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     } catch (IOException e) {
