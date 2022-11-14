@@ -29,24 +29,10 @@ import java.util.Map;
 public class StatusUtils {
   private StatusUtils() {}
 
-  public static final TSStatus PARTITION_TABLE_NOT_READY =
-      getStatus(TSStatusCode.PARTITION_NOT_READY);
   public static final TSStatus OK = getStatus(TSStatusCode.SUCCESS_STATUS);
-  public static final TSStatus TIME_OUT = getStatus(TSStatusCode.TIME_OUT);
-  public static final TSStatus NO_LEADER = getStatus(TSStatusCode.NO_LEADER);
   public static final TSStatus INTERNAL_ERROR = getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
-  public static final TSStatus UNSUPPORTED_OPERATION =
-      getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
   public static final TSStatus EXECUTE_STATEMENT_ERROR =
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-  public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
-  public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
-  public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
-  public static final TSStatus TIMESERIES_NOT_EXIST_ERROR =
-      getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
-  public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
-  public static final TSStatus PARSE_LOG_ERROR = getStatus(TSStatusCode.PARSE_LOG_ERROR);
-  public static final TSStatus DUPLICATED_TEMPLATE = getStatus(TSStatusCode.DUPLICATED_TEMPLATE);
 
   /**
    * @param statusMap index -> status
@@ -69,144 +55,137 @@ public class StatusUtils {
     status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
       case SUCCESS_STATUS:
-        status.setMessage("Executed successfully. ");
+        status.setMessage("Executed successfully.");
         break;
       case TIME_OUT:
-        status.setMessage("Request timed out. ");
+        status.setMessage("Request timed out.");
         break;
       case NO_LEADER:
-        status.setMessage("Leader cannot be found. ");
+        status.setMessage("Leader cannot be found.");
         break;
       case PARTITION_NOT_READY:
-        status.setMessage("Partition table is not ready. ");
-        break;
-      case NODE_READ_ONLY:
-        status.setMessage(
-            "Current node is read-only, please retry to find another available node. ");
+        status.setMessage("Partition table is not ready.");
         break;
       case INCOMPATIBLE_VERSION:
-        status.setMessage("Incompatible version. ");
+        status.setMessage("Incompatible version.");
         break;
       case NODE_DELETE_FAILED_ERROR:
-        status.setMessage("Failed while deleting node. ");
+        status.setMessage("Failed while deleting node.");
         break;
       case ALIAS_ALREADY_EXIST_ERROR:
-        status.setMessage("Alias already exists. ");
+        status.setMessage("Alias already exists.");
         break;
       case PATH_ALREADY_EXIST_ERROR:
-        status.setMessage("Path already exist. ");
+        status.setMessage("Path already exist.");
         break;
       case PATH_NOT_EXIST_ERROR:
-      case TIMESERIES_NOT_EXIST:
-        status.setMessage("Path does not exist. ");
+      case PATH_NOT_EXIST_ERROR:
+        status.setMessage("Path does not exist.");
         break;
       case UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR:
-        status.setMessage("Unsupported fetch metadata operation. ");
+        status.setMessage("Unsupported fetch metadata operation.");
         break;
       case METADATA_ERROR:
-        status.setMessage("Meet error when dealing with metadata. ");
+        status.setMessage("Meet error when dealing with metadata.");
         break;
       case OUT_OF_TTL_ERROR:
-        status.setMessage("Insertion time is less than TTL time bound. ");
+        status.setMessage("Insertion time is less than TTL time bound.");
         break;
-      case CONFIG_ADJUSTER:
-        status.setMessage("IoTDB system load is too large. ");
+      case HEAVY_WORKLOAD:
+        status.setMessage("IoTDB system load is too large.");
         break;
       case MERGE_ERROR:
-        status.setMessage("Meet error while merging. ");
+        status.setMessage("Meet error while merging.");
         break;
       case SYSTEM_CHECK_ERROR:
-        status.setMessage("Meet error while system checking. ");
+        status.setMessage("Meet error while system checking.");
         break;
       case SYNC_CONNECTION_EXCEPTION:
-        status.setMessage("Meet error while sync connecting. ");
+        status.setMessage("Meet error while sync connecting.");
         break;
-      case DATA_REGION_ERROR:
-        status.setMessage("Database processor related error. ");
-        break;
-      case STORAGE_GROUP_ERROR:
-        status.setMessage("No associated database. ");
+      case DATABASE_PROCESS_ERROR:
+        status.setMessage("Database processor related error.");
         break;
       case STORAGE_ENGINE_ERROR:
-        status.setMessage("Storage engine related error. ");
+        status.setMessage("Storage engine related error.");
         break;
       case TSFILE_PROCESSOR_ERROR:
-        status.setMessage("TsFile processor related error. ");
+        status.setMessage("TsFile processor related error.");
         break;
       case PATH_ILLEGAL:
-        status.setMessage("Illegal path. ");
+        status.setMessage("Illegal path.");
         break;
       case LOAD_FILE_ERROR:
-        status.setMessage("Meet error while loading file. ");
+        status.setMessage("Meet error while loading file.");
         break;
       case EXECUTE_STATEMENT_ERROR:
-        status.setMessage("Execute statement error. ");
+        status.setMessage("Execute statement error.");
         break;
       case SQL_PARSE_ERROR:
-        status.setMessage("Meet error while parsing SQL. ");
+        status.setMessage("Meet error while parsing SQL.");
         break;
       case GENERATE_TIME_ZONE_ERROR:
-        status.setMessage("Meet error while generating time zone. ");
+        status.setMessage("Meet error while generating time zone.");
         break;
       case SET_TIME_ZONE_ERROR:
-        status.setMessage("Meet error while setting time zone. ");
+        status.setMessage("Meet error while setting time zone.");
         break;
       case NOT_STORAGE_GROUP_ERROR:
-        status.setMessage("Operating object is not a database. ");
+        status.setMessage("Operating object is not a database.");
         break;
       case QUERY_NOT_ALLOWED:
-        status.setMessage("Query statements are not allowed error. ");
+        status.setMessage("Query statements are not allowed error.");
         break;
       case AST_FORMAT_ERROR:
-        status.setMessage("AST format related error. ");
+        status.setMessage("AST format related error.");
         break;
       case LOGICAL_OPERATOR_ERROR:
-        status.setMessage("Logical operator related error. ");
+        status.setMessage("Logical operator related error.");
         break;
       case LOGICAL_OPTIMIZE_ERROR:
-        status.setMessage("Logical optimize related error. ");
+        status.setMessage("Logical optimize related error.");
         break;
       case UNSUPPORTED_FILL_TYPE_ERROR:
-        status.setMessage("Unsupported fill type related error. ");
+        status.setMessage("Unsupported fill type related error.");
         break;
       case PATH_ERROR:
-        status.setMessage("Path related error. ");
+        status.setMessage("Path related error.");
         break;
       case QUERY_PROCESS_ERROR:
-        status.setMessage("Query process related error. ");
+        status.setMessage("Query process related error.");
         break;
       case WRITE_PROCESS_ERROR:
-        status.setMessage("Writing data related error. ");
+        status.setMessage("Writing data related error.");
         break;
       case INTERNAL_SERVER_ERROR:
-        status.setMessage("Internal server error. ");
+        status.setMessage("Internal server error.");
         break;
       case CLOSE_OPERATION_ERROR:
-        status.setMessage("Meet error in close operation. ");
+        status.setMessage("Meet error in close operation.");
         break;
       case READ_ONLY_SYSTEM_ERROR:
-        status.setMessage("Database is read-only. ");
+        status.setMessage("Database is read-only.");
         break;
       case DISK_SPACE_INSUFFICIENT_ERROR:
-        status.setMessage("Disk space is insufficient. ");
+        status.setMessage("Disk space is insufficient.");
         break;
       case START_UP_ERROR:
-        status.setMessage("Meet error while starting up. ");
+        status.setMessage("Meet error while starting up.");
         break;
       case WRONG_LOGIN_PASSWORD_ERROR:
-        status.setMessage("Username or password is wrong. ");
+        status.setMessage("Username or password is wrong.");
         break;
       case NOT_LOGIN_ERROR:
-        status.setMessage("Has not logged in. ");
+        status.setMessage("Has not logged in.");
         break;
       case NO_PERMISSION_ERROR:
-        status.setMessage("No permissions for this operation, please add privilege. ");
+        status.setMessage("No permissions for this operation, please add privilege.");
         break;
       case UNINITIALIZED_AUTH_ERROR:
-        status.setMessage("Uninitialized authorizer. ");
+        status.setMessage("Uninitialized authorizer.");
         break;
       case UNSUPPORTED_OPERATION:
-        status.setMessage("Unsupported operation. ");
+        status.setMessage("Unsupported operation.");
         break;
       case NO_CONNECTION:
         status.setMessage("Node cannot be reached.");

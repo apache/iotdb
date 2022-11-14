@@ -576,7 +576,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         return RpcUtils.getStatus(
-            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            TSStatusCode.DATABASE_NOT_EXIST,
             "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }

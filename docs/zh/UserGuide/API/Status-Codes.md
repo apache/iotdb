@@ -21,7 +21,7 @@
 
 # 状态码
 
-从 0.10 版本开始 IoTDB 引入了**状态码**这一概念。例如，因为 IoTDB 需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
+IoTDB 引入了**状态码**这一概念。例如，因为 IoTDB 需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
 
 ```
 try {
@@ -38,7 +38,8 @@ try {
 
 ```
 
-利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，只需要使用`e.getStatusType().getCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`。
+利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，
+只需要使用`e.getStatusType().getCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`。
 
 这里是状态码和相对应信息的列表：
 
@@ -51,22 +52,39 @@ try {
 |298|NODE_DELETE_FAILED_ERROR|删除节点失败|
 |299|ALIAS_ALREADY_EXIST_ERROR|路径别名已经存在|
 |300|PATH_ALREADY_EXIST_ERROR|路径已经存在|
-|301|PATH_NOT_EXIST_ERROR|路径不存在|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|不支持的获取元数据操作|
 |303|METADATA_ERROR|处理元数据错误|
+|304|PATH_NOT_EXIST_ERROR|路径不存在|
 |305|OUT_OF_TTL_ERROR|插入时间少于 TTL 时间边界|
-|306|CONFIG_ADJUSTER|IoTDB 系统负载过大|
+|306|HEAVY_WORKLOAD|IoTDB 系统负载过大|
 |307|MERGE_ERROR|合并错误|
 |308|SYSTEM_CHECK_ERROR|系统检查错误|
-|309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|回传设备冲突错误|
 |310|SYNC_CONNECTION_EXCEPTION|回传连接错误|
-|311|STORAGE_GROUP_PROCESSOR_ERROR|存储组处理器相关错误|
-|312|STORAGE_GROUP_ERROR|存储组相关错误|
+|311|DATABASE_PROCESS_ERROR|存储组处理器相关错误|
 |313|STORAGE_ENGINE_ERROR|存储引擎相关错误|
 |314|TSFILE_PROCESSOR_ERROR|TsFile 处理器相关错误|
 |315|PATH_ILLEGAL|路径不合法|
 |316|LOAD_FILE_ERROR|加载文件错误|
-|317|STORAGE_GROUP_NOT_READY| 存储组还在恢复中，还不能接受读写操作 |
+|317|DATABASE_NOT_READY| Database 还在恢复中，还不能接受读写操作 |
+|318|ILLEGAL_PARAMETER| 参数错误 |
+|319|ALIGNED_TIMESERIES_ERROR| 对齐时间序列错误 |
+|320|DUPLICATED_TEMPLATE| 元数据模板重复 |
+|321|UNDEFINED_TEMPLATE| 元数据模板未定义 |
+|322|DATABASE_NOT_EXIST| 数据库不存在 |
+|323|CONTINUOUS_QUERY_ERROR| 连续查询功能错误 |
+|324|NO_TEMPLATE_ON_MNODE| 当前元数据节点不存在元数据模板 |
+|325|DIFFERENT_TEMPLATE| 元数据模板不一致 |
+|326|TEMPLATE_IS_IN_USE| 元数据模板正在使用 |
+|327|TEMPLATE_INCOMPATIBLE| 元数据模板不兼容 |
+|328|SEGMENT_NOT_FOUND| 未找到 Segment |
+|329|PAGE_OUT_OF_SPACE| SchemaFile 中 Page 空间不够 |
+|330|RECORD_DUPLICATED| 记录重复 |
+|331|SEGMENT_OUT_OF_SPACE| SchemaFile 中 segment 空间不够 |
+|332|SCHEMA_FILE_NOT_EXISTS| SchemaFile 不存在 |
+|333|WRITE_AHEAD_LOG_ERROR| WAL 异常 |
+|334|CREATE_PIPE_SINK_ERROR| 创建 PIPE Sink 异常 |
+|335|PIPE_ERROR| PIPE 异常 |
+|336|PIPESERVER_ERROR| PIPE server 异常 |
 |400|EXECUTE_STATEMENT_ERROR|执行语句错误|
 |401|SQL_PARSE_ERROR|SQL 语句分析错误|
 |402|GENERATE_TIME_ZONE_ERROR|生成时区错误|

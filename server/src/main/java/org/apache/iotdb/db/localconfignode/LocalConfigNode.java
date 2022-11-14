@@ -1322,7 +1322,7 @@ public class LocalConfigNode {
     try {
       syncService.addPipeSink(createPipeSinkStatement);
     } catch (PipeSinkException e) {
-      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1331,7 +1331,7 @@ public class LocalConfigNode {
     try {
       syncService.dropPipeSink(pipeSinkName);
     } catch (PipeSinkException e) {
-      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

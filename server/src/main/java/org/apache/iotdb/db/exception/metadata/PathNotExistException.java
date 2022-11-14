@@ -31,13 +31,13 @@ public class PathNotExistException extends MetadataException {
   public PathNotExistException(String path) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
+        TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode());
   }
 
   public PathNotExistException(String path, boolean isUserException) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+        TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode(),
         isUserException);
   }
 
@@ -48,6 +48,6 @@ public class PathNotExistException extends MetadataException {
             paths.size() == 1
                 ? paths.get(0)
                 : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
+        TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode());
   }
 }

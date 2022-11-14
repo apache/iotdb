@@ -21,7 +21,7 @@
 
 # Status Codes
 
-**Status Code** is introduced in the latest version. A sample solution as IoTDB requires registering the time series first before writing data is:
+A sample solution as IoTDB requires registering the time series first before writing data is:
 
 ```
 try {
@@ -51,22 +51,39 @@ Here is a list of Status Code and related message:
 |298|NODE_DELETE_FAILED_ERROR|Failed while deleting node|
 |299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
 |300|PATH_ALREADY_EXIST_ERROR|Path already exists|
-|301|PATH_NOT_EXIST_ERROR|Path does not exist|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
+|304|PATH_NOT_EXIST_ERROR|Path does not exist|
 |305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|
-|306|CONFIG_ADJUSTER|IoTDB system load is too large|
+|306|HEAVY_WORKLOAD|IoTDB system load is too large|
 |307|MERGE_ERROR|Meet error while merging|
 |308|SYSTEM_CHECK_ERROR|Meet error while system checking|
-|309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|Sync device owners conflict|
 |310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
-|311|STORAGE_GROUP_PROCESSOR_ERROR|Database processor related error|
-|312|STORAGE_GROUP_ERROR|Database related error|
+|311|DATABASE_PROCESS_ERROR|Database processor related error|
 |313|STORAGE_ENGINE_ERROR|Storage engine related error|
 |314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
 |315|PATH_ILLEGAL|Illegal path|
 |316|LOAD_FILE_ERROR|Meet error while loading file|
-|317|STORAGE_GROUP_NOT_READY| The database is in recovery mode, not ready fore accepting read/write operation|
+|317|DATABASE_NOT_READY| The database is in recovery mode, not ready fore accepting read/write operation|
+|318|ILLEGAL_PARAMETER| Parameter is illegal |
+|319|ALIGNED_TIMESERIES_ERROR| Meet error in aligned timeseries |
+|320|DUPLICATED_TEMPLATE| Schema template is duplicated |
+|321|UNDEFINED_TEMPLATE| Schema template is not defined |
+|322|DATABASE_NOT_EXIST| Database does not exist |
+|323|CONTINUOUS_QUERY_ERROR| Continuous query error |
+|324|NO_TEMPLATE_ON_MNODE| No schema template on current MNode |
+|325|DIFFERENT_TEMPLATE| Template is not consistent |
+|326|TEMPLATE_IS_IN_USE| Template is in use |
+|327|TEMPLATE_INCOMPATIBLE| Template is not compatible |
+|328|SEGMENT_NOT_FOUND| Segment not found |
+|329|PAGE_OUT_OF_SPACE| No enough space on schema page |
+|330|RECORD_DUPLICATED| Record is duplicated |
+|331|SEGMENT_OUT_OF_SPACE| No enough space on schema segment |
+|332|SCHEMA_FILE_NOT_EXISTS| SchemaFile does not exist |
+|333|WRITE_AHEAD_LOG_ERROR| WAL error |
+|334|CREATE_PIPE_SINK_ERROR| Error in creating PIPE sink |
+|335|PIPE_ERROR| PIPE error |
+|336|PIPESERVER_ERROR| PIPE server error |
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|

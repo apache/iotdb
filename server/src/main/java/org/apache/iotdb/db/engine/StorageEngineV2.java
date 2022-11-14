@@ -724,7 +724,7 @@ public class StorageEngineV2 implements IService {
               "IO error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -765,7 +765,7 @@ public class StorageEngineV2 implements IService {
       }
     } catch (IOException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (LoadFileException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
