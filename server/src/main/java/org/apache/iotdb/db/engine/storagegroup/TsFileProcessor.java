@@ -1307,11 +1307,12 @@ public class TsFileProcessor {
   }
 
   /** end empty file and remove it from file system */
-  private void endEmptyFile() throws TsFileProcessorException {
+  private void endEmptyFile() throws TsFileProcessorException, IOException {
     logger.info("Start to end empty file {}", tsFileResource);
 
     // remove this processor from Closing list in DataRegion,
     // mark the TsFileResource closed, no need writer anymore
+    writer.close();
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
     }
