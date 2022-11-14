@@ -19,27 +19,98 @@
 
 -->
 
-## Files
+# Files
 
 In IoTDB, there are many kinds of data needed to be stored. This section introduces IoTDB's data storage strategy to provide you an explicit understanding of IoTDB's data management.
 
 The data in IoTDB is divided into three categories, namely data files, system files, and pre-write log files.
 
-### Data Files
+## Data Files
+> under directory basedir/data/
 
 Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `data_dirs` configuration item (see [file layer](../Reference/DataNode-Config-Manual.md) for details). Other files can be configured through [data_dirs](../Reference/DataNode-Config-Manual.md) configuration item (see [Engine Layer](../Reference/DataNode-Config-Manual.md) for details).
 
 In order to support users' storage requirements such as disk space expansion better, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](../Reference/DataNode-Config-Manual.md) configuration item), and you can specify or customize the directory selection strategy (see [multi_dir_strategy](../Reference/DataNode-Config-Manual.md) configuration item for details).
 
-### System files
+### TsFile
+> under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
+
+1. {time}-{version}-{mergeCnt}.tsfile
+    + normal data file
+2. {TsFileName}.tsfile.mod
+    + modification file
+    + record delete operation
+
+### TsFileResource
+1. {TsFileName}.tsfile.resource
+    + descriptor and statistic file of a TsFile
+2. {TsFileName}.tsfile.resource.temp
+    + temp file
+    + avoid damaging the tsfile.resource when updating it
+3. {TsFileName}.tsfile.resource.closing
+    + close flag file, to mark a tsfile closing so during restarts we can continue to close it or reopen it
+  
+
+## System files
 
 System files include schema files, which store metadata information of data in IoTDB. It can be configured through the `base_dir` configuration item (see [System Layer](../Reference/DataNode-Config-Manual.md) for details).
 
-### Pre-write Log Files
+### MetaData Related Files
+> under directory basedir/system/schema
+
+#### Meta
+1. mlog.bin
+    + record the meta operation
+2. mtree-1.snapshot
+    + snapshot of metadata
+3. mtree-1.snapshot.tmp
+    + temp file, to avoid damaging the snapshot when updating it
+
+#### Tags&Attributes
+1. tlog.txt
+    + store tags and attributes of each TimeSeries
+    + about 700 bytes for each TimeSeries
+
+### Other System Files
+#### Version
+> under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
+
+1. Version-{version}
+    + version file, record the max version in fileName of a storage group
+
+#### Upgrade
+> under directory basedir/system/upgrade
+
+1. upgrade.txt
+    + record which files have been upgraded
+
+#### Merge
+> under directory basedir/system/storage_groups/{StorageGroup}/
+
+1. merge.mods
+    + modification file generated during a merge
+2. merge.log
+    + record the progress of a merge
+3. tsfile.merge
+    + temporary merge result file, an involved sequence tsfile may have one during a merge
+
+#### Authority
+> under directory basedir/system/users/
+> under directory basedir/system/roles/
+
+#### CompressRatio
+> under directory basedir/system/compression_ration
+1. Ration-{compressionRatioSum}-{calTimes}
+    + record compression ratio of each tsfile
+# Pre-write Log Files
 
 Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](../Reference/DataNode-Config-Manual.md) for details).
 
-### Example of Setting Data storage Directory
+> under directory basedir/wal
+
+1. {StorageGroupName}-{TsFileName}/wal1
+    + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
+# Example of Setting Data storage Directory
 
 For a clearer understanding of configuring the data storage directory, we will give an example in this section.
 
