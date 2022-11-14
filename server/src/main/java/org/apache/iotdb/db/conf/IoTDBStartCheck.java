@@ -229,7 +229,9 @@ public class IoTDBStartCheck {
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
     // check WAL dir
     if (!(config.isClusterMode()
-            && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus))
+            && config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS))
         && !config.getWalMode().equals(WALMode.DISABLE)) {
       for (String walDir : commonConfig.getWalDirs()) {
         DirectoryChecker.getInstance().registerDirectory(new File(walDir));
