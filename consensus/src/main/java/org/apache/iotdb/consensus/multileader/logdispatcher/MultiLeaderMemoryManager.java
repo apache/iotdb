@@ -31,7 +31,7 @@ public class MultiLeaderMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(MultiLeaderMemoryManager.class);
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
-  private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 8;
+  private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
 
   private MultiLeaderMemoryManager() {
     MetricService.getInstance().addMetricSet(new MultiLeaderMemoryManagerMetrics(this));

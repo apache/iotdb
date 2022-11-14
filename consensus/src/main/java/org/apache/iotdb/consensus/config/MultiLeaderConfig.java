@@ -66,6 +66,7 @@ public class MultiLeaderConfig {
   }
 
   public static class RPC {
+
     private final int rpcSelectorThreadNum;
     private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
@@ -131,6 +132,7 @@ public class MultiLeaderConfig {
     }
 
     public static class Builder {
+
       private int rpcSelectorThreadNum = 1;
       private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
@@ -196,6 +198,7 @@ public class MultiLeaderConfig {
   }
 
   public static class Replication {
+
     private final int maxRequestNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatch;
@@ -282,6 +285,7 @@ public class MultiLeaderConfig {
     }
 
     public static class Builder {
+
       private int maxRequestNumPerBatch = 30;
       private int maxSizePerBatch = 4 * 1024 * 1024;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
@@ -293,7 +297,7 @@ public class MultiLeaderConfig {
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
-      private long allocateMemoryForConsensus;
+      private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
       private double maxMemoryRatioForQueue = 0.6;
 
       public Replication.Builder setMaxRequestNumPerBatch(int maxRequestNumPerBatch) {
@@ -344,6 +348,11 @@ public class MultiLeaderConfig {
 
       public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
         this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+        return this;
+      }
+
+      public Builder setMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
+        this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
         return this;
       }
 
