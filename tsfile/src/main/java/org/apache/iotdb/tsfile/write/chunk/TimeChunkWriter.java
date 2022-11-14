@@ -181,7 +181,6 @@ public class TimeChunkWriter {
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
-        this.sizeWithoutStatistic = 0;
         this.firstPageStatistics = header.getStatistics();
         this.sizeWithoutStatistic +=
             ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);

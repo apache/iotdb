@@ -68,7 +68,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
   private List<TsFileResource> targetResources = new ArrayList<>();
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);

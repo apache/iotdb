@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -118,8 +118,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     if (!new File(UNSEQ_DIRS).exists()) {
       Assert.assertTrue(new File(UNSEQ_DIRS).mkdirs());
     }
-    EnvironmentUtils.envSetUp();
     createTimeseries();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   @After
@@ -131,10 +133,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     if (new File(UNSEQ_DIRS).exists()) {
       FileUtils.forceDelete(new File(UNSEQ_DIRS));
     }
-    IoTDB.configManager.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    EnvironmentUtils.cleanEnv();
+    BloomFilterCache.getInstance().clear();
+    EnvironmentUtils.cleanAllDir();
   }
 
   private void createTimeseries() throws MetadataException {
@@ -146,15 +148,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     for (int i = 0; i < devices.length; ++i) {
       devicePath[i] = new PartialPath(storageGroup + "." + devices[i]);
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(storageGroup));
     for (PartialPath device : devicePath) {
       for (MeasurementSchema schema : schemas) {
-        IoTDB.schemaProcessor.createTimeseries(
-            device.concatNode(schema.getMeasurementId()),
-            schema.getType(),
-            schema.getEncodingType(),
-            schema.getCompressor(),
-            Collections.emptyMap());
         fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementId());
         paths.add(
             new MeasurementPath(
@@ -812,7 +807,6 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
       int fileNum = 12;
-      long pointStep = 10L;
       long[] points = new long[] {100, 200, 300, 50, 2100, 50, 600, 2300, 2500, 1000, 500, 500};
       for (int i = 0; i < fileNum; ++i) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();

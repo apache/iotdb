@@ -160,9 +160,6 @@ public class FileLoaderUtils {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
-      if (!resource.getTsFile().exists()) {
-        return null;
-      }
       // load all the TimeseriesMetadata of vector, the first one is for time column and the
       // remaining is for sub sensors
       // the order of timeSeriesMetadata list is same as subSensorList's order

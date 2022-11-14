@@ -91,9 +91,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
+    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
-          new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));
+          new TsFileIOWriter(
+              targetResources.get(i).getTsFile(), enableMemoryControl, memorySizeForEachWriter));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
