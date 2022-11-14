@@ -1451,3 +1451,11 @@ class Session(object):
             )
         )
         return response.measurements
+
+    def fetch_window_batch(self, query_paths : list, function_name : str, fetch_args):
+        request = TSFetchWindowBatchReq(
+            self.__session_id,query_paths,function_name
+            fetch_args.
+        )
+        response = self.__client.fetch_window_batch(request)
+        return
