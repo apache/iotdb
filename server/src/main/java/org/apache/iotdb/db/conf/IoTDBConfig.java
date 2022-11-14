@@ -3090,14 +3090,6 @@ public class IoTDBConfig {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isMppMode() {
-    return mppMode;
-  }
-
-  public void setMppMode(boolean mppMode) {
-    this.mppMode = mppMode;
-  }
-
   public boolean isClusterMode() {
     return isClusterMode;
   }
