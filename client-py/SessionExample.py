@@ -48,7 +48,7 @@ fetch_args = {
     "indexes": [9, 0, 5, 3]
 }
 
-print(session.fetch_window_batch(ts_path_list, None, fetch_args))
+print(session.fetch_window_batch(ts_path_list, "sin", fetch_args))
 
 # # set and delete storage groups
 # session.set_storage_group("root.sg_test_01")

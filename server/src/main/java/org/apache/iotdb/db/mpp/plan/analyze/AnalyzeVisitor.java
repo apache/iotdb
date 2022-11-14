@@ -1230,7 +1230,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // set source
     List<MeasurementPath> measurementPaths = schemaTree.getAllMeasurement();
     Set<Expression> sourceExpressions =
-        measurementPaths.stream().map(TimeSeriesOperand::new).collect(Collectors.toSet());
+        measurementPaths.stream()
+            .map(TimeSeriesOperand::new)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     for (Expression sourceExpression : sourceExpressions) {
       analyzeExpression(analysis, sourceExpression);
     }
@@ -1247,21 +1249,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                           functionName,
                           new LinkedHashMap<>(),
                           Collections.singletonList(expression)))
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
       for (Expression sourceTransformExpression : sourceTransformExpressions) {
         analyzeExpression(analysis, sourceTransformExpression);
       }
       analysis.setSourceTransformExpressions(sourceTransformExpressions);
-    }
 
-    // set output
-    List<ColumnHeader> columnHeaders =
-        measurementPaths.stream()
-            .map(
-                measurementPath ->
-                    new ColumnHeader(measurementPath.toString(), measurementPath.getSeriesType()))
-            .collect(Collectors.toList());
-    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+      // set output
+      List<ColumnHeader> columnHeaders =
+          sourceTransformExpressions.stream()
+              .map(
+                  expression ->
+                      new ColumnHeader(expression.toString(), analysis.getType(expression)))
+              .collect(Collectors.toList());
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+    } else {
+      // set output
+      List<ColumnHeader> columnHeaders =
+          measurementPaths.stream()
+              .map(
+                  measurementPath ->
+                      new ColumnHeader(measurementPath.toString(), measurementPath.getSeriesType()))
+              .collect(Collectors.toList());
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+    }
 
     Set<String> deviceSet =
         measurementPaths.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
