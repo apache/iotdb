@@ -162,9 +162,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   // the log file writer
   private boolean usingMLog = true;
-  // the log file seriesPath
-  //  private String logFilePath;
-  //  private File logFile;
+
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
   private final SchemaStatisticsManager schemaStatisticsManager =

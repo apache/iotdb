@@ -40,7 +40,7 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final File logFile;
 
-  private final FileOutputStream fileOutputStream;
+  private FileOutputStream fileOutputStream;
 
   private final ISerializer<T> serializer;
 
@@ -105,6 +105,11 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     if (logFile != null && logFile.exists()) {
       Files.delete(logFile.toPath());
     }
+  }
+
+  public void reset() throws IOException{
+    fileOutputStream.close();
+    fileOutputStream = new FileOutputStream(logFile, false);
   }
 
   @Override
