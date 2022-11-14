@@ -212,6 +212,7 @@ public abstract class SchemaRegionBasicTest {
 
   @Test
   public void testFetchSchema() throws Exception {
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
     PartialPath storageGroup = new PartialPath("root.sg");
     SchemaRegionId schemaRegionId = new SchemaRegionId(0);
     SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);

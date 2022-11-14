@@ -71,12 +71,14 @@ public class CachedMTreeStore implements IMTreeStore {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
+  private final Runnable flushCallback;
+
   private final ReadWriteLock readWriteLock =
       new ReentrantReadWriteLock(); // default writer preferential
   private final Lock readLock = readWriteLock.readLock();
   private final Lock writeLock = readWriteLock.writeLock();
 
-  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId)
+  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId, Runnable flushCallback)
       throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
@@ -84,6 +86,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
     hasFlushTask = false;
     hasReleaseTask = false;
+    this.flushCallback = flushCallback;
   }
 
   @Override
@@ -385,7 +388,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public boolean createSnapshot(File snapshotDir) {
     writeLock.lock();
     try {
-      flushVolatileNodes();
+      flushVolatileNodes(null);
       return file.createSnapshot(snapshotDir);
     } finally {
       writeLock.unlock();
@@ -393,19 +396,22 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   public static CachedMTreeStore loadFromSnapshot(
-      File snapshotDir, String storageGroup, int schemaRegionId)
+      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
-    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId);
+    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId, flushCallback);
   }
 
-  private CachedMTreeStore(File snapshotDir, String storageGroup, int schemaRegionId)
+  private CachedMTreeStore(
+      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
+    file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
 
     hasFlushTask = false;
     hasReleaseTask = false;
+    this.flushCallback = flushCallback;
   }
 
   private void ensureMemoryStatus() {
@@ -462,11 +468,13 @@ public class CachedMTreeStore implements IMTreeStore {
       return;
     }
     hasFlushTask = true;
-    flushTaskManager.submit(this::flushVolatileNodes);
+    flushTaskManager.submit(()->{this.flushVolatileNodes(flushCallback);});
   }
 
-  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
-  private void flushVolatileNodes() {
+  /** Sync all volatile nodes to schemaFile and execute memory release after flush.
+   * @param flushCallback Call back function. Ignore if null.
+   * */
+  private void flushVolatileNodes(Runnable flushCallback) {
     writeLock.lock();
     try {
       List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
@@ -485,6 +493,9 @@ public class CachedMTreeStore implements IMTreeStore {
       executeMemoryRelease();
       hasFlushTask = false;
       flushCount++;
+      if(flushCallback!=null){
+        flushCallback.run();
+      }
     } catch (Throwable e) {
       logger.error(
           "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);

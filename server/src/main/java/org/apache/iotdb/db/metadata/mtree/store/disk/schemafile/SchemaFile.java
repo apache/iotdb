@@ -130,19 +130,31 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
+  // load or init
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
-    return new SchemaFile(
-        sgName,
-        schemaRegionId,
-        true,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-        false);
+    String dirPath = getDirPath(sgName, schemaRegionId);
+    File pmtFile = SystemFileFactory.INSTANCE.getFile(dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME);
+    if (!pmtFile.exists()) {
+      return new SchemaFile(
+            sgName,
+            schemaRegionId,
+            true,
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            false);
+    }else {
+      return new SchemaFile(
+              sgName,
+              schemaRegionId,
+              false,
+              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+              false);
+    }
   }
 
   public static ISchemaFile loadSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
-    return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
+    return new SchemaFile(sgName, schemaRegionId, false, -1, false);
   }
 
   public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {

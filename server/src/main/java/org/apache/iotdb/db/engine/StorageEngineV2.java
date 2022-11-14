@@ -388,7 +388,9 @@ public class StorageEngineV2 implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    cachedThreadPool.shutdownNow();
+    if(cachedThreadPool!=null){
+      cachedThreadPool.shutdownNow();
+    }
     dataRegionMap.clear();
   }
 

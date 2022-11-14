@@ -232,7 +232,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGCachedImpl(
-              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
+              storageGroupMNode, tagManager::readTags, this::flushCallback, schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -252,6 +252,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           e);
     }
     initialized = true;
+  }
+
+  private void flushCallback() {
+    if (usingMLog && !isRecovering) {
+      try {
+        logWriter.reset();
+      } catch (IOException e) {
+        logger.error("Cannot reset MLog because {}", e.getMessage(), e);
+      }
+    }
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
@@ -504,7 +514,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
-              tagManager::readTags);
+              tagManager::readTags,
+              this::flushCallback);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
