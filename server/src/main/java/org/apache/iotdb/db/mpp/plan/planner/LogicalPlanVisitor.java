@@ -43,7 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -291,16 +291,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitFetchWindowSet(
-      FetchWindowSetStatement fetchWindowSetStatement, MPPQueryContext context) {
+  public PlanNode visitFetchWindowBatch(
+      FetchWindowBatchStatement fetchWindowBatchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     planBuilder
         .planRawDataSource(analysis.getSourceExpressions(), Ordering.ASC, null)
         .planTransform(
             analysis.getSourceTransformExpressions(), true, ZoneId.systemDefault(), Ordering.ASC)
         .planWindowSplit(
-            fetchWindowSetStatement.getGroupByTimeParameter(),
-            fetchWindowSetStatement.getSamplingIndexes());
+            fetchWindowBatchStatement.getGroupByTimeParameter(),
+            fetchWindowBatchStatement.getSamplingIndexes())
+        .planWindowConcat(
+            fetchWindowBatchStatement.getGroupByTimeParameter(),
+            fetchWindowBatchStatement.getSamplingIndexes());
 
     return planBuilder.getRoot();
   }

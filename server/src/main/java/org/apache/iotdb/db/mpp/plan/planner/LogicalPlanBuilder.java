@@ -64,6 +64,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowSplitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -893,6 +894,21 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter, List<Integer> samplingIndexes) {
     this.root =
         new WindowSplitNode(
+            context.getQueryId().genPlanNodeId(),
+            this.getRoot(),
+            groupByTimeParameter,
+            samplingIndexes);
+    return this;
+  }
+
+  public LogicalPlanBuilder planWindowConcat(
+      GroupByTimeParameter groupByTimeParameter, List<Integer> samplingIndexes) {
+    if (!groupByTimeParameter.hasOverlap()) {
+      return this;
+    }
+
+    this.root =
+        new WindowConcatNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             groupByTimeParameter,

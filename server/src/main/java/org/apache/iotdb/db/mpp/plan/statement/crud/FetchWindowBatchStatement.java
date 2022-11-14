@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -28,16 +27,16 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
-public class FetchWindowSetStatement extends Statement {
+public class FetchWindowBatchStatement extends Statement {
 
   private List<PartialPath> queryPaths;
   private String functionName;
   private GroupByTimeParameter groupByTimeParameter;
   private List<Integer> samplingIndexes;
 
-  public FetchWindowSetStatement() {
+  public FetchWindowBatchStatement() {
     super();
-    statementType = StatementType.FETCH_WINDOW_SET;
+    statementType = StatementType.FETCH_WINDOW_BATCH;
   }
 
   public List<PartialPath> getQueryPaths() {
@@ -79,12 +78,8 @@ public class FetchWindowSetStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitFetchWindowSet(this, context);
+    return visitor.visitFetchWindowBatch(this, context);
   }
 
-  public void semanticCheck() {
-    if (groupByTimeParameter.hasOverlap()) {
-      throw new SemanticException("");
-    }
-  }
+  public void semanticCheck() {}
 }

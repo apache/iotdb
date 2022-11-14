@@ -68,7 +68,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -1208,17 +1208,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitFetchWindowSet(
-      FetchWindowSetStatement fetchWindowSetStatement, MPPQueryContext context) {
+  public Analysis visitFetchWindowBatch(
+      FetchWindowBatchStatement fetchWindowBatchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(fetchWindowSetStatement);
+    analysis.setStatement(fetchWindowBatchStatement);
 
     // check for semantic errors
-    fetchWindowSetStatement.semanticCheck();
+    fetchWindowBatchStatement.semanticCheck();
 
     // concat path and construct path pattern tree
     PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath path : fetchWindowSetStatement.getQueryPaths()) {
+    for (PartialPath path : fetchWindowBatchStatement.getQueryPaths()) {
       patternTree.appendFullPath(path);
     }
 
@@ -1237,8 +1237,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
 
     // set transform
-    if (fetchWindowSetStatement.getFunctionName() != null) {
-      String functionName = fetchWindowSetStatement.getFunctionName();
+    if (fetchWindowBatchStatement.getFunctionName() != null) {
+      String functionName = fetchWindowBatchStatement.getFunctionName();
       Set<Expression> sourceTransformExpressions =
           sourceExpressions.stream()
               .map(

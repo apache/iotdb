@@ -37,7 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowSetStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -181,7 +181,7 @@ public class StatementGenerator {
 
   public static Statement createStatement(TSFetchWindowBatchReq fetchWindowSetReq)
       throws IllegalPathException {
-    FetchWindowSetStatement statement = new FetchWindowSetStatement();
+    FetchWindowBatchStatement statement = new FetchWindowBatchStatement();
 
     // set queryPaths
     List<PartialPath> queryPaths = new ArrayList<>();

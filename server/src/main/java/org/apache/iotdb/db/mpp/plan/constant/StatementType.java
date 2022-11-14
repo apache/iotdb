@@ -153,5 +153,5 @@ public enum StatementType {
 
   DEACTIVATE_TEMPLATE,
 
-  FETCH_WINDOW_SET
+  FETCH_WINDOW_BATCH
 }
