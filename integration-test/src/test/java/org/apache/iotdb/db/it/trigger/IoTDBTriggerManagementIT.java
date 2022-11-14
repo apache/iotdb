@@ -492,10 +492,10 @@ public class IoTDBTriggerManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE USER `zm` 'zm'");
+      statement.execute("CREATE USER `zmty` 'zmty'");
 
-      try (Connection connection2 = EnvFactory.getEnv().getConnection("zm", "zm");
-          Statement statement2 = connection.createStatement()) {
+      try (Connection connection2 = EnvFactory.getEnv().getConnection("zmty", "zmty");
+          Statement statement2 = connection2.createStatement()) {
         try {
           statement2.execute(
               String.format(
@@ -506,10 +506,12 @@ public class IoTDBTriggerManagementIT {
                   STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
           fail();
         } catch (Exception e) {
-          System.out.println(e.getMessage());
+          assertEquals(
+              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              e.getMessage());
         }
 
-        statement.execute("GRANT USER `zm` PRIVILEGES CREATE_TRIGGER on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES CREATE_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute(
@@ -533,7 +535,9 @@ public class IoTDBTriggerManagementIT {
                   STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "b"));
           fail();
         } catch (Exception e) {
-          System.out.println(e.getMessage());
+          assertEquals(
+              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              e.getMessage());
         }
       }
     } catch (Exception e) {
@@ -546,10 +550,10 @@ public class IoTDBTriggerManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE USER `zm` 'zm'");
+      statement.execute("CREATE USER `zmty` 'zmty'");
 
-      try (Connection connection2 = EnvFactory.getEnv().getConnection("zm", "zm");
-          Statement statement2 = connection.createStatement()) {
+      try (Connection connection2 = EnvFactory.getEnv().getConnection("zmty", "zmty");
+          Statement statement2 = connection2.createStatement()) {
         try {
           statement.execute(
               String.format(
@@ -562,19 +566,23 @@ public class IoTDBTriggerManagementIT {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
           fail();
         } catch (Exception e) {
-          System.out.println(e.getMessage());
+          assertEquals(
+              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              e.getMessage());
         }
 
-        statement.execute("GRANT USER `zm` PRIVILEGES CREATE_TRIGGER on root.test.stateless.b");
+        statement.execute("GRANT USER `zmty` PRIVILEGES CREATE_TRIGGER on root.test.stateless.b");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
           fail();
         } catch (Exception e) {
-          System.out.println(e.getMessage());
+          assertEquals(
+              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              e.getMessage());
         }
 
-        statement.execute("GRANT USER `zm` PRIVILEGES DROP_TRIGGER on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES DROP_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
