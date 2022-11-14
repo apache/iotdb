@@ -50,8 +50,8 @@ public class IoTDBInIT {
 
   private static String[] sqls =
       new String[] {
-        "set storage group to root.ln",
-        "set storage group to root.sg",
+        "CREATE DATABASE root.ln",
+        "CREATE DATABASE root.sg",
         "create timeseries root.sg.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
         "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,'qrcode001')",
         "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,'qrcode002')",

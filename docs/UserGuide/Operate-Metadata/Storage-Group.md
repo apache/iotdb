@@ -19,47 +19,45 @@
 
 -->
 
-# Storage Group Management
+# Database Management
 
-Storage Group can be regarded as Database in the relational database.
+## Create Database
 
-## Create Storage Group
-
-According to the storage model we can set up the corresponding storage group. Two SQL statements are supported for creating storage groups, as follows:
+According to the storage model we can set up the corresponding database. Two SQL statements are supported for creating databases, as follows:
 
 ```
-IoTDB > set storage group to root.ln
-IoTDB > create storage group root.sgcc
+IoTDB > create database root.ln
+IoTDB > create database root.sgcc
 ```
 
-We can thus create two storage groups using the above two SQL statements.
+We can thus create two databases using the above two SQL statements.
 
-It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
+It is worth noting that when the path itself or the parent/child layer of the path is already created as database, the path is then not allowed to be created as database. For example, it is not feasible to create `root.ln.wf01` as database when two databases `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
 
 ```
-IoTDB> set storage group to root.ln.wf01
-Msg: 300: root.ln has already been set to storage group.
-IoTDB> create storage group root.ln.wf01
-Msg: 300: root.ln has already been set to storage group.
+IoTDB> CREATE DATABASE root.ln.wf01
+Msg: 300: root.ln has already been created as database.
+IoTDB> create database root.ln.wf01
+Msg: 300: root.ln has already been created as database.
 ```
-The LayerName of storage group can only be characters, numbers, underscores. If you want to set it to pure numbers or contain other characters, you need to enclose the storage group name with backticks (``). 
+The LayerName of database can only be characters, numbers, underscores. If you want to set it to pure numbers or contain other characters, you need to enclose the database name with backticks (``). 
  
-Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
+Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to create databases `root.ln` and `root.LN` at the same time.
 
-## Show Storage Group
+## SHOW DATABASES
 
-After creating the storage group, we can use the [SHOW STORAGE GROUP](../Reference/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PathPattern>](../Reference/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
+After creating the database, we can use the [SHOW DATABASES](../Reference/SQL-Reference.md) statement and [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) to view the databases. The SQL statements are as follows:
 
 ```
-IoTDB> show storage group
-IoTDB> show storage group root.**
+IoTDB> SHOW DATABASES
+IoTDB> SHOW DATABASES root.**
 ```
 
 The result is as follows:
 
 ```
 +-------------+----+-------------------------+-----------------------+-----------------------+
-|storage group| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
+|database| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
 +-------------+----+-------------------------+-----------------------+-----------------------+
 |    root.sgcc|null|                        2|                      2|                 604800|
 |      root.ln|null|                        2|                      2|                 604800|
@@ -68,36 +66,35 @@ Total line number = 2
 It costs 0.060s
 ```
 
-## Delete Storage Group
+## Delete Database
 
-User can use the `DELETE STORAGE GROUP <PathPattern>` statement to delete all storage groups matching the pathPattern. Please note the data in the storage group will also be deleted. 
+User can use the `DELETE DATABASE <PathPattern>` statement to delete all databases matching the pathPattern. Please note the data in the database will also be deleted. 
 
 ```
-IoTDB > DELETE STORAGE GROUP root.ln
-IoTDB > DELETE STORAGE GROUP root.sgcc
-// delete all data, all timeseries and all storage groups
-IoTDB > DELETE STORAGE GROUP root.**
+IoTDB > DELETE DATABASE root.ln
+IoTDB > DELETE DATABASE root.sgcc
+// delete all data, all timeseries and all databases
+IoTDB > DELETE DATABASE root.**
 ```
 
-## Count Storage Group
+## Count Database
 
-User can use the `COUNT STORAGE GROUP <PathPattern>` statement to count the number of storage groups. It is allowed to specify `PathPattern` to count the number of storage groups matching the `PathPattern`.
+User can use the `COUNT DATABASE <PathPattern>` statement to count the number of databases. It is allowed to specify `PathPattern` to count the number of databases matching the `PathPattern`.
 
 SQL statement is as follows:
 
 ```
-IoTDB> show storage group
-IoTDB> count storage group
-IoTDB> count storage group root.*
-IoTDB> count storage group root.sgcc.*
-IoTDB> count storage group root.sgcc
+IoTDB> count databases
+IoTDB> count databases root.*
+IoTDB> count databases root.sgcc.*
+IoTDB> count databases root.sgcc
 ```
 
 The result is as follows:
 
 ```
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |    root.sgcc|
 | root.turbine|
@@ -107,7 +104,7 @@ Total line number = 3
 It costs 0.003s
 
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |            3|
 +-------------+
@@ -115,7 +112,7 @@ Total line number = 1
 It costs 0.003s
 
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |            3|
 +-------------+
@@ -123,7 +120,7 @@ Total line number = 1
 It costs 0.002s
 
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |            0|
 +-------------+
@@ -131,7 +128,7 @@ Total line number = 1
 It costs 0.002s
 
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |            1|
 +-------------+

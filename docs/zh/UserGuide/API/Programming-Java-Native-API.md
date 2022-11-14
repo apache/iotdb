@@ -118,15 +118,15 @@ void close()
 
 ### 数据定义接口 DDL
 
-#### 存储组管理
+#### Database 管理
 
-* 设置存储组
+* 设置 database
 
 ```java
 void setStorageGroup(String storageGroupId)
 ```
 
-* 删除单个或多个存储组
+* 删除单个或多个 database
 
 ```java
 void deleteStorageGroup(String storageGroup)
@@ -277,7 +277,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
-* **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
+* **请注意，我们强烈建议您将模板设置在 database 或 database 下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -582,7 +582,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -592,7 +592,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * 给定一个路径（应包括一个 SG 作为前缀），获取其被分到了哪个节点上：
 ```java  
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

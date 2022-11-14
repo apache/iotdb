@@ -553,7 +553,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create storage group {}", SESSION_MANAGER.getCurrSession(), storageGroup);
+            "Session-{} create database {}", SESSION_MANAGER.getCurrSession(), storageGroup);
       }
 
       // Step 1: Create SetStorageGroupStatement
@@ -778,7 +778,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} delete {} storage groups, the first is {}",
+            "Session-{} delete {} databases, the first is {}",
             SESSION_MANAGER.getCurrSession(),
             storageGroups.size(),
             storageGroups.get(0));

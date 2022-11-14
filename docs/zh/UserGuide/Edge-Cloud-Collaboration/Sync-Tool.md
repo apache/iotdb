@@ -45,9 +45,9 @@ TsFile 同步工具实现了数据从 "流入-> IoTDB ->流出" 的闭环。假�
 
 - 同步工具的发送端目前仅支持 IoTDB 1.0 版本**单数据副本配置**，接收端支持 IoTDB 1.0 版本任意配置。
 - 当有一个或多个发送端指向一个接收端时，这些发送端和接收端各自的设备路径集合之间应当没有交集，否则可能产生不可预料错误 
-  - 例如：当发送端A包括路径`root.sg.d.s`，发送端B也包括路径`root.sg.d.s`，当发送端A删除`root.sg`存储组时将也会在接收端删除所有B在接收端的`root.sg.d.s`中存放的数据。
+  - 例如：当发送端A包括路径`root.sg.d.s`，发送端B也包括路径`root.sg.d.s`，当发送端A删除`root.sg` database 时将也会在接收端删除所有B在接收端的`root.sg.d.s`中存放的数据。
 - 两个“端”之间目前不支持相互同步。
-- 同步工具仅同步数据写入、数据删除、时间序列删除，若接收端未创建存储组，自动创建与发送端同级存储组。TTL 的设置、Trigger、CQ 等其他操作均不同步
+- 同步工具仅同步数据写入、数据删除、时间序列删除，若接收端未创建 database，自动创建与发送端同级 database。TTL 的设置、Trigger、CQ 等其他操作均不同步
   - 若在发送端设置了 TTL，则启动 Pipe 时候 IoTDB 中所有未过期的数据以及未来所有的数据写入和删除都会被同步至接收端
 - 对同步任务进行操作时，需保证 `SHOW DATANODES` 中所有处于 Running 状态的 DataNode 节点均可连通，否则将执行失败。
 
@@ -302,7 +302,7 @@ IoTDB> SHOW PIPE p
 在发送端执行以下 SQL
 
 ```SQL
-SET STORAGE GROUP TO root.vehicle;
+CREATE DATABASE root.vehicle;
 CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE;
 CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN;
 CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;

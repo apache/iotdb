@@ -284,12 +284,12 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param pathName only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   @Override
   public String getBelongedStorageGroup(String pathName) {
@@ -298,7 +298,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         return storageGroup;
       }
     }
-    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+    throw new RuntimeException("No matched database. Please check the path " + pathName);
   }
 
   @Override

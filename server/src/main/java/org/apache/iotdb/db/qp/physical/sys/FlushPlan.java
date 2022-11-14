@@ -42,9 +42,9 @@ public class FlushPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
   /**
-   * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
+   * key-> database, value->list of pair, Pair<PartitionId, isSequence>,
    *
-   * <p>Notice, the value maybe null, when it is null, all partitions under the storage groups are
+   * <p>Notice, the value maybe null, when it is null, all partitions under the databases are
    * flushed, so do not use {@link java.util.concurrent.ConcurrentHashMap} when initializing as
    * ConcurrentMap dose not support null key and value
    */

@@ -31,15 +31,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
   private static final Path[] resourcePathsWithSg = {
     new PartialPath(COLUMN_DEVICES, false),
-    new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_DATABASE, false),
     new PartialPath(COLUMN_IS_ALIGNED, false)
   };
   private static final TSDataType[] resourceTypesWithSg = {

@@ -160,7 +160,7 @@ For a more detailed introduction to usage, please check the official manual (htt
 
 In addition to the examples above, the following statements are supported:
 
-*  `show storage group`
+*  `show databases`
 *  `show timeseries`
 *  `show child nodes`
 *  `show all ttl`

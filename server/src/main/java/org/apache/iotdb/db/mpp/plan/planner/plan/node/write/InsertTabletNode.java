@@ -220,7 +220,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    // only single device in single storage group
+    // only single device in single database
     List<WritePlanNode> result = new ArrayList<>();
     if (times.length == 0) {
       return Collections.emptyList();

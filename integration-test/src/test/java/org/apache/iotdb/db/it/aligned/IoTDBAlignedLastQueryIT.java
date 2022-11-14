@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -100,13 +101,13 @@ public class IoTDBAlignedLastQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
+              resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                   + ","
-                  + resultSet.getString(VALUE_STR)
+                  + resultSet.getString(ColumnHeaderConstant.VALUE)
                   + ","
-                  + resultSet.getString(DATA_TYPE_STR);
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE);
           assertTrue(ans, retSet.contains(ans));
           cnt++;
         }

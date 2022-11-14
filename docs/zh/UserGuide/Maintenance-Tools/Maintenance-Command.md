@@ -22,7 +22,7 @@
 
 ## FLUSH
 
-将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。在集群模式下，我们提供了持久化本节点的指定存储组的缓存、持久化整个集群指定存储组的缓存命令。
+将指定 database 的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。在集群模式下，我们提供了持久化本节点的指定 database 的缓存、持久化整个集群指定 database 的缓存命令。
 
 注意：此命令客户端不需要手动调用，IoTDB 有 wal 保证数据安全，IoTDB 会选择合适的时机进行 flush。
 如果频繁调用 flush 会导致数据文件很小，降低查询性能。
@@ -147,7 +147,7 @@ IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
@@ -169,7 +169,7 @@ IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
@@ -284,13 +284,13 @@ It costs 0.340s
 - `SHOW REGIONS`: 展示所有 Region 分布
 - `SHOW SCHEMA REGIONS`: 展示所有 SchemaRegion 分布
 - `SHOW DATA REGIONS`: 展示所有 DataRegion 分布
-- `SHOW (DATA|SCHEMA)? REGIONS OF STORAGE GROUP <sg1,sg2,...>`: 展示指定存储组 <sg1,sg2,...> 对应的 Region 分布
+- `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: 展示指定数据库 <sg1,sg2,...> 对应的 Region 分布
 
 展示所有 Region 的分布：
 ```
 IoTDB> show regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -313,7 +313,7 @@ It costs 0.165s
 ```
 IoTDB> show data regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -327,7 +327,7 @@ It costs 0.011s
 
 IoTDB> show schema regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         1|0.0.0.0|   6667|Follower|
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         2|0.0.0.0|   6668|Follower|
@@ -340,11 +340,11 @@ Total line number = 6
 It costs 0.012s
 ```
 
-展示指定存储组 <sg1,sg2,...> 对应的 Region 分布：
+展示指定数据库 <sg1,sg2,...> 对应的 Region 分布：
 ```
-IoTDB> show regions of storage group root.sg1
+IoTDB> show regions of database root.sg1
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -356,9 +356,9 @@ IoTDB> show regions of storage group root.sg1
 Total line number = 6
 It costs 0.007s
 
-IoTDB> show regions of storage group root.sg1, root.sg2
+IoTDB> show regions of database root.sg1, root.sg2
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -376,9 +376,9 @@ IoTDB> show regions of storage group root.sg1, root.sg2
 Total line number = 12
 It costs 0.009s
 
-IoTDB> show data regions of storage group root.sg1, root.sg2
+IoTDB> show data regions of database root.sg1, root.sg2
 +--------+----------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|      Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|      Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+----------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -390,9 +390,9 @@ IoTDB> show data regions of storage group root.sg1, root.sg2
 Total line number = 6
 It costs 0.007s
 
-IoTDB> show schema regions of storage group root.sg1, root.sg2
+IoTDB> show schema regions of database root.sg1, root.sg2
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         1|0.0.0.0|   6667|Follower|
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         2|0.0.0.0|   6668|Follower|
@@ -414,7 +414,7 @@ It costs 0.009s
 
 ## 集群槽路径监控工具
 
-集群使用分片来管理数据和元数据，一个存储组的元数据分片定义为序列槽，而数据分片定义为<序列槽，时间分区槽>的数对。为了得到分片相关的信息，可以使用以下SQL来查询：
+集群使用分片来管理数据和元数据，一个数据库的元数据分片定义为序列槽，而数据分片定义为<序列槽，时间分区槽>的数对。为了得到分片相关的信息，可以使用以下SQL来查询：
 ### 追踪数据分片的分区
 
 追踪一个数据分片（或一个序列槽下的所有数据分片）的对应分区:
@@ -458,7 +458,7 @@ Total line number = 1
 It costs 0.007s
 ```
 ### 追踪序列槽下的时间槽
-展示一个存储组内，一个特定序列槽下的所有时间槽：
+展示一个数据库内，一个特定序列槽下的所有时间槽：
 - `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
 
 示例:
@@ -473,8 +473,8 @@ IoTDB> show timeslotid of root.sg where seriesslotid=5286
 Total line number = 1
 It costs 0.007s
 ```
-### 追踪存储组的序列槽
-展示一个存储组内，数据，元数据或是所有的序列槽：
+### 追踪数据库的序列槽
+展示一个数据库内，数据，元数据或是所有的序列槽：
 - `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
 
 示例:
@@ -507,4 +507,4 @@ Total line number = 1
 It costs 0.006s
 ```
 #### 注意:
-通常情况下，一个存储组内，数据和元数据的序列槽是相同的。然而，我们仍然提供了不同的sql语句，以防它们在某些情况下并不相同。
+通常情况下，一个数据库内，数据和元数据的序列槽是相同的。然而，我们仍然提供了不同的sql语句，以防它们在某些情况下并不相同。

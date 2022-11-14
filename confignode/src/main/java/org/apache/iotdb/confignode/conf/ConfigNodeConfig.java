@@ -90,7 +90,7 @@ public class ConfigNodeConfig {
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
 
-  /** System directory, including version file for each storage group and metadata */
+  /** System directory, including version file for each database and metadata */
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 

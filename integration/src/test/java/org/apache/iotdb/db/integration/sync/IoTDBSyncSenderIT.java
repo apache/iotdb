@@ -200,7 +200,7 @@ public class IoTDBSyncSenderIT {
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.* where time <= 2");
       statement.execute("delete timeseries root.sg1.d2.*");
-      statement.execute("delete storage group root.sg2");
+      statement.execute("delete database root.sg2");
     }
 
     List<PipeData> resultList = new ArrayList<>();

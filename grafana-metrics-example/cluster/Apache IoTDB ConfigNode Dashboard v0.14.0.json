@@ -147,7 +147,7 @@
           "expr": "storage_group{instance=~\"$instance\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "Storage Group",
+          "legendFormat": "Database",
           "refId": "E"
         },
         {
@@ -734,7 +734,7 @@
           "refId": "A"
         }
       ],
-      "title": "Slot In Storage Group",
+      "title": "Slot In Database",
       "type": "timeseries"
     },
     {

@@ -187,7 +187,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testDeleteStorageGroup() throws IllegalPathException {
-    String sqlStr = "delete storage group root.vehicle.d1";
+    String sqlStr = "delete database root.vehicle.d1";
     DeleteStorageGroupOperator operator =
         (DeleteStorageGroupOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
@@ -221,7 +221,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testChineseCharacter() throws IllegalPathException {
-    String sqlStr1 = "set storage group to root.一级";
+    String sqlStr1 = "CREATE DATABASE root.一级";
     Operator operator = LogicalGenerator.generate(sqlStr1, ZoneId.systemDefault());
     Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
     Assert.assertEquals(new PartialPath("root.一级"), ((SetStorageGroupOperator) operator).getPath());

@@ -79,16 +79,16 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
-      statement.execute("SET STORAGE GROUP TO root.demo");
+      statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
 
 
-    //Show storage group
-    statement.execute("SHOW STORAGE GROUP");
+    //SHOW DATABASES
+    statement.execute("SHOW DATABASES");
     outputResult(statement.getResultSet());
 
     //Create time series
@@ -240,7 +240,7 @@ Here is a list of Status Code and related message:
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a storage group|
+|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a database|
 |405|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|

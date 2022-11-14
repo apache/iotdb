@@ -65,7 +65,7 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE DATABASE root.sg1");
 
       try {
         statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
@@ -81,7 +81,7 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 datatype=text");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 datatype=double");
 

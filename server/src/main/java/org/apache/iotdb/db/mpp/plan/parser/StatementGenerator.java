@@ -360,7 +360,7 @@ public class StatementGenerator {
   }
 
   public static Statement createStatement(String storageGroup) throws IllegalPathException {
-    // construct set storage group statement
+    // construct create database statement
     SetStorageGroupStatement statement = new SetStorageGroupStatement();
     statement.setStorageGroupPath(new PartialPath(storageGroup));
     return statement;

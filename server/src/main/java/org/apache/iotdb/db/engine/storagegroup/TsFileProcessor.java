@@ -104,7 +104,7 @@ public class TsFileProcessor {
   /** whether it's enable mem control */
   private final boolean enableMemControl = config.isEnableMemControl();
 
-  /** storage group info for mem control */
+  /** database info for mem control */
   private DataRegionInfo dataRegionInfo;
   /** tsfile processor info for mem control */
   private TsFileProcessorInfo tsFileProcessorInfo;
@@ -1291,7 +1291,7 @@ public class TsFileProcessor {
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info(
-          "Storage group {} close the file {}, TsFile size is {}, "
+          "Database {} close the file {}, TsFile size is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName,
           tsFileResource.getTsFile().getAbsoluteFile(),

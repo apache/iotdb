@@ -233,7 +233,7 @@ public class IoTDBConfig {
    */
   private int tlogBufferSize = 1024 * 1024;
 
-  /** System directory, including version file for each storage group and metadata */
+  /** System directory, including version file for each database and metadata */
   private String systemDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
@@ -465,7 +465,7 @@ public class IoTDBConfig {
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
-  /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
+  /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
@@ -609,7 +609,7 @@ public class IoTDBConfig {
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
-  /** Storage group level when creating schema automatically is enabled */
+  /** Database level when creating schema automatically is enabled */
   private int defaultStorageGroupLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
@@ -644,8 +644,8 @@ public class IoTDBConfig {
   private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * A global merge will be performed each such interval, that is, each storage group will be merged
-   * (if proper merge candidates can be found). Unit: second.
+   * A global merge will be performed each such interval, that is, each database will be merged (if
+   * proper merge candidates can be found). Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
@@ -737,7 +737,7 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the num of memtable in each storage group */
+  /** the num of memtable in each database */
   private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
@@ -831,7 +831,7 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of data regions per user-defined storage group */
+  /** the number of data regions per user-defined database */
   private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
@@ -912,7 +912,7 @@ public class IoTDBConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
 
-  /** The number of series partitions in a storage group */
+  /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */

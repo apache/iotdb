@@ -204,7 +204,7 @@ public class ClusterSchemaManager {
   }
 
   /**
-   * Update TTL for the specific StorageGroup or all storage groups in a path
+   * Update TTL for the specific StorageGroup or all databases in a path
    *
    * @param setTTLPlan setTTLPlan
    * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path

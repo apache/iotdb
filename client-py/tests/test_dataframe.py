@@ -27,7 +27,7 @@ def test_simple_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("set storage group to root.device0")
+        session.execute_non_query_statement("CREATE DATABASE root.device0")
 
         # Write data
         session.insert_str_record("root.device0", 123, "pressure", "15.0")
@@ -47,7 +47,7 @@ def test_non_time_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("set storage group to root.device0")
+        session.execute_non_query_statement("CREATE DATABASE root.device0")
 
         # Write data
         session.insert_str_record("root.device0", 123, "pressure", "15.0")
@@ -59,14 +59,14 @@ def test_non_time_query():
         session.close()
 
     assert list(df.columns) == [
-        "timeseries",
-        "alias",
-        "storage group",
-        "dataType",
-        "encoding",
-        "compression",
-        "tags",
-        "attributes",
+        "Timeseries",
+        "Alias",
+        "Database",
+        "DataType",
+        "Encoding",
+        "Compression",
+        "Tags",
+        "Attributes",
     ]
     assert_array_equal(
         df.values,
