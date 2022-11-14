@@ -390,8 +390,6 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |DROP_FUNCTION|卸载 UDF。路径无关|Eg: `drop function example`|
 |CREATE_TRIGGER|创建触发器。路径相关|Eg1: `CREATE TRIGGER <TRIGGER-NAME> BEFORE INSERT ON <FULL-PATH> AS <CLASSNAME>`<br />Eg2: `CREATE TRIGGER <TRIGGER-NAME> AFTER INSERT ON <FULL-PATH> AS <CLASSNAME>`|
 |DROP_TRIGGER|卸载触发器。路径相关|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
-|START_TRIGGER|启动触发器。路径相关|Eg: `start trigger lert-listener-sg1d1s1'`|
-|STOP_TRIGGER|停止触发器。路径相关|Eg: `stop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
 |UPDATE_TEMPLATE|创建、删除、修改模板。路径无关。|Eg1: `create schema template t1(s1 int32)`

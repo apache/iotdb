@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
@@ -44,8 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-// todo: add StandaloneIT.class when supporting trigger on Standalone
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTriggerManagementIT {
   private static final String TRIGGER_COUNTER_PREFIX =
       System.getProperty("user.dir")
@@ -484,6 +484,106 @@ public class IoTDBTriggerManagementIT {
           String.format("drop trigger %s", STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("has not been created"));
+    }
+  }
+
+  @Test
+  public void testCreateAuth() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("CREATE USER `zm` 'zm'");
+
+      try (Connection connection2 = EnvFactory.getEnv().getConnection("zm", "zm");
+          Statement statement2 = connection.createStatement()) {
+        try {
+          statement2.execute(
+              String.format(
+                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+                  TRIGGER_FILE_TIMES_COUNTER,
+                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+          fail();
+        } catch (Exception e) {
+          System.out.println(e.getMessage());
+        }
+
+        statement.execute("GRANT USER `zm` PRIVILEGES CREATE_TRIGGER on root.test.stateless.a");
+
+        try {
+          statement2.execute(
+              String.format(
+                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+                  TRIGGER_FILE_TIMES_COUNTER,
+                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+        } catch (Exception e) {
+          fail(e.getMessage());
+        }
+
+        try {
+          statement2.execute(
+              String.format(
+                  "create stateless trigger %s before insert on root.test.stateless.b as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "b",
+                  TRIGGER_FILE_TIMES_COUNTER,
+                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "b"));
+          fail();
+        } catch (Exception e) {
+          System.out.println(e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDropAuth() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("CREATE USER `zm` 'zm'");
+
+      try (Connection connection2 = EnvFactory.getEnv().getConnection("zm", "zm");
+          Statement statement2 = connection.createStatement()) {
+        try {
+          statement.execute(
+              String.format(
+                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+                  TRIGGER_FILE_TIMES_COUNTER,
+                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+
+          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
+          fail();
+        } catch (Exception e) {
+          System.out.println(e.getMessage());
+        }
+
+        statement.execute("GRANT USER `zm` PRIVILEGES CREATE_TRIGGER on root.test.stateless.b");
+
+        try {
+          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
+          fail();
+        } catch (Exception e) {
+          System.out.println(e.getMessage());
+        }
+
+        statement.execute("GRANT USER `zm` PRIVILEGES DROP_TRIGGER on root.test.stateless.a");
+
+        try {
+          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
+        } catch (Exception e) {
+          fail(e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 }
