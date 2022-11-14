@@ -59,9 +59,7 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletion2IT
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete timeseries root.sg1.d1.s2");
     } catch (Exception e) {
       e.printStackTrace();
     }

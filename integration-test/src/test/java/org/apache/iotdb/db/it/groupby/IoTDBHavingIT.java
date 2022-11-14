@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -41,7 +42,7 @@ import static org.apache.iotdb.itbase.constant.TestConstant.lastValue;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class}) // TODO After old StandAlone remove
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBHavingIT {
   private static final String[] SQLs =
       new String[] {
