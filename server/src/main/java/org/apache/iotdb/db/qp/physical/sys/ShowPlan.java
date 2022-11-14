@@ -127,8 +127,5 @@ public class ShowPlan extends PhysicalPlan {
     NODES_IN_SCHEMA_TEMPLATE,
     PATHS_SET_SCHEMA_TEMPLATE,
     PATHS_USING_SCHEMA_TEMPLATE,
-    PIPESINK,
-    PIPESINKTYPE,
-    PIPE,
   }
 }

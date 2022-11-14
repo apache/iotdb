@@ -36,7 +36,7 @@ public class AlignedWriteUtil {
 
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "create aligned timeseries root.sg1.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64, s4 BOOLEAN, s5 TEXT)",
         "create timeseries root.sg1.d2.s1 WITH DATATYPE=FLOAT, encoding=RLE",
         "create timeseries root.sg1.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",

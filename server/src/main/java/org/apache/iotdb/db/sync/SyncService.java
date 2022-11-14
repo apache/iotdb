@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
@@ -39,16 +38,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
-import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -60,9 +55,6 @@ import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
@@ -138,14 +130,6 @@ public class SyncService implements IService {
 
   public PipeSink getPipeSink(String name) throws PipeSinkException {
     return syncInfoFetcher.getPipeSink(name);
-  }
-
-  // TODO(sync): delete this in new-standalone version
-  public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
-    TSStatus status = syncInfoFetcher.addPipeSink(plan);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeSinkException(status.message);
-    }
   }
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
@@ -423,67 +407,6 @@ public class SyncService implements IService {
       }
     }
     return list;
-  }
-
-  // TODO(sync): delete this in new-standalone version
-  public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
-    boolean showAll = "".equals(plan.getPipeName());
-    // show pipe in sender
-    for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
-      if (showAll || plan.getPipeName().equals(pipe.getPipeName())) {
-        try {
-          RowRecord record = new RowRecord(0);
-          record.addField(
-              Binary.valueOf(DateTimeUtils.convertLongToDate(pipe.getCreateTime())),
-              TSDataType.TEXT);
-          record.addField(Binary.valueOf(pipe.getPipeName()), TSDataType.TEXT);
-          record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-          record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
-          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-          PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
-          if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
-            ExtPipePluginManager extPipePluginManager =
-                SyncService.getInstance().getExternalPipeManager(pipe.getPipeName());
-
-            if (extPipePluginManager != null) {
-              String extPipeType = ((ExternalPipeSink) pipeSink).getExtPipeSinkTypeName();
-              ExternalPipeStatus externalPipeStatus =
-                  extPipePluginManager.getExternalPipeStatus(extPipeType);
-
-              // TODO(ext-pipe): Adapting to the new syntax of SHOW PIPE
-              if (externalPipeStatus != null) {
-                record.addField(
-                    Binary.valueOf(
-                        externalPipeStatus.getWriterInvocationFailures().toString()
-                            + ";"
-                            + externalPipeStatus.getWriterStatuses().toString()),
-                    TSDataType.TEXT);
-              }
-            }
-          } else {
-            record.addField(Binary.valueOf(pipe.getMessageType().name()), TSDataType.TEXT);
-          }
-          listDataSet.putRecord(record);
-        } catch (Exception e) {
-          logger.error("failed to show pipe [{}] because {}", pipe.getPipeName(), e.getMessage());
-        }
-      }
-    }
-    // show pipe in receiver
-    List<TSyncIdentityInfo> identityInfoList = receiverManager.getAllTSyncIdentityInfos();
-    for (TSyncIdentityInfo identityInfo : identityInfoList) {
-      // TODO(sync): Removing duplicate rows
-      RowRecord record = new RowRecord(0);
-      record.addField(
-          Binary.valueOf(DateTimeUtils.convertLongToDate(identityInfo.getCreateTime())),
-          TSDataType.TEXT);
-      record.addField(Binary.valueOf(identityInfo.getPipeName()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
-      record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(PipeStatus.RUNNING.name()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(PipeMessage.PipeMessageType.NORMAL.name()), TSDataType.TEXT);
-      listDataSet.putRecord(record);
-    }
   }
 
   // endregion

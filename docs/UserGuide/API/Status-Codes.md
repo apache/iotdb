@@ -60,18 +60,18 @@ Here is a list of Status Code and related message:
 |308|SYSTEM_CHECK_ERROR|Meet error while system checking|
 |309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|Sync device owners conflict|
 |310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
-|311|STORAGE_GROUP_PROCESSOR_ERROR|Storage group processor related error|
-|312|STORAGE_GROUP_ERROR|Storage group related error|
+|311|STORAGE_GROUP_PROCESSOR_ERROR|Database processor related error|
+|312|STORAGE_GROUP_ERROR|Database related error|
 |313|STORAGE_ENGINE_ERROR|Storage engine related error|
 |314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
 |315|PATH_ILLEGAL|Illegal path|
 |316|LOAD_FILE_ERROR|Meet error while loading file|
-|317|STORAGE_GROUP_NOT_READY| The storage group is in recovery mode, not ready fore accepting read/write operation|
+|317|STORAGE_GROUP_NOT_READY| The database is in recovery mode, not ready fore accepting read/write operation|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_STORAGE_GROUP_ERROR|Operating object is not a storage group|
+|404|NOT_STORAGE_GROUP_ERROR|Operating object is not a database|
 |405|QUERY_NOT_ALLOWED|Query statements are not allowed error|
 |406|AST_FORMAT_ERROR|AST format related error|
 |407|LOGICAL_OPERATOR_ERROR|Logical operator related error|

@@ -36,8 +36,8 @@ public class QueryDataSource {
   /**
    * TsFileResources used by query job.
    *
-   * <p>Note: Sequences under the same virtual storage group share two lists of TsFileResources (seq
-   * and unseq).
+   * <p>Note: Sequences under the same data region share two lists of TsFileResources (seq and
+   * unseq).
    */
   private List<TsFileResource> seqResources;
 

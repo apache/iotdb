@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.trigger;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -95,7 +96,7 @@ public class IoTDBTriggerManagementIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.test");
+      statement.execute("CREATE DATABASE root.test");
       statement.execute(
           "CREATE TIMESERIES root.test.stateless.a with datatype=INT32,encoding=PLAIN");
       statement.execute(
@@ -270,14 +271,14 @@ public class IoTDBTriggerManagementIT {
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
-        String triggerName = resultSet.getString("TriggerName");
+        String triggerName = resultSet.getString(ColumnHeaderConstant.TRIGGER_NAME);
         String[] triggerInformation = result.get(triggerName);
         assertEquals(triggerInformation[0], triggerName);
-        assertEquals(triggerInformation[1], resultSet.getString("Event"));
-        assertEquals(triggerInformation[2], resultSet.getString("Type"));
-        assertEquals(triggerInformation[3], resultSet.getString("State"));
-        assertEquals(triggerInformation[4], resultSet.getString("PathPattern"));
-        assertEquals(triggerInformation[5], resultSet.getString("ClassName"));
+        assertEquals(triggerInformation[1], resultSet.getString(ColumnHeaderConstant.EVENT));
+        assertEquals(triggerInformation[2], resultSet.getString(ColumnHeaderConstant.TYPE));
+        assertEquals(triggerInformation[3], resultSet.getString(ColumnHeaderConstant.STATE));
+        assertEquals(triggerInformation[4], resultSet.getString(ColumnHeaderConstant.PATH_PATTERN));
+        assertEquals(triggerInformation[5], resultSet.getString(ColumnHeaderConstant.CLASS_NAME));
       }
       assertEquals(cnt, result.size());
     } catch (Exception e) {

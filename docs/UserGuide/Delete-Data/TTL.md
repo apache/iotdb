@@ -38,11 +38,11 @@ This example means that for data in `root.ln`, only 3600000 ms, that is, the lat
 ```
 IoTDB> set ttl to root.sgcc.** 3600000
 ```
-It supports setting TTL for storage groups in a path. This example represents setting TTL for all storage groups in the `root.sgcc` path.
+It supports setting TTL for databases in a path. This example represents setting TTL for all databases in the `root.sgcc` path.
 ```
 IoTDB> set ttl to root.** 3600000
 ```
-This example represents setting TTL for all storage groups.
+This example represents setting TTL for all databases.
 
 ## Unset TTL
 
@@ -57,12 +57,12 @@ After unset TTL, all data will be accepted in `root.ln`.
 IoTDB> unset ttl to root.sgcc.**
 ```
 
-Unset the TTL setting for all storage groups in the `root.sgcc` path.
+Unset the TTL setting for all databases in the `root.sgcc` path.
 ```
 IoTDB> unset ttl to root.**
 ```
 
-Unset the TTL setting for all storage groups.
+Unset the TTL setting for all databases.
 
 ## Show TTL
 
@@ -73,18 +73,18 @@ IoTDB> SHOW ALL TTL
 IoTDB> SHOW TTL ON StorageGroupNames
 ```
 
-The SHOW ALL TTL example gives the TTL for all storage groups.
+The SHOW ALL TTL example gives the TTL for all databases.
 The SHOW TTL ON root.ln,root.sgcc,root.DB example shows the TTL for the three storage 
 groups specified.
-Note: the TTL for storage groups that do not have a TTL set will display as null.
+Note: the TTL for databases that do not have a TTL set will display as null.
 
 ```
 IoTDB> show all ttl
-+-------------+-------+
-|storage group|ttl(ms)|
-+-------------+-------+
-|      root.ln|3600000|
-|    root.sgcc|   null|
-|      root.DB|3600000|
-+-------------+-------+
++----------+-------+
+| database|ttl(ms)|
++---------+-------+
+|  root.ln|3600000|
+|root.sgcc|   null|
+|  root.DB|3600000|
++----------+-------+
 ```

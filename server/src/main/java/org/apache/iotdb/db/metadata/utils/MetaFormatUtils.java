@@ -106,7 +106,7 @@ public class MetaFormatUtils {
     if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
       throw new IllegalPathException(
           String.format(
-              "The storage group name can only be characters, numbers and underscores. %s",
+              "The database name can only be characters, numbers and underscores. %s",
               storageGroup));
     }
   }

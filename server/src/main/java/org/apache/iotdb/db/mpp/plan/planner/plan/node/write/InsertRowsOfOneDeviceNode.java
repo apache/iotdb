@@ -41,13 +41,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsertNode {
 
@@ -56,11 +56,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
    * insertRowNodeList={InsertRowNode_0, InsertRowNode_1, InsertRowNode_2, InsertRowNode_3,
    * InsertRowNode_4}, then the insertRowNodeIndexList={0, 1, 2, 3, 4} respectively. But when the
    * InsertRowsOfOneDeviceNode is split into two InsertRowsOfOneDeviceNodes according to different
-   * storage group in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's
-   * insertRowNodeList = {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then
-   * InsertRowsOfOneDeviceNode_1's insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's
-   * insertRowNodeList = {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's
-   * insertRowNodeIndexList= {1, 2} respectively;
+   * database in cluster version, suppose that the InsertRowsOfOneDeviceNode_1's insertRowNodeList =
+   * {InsertRowNode_0, InsertRowNode_3, InsertRowNode_4}, then InsertRowsOfOneDeviceNode_1's
+   * insertRowNodeIndexList = {0, 3, 4}; InsertRowsOfOneDeviceNode_2's insertRowNodeList =
+   * {InsertRowNode_1, * InsertRowNode_2} then InsertRowsOfOneDeviceNode_2's insertRowNodeIndexList=
+   * {1, 2} respectively;
    */
   private List<Integer> insertRowNodeIndexList;
 
@@ -153,9 +153,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
         this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
       }
     }
-    if (!this.hasFailedMeasurements()) {
-      storeMeasurementsAndDataType();
-    }
   }
 
   @Override
@@ -198,24 +195,22 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   private void storeMeasurementsAndDataType() {
-    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
-    /*
-    Traverse from end to start. For example, consider this sql:
-      "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0), (2, 'hello')"
-    we want the type of 's1' to be inferred as FLOAT(1.0) rather than TEXT('hello').
-     */
-    for (int i = insertRowNodeList.size() - 1; i >= 0; i--) {
-      InsertRowNode insertRowNode = insertRowNodeList.get(i);
-      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
-      Map<String, TSDataType> subMap =
-          measurements.stream()
-              .collect(
-                  Collectors.toMap(
-                      key -> key, key -> insertRowNode.getDataTypes()[measurements.indexOf(key)]));
-      measurementsAndDataType.putAll(subMap);
+    Set<String> measurementSet = new HashSet<>();
+    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<String> measurementList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      String[] measurements = insertRowNode.getMeasurements();
+      TSDataType[] dataTypes = insertRowNode.getDataTypes();
+      for (int i = 0; i < measurements.length; i++) {
+        if (!measurementSet.contains(measurements[i])) {
+          measurementList.add(measurements[i]);
+          dataTypeList.add(dataTypes[i]);
+          measurementSet.add(measurements[i]);
+        }
+      }
     }
-    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
-    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
+    measurements = measurementList.toArray(new String[0]);
+    dataTypes = dataTypeList.toArray(new TSDataType[0]);
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {

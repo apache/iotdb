@@ -115,7 +115,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
-      LOGGER.error("Failed to set storage group, caused by ", e);
+      LOGGER.error("Failed to create database, caused by ", e);
       future.setException(e);
     }
     return future;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -555,7 +556,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
         statement.execute(String.format(alterSql, alias[i]));
         try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
           resultSet.next();
-          Assert.assertEquals(res[i], resultSet.getString("alias"));
+          Assert.assertEquals(res[i], resultSet.getString(ColumnHeaderConstant.ALIAS));
         }
       }
 

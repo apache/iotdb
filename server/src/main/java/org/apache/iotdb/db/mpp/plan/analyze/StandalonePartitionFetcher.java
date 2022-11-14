@@ -177,7 +177,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   @Override
   public void invalidAllCache() {}
 
-  /** Split data partition query param by storage group. */
+  /** Split data partition query param by database. */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate)
       throws MetadataException {
@@ -221,7 +221,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
         }
       }
       if (isAutoCreate) {
-        // try to auto create storage group
+        // try to auto create database
         Set<PartialPath> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : devicePaths) {
           if (!deviceToStorageGroup.containsKey(devicePath)) {

@@ -660,7 +660,7 @@ public class IoTDBClusterPartitionIT {
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
 
-      getRegionIdReq.setType(TConsensusGroupType.PartitionRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
@@ -679,7 +679,7 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
-      getRegionIdReq.setType(TConsensusGroupType.PartitionRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
@@ -724,7 +724,7 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(102, getSeriesSlotListResp.getSeriesSlotListSize());
 
-      getSeriesSlotListReq.setType(TConsensusGroupType.PartitionRegion);
+      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(

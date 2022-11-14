@@ -76,7 +76,7 @@ public class IoTDBInsertNullIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.sg");
+    sqls.add("CREATE DATABASE root.sg");
     sqls.add("CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=BOOLEAN");
     sqls.add("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT");
     sqls.add("CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=INT32");

@@ -68,10 +68,10 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * This method is for insert and query or sth like them, this may get a virtual storage group
+   * This method is for insert and query or sth like them, this may get a virtual database
    *
    * @param path device path
-   * @return storage group processor
+   * @return database processor
    */
   public DataRegion getProcessor(PartialPath path) throws StorageEngineException {
     try {
@@ -83,7 +83,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get storage group processor by device path
+   * get database processor by device path
    *
    * @param devicePath path of the device
    * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid

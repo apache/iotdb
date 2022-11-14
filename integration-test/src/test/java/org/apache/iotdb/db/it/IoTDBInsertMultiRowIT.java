@@ -77,7 +77,7 @@ public class IoTDBInsertMultiRowIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.t1");
+    sqls.add("CREATE DATABASE root.t1");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
   }
@@ -138,6 +138,25 @@ public class IoTDBInsertMultiRowIT {
     } catch (SQLException e) {
       assertTrue(
           e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+    }
+  }
+
+  @Test
+  public void testInsertMultiRowWithNull() {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "insert into root.t1.d99.wt01(timestamp, s1, s2) values(100, null, 1), (101, null, 2)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+    }
+    try (Statement st2 = connection.createStatement()) {
+      st2.execute("CREATE TIMESERIES root.t1.d1.s1 WITH DATATYPE=double, ENCODING=PLAIN;");
+      st2.execute(
+          "INSERT INTO root.t1.d1(timestamp, s1) VALUES (6, 10),(7,12),(8,14),(9,160),(10,null),(11,58)");
+    } catch (SQLException e) {
+      fail();
     }
   }
 }

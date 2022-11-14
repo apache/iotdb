@@ -179,7 +179,7 @@ package org.apache.iotdb.db.integration;
 //            DriverManager.getConnection(
 //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 //        Statement statement = connection.createStatement()) {
-//      statement.execute("set storage group to root.test");
+//      statement.execute("create database root.test");
 //      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
 //      statement.execute("select * from root.test.wf02.wt02");
 //      statement.execute("DELETE PARTITION root.test 0");
@@ -204,7 +204,7 @@ package org.apache.iotdb.db.integration;
 //            DriverManager.getConnection(
 //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 //        Statement statement = connection.createStatement()) {
-//      statement.execute("set storage group to root.test");
+//      statement.execute("create database root.test");
 //      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
 //      statement.execute("select * from root.test.wf02.wt02");
 //      statement.execute("DELETE PARTITION root.test 0");
@@ -234,7 +234,7 @@ package org.apache.iotdb.db.integration;
 //            DriverManager.getConnection(
 //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 //        Statement statement = connection.createStatement()) {
-//      statement.execute("set storage group to root.test");
+//      statement.execute("create database root.test");
 //      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
 //      statement.execute("select * from root.test.wf02.wt02");
 //      statement.execute("DELETE PARTITION root.test 0");
@@ -264,7 +264,7 @@ package org.apache.iotdb.db.integration;
 //            DriverManager.getConnection(
 //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 //        Statement statement = connection.createStatement()) {
-//      statement.execute("set storage group to root.test");
+//      statement.execute("create database root.test");
 //      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
 //      statement.execute("flush");
 //      statement.execute("DELETE PARTITION root.test 0");
@@ -287,8 +287,8 @@ package org.apache.iotdb.db.integration;
 //    List<String> sqls =
 //        new ArrayList<>(
 //            Arrays.asList(
-//                "SET STORAGE GROUP TO root.test1",
-//                "SET STORAGE GROUP TO root.test2",
+//                "CREATE DATABASE root.test1",
+//                "CREATE DATABASE root.test2",
 //                "CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=PLAIN",
 //                "CREATE TIMESERIES root.test2.s0 WITH DATATYPE=INT64,ENCODING=PLAIN"));
 //    // 10 partitions, each one with one seq file and one unseq file

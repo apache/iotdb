@@ -125,7 +125,7 @@ public class AggregationExecutor {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    // TODO-Cluster: group the paths by storage group to reduce communications
+    // TODO-Cluster: group the paths by database to reduce communications
     Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
         StorageEngine.getInstance().mergeLock(groupedPathList);
     List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;

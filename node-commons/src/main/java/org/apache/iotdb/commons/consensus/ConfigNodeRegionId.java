@@ -15,19 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-public class ShowPipeSinkPlan extends ShowPlan {
-  private String pipeSinkName;
+package org.apache.iotdb.commons.consensus;
 
-  public ShowPipeSinkPlan(String pipeSinkName) {
-    super(ShowContentType.PIPESINK);
-    this.pipeSinkName = pipeSinkName;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
+public class ConfigNodeRegionId extends ConsensusGroupId {
+
+  public ConfigNodeRegionId(int id) {
+    this.id = id;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  @Override
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.ConfigNodeRegion;
   }
 }

@@ -60,7 +60,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
 
   /** sequence file or not */
   private final boolean sequence;
-  /** add recovered TsFile back to virtual storage group */
+  /** add recovered TsFile back to data region */
   private final Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered;
   /** redo wal log to recover TsFile */
   private final TsFilePlanRedoer walRedoer;

@@ -66,7 +66,7 @@ public class IoTDBNullValueFillIT {
    */
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "create aligned timeseries root.sg1.d1(s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT)",
         "insert into root.sg1.d1(time, s2, s4, s6) aligned values(1, 1, 1.0, 't1')",
         "insert into root.sg1.d1(time, s1, s2, s3, s4, s5, s6) aligned values(2, 2, 2, 2.0, 2.0, true, 't2')",

@@ -66,7 +66,7 @@ public class IoTDBMetricsUtils {
 
   public static void checkOrCreateStorageGroup(SessionPool session) {
     try (SessionDataSetWrapper result =
-        session.executeQueryStatement("show storage group " + STORAGE_GROUP)) {
+        session.executeQueryStatement("SHOW DATABASES " + STORAGE_GROUP)) {
       if (!result.hasNext()) {
         session.setStorageGroup(STORAGE_GROUP);
       }

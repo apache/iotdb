@@ -75,7 +75,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -194,7 +194,7 @@ public class ConfigManager implements IManager {
   /** CQ */
   private final CQManager cqManager;
 
-  private final PartitionRegionStateMachine stateMachine;
+  private final ConfigNodeRegionStateMachine stateMachine;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -220,7 +220,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             syncInfo,
             cqInfo);
-    this.stateMachine = new PartitionRegionStateMachine(this, executor);
+    this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
@@ -1014,8 +1014,8 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * @param storageGroups the storage groups to check
-   * @return List of PartialPath the storage groups that not exist
+   * @param storageGroups the databases to check
+   * @return List of PartialPath the databases that not exist
    */
   public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
@@ -1336,7 +1336,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // Get all storage groups and slots by getting schema partition
+    // Get all databases and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 

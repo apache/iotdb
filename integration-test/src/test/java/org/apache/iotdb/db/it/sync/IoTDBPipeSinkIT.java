@@ -55,7 +55,7 @@ public class IoTDBPipeSinkIT {
   public void testShowPipeSinkType() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String expectedHeader = ColumnHeaderConstant.COLUMN_PIPESINK_TYPE + ",";
+      String expectedHeader = ColumnHeaderConstant.TYPE + ",";
       String[] expectedRetSet = new String[] {"IoTDB,"};
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINKTYPE")) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
@@ -87,11 +87,11 @@ public class IoTDBPipeSinkIT {
         Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] does not exist"));
       }
       String expectedHeader =
-          ColumnHeaderConstant.COLUMN_PIPESINK_NAME
+          ColumnHeaderConstant.NAME
               + ","
-              + ColumnHeaderConstant.COLUMN_PIPESINK_TYPE
+              + ColumnHeaderConstant.TYPE
               + ","
-              + ColumnHeaderConstant.COLUMN_PIPESINK_ATTRIBUTES
+              + ColumnHeaderConstant.ATTRIBUTES
               + ",";
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK")) {
         String[] expectedRetSet =

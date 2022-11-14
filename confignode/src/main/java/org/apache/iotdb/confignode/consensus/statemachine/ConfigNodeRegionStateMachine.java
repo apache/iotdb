@@ -52,11 +52,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** StateMachine for PartitionRegion */
-public class PartitionRegionStateMachine
+/** StateMachine for ConfigNodeRegion */
+public class ConfigNodeRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRegionStateMachine.class);
 
   private static final ExecutorService threadPool =
       IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
@@ -77,7 +77,7 @@ public class PartitionRegionStateMachine
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
-  public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
+  public ConfigNodeRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
     this.currentNodeTEndPoint =
@@ -180,7 +180,7 @@ public class PartitionRegionStateMachine
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
     // We get currentNodeId here because the currentNodeId
-    // couldn't initialize earlier than the PartitionRegionStateMachine
+    // couldn't initialize earlier than the ConfigNodeRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
 
     if (currentNodeId == newLeaderId) {
