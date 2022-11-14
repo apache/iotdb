@@ -102,7 +102,7 @@ System files include schema files, which store metadata information of data in I
 > under directory basedir/system/compression_ration
 1. Ration-{compressionRatioSum}-{calTimes}
     + record compression ratio of each tsfile
-# Pre-write Log Files
+## Pre-write Log Files
 
 Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](../Reference/DataNode-Config-Manual.md) for details).
 
@@ -110,7 +110,7 @@ Pre-write log files store WAL files. It can be configured through the `wal_dir` 
 
 1. {StorageGroupName}-{TsFileName}/wal1
     + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
-# Example of Setting Data storage Directory
+## Example of Setting Data storage Directory
 
 For a clearer understanding of configuring the data storage directory, we will give an example in this section.
 
