@@ -63,7 +63,7 @@ public class SyncDataNodeClientPool {
 
   public TSStatus sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
-    Throwable lastException = null;
+    Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
@@ -74,8 +74,10 @@ public class SyncDataNodeClientPool {
             requestType,
             endPoint,
             e.getMessage(),
-            retry);
-        doRetryWait(retry);
+            retry + 1);
+        if (retry != DEFAULT_RETRY_NUM - 1) {
+          doRetryWait(retry);
+        }
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
@@ -96,8 +98,10 @@ public class SyncDataNodeClientPool {
             requestType,
             endPoint,
             e.getMessage(),
-            retry);
-        doRetryWait(retry);
+            retry + 1);
+        if (retry != retryNum - 1) {
+          doRetryWait(retry);
+        }
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
@@ -145,7 +149,13 @@ public class SyncDataNodeClientPool {
 
   private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      if (retryNum < 3){
+        TimeUnit.MILLISECONDS.sleep(800L);
+      } else if (retryNum < 6){
+        TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      } else {
+        TimeUnit.MILLISECONDS.sleep(3200L);
+      }
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }
