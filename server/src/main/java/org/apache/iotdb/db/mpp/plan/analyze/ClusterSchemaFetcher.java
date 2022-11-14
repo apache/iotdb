@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -76,6 +77,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -104,10 +106,62 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
+    List<PartialPath> fullPathList = new ArrayList<>();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+      if (!pattern.hasWildcard() && !withTags) {
+        fullPathList.add(pattern);
+      }
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+
+    if (fullPathList.isEmpty()) {
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    }
+
+    boolean isAllCached = true;
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    String[] measurement = new String[1];
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree cachedSchema;
+      for (PartialPath fullPath : fullPathList) {
+        measurement[0] = fullPath.getMeasurement();
+        cachedSchema = schemaCache.get(fullPath.getDevicePath(), measurement);
+        if (cachedSchema.isEmpty()) {
+          isAllCached = false;
+          break;
+        } else {
+          schemaTree.mergeSchemaTree(cachedSchema);
+        }
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+    }
+
+    if (isAllCached) {
+      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+      schemaTree.setStorageGroups(
+          new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet()));
+      return schemaTree;
+    } else {
+      ClusterSchemaTree fetchedSchemaTree =
+          executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+      schemaCache.takeReadLock();
+      try {
+        // only cache the schema fetched by full path
+        List<MeasurementPath> measurementPathList;
+        for (PartialPath fullPath : fullPathList) {
+          measurementPathList = fetchedSchemaTree.searchMeasurementPaths(fullPath).left;
+          if (measurementPathList.isEmpty()) {
+            continue;
+          }
+          schemaCache.put(measurementPathList.get(0));
+        }
+      } finally {
+        schemaCache.releaseReadLock();
+      }
+      return fetchedSchemaTree;
+    }
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
