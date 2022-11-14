@@ -556,9 +556,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
-  /** indicate whether current mode is mpp */
-  private boolean mppMode = false;
-
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
 
