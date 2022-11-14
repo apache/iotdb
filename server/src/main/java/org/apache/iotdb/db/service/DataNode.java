@@ -129,8 +129,6 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
-    // set the mpp mode to true
-    config.setMppMode(true);
     config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
     IoTDBStartCheck.getInstance().checkDirectory();
