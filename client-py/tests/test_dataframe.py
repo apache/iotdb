@@ -34,7 +34,7 @@ def test_simple_query():
 
         # Read
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
-        df = session_data_set.todf()
+        df = session_data_set.to_df()
 
         session.close()
 
@@ -54,7 +54,7 @@ def test_non_time_query():
 
         # Read
         session_data_set = session.execute_query_statement("SHOW TIMESERIES")
-        df = session_data_set.todf()
+        df = session_data_set.to_df()
 
         session.close()
 

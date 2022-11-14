@@ -61,7 +61,7 @@ def test_tablet_insertion():
         session_data_set = session.execute_query_statement(
             "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
         )
-        df_output = session_data_set.todf()
+        df_output = session_data_set.to_df()
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
@@ -104,7 +104,7 @@ def test_nullable_tablet_insertion():
         session_data_set = session.execute_query_statement(
             "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
         )
-        df_output = session_data_set.todf()
+        df_output = session_data_set.to_df()
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()

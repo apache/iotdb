@@ -386,7 +386,7 @@ session.open(False)
 result = session.execute_query_statement("SELECT * FROM root.*")
 
 # Transform to Pandas Dataset
-df = result.todf()
+df = result.to_df()
 
 session.close()
 

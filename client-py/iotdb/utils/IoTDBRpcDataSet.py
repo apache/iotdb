@@ -48,6 +48,7 @@ class IoTDBRpcDataSet(object):
         session_id,
         query_data_set,
         fetch_size,
+        is_rpc_fetch_result
     ):
         self.__statement_id = statement_id
         self.__session_id = session_id
@@ -58,6 +59,7 @@ class IoTDBRpcDataSet(object):
         self.__fetch_size = fetch_size
         self.__column_size = len(column_name_list)
         self.__default_time_out = 1000
+        self.__is_rpc_fetch_result = is_rpc_fetch_result
 
         self.__column_name_list = []
         self.__column_type_list = []
@@ -137,7 +139,7 @@ class IoTDBRpcDataSet(object):
             return True
         if self.__empty_resultSet:
             return False
-        if self.fetch_results():
+        if self.__is_rpc_fetch_result and self.fetch_results():
             self.construct_one_row()
             return True
         return False
@@ -152,14 +154,14 @@ class IoTDBRpcDataSet(object):
             return True
         if self.__empty_resultSet:
             return False
-        if self.fetch_results():
+        if self.__is_rpc_fetch_result and self.fetch_results():
             return True
         return False
 
     def _to_bitstring(self, b):
         return "{:0{}b}".format(int(binascii.hexlify(b), 16), 8 * len(b))
 
-    def resultset_to_pandas(self):
+    def resultset_to_numpy(self):
         result = {}
         for column_name in self.__column_name_list:
             result[column_name] = None
@@ -278,9 +280,10 @@ class IoTDBRpcDataSet(object):
         for k, v in result.items():
             if v is None:
                 result[k] = []
+        return result
 
-        df = pd.DataFrame(result)
-        return df
+    def resultset_to_pandas(self):
+        return pd.DataFrame(self.resultset_to_numpy())
 
     def construct_one_row(self):
         # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.

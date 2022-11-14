@@ -32,17 +32,17 @@ logger = logging.getLogger("IoTDB")
 
 class SessionDataSet(object):
     def __init__(
-        self,
-        sql,
-        column_name_list,
-        column_type_list,
-        column_name_index,
-        query_id,
-        client,
-        statement_id,
-        session_id,
-        query_data_set,
-        ignore_timestamp,
+            self,
+            sql,
+            column_name_list,
+            column_type_list,
+            column_name_index,
+            query_id,
+            client,
+            statement_id,
+            session_id,
+            query_data_set,
+            ignore_timestamp,
     ):
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
             sql,
@@ -56,7 +56,32 @@ class SessionDataSet(object):
             session_id,
             query_data_set,
             1024,
+            True
         )
+
+    @classmethod
+    def init_from_window(self, column_name_list,
+                         column_type_list,
+                         column_name_index,
+                         statement_id,
+                         session_id,
+                         query_data_set
+                         ):
+        self.iotdb_rpc_data_set = IoTDBRpcDataSet(
+            "",
+            column_name_list,
+            column_type_list,
+            column_name_index,
+            False,
+            -1,
+            None,
+            statement_id,
+            session_id,
+            query_data_set,
+            1024,
+            False
+        )
+        return self
 
     def __enter__(self):
         return self
@@ -96,8 +121,8 @@ class SessionDataSet(object):
                 data_set_column_index -= 1
             column_name = self.iotdb_rpc_data_set.get_column_names()[index]
             location = (
-                self.iotdb_rpc_data_set.get_column_ordinal_dict()[column_name]
-                - IoTDBRpcDataSet.START_INDEX
+                    self.iotdb_rpc_data_set.get_column_ordinal_dict()[column_name]
+                    - IoTDBRpcDataSet.START_INDEX
             )
 
             if not self.iotdb_rpc_data_set.is_null_by_index(data_set_column_index):
@@ -136,8 +161,11 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
-    def todf(self):
+    def to_df(self):
         return resultset_to_pandas(self)
+
+    def to_numpy(self):
+        return resultset_to_numpy(self)
 
 
 def resultset_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
@@ -148,6 +176,16 @@ def resultset_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
     :return:
     """
     return result_set.iotdb_rpc_data_set.resultset_to_pandas()
+
+
+def resultset_to_numpy(result_set: SessionDataSet):
+    """
+    Transforms a SessionDataSet from IoTDB to a Numpy array
+    Each Field from IoTDB is a column
+    :param result_set:
+    :return:
+    """
+    return result_set.iotdb_rpc_data_set.resultset_to_numpy()
 
 
 def get_typed_point(field: Field, none_value=None):

@@ -94,7 +94,7 @@ def test_simple_query():
         df_input.insert(0, "Time", timestamps)
 
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
-        df_output = session_data_set.todf()
+        df_output = session_data_set.to_df()
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
@@ -174,7 +174,7 @@ def test_with_null_query():
         df_input.insert(0, "Time", timestamps)
 
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
-        df_output = session_data_set.todf()
+        df_output = session_data_set.to_df()
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
@@ -212,7 +212,7 @@ def test_multi_fetch():
 
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
         session_data_set.set_fetch_size(100)
-        df_output = session_data_set.todf()
+        df_output = session_data_set.to_df()
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()

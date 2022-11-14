@@ -136,7 +136,7 @@ class Cursor(object):
             rows = []
 
             if data_set:
-                data = data_set.todf()
+                data = data_set.to_df()
 
                 if self.__sqlalchemy_mode and time_index:
                     time_column = data.columns[0]
