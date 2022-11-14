@@ -149,13 +149,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       schemaCache.takeReadLock();
       try {
         // only cache the schema fetched by full path
-        List<MeasurementPath> measurementPathList;
-        for (PartialPath fullPath : fullPathList) {
-          measurementPathList = fetchedSchemaTree.searchMeasurementPaths(fullPath).left;
-          if (measurementPathList.isEmpty()) {
-            continue;
-          }
-          schemaCache.put(measurementPathList.get(0));
+        for (MeasurementPath measurementPath : fetchedSchemaTree.getAllMeasurement()) {
+          schemaCache.put(measurementPath);
         }
       } finally {
         schemaCache.releaseReadLock();
