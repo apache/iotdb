@@ -42,18 +42,23 @@ public class WindowSplitOperator implements ProcessOperator {
   protected TsBlock inputTsBlock;
   protected boolean canCallNext;
 
-  private final ITimeRangeIterator sampleTimeRangeSliceIterator;
+  private final ITimeRangeIterator sampleTimeRangeIterator;
   private TimeRange curTimeRange;
+
+  private final ITimeRangeIterator sampleTimeRangeSliceIterator;
+  private TimeRange curTimeRangeSlice;
 
   private final TsBlockBuilder resultTsBlockBuilder;
 
   public WindowSplitOperator(
       OperatorContext operatorContext,
       Operator child,
+      ITimeRangeIterator sampleTimeRangeIterator,
       ITimeRangeIterator sampleTimeRangeSliceIterator,
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.child = child;
+    this.sampleTimeRangeIterator = sampleTimeRangeIterator;
     this.sampleTimeRangeSliceIterator = sampleTimeRangeSliceIterator;
     this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
@@ -73,15 +78,27 @@ public class WindowSplitOperator implements ProcessOperator {
     // reset operator state
     canCallNext = true;
 
-    if (curTimeRange == null && sampleTimeRangeSliceIterator.hasNextTimeRange()) {
-      // move to next time window
-      curTimeRange = sampleTimeRangeSliceIterator.nextTimeRange();
+    if (curTimeRange == null && sampleTimeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = sampleTimeRangeIterator.nextTimeRange();
+    }
+
+    while (curTimeRangeSlice == null && sampleTimeRangeSliceIterator.hasNextTimeRange()) {
+      curTimeRangeSlice = sampleTimeRangeSliceIterator.nextTimeRange();
+      if (curTimeRangeSlice.getMin() > curTimeRange.getMax()) {
+        if (sampleTimeRangeIterator.hasNextTimeRange()) {
+          curTimeRange = sampleTimeRangeIterator.nextTimeRange();
+        }
+        if (curTimeRangeSlice.getMin() > curTimeRange.getMax()
+            || curTimeRangeSlice.getMax() < curTimeRange.getMin()) {
+          curTimeRangeSlice = null;
+        }
+      }
     }
 
     if (!fetchData()) {
       return null;
     } else {
-      curTimeRange = null;
+      curTimeRangeSlice = null;
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
       resultTsBlockBuilder.reset();
       return resultTsBlock;
@@ -106,14 +123,14 @@ public class WindowSplitOperator implements ProcessOperator {
       return false;
     }
 
-    inputTsBlock = TsBlockUtil.skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, true);
+    inputTsBlock = TsBlockUtil.skipPointsOutOfTimeRange(inputTsBlock, curTimeRangeSlice, true);
     if (inputTsBlock == null) {
       return false;
     }
 
     for (int readIndex = 0; readIndex < inputTsBlock.getPositionCount(); readIndex++) {
       long time = inputTsBlock.getTimeByIndex(readIndex);
-      if (curTimeRange.contains(time)) {
+      if (curTimeRangeSlice.contains(time)) {
         writeData(readIndex);
       } else {
         inputTsBlock = inputTsBlock.subTsBlock(readIndex);
@@ -135,7 +152,7 @@ public class WindowSplitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return curTimeRange != null || sampleTimeRangeSliceIterator.hasNextTimeRange();
+    return curTimeRangeSlice != null || sampleTimeRangeSliceIterator.hasNextTimeRange();
   }
 
   @Override

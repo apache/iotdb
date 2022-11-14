@@ -1592,7 +1592,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 WindowSplitOperator.class.getSimpleName());
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
-    ITimeRangeIterator timeRangeIterator =
+    ITimeRangeIterator sampleTimeRangeIterator =
+        TimeRangeIteratorFactory.getSampleTimeRangeIterator(
+            groupByTimeParameter.getStartTime(),
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            node.getSamplingIndexes(),
+            false);
+    ITimeRangeIterator sampleTimeRangeSliceIterator =
         TimeRangeIteratorFactory.getSampleTimeRangeIterator(
             groupByTimeParameter.getStartTime(),
             groupByTimeParameter.getEndTime(),
@@ -1604,7 +1612,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<TSDataType> outputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new WindowSplitOperator(operatorContext, child, timeRangeIterator, outputDataTypes);
+    return new WindowSplitOperator(
+        operatorContext,
+        child,
+        sampleTimeRangeIterator,
+        sampleTimeRangeSliceIterator,
+        outputDataTypes);
   }
 
   @Override
