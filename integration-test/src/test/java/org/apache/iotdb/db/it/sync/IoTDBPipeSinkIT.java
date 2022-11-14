@@ -55,8 +55,8 @@ public class IoTDBPipeSinkIT {
   public void testShowPipeSinkType() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String expectedHeader = ColumnHeaderConstant.COLUMN_PIPESINK_TYPE + ",";
-      String[] expectedRetSet = new String[] {"IoTDB,", "ExternalPipe,"};
+      String expectedHeader = ColumnHeaderConstant.TYPE + ",";
+      String[] expectedRetSet = new String[] {"IoTDB,"};
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINKTYPE")) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
@@ -76,10 +76,7 @@ public class IoTDBPipeSinkIT {
         statement.execute("CREATE PIPESINK demo2 AS IoTDB (ip='192.168.0.2',port='6678');");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage()
-                .contains(
-                    "There is a PipeSink named demo2 in IoTDB, please drop it before recreation."));
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] already exists in IoTDB."));
       }
       statement.execute("CREATE PIPESINK demo3 AS IoTDB;");
       statement.execute("DROP PIPESINK demo2;");
@@ -87,14 +84,14 @@ public class IoTDBPipeSinkIT {
         statement.execute("DROP PIPESINK demo2;");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("PipeSink demo2 does not exist."));
+        Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] does not exist"));
       }
       String expectedHeader =
-          ColumnHeaderConstant.COLUMN_PIPESINK_NAME
+          ColumnHeaderConstant.NAME
               + ","
-              + ColumnHeaderConstant.COLUMN_PIPESINK_TYPE
+              + ColumnHeaderConstant.TYPE
               + ","
-              + ColumnHeaderConstant.COLUMN_PIPESINK_ATTRIBUTES
+              + ColumnHeaderConstant.ATTRIBUTES
               + ",";
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK")) {
         String[] expectedRetSet =

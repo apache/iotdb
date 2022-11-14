@@ -51,7 +51,7 @@ import java.util.Iterator;
 /**
  * This class is mainly aimed to manage space all over the file.
  *
- * <p>This class is meant to open a .pmt(Persistent MTree) file, and maintains the header of the
+ * <p>This class is meant to open a .pst(Persistent mTree) file, and maintains the header of the
  * file. It Loads or writes a page length bytes at once, with an 32 bits int to index a page inside
  * a file. Use SlottedFile to manipulate segment(sp) inside a page(an array of bytes).
  */
@@ -60,7 +60,8 @@ public class SchemaFile implements ISchemaFile {
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
   // attributes for this schema file
-  private String filePath;
+  private final String filePath;
+  private final String logPath;
   private String storageGroupName;
   private long dataTTL;
   private boolean isEntity;
@@ -68,7 +69,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
-  private long lastSGAddr; // last segment of storage group node
+  private long lastSGAddr; // last segment of database node
 
   private IPageManager pageManager;
 
@@ -79,16 +80,11 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
+    String dirPath = getDirPath(sgName, schemaRegionId);
 
     this.storageGroupName = sgName;
-    filePath =
-        SchemaFileConfig.SCHEMA_FOLDER
-            + File.separator
-            + sgName
-            + File.separator
-            + schemaRegionId
-            + File.separator
-            + MetadataConstant.SCHEMA_FILE_NAME;
+    this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
+    this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -103,19 +99,13 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder =
-          SystemFileFactory.INSTANCE.getFile(
-              SchemaFileConfig.SCHEMA_FOLDER
-                  + File.separator
-                  + sgName
-                  + File.separator
-                  + schemaRegionId);
-      folder.mkdirs();
+      File dir = SystemFileFactory.INSTANCE.getFile(dirPath);
+      dir.mkdirs();
       pmtFile.createNewFile();
     }
 
-    channel = new RandomAccessFile(pmtFile, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
+    this.channel = new RandomAccessFile(pmtFile, "rw").getChannel();
+    this.headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
@@ -124,7 +114,11 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private SchemaFile(File file) throws IOException, MetadataException {
-    // only be called to sketch a schema file so an arbitrary file object is necessary
+    // only used to sketch a schema file so a file object is necessary while
+    //  components of log manipulations are not.
+    pmtFile = file;
+    filePath = pmtFile.getPath();
+    logPath = file.getParent() + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
@@ -142,7 +136,7 @@ public class SchemaFile implements ISchemaFile {
         sgName,
         schemaRegionId,
         true,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
 
@@ -154,6 +148,14 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
     // only be called to sketch a Schema File
     return new SchemaFile(file);
+  }
+
+  private static String getDirPath(String sgName, int schemaRegionId) {
+    return SchemaFileConfig.SCHEMA_FOLDER
+        + File.separator
+        + sgName
+        + File.separator
+        + schemaRegionId;
   }
 
   // region Interface Implementation
@@ -243,6 +245,7 @@ public class SchemaFile implements ISchemaFile {
   public void close() throws IOException {
     updateHeader();
     pageManager.flushDirtyPages();
+    pageManager.close();
     channel.close();
   }
 
@@ -255,6 +258,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void clear() throws IOException, MetadataException {
     pageManager.clear();
+    pageManager.close();
     channel.close();
     if (pmtFile.exists()) {
       Files.delete(Paths.get(pmtFile.toURI()));
@@ -301,7 +305,9 @@ public class SchemaFile implements ISchemaFile {
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
-   *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
+   *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
+   *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
+   *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
    * </ul>
    *
@@ -315,8 +321,9 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
       ReadWriteIOUtils.write(templateHash, headerContent);
+      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = BTreePageManager.getBTreePageManager(channel, -1);
+      pageManager = new BTreePageManager(channel, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
@@ -325,7 +332,13 @@ public class SchemaFile implements ISchemaFile {
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       templateHash = ReadWriteIOUtils.readInt(headerContent);
       lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
-      pageManager = BTreePageManager.getBTreePageManager(channel, lastPageIndex);
+
+      if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
+        channel.close();
+        throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
+      }
+
+      pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
     }
   }
 
@@ -337,6 +350,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(isEntity, headerContent);
     ReadWriteIOUtils.write(templateHash, headerContent);
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
+    ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);
@@ -394,6 +408,55 @@ public class SchemaFile implements ISchemaFile {
   public long getTargetSegmentOnTest(long srcSegAddr, String key)
       throws IOException, MetadataException {
     return ((PageManager) pageManager).getTargetSegmentAddressOnTest(srcSegAddr, key);
+  }
+
+  // endregion
+
+  // region Snapshot
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    File schemaFileSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    try {
+      sync();
+      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating schema file snapshot.",
+            schemaFileSnapshot.getName());
+        return false;
+      }
+      Files.copy(Paths.get(filePath), schemaFileSnapshot.toPath());
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create SchemaFile snapshot due to {}", e.getMessage(), e);
+      schemaFileSnapshot.delete();
+      return false;
+    }
+  }
+
+  public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
+      throws IOException, MetadataException {
+    File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    if (!snapshot.exists()) {
+      throw new SchemaFileNotExists(snapshot.getPath());
+    }
+    File schemaFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_FILE_NAME);
+    File schemaLogFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
+    Files.deleteIfExists(schemaFile.toPath());
+    Files.deleteIfExists(schemaLogFile.toPath());
+    Files.createLink(schemaFile.toPath(), snapshot.toPath());
+    return new SchemaFile(
+        sgName,
+        schemaRegionId,
+        false,
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        false);
   }
 
   // endregion

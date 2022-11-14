@@ -30,8 +30,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -56,6 +54,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -120,7 +119,7 @@ public abstract class SchemaBasicTest {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
@@ -238,7 +237,7 @@ public abstract class SchemaBasicTest {
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format(
-              "The seriesPath of %s already exist, it can't be set to the storage group",
+              "The seriesPath of %s already exist, it can't be set to the database",
               "root.laptop1"),
           e.getMessage());
     }
@@ -894,6 +893,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testTemplate() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
@@ -1147,6 +1147,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testUnsetSchemaTemplate() throws MetadataException {
 
     List<List<String>> measurementList = new ArrayList<>();
@@ -1211,6 +1212,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
@@ -1416,6 +1418,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testSetDeviceTemplate() throws MetadataException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
@@ -1554,6 +1557,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testShowTimeseriesWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -1676,6 +1680,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void minimumTestForWildcardInTemplate() throws MetadataException {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     CreateTemplatePlan treePlan = getTreeTemplatePlan();
@@ -1695,6 +1700,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testCountTimeseriesWithTemplate() throws IOException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -1778,6 +1784,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
+  @Ignore
   public void testCountDeviceWithTemplate() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
@@ -1949,161 +1956,6 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
-  public void testCreateAlignedTimeseriesAndInsertWithMismatchDataType() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-      schemaProcessor.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.aligned_device"),
-          Arrays.asList("s1", "s2", "s3"),
-          Arrays.asList(
-              TSDataType.valueOf("FLOAT"),
-              TSDataType.valueOf("INT64"),
-              TSDataType.valueOf("INT32")),
-          Arrays.asList(
-              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
-
-      // construct an insertRowPlan with mismatched data type
-      long time = 1L;
-      TSDataType[] dataTypes =
-          new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.INT32};
-
-      String[] columns = new String[3];
-      columns[0] = 2.0 + "";
-      columns[1] = 10000 + "";
-      columns[2] = 100 + "";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1.aligned_device"),
-              time,
-              new String[] {"s1", "s2", "s3"},
-              dataTypes,
-              columns,
-              true);
-      insertRowPlan.setMeasurementMNodes(
-          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      IMNode node = schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(
-          3, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateAlignedTimeseriesAndInsertWithNotAlignedData() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-      schemaProcessor.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1.aligned_device"),
-          Arrays.asList("s1", "s2", "s3"),
-          Arrays.asList(
-              TSDataType.valueOf("FLOAT"),
-              TSDataType.valueOf("INT64"),
-              TSDataType.valueOf("INT32")),
-          Arrays.asList(
-              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          Arrays.asList(compressionType, compressionType, compressionType));
-    } catch (Exception e) {
-      fail();
-    }
-
-    try {
-      schemaProcessor.createTimeseries(
-          new CreateTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.aligned_device.s4"),
-              TSDataType.valueOf("FLOAT"),
-              TSEncoding.valueOf("RLE"),
-              compressionType,
-              null,
-              null,
-              null,
-              null));
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.laptop.d1.aligned_device)",
-          e.getMessage());
-    }
-
-    try {
-      // construct an insertRowPlan with mismatched data type
-      long time = 1L;
-      TSDataType[] dataTypes =
-          new TSDataType[] {TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
-
-      String[] columns = new String[3];
-      columns[0] = "1.0";
-      columns[1] = "2";
-      columns[2] = "3";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1.aligned_device"),
-              time,
-              new String[] {"s1", "s2", "s3"},
-              dataTypes,
-              columns,
-              false);
-      insertRowPlan.setMeasurementMNodes(
-          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "timeseries under this device are aligned, please use aligned interface (Path: root.laptop.d1.aligned_device)",
-          e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateTimeseriesAndInsertWithMismatchDataType() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-      schemaProcessor.createTimeseries(
-          new PartialPath("root.laptop.d1.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap());
-
-      // construct an insertRowPlan with mismatched data type
-      long time = 1L;
-      TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT};
-
-      String[] columns = new String[1];
-      columns[0] = 2.0 + "";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1"), time, new String[] {"s0"}, dataTypes, columns);
-      insertRowPlan.setMeasurementMNodes(
-          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      IMNode node = schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(
-          1, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
-      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     try {
@@ -2139,35 +1991,6 @@ public abstract class SchemaBasicTest {
     } catch (Exception e) {
       Assert.assertEquals(
           "Timeseries under this entity is not aligned, please use createTimeseries or change entity. (Path: root.laptop.d1.aligned_device)",
-          e.getMessage());
-    }
-
-    try {
-      // construct an insertRowPlan with mismatched data type
-      long time = 1L;
-      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
-
-      String[] columns = new String[2];
-      columns[0] = "1";
-      columns[1] = "2";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1.aligned_device"),
-              time,
-              new String[] {"s1", "s2"},
-              dataTypes,
-              columns,
-              true);
-      insertRowPlan.setMeasurementMNodes(
-          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "timeseries under this device are not aligned, please use non-aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }
@@ -2292,51 +2115,6 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
-  public void testAutoCreateAlignedTimeseriesWhileInsert() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-
-    try {
-      long time = 1L;
-      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT32};
-
-      String[] columns = new String[2];
-      columns[0] = "1";
-      columns[1] = "2";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1.aligned_device"),
-              time,
-              new String[] {"s1", "s2"},
-              dataTypes,
-              columns,
-              true);
-      insertRowPlan.setMeasurementMNodes(
-          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
-
-      insertRowPlan.setMeasurements(new String[] {"s3", "s4"});
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
-
-      insertRowPlan.setMeasurements(new String[] {"s2", "s5"});
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s5")));
-
-      insertRowPlan.setMeasurements(new String[] {"s2", "s3"});
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-
-    } catch (MetadataException | IOException e) {
-      fail();
-    }
-  }
-
-  @Test
   public void testGetStorageGroupNodeByPath() {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     PartialPath partialPath = null;
@@ -2363,56 +2141,14 @@ public abstract class SchemaBasicTest {
       schemaProcessor.getStorageGroupNodeByPath(partialPath);
     } catch (StorageGroupNotSetException e) {
       Assert.assertEquals(
-          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          "Database is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
           e.getMessage());
     } catch (StorageGroupAlreadySetException e) {
       Assert.assertEquals(
-          "some children of root.ln have already been set to storage group", e.getMessage());
+          "some children of root.ln have already been created as database", e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testMeasurementIdWhileInsert() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-
-    PartialPath deviceId = new PartialPath("root.sg.d");
-    InsertPlan insertPlan;
-
-    insertPlan = getInsertPlan("`\"a+b\"`");
-    schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a+b\"`")));
-
-    insertPlan = getInsertPlan("`\"a.b\"`");
-    schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a.b\"`")));
-
-    insertPlan = getInsertPlan("`\"a“（Φ）”b\"`");
-    schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a“（Φ）”b\"`")));
-
-    String[] illegalMeasurementIds = {"time", "timestamp", "TIME", "TIMESTAMP"};
-    for (String measurementId : illegalMeasurementIds) {
-      insertPlan = getInsertPlan(measurementId);
-      try {
-        schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-        assertFalse(schemaProcessor.isPathExist(deviceId.concatNode(measurementId)));
-      } catch (MetadataException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  private InsertPlan getInsertPlan(String measurementId) throws MetadataException {
-    PartialPath deviceId = new PartialPath("root.sg.d");
-    String[] measurementList = {measurementId};
-    String[] values = {"1"};
-    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[1];
-    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
-    insertPlan.setMeasurementMNodes(measurementMNodes);
-    insertPlan.getDataTypes()[0] = TSDataType.INT32;
-    return insertPlan;
   }
 
   @Test
@@ -2450,31 +2186,7 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
-  public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-
-    PartialPath sg1 = new PartialPath("root.a.sg");
-    schemaProcessor.setStorageGroup(sg1);
-
-    PartialPath deviceId = new PartialPath("root.a.d");
-    String[] measurementList = {"s"};
-    String[] values = {"1"};
-    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[1];
-    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
-    insertPlan.setMeasurementMNodes(measurementMNodes);
-    insertPlan.getDataTypes()[0] = TSDataType.INT32;
-
-    try {
-      schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-      fail();
-    } catch (MetadataException e) {
-      Assert.assertEquals(
-          "some children of root.a have already been set to storage group", e.getMessage());
-      Assert.assertFalse(schemaProcessor.isPathExist(new PartialPath("root.a.d")));
-    }
-  }
-
-  @Test
+  @Ignore
   public void testTimeseriesDeletionWithEntityUsingTemplate() throws MetadataException {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.setStorageGroup(new PartialPath("root.sg"));

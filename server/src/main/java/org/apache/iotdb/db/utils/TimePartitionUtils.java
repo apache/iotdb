@@ -34,6 +34,10 @@ public class TimePartitionUtils {
     return timePartitionSlot;
   }
 
+  public static long getTimePartitionIntervalForRouting() {
+    return timePartitionIntervalForRouting;
+  }
+
   @TestOnly
   public static void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
     TimePartitionUtils.timePartitionIntervalForRouting = timePartitionIntervalForRouting;

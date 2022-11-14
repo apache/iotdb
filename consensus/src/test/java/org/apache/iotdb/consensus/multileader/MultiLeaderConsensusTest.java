@@ -51,9 +51,9 @@ public class MultiLeaderConsensusTest {
 
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, new TEndPoint("127.0.0.1", 6000)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6001)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+          new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)),
+          new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)),
+          new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
 
   private final List<File> peersStorage =
       Arrays.asList(
@@ -88,8 +88,9 @@ public class MultiLeaderConsensusTest {
       servers.add(
           (MultiLeaderConsensus)
               ConsensusFactory.getConsensusImpl(
-                      ConsensusFactory.MultiLeaderConsensus,
+                      ConsensusFactory.MULTI_LEADER_CONSENSUS,
                       ConsensusConfig.newBuilder()
+                          .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
                           .setStorageDir(peersStorage.get(i).getAbsolutePath())
                           .build(),
@@ -99,7 +100,7 @@ public class MultiLeaderConsensusTest {
                           new IllegalArgumentException(
                               String.format(
                                   ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.MultiLeaderConsensus))));
+                                  ConsensusFactory.MULTI_LEADER_CONSENSUS))));
       servers.get(i).start();
     }
   }

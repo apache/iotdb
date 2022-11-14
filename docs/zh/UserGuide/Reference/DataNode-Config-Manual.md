@@ -799,13 +799,13 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 0.8 |
 |改后生效方式|重启服务生效|
 
-* storage\_group\_report\_threshold
+* write\_memory\_variation\_report\_proportion
 
-|名字| storage\_group\_report\_threshold |
+|名字| write\_memory\_variation\_report\_proportion |
 |:---:|:---|
-|描述| 如果存储组的内存（以字节byte为单位）增加超过此阈值，则向系统报告。默认值为16MB |
-|类型| Int32 |
-|默认值| 16777216 |
+|描述| 如果 DataRegion 的内存增加超过写入可用内存的一定比例，则向系统报告。默认值为0.001 |
+|类型| Double |
+|默认值| 0.001 |
 |改后生效方式|重启服务生效|
 
 * max\_deduplicated\_path\_num
@@ -1280,7 +1280,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| default\_storage\_group\_level |
 |:---:|:---|
-|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的存储组，将序列路径的哪一层当做存储组。例如，如果我们接到一个新序列 root.sg0.d1.s2, 并且 level=1， 那么 root.sg0 被视为存储组（因为 root 是 level 0 层）|
+|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的 database，将序列路径的哪一层当做 database。例如，如果我们接到一个新序列 root.sg0.d1.s2, 并且 level=1， 那么 root.sg0 被视为database（因为 root 是 level 0 层）|
 |取值| Int32 |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
@@ -1660,16 +1660,16 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| time\_partition\_interval\_for\_storage  |
 |:---:|:-----------------------------------------|
-|描述| 用于存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：毫秒 |
+|描述| 用于 database 分区的时间段长度，用户指定的 database 下会使用该时间段进行分区，单位：毫秒 |
 |类型| Int64                                    |
-|默认值| 86400000                                 |
+|默认值| 604800000                                 |
 |改后生效方式| 仅允许在第一次启动服务前修改                           |
 
 * data\_region\_num
 
 |   名字   | data\_region\_num                                                                                                                                                    |
 |:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|   描述   | 每一个用户定义存储组下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined storage group number] |
+|   描述   | 每一个用户定义 database 下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined database number] |
 |   类型   | INT32                                                                                                                                                                |
 |  默认值   | 1                                                                                                                                                                    |
 | 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                                                                                       |

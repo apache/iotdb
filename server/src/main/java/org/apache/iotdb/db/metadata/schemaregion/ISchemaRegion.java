@@ -29,18 +29,20 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -106,9 +108,9 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Timeseries operation
-  void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
-  void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
+  void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
@@ -154,7 +156,7 @@ public interface ISchemaRegion {
 
   // region Interfaces for auto create device
   // auto create a deviceMNode, currently only used for schema sync operation
-  void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException;
+  void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException;
   // endregion
 
   // region Interfaces for metadata info Query
@@ -272,7 +274,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
@@ -290,9 +292,10 @@ public interface ISchemaRegion {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param withTags whether returns tag kvs in the result list.
    */
-  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
+  List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
@@ -302,10 +305,11 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
 
-  List<MeasurementPath> fetchSchema(PartialPath pathPattern, Map<Integer, Template> templateMap)
+  List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
@@ -391,8 +395,6 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for InsertPlan process
-  /** get schema for device. Attention!!! Only support insertPlan */
-  IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException, IOException;
 
   DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
@@ -418,16 +420,28 @@ public interface ISchemaRegion {
   boolean isTemplateAppendable(Template template, List<String> measurements)
       throws MetadataException;
 
-  void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException;
+  void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException;
 
-  void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
+  void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException;
 
-  void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
+  void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException;
 
-  void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+  void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException;
 
-  List<String> getPathsUsingTemplate(int templateId) throws MetadataException;
+  List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException;
+
+  int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+      throws MetadataException;
+
+  void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+      throws MetadataException;
+
+  void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
+
+  int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
+
   // endregion
 
   // region Interfaces for Trigger

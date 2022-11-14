@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -2805,7 +2807,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(count("s1"))
                   + ","
@@ -2842,7 +2844,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(maxValue("s3"))
                   + ","
@@ -2881,7 +2883,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(lastValue("s4"))
                   + ","
@@ -2915,7 +2917,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(count("s1"))
                   + ","
@@ -2976,7 +2978,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(count("s1"))
                   + ","
@@ -3013,7 +3015,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(count("s1"))
                   + ","
@@ -3054,7 +3056,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(count("s1"))
                   + ","
@@ -3093,7 +3095,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(maxValue("s3"))
                   + ","
@@ -3136,7 +3138,7 @@ public class IoTDBAlignedSeriesQueryIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("Device")
+                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
                   + ","
                   + resultSet.getString(maxValue("s3"))
                   + ","

@@ -460,6 +460,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1073741824 |
 |Effective| when enable\_mem\_control is false & After restarting system |
 
+* write\_memory\_variation\_report\_proportion
+
+|    Name     | write\_memory\_variation\_report\_proportion                 |
+| :---------: | :----------------------------------------------------------- |
+| Description | if memory cost of data region increased more than proportion of allocated memory for write, report to system |
+|    Type     | Double                                                       |
+|   Default   | 0.001                                                        |
+|  Effective  | After restarting system                                      |
+
 * enable\_timed\_flush\_seq\_memtable
 
 |Name| enable\_timed\_flush\_seq\_memtable |
@@ -545,10 +554,10 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| time\_partition\_interval\_for\_storage                                                                |
 |:---:|:-------------------------------------------------------------------------------------------------------|
-|Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
+|Description| Time range for dividing database, time series data will be divided into groups by this time range |
 |Type| Int64                                                                                                  |
 |Unit| ms                                                                                                     |
-|Default| 86400000                                                                                               |
+|Default| 604800000                                                                                               |
 |Effective| Only allowed to be modified in first start up                                                          |
 
 
@@ -556,7 +565,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|Int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -1073,7 +1082,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| default\_storage\_group\_level |
 |:---:|:---|
-|Description| Storage group level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the storage group if storage group level is 1. (root is level 0)|
+|Description| Database level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the database if database level is 1. (root is level 0)|
 |Type| integer |
 |Default|1 |
 |Effective|After restarting system|
@@ -1118,7 +1127,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |    Name     | data\_region\_num                                                                                                                                                                                                                                                  |
 |:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Description | number of data regions per user-defined storage group, a data region is the unit of parallelism in memory as all ingestions in one data region are serialized, recommended value is [data region number] = [CPU core number] / [user-defined storage group number] |
+| Description | number of data regions per user-defined database, a data region is the unit of parallelism in memory as all ingestions in one data region are serialized, recommended value is [data region number] = [CPU core number] / [user-defined database number] |
 |    Type     | LONG                                                                                                                                                                                                                                                               |
 |   Default   | 1                                                                                                                                                                                                                                                                  |
 |  Effective  | Only allowed to be modified in first start up                                                                                                                                                                                                                      |

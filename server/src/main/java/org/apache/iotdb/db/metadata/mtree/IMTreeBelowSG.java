@@ -36,12 +36,21 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public interface IMTreeBelowSG {
   void clear();
+
+  /**
+   * Create MTree snapshot
+   *
+   * @param snapshotDir specify snapshot directory
+   * @return false if failed to create snapshot; true if success
+   */
+  boolean createSnapshot(File snapshotDir);
 
   IMeasurementMNode createTimeseries(
       PartialPath path,
@@ -54,7 +63,7 @@ public interface IMTreeBelowSG {
 
   /**
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * storage group should be set first, throw exception otherwise
+   * timeseries, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -72,6 +81,18 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   /**
+   * Check if measurements under device exists in MTree
+   *
+   * @param devicePath device full path
+   * @param measurementList measurements list
+   * @param aliasList alias of measurement
+   * @return If all measurements not exists, return empty map. Otherwise, return a map whose key is
+   *     index of measurement in list and value is exception.
+   */
+  Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
+  /**
    * Delete path. The path should be a full path from root to leaf node
    *
    * @param path Format: root.node(.node)+
@@ -80,6 +101,27 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
+
+  /**
+   * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
+   * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
+   * {root.sg.d1.s1, root.sg.d2.s1}.
+   *
+   * @param pathPattern path pattern
+   * @return all pre-deleted timeseries matched by given pathPattern
+   */
+  List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Get all devices of pre-deleted timeseries matched by given pathPattern. For example, given path
+   * pattern root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result
+   * set is {root.sg.d1, root.sg.d2}.
+   *
+   * @param pathPattern path pattern
+   * @return all devices of pre-deleted timeseries matched by given pathPattern
+   */
+  Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
+      throws MetadataException;
 
   void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException;
 
@@ -136,19 +178,34 @@ public interface IMTreeBelowSG {
    * collected and return.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param limit the limit of query result.
+   * @param offset the offset.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @param withTags whether returns all the tags of each timeseries as well.
    * @return Pair.left contains all the satisfied path Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
+      throws MetadataException;
+
+  /**
+   * Fetch all measurement path
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param withTags whether returns all the tags of each timeseries as well.
+   * @return schema
+   */
+  List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
-   * current offset
+   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
+   * offset
    */
   Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException;
@@ -192,8 +249,20 @@ public interface IMTreeBelowSG {
    * Get the count of timeseries matching the given path.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException;
+
+  /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   * @param templateMap <TemplateId, Template>
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
   /**
@@ -257,6 +326,15 @@ public interface IMTreeBelowSG {
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
+
+  /**
+   * Get IMeasurementMNode by path pattern
+   *
+   * @param pathPattern full path or path pattern with wildcard
+   * @return list of IMeasurementMNode
+   */
+  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
+      throws MetadataException;
 
   /**
    * check whether there is template on given path and the subTree has template return true,
@@ -323,4 +401,11 @@ public interface IMTreeBelowSG {
    * @return null if no template has been set on path
    */
   String getTemplateOnPath(PartialPath path) throws MetadataException;
+
+  void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
+
+  List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException;
+
+  int countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

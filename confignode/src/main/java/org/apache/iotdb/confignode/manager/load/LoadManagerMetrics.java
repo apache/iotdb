@@ -22,12 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_CONFIG_NODE;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_DATA_NODE;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_ONLINE;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_UNKNOWN;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
@@ -103,8 +105,8 @@ public class LoadManagerMetrics implements IMetricSet {
   private Integer getLeadershipCountByDatanode(int dataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
-    getPartitionManager()
-        .getAllLeadership()
+    getLoadManager()
+        .getLatestRegionLeaderMap()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
     return idToCountMap.get(dataNodeId);
   }
@@ -187,6 +189,10 @@ public class LoadManagerMetrics implements IMetricSet {
     return configManager.getPartitionManager();
   }
 
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
+  }
+
   private int getRunningConfigNodesNum(AbstractMetricService metricService) {
     List<TConfigNodeLocation> runningConfigNodes =
         getNodeManager().filterConfigNodeThroughStatus(NodeStatus.Running);
@@ -203,7 +209,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "ConfigNode")
+              METRIC_CONFIG_NODE)
           .set(1);
     }
     return runningConfigNodes.size();
@@ -226,7 +232,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "DataNode")
+              METRIC_DATA_NODE)
           .set(1);
     }
     return runningDataNodes.size();
@@ -248,7 +254,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "ConfigNode")
+              METRIC_CONFIG_NODE)
           .set(0);
     }
     return unknownConfigNodes.size();
@@ -271,7 +277,7 @@ public class LoadManagerMetrics implements IMetricSet {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "DataNode")
+              METRIC_DATA_NODE)
           .set(0);
     }
     return unknownDataNodes.size();

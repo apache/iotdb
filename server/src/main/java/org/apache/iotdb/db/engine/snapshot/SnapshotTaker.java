@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.snapshot;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -56,6 +57,14 @@ public class SnapshotTaker {
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
+    String snapshotId = snapshotDir.getName();
+    return takeFullSnapshot(snapshotDirPath, snapshotId, flushBeforeSnapshot);
+  }
+
+  public boolean takeFullSnapshot(
+      String snapshotDirPath, String snapshotId, boolean flushBeforeSnapshot)
+      throws DirectoryNotLegalException, IOException {
+    File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
         && snapshotDir.listFiles() != null
         && Objects.requireNonNull(snapshotDir.listFiles()).length > 0) {
@@ -72,6 +81,7 @@ public class SnapshotTaker {
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
       boolean success;
+      snapshotLogger.logSnapshotId(snapshotId);
 
       try {
         readLockTheFile();
@@ -83,8 +93,8 @@ public class SnapshotTaker {
             dataRegion.writeUnlock();
           }
         }
-        success = createSnapshot(seqFiles, snapshotDir.getName());
-        success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
+        success = createSnapshot(seqFiles, snapshotId);
+        success = createSnapshot(unseqFiles, snapshotId) && success;
       } finally {
         readUnlockTheFile();
       }
@@ -94,13 +104,14 @@ public class SnapshotTaker {
             "Failed to take snapshot for {}-{}, clean up",
             dataRegion.getStorageGroupName(),
             dataRegion.getDataRegionId());
-        cleanUpWhenFail(snapshotDir.getName());
+        cleanUpWhenFail(snapshotId);
       } else {
+        snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
             dataRegion.getStorageGroupName(),
             dataRegion.getDataRegionId(),
-            snapshotDirPath);
+            snapshotDir.getParentFile().getAbsolutePath() + File.separator + snapshotId);
       }
 
       return success;
@@ -183,8 +194,8 @@ public class SnapshotTaker {
       LOGGER.error("Hard link source file {} doesn't exist", source);
     }
     Files.deleteIfExists(target.toPath());
-    Files.createLink(target.getAbsoluteFile().toPath(), source.getAbsoluteFile().toPath());
-    snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
+    Files.createLink(target.toPath(), source.toPath());
+    snapshotLogger.logFile(source);
   }
 
   /**
@@ -210,7 +221,7 @@ public class SnapshotTaker {
       stringBuilder.append(splittedPath[i]);
       stringBuilder.append(File.separator);
     }
-    stringBuilder.append("snapshot");
+    stringBuilder.append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);
@@ -233,7 +244,12 @@ public class SnapshotTaker {
     LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       File dataDirForThisSnapshot =
-          new File(dataDir + File.separator + "snapshot" + File.separator + snapshotId);
+          new File(
+              dataDir
+                  + File.separator
+                  + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+                  + File.separator
+                  + snapshotId);
       if (dataDirForThisSnapshot.exists()) {
         try {
           FileUtils.recursiveDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());

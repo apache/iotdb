@@ -93,6 +93,10 @@ BEGIN
     : B E G I N
     ;
 
+BLOCKED
+    : B L O C K E D
+    ;
+
 BOUNDARY
     : B O U N D A R Y
     ;
@@ -157,9 +161,21 @@ DATA
     : D A T A
     ;
 
+DATABASE
+    : D A T A B A S E
+    ;
+
+DATABASES
+    : D A T A B A S E S
+    ;
+
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+DEACTIVATE
+    : D E A C T I V A T E
     ;
 
 DEBUG
@@ -178,6 +194,10 @@ DESCRIBE
     : D E S C R I B E
     ;
 
+DETAILS
+    : D E T A I L S
+    ;
+
 DEVICE
     : D E V I C E
     ;
@@ -190,6 +210,10 @@ DISABLE
     : D I S A B L E
     ;
 
+DISCARD
+    : D I S C A R D
+    ;
+
 DROP
     : D R O P
     ;
@@ -198,10 +222,13 @@ END
     : E N D
     ;
 
+ENDTIME
+    : E N D T I M E
+    ;
+
 EVERY
     : E V E R Y
     ;
-
 
 EXPLAIN
     : E X P L A I N
@@ -399,6 +426,10 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
+POLICY
+    : P O L I C Y
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;
@@ -431,8 +462,8 @@ QUERY
     : Q U E R Y
     ;
 
-RUNNING
-    : R U N N I N G
+RANGE
+    : R A N G E
     ;
 
 READONLY
@@ -441,6 +472,10 @@ READONLY
 
 REGEXP
     : R E G E X P
+    ;
+
+REGIONID
+    : R E G I O N I D
     ;
 
 REGIONS
@@ -475,12 +510,20 @@ ROOT
     : R O O T
     ;
 
+RUNNING
+    : R U N N I N G
+    ;
+
 SCHEMA
     : S C H E M A
     ;
 
 SELECT
     : S E L E C T
+    ;
+
+SERIESSLOTID
+    : S E R I E S S L O T I D
     ;
 
 SET
@@ -513,6 +556,10 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STARTTIME
+    : S T A R T T I M E
     ;
 
 STATELESS
@@ -551,8 +598,16 @@ TIME
     : T I M E
     ;
 
+TIMEOUT
+    : T I M E O U T
+    ;
+
 TIMESERIES
     : T I M E S E R I E S
+    ;
+
+TIMESLOTID
+    : T I M E S L O T I D
     ;
 
 TIMESTAMP
@@ -867,6 +922,7 @@ LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
 RS_BRACKET : ']';
+DOUBLE_COLON: '::';
 
 
 /**

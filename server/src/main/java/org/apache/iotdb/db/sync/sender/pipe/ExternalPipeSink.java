@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -130,6 +131,13 @@ public class ExternalPipeSink implements PipeSink {
     pipeSinkName = ReadWriteIOUtils.readString(inputStream);
     extPipeSinkTypeName = ReadWriteIOUtils.readString(inputStream);
     sinkParams = ReadWriteIOUtils.readMap(inputStream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    pipeSinkName = ReadWriteIOUtils.readString(buffer);
+    extPipeSinkTypeName = ReadWriteIOUtils.readString(buffer);
+    sinkParams = ReadWriteIOUtils.readMap(buffer);
   }
 
   public Map<String, String> getSinkParams() {

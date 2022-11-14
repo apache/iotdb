@@ -19,8 +19,42 @@
 package org.apache.iotdb.commons.sync.pipe;
 
 public enum PipeStatus {
+
   // a new pipe should be stop status
-  RUNNING,
-  STOP,
-  DROP
+  RUNNING((byte) 0),
+  STOP((byte) 1),
+  DROP((byte) 2),
+  // intermediate states that are not visible to the user
+  PARTIAL_CREATE((byte) 3),
+  PARTIAL_START((byte) 4),
+  PARTIAL_STOP((byte) 5);
+
+  private final byte type;
+
+  PipeStatus(byte type) {
+    this.type = type;
+  }
+
+  public byte getType() {
+    return type;
+  }
+
+  public static PipeStatus getPipeStatus(byte type) {
+    switch (type) {
+      case 0:
+        return PipeStatus.RUNNING;
+      case 1:
+        return PipeStatus.STOP;
+      case 2:
+        return PipeStatus.DROP;
+      case 3:
+        return PipeStatus.PARTIAL_CREATE;
+      case 4:
+        return PipeStatus.PARTIAL_START;
+      case 5:
+        return PipeStatus.PARTIAL_STOP;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
+  }
 }

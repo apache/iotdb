@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MultiLeaderMemoryManager {
@@ -29,26 +32,33 @@ public class MultiLeaderMemoryManager {
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
 
-  private MultiLeaderMemoryManager() {}
+  private MultiLeaderMemoryManager() {
+    MetricService.getInstance().addMetricSet(new MultiLeaderMemoryManagerMetrics(this));
+  }
 
   public boolean reserve(long size) {
-    synchronized (this) {
-      if (size > maxMemorySizeInByte - memorySizeInByte.get()) {
-        logger.debug(
-            "consensus memory limited. required: {}, used: {}, total: {}",
-            size,
-            memorySizeInByte.get(),
-            maxMemorySizeInByte);
-        return false;
-      }
-      memorySizeInByte.addAndGet(size);
-    }
-    logger.debug(
-        "{} add {} bytes, total memory size: {} bytes.",
-        Thread.currentThread().getName(),
-        size,
-        memorySizeInByte.get());
-    return true;
+    AtomicBoolean result = new AtomicBoolean(false);
+    memorySizeInByte.updateAndGet(
+        (memorySize) -> {
+          if (size > maxMemorySizeInByte - memorySize) {
+            logger.debug(
+                "consensus memory limited. required: {}, used: {}, total: {}",
+                size,
+                memorySize,
+                maxMemorySizeInByte);
+            result.set(false);
+            return memorySize;
+          } else {
+            logger.debug(
+                "{} add {} bytes, total memory size: {} bytes.",
+                Thread.currentThread().getName(),
+                size,
+                memorySize + size);
+            result.set(true);
+            return memorySize + size;
+          }
+        });
+    return result.get();
   }
 
   public void free(long size) {
@@ -62,6 +72,10 @@ public class MultiLeaderMemoryManager {
 
   public void init(long maxMemorySize) {
     this.maxMemorySizeInByte = maxMemorySize;
+  }
+
+  long getMemorySizeInByte() {
+    return memorySizeInByte.get();
   }
 
   private static final MultiLeaderMemoryManager INSTANCE = new MultiLeaderMemoryManager();

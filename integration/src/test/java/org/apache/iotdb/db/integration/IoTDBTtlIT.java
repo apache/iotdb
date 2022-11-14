@@ -69,7 +69,7 @@ public class IoTDBTtlIT {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
+      statement.execute("CREATE DATABASE root.TTL_SG1");
       statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
@@ -77,7 +77,7 @@ public class IoTDBTtlIT {
         assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG2");
+      statement.execute("CREATE DATABASE root.TTL_SG2");
       statement.execute("CREATE TIMESERIES root.TTL_SG2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
@@ -166,8 +166,8 @@ public class IoTDBTtlIT {
         }
         assertTrue(cnt >= 200);
       }
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG3");
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG4");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG3");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG4");
       // SG2
       for (int i = 0; i < 100; i++) {
         statement.execute(
@@ -279,8 +279,8 @@ public class IoTDBTtlIT {
   public void testShowTTL() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2");
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
           result.equals("root.group1,null\n" + "root.group2,null\n")
@@ -322,18 +322,18 @@ public class IoTDBTtlIT {
 
   @Test
   public void testDefaultTTL() throws SQLException {
-    CommonDescriptor.getInstance().getConfig().setDefaultTTL(10000);
+    CommonDescriptor.getInstance().getConfig().setDefaultTTLInMs(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2");
 
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
           result.equals("root.group1,10000\n" + "root.group2,10000\n")
               || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
     } finally {
-      CommonDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
+      CommonDescriptor.getInstance().getConfig().setDefaultTTLInMs(Long.MAX_VALUE);
     }
   }
 
@@ -342,8 +342,8 @@ public class IoTDBTtlIT {
   public void testTTLOnAnyPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2.sgroup1");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2.sgroup1");
       statement.execute("SET TTL TO root.group2.** 10000");
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(

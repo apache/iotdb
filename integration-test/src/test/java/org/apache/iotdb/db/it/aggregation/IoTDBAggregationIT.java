@@ -59,8 +59,8 @@ public class IoTDBAggregationIT {
 
   private static final String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -69,7 +69,7 @@ public class IoTDBAggregationIT {
       };
   private static final String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -86,7 +86,7 @@ public class IoTDBAggregationIT {
       };
   private static final String[] dataSet3 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.sg.d1(timestamp,s1) values(5,5)",
         "insert into root.sg.d1(timestamp,s1) values(12,12)",

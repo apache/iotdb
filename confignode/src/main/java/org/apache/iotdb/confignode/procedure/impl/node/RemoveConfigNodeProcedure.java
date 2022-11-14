@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,38 +39,38 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
   private static final Logger LOG = LoggerFactory.getLogger(RemoveConfigNodeProcedure.class);
   private static final int retryThreshold = 5;
 
-  private TConfigNodeLocation tConfigNodeLocation;
+  private TConfigNodeLocation removedConfigNode;
 
   public RemoveConfigNodeProcedure() {
     super();
   }
 
-  public RemoveConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
+  public RemoveConfigNodeProcedure(TConfigNodeLocation removedConfigNode) {
     super();
-    this.tConfigNodeLocation = tConfigNodeLocation;
+    this.removedConfigNode = removedConfigNode;
   }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state) {
-    if (tConfigNodeLocation == null) {
+    if (removedConfigNode == null) {
       return Flow.NO_MORE_STATE;
     }
     try {
       switch (state) {
         case REMOVE_PEER:
-          env.removeConfigNodePeer(tConfigNodeLocation);
-          setNextState(RemoveConfigNodeState.REMOVE_CONSENSUS_GROUP);
-          LOG.info("Remove peer {}", tConfigNodeLocation);
+          env.removeConfigNodePeer(removedConfigNode);
+          setNextState(RemoveConfigNodeState.DELETE_PEER);
+          LOG.info("Remove peer for ConfigNode: {}", removedConfigNode);
           break;
-        case REMOVE_CONSENSUS_GROUP:
-          env.removeConsensusGroup(tConfigNodeLocation);
+        case DELETE_PEER:
+          env.deleteConfigNodePeer(removedConfigNode);
           setNextState(RemoveConfigNodeState.STOP_CONFIG_NODE);
-          LOG.info("Remove Consensus Group {}", tConfigNodeLocation);
+          LOG.info("Delete peer for ConfigNode: {}", removedConfigNode);
           break;
         case STOP_CONFIG_NODE:
           env.broadCastTheLatestConfigNodeGroup();
-          env.stopConfigNode(tConfigNodeLocation);
-          LOG.info("Stop Config Node {}", tConfigNodeLocation);
+          env.stopConfigNode(removedConfigNode);
+          LOG.info("Stop ConfigNode: {}", removedConfigNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -79,7 +79,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
       } else {
         LOG.error(
             "Retrievable error trying to remove config node {}, state {}",
-            tConfigNodeLocation,
+            removedConfigNode,
             state,
             e);
         if (getCycles() > retryThreshold) {
@@ -116,16 +116,16 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(removedConfigNode, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
+      removedConfigNode = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
     }
@@ -137,7 +137,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
       RemoveConfigNodeProcedure thatProc = (RemoveConfigNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);
+          && thatProc.removedConfigNode.equals(this.removedConfigNode);
     }
     return false;
   }

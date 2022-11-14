@@ -21,11 +21,11 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -109,6 +109,7 @@ public class DataNodeSchemaCache {
             devicePath.concatNode(
                 schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
             schemaCacheEntry.getMeasurementSchema(),
+            schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
       }
@@ -121,6 +122,7 @@ public class DataNodeSchemaCache {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
+              measurementPath.getTagMap(),
               measurementPath.isUnderAlignedEntity());
       cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
     }
@@ -168,6 +170,7 @@ public class DataNodeSchemaCache {
           entry =
               new SchemaCacheEntry(
                   (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
           cache.put(seriesPath, entry);
         }

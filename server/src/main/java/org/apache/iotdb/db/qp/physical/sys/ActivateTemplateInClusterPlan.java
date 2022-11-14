@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,7 +33,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class ActivateTemplateInClusterPlan extends PhysicalPlan {
+public class ActivateTemplateInClusterPlan extends PhysicalPlan
+    implements IActivateTemplateInClusterPlan {
 
   private PartialPath activatePath;
   private int templateSetLevel;
@@ -54,6 +56,11 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
     return activatePath;
   }
 
+  @Override
+  public void setActivatePath(PartialPath activatePath) {
+    this.activatePath = activatePath;
+  }
+
   public PartialPath getPathSetTemplate() {
     return new PartialPath(Arrays.copyOf(activatePath.getNodes(), templateSetLevel + 1));
   }
@@ -62,8 +69,18 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
     return templateId;
   }
 
+  @Override
+  public void setTemplateId(int templateId) {
+    this.templateId = templateId;
+  }
+
   public int getTemplateSetLevel() {
     return templateSetLevel;
+  }
+
+  @Override
+  public void setTemplateSetLevel(int templateSetLevel) {
+    this.templateSetLevel = templateSetLevel;
   }
 
   public boolean isAligned() {

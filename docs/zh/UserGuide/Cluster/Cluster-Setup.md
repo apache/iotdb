@@ -173,12 +173,14 @@ datanode\sbin\start-cli.bat
 
 Linux 移除方式：
 ```
-./confignode/sbin/remove-confignode.sh <id>/<internal_address>:<internal_port>
+./confignode/sbin/remove-confignode.sh <confignode_id>
+./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
 ```
 
 Windows 移除方式：
 ```
-confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
+confignode\sbin\remove-confignode.bat <confignode_id>
+confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 ```
 
 ### 移除 DataNode
@@ -188,13 +190,15 @@ confignode\sbin\remove-confignode.bat <id>/<internal_address>:<internal_port>
 Linux 移除方式：
 
 ```
-./datanode/sbin/remove-datanode.sh <id>/<rpc_address>:<rpc_port>
+./datanode/sbin/remove-datanode.sh <datanode_id>
+./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
 Windows 移除方式：
 
 ```
-datanode\sbin\remove-datanode.bat <id>/<rpc_address>:<rpc_port>
+datanode\sbin\remove-datanode.bat <datanode_id>
+datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
 ```
 
 ## 快速上手
@@ -224,12 +228,12 @@ datanode\sbin\remove-datanode.bat <id>/<rpc_address>:<rpc_port>
 指令，结果如下所示：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+------------+
-|NodeID|  NodeType| Status|     Host|InternalPort|
-+------+----------+-------+---------+------------+
-|     0|ConfigNode|Running|  0.0.0.0|       22277|
-|     1|  DataNode|Running|127.0.0.1|        9003|
-+------+----------+-------+---------+------------+
++------+----------+-------+---------------+------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|
++------+----------+-------+---------------+------------+
+|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     1|  DataNode|Running|      127.0.0.1|        9003|
++------+----------+-------+---------------+------------+
 Total line number = 2
 It costs 0.160s
 ```
@@ -304,16 +308,16 @@ It costs 0.160s
 在 Cli 执行 show cluster，结果如下：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+------------+
-|NodeID|  NodeType| Status|     Host|InternalPort|
-+------+----------+-------+---------+------------+
-|     0|ConfigNode|Running|  0.0.0.0|       22277|
-|     2|ConfigNode|Running|  0.0.0.0|       22279|
-|     3|ConfigNode|Running|  0.0.0.0|       22281|
-|     1|  DataNode|Running|127.0.0.1|        9003|
-|     4|  DataNode|Running|127.0.0.1|        9004|
-|     5|  DataNode|Running|127.0.0.1|        9005|
-+------+----------+-------+---------+------------+
++------+----------+-------+---------------+------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|
++------+----------+-------+---------------+------------+
+|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     2|ConfigNode|Running|        0.0.0.0|       22279|
+|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     1|  DataNode|Running|      127.0.0.1|        9003|
+|     4|  DataNode|Running|      127.0.0.1|        9004|
+|     5|  DataNode|Running|      127.0.0.1|        9005|
++------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -322,7 +326,7 @@ It costs 0.012s
 
 + 缩容一个 ConfigNode：
 ```
-./cluster0/confignode/sbin/remove-confignode.sh -r 0.0.0.0:22279
+./cluster0/confignode/sbin/remove-confignode.sh 127.0.0.1:22279
 ```
 
 + 缩容一个 DataNode：
@@ -335,14 +339,14 @@ It costs 0.012s
 在 Cli 执行 show cluster，结果如下：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+------------+
-|NodeID|  NodeType| Status|     Host|InternalPort|
-+------+----------+-------+---------+------------+
-|     0|ConfigNode|Running|  0.0.0.0|       22277|
-|     3|ConfigNode|Running|  0.0.0.0|       22281|
-|     1|  DataNode|Running|127.0.0.1|        9003|
-|     5|  DataNode|Running|127.0.0.1|        9005|
-+------+----------+-------+---------+------------+
++------+----------+-------+---------------+------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|
++------+----------+-------+---------------+------------+
+|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     1|  DataNode|Running|      127.0.0.1|        9003|
+|     5|  DataNode|Running|      127.0.0.1|        9005|
++------+----------+-------+---------------+------------+
 Total line number = 4
 It costs 0.007s
 ```

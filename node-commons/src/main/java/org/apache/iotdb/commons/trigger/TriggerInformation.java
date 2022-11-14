@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +40,9 @@ public class TriggerInformation {
   private PartialPath pathPattern;
   private String triggerName;
   private String className;
+
+  private boolean isUsingURI;
+
   private String jarName;
 
   private Map<String, String> attributes;
@@ -52,6 +56,7 @@ public class TriggerInformation {
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
+  private FailureStrategy failureStrategy;
   /** MD5 of the Jar File */
   private String jarFileMD5;
 
@@ -61,22 +66,27 @@ public class TriggerInformation {
       PartialPath pathPattern,
       String triggerName,
       String className,
+      boolean isUsingURI,
       String jarName,
       Map<String, String> attributes,
       TriggerEvent event,
       TTriggerState triggerState,
       boolean isStateful,
       TDataNodeLocation dataNodeLocation,
+      FailureStrategy failureStrategy,
       String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
     this.className = className;
+    this.isUsingURI = isUsingURI;
     this.jarName = jarName;
     this.attributes = attributes;
     this.event = event;
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
+    // default value is OPTIMISTIC
+    this.failureStrategy = failureStrategy;
     this.jarFileMD5 = jarFileMD5;
   }
 
@@ -91,7 +101,11 @@ public class TriggerInformation {
     pathPattern.serialize(outputStream);
     ReadWriteIOUtils.write(triggerName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
-    ReadWriteIOUtils.write(jarName, outputStream);
+    ReadWriteIOUtils.write(isUsingURI, outputStream);
+    if (isUsingURI) {
+      ReadWriteIOUtils.write(jarName, outputStream);
+      ReadWriteIOUtils.write(jarFileMD5, outputStream);
+    }
     ReadWriteIOUtils.write(attributes, outputStream);
     ReadWriteIOUtils.write(event.getId(), outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
@@ -99,7 +113,7 @@ public class TriggerInformation {
     if (isStateful) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
-    ReadWriteIOUtils.write(jarFileMD5, outputStream);
+    ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -107,7 +121,11 @@ public class TriggerInformation {
     triggerInformation.pathPattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
-    triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+    triggerInformation.isUsingURI = ReadWriteIOUtils.readBool(byteBuffer);
+    if (triggerInformation.isUsingURI) {
+      triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+      triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    }
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
     triggerInformation.event = TriggerEvent.construct(ReadWriteIOUtils.readByte(byteBuffer));
     triggerInformation.triggerState =
@@ -118,7 +136,8 @@ public class TriggerInformation {
       triggerInformation.dataNodeLocation =
           ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     }
-    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    triggerInformation.failureStrategy =
+        FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
     return triggerInformation;
   }
 
@@ -173,6 +192,14 @@ public class TriggerInformation {
     this.className = className;
   }
 
+  public boolean isUsingURI() {
+    return isUsingURI;
+  }
+
+  public void setUsingURI(boolean usingURI) {
+    isUsingURI = usingURI;
+  }
+
   public TriggerEvent getEvent() {
     return event;
   }
@@ -215,6 +242,14 @@ public class TriggerInformation {
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;
+  }
+
+  public FailureStrategy getFailureStrategy() {
+    return failureStrategy;
+  }
+
+  public void setFailureStrategy(FailureStrategy failureStrategy) {
+    this.failureStrategy = failureStrategy;
   }
 
   public String getJarFileMD5() {

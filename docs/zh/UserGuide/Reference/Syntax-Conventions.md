@@ -19,138 +19,6 @@
 
 -->
 
-# 语法约定
-
-## 旧语法约定中的问题（0.14 版本不兼容的语法）
-
-在之前版本的语法约定中，为了保持兼容性，我们引入了一些会引起歧义的规定。为了避免歧义，我们设计了新的语法约定，本章将说明旧语法约定中存在的问题，以及我们做出改动的原因。
-
-### 标识符限制增强
-
-在0.13及之前版本中，不使用反引号引用的标识符（包括路径结点）允许为实数（实数路径名在 `SELECT` 子句中需要用反引号括起），且允许包含部分特殊字符，**在0.14版本中，不使用反引号引用的标识符不允许为实数，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。**
-
-### 路径名使用的相关问题
-
-在旧语法约定中，什么时候需要给路径结点名添加引号，用单双引号还是反引号的规则较为复杂，在新的语法约定中我们做了统一，具体可以参考本文档的相关章节。
-
-#### 单双引号和反引号的使用时机
-
-在之前的语法约定中，路径结点名被定义成标识符，但是当需要在路径结点名中使用路径分隔符 . 时，需要使用单引号或者双引号引用。这与标识符使用反引号引用的规则相悖。
-
-```SQL
-# 在之前的语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，需要使用下述语句：
-create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
-
-# 该语句创建的时间序列实际为 root.sg.'www.baidu.com'，即引号一并存入,该时间序列的三个结点为{"root","sg","'www.baidu.com'"}
-
-# 在查询语句中，如果希望查询该时间序列的数据，查询语句如下：
-select 'www.baidu.com' from root.sg;
-```
-
-而在新语法约定中，特殊路径结点名统一使用反引号引用：
-
-```SQL
-# 在现有语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，语法如下：
-create root.sg.`www.baidu.com` with datatype = BOOLEAN, encoding = PLAIN
-
-# 查询该时间序列可以通过如下语句：
-select `www.baidu.com` from root.sg;
-```
-
-#### 路径结点名内部使用引号的问题
-
-在旧语法约定中，在路径结点名中使用单引号 ' 和 双引号 " 时，需要使用反斜杠 \ 进行转义，且反斜杠会被视为路径结点名的一部分存入，而在使用其它标识符时没有这个限制，造成了不统一。
-
-```SQL
-# 创建时间序列 root.sg.\"a
-create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
-
-# 查询时间序列 root.sg.\"a
-select `\"a` from root.sg;
-+-----------------------------+-----------+
-|                         Time|root.sg.\"a|
-+-----------------------------+-----------+
-|1970-01-01T08:00:00.004+08:00|       test|
-+-----------------------------+-----------+
-```
-
-在新语法约定中，特殊路径结点名统一使用反引号进行引用，在路径结点名中使用单双引号无须添加反斜杠转义，使用反引号需要双写，具体可以参考新语法约定路径结点名章节。
-
-### Session 接口相关
-
-#### Session 接口语法限制
-
-在0.13版本中，对于非SQL接口中使用路径结点的限制如下：
-
-- 经参数传入的路径或路径前缀中的节点：
-  - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
-  - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。
-  - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
-
-**0.14 版本中，对非SQL接口中使用路径结点的限制增强：**
-
-- **经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，均需要使用反引号进行转义。**
-
-- **语法说明相关代码示例可以参考：**`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
-
-#### SQL和Session接口对字符串反转义处理不一致
-
-在之前版本中，使用字符串时，SQL 和 Session 接口存在不一致的情况。比如使用 SQL 插入 Text 类型数据时，会对字符串进行反转义处理，而使用 Session 接口时不会进行这样的处理，存在不一致。**在新的语法约定中，我们统一不对字符串做反转义处理，存入什么内容，在查询时就会得到什么内容(字符串内部使用单双引号的规则可以参考本文档字符串常量章节)。**
-
-下面是旧语法约定中不一致的例子：
-
-使用 Session 的 insertRecord 方法向时序 root.sg.a 中插入数据
-
-```Java
-// session 插入
-String deviceId = "root.sg";
-List<String> measurements = new ArrayList<>();
-measurements.add("a");
-String[] values = new String[]{"\\\\", "\\t", "\\\"", "\\u96d5"};
-for(int i = 0; i <= values.length; i++){
-  List<String> valueList = new ArrayList<>();
-  valueList.add(values[i]);
-  session.insertRecord(deviceId, i + 1, measurements, valueList);
-  }
-```
-
-查询 root.sg.a 的数据，可以看到没有做反转义处理：
-
-```Plain%20Text
-// 查询结果
-+-----------------------------+---------+
-|                         Time|root.sg.a|
-+-----------------------------+---------+
-|1970-01-01T08:00:00.001+08:00|       \\|
-|1970-01-01T08:00:00.002+08:00|       \t|
-|1970-01-01T08:00:00.003+08:00|       \"|
-|1970-01-01T08:00:00.004+08:00|   \u96d5|
-+-----------------------------+---------+
-```
-
-而使用 SQL 向 root.sg.a 中插入数据
-
-```SQL
-# SQL 插入
-insert into root.sg(time, a) values(1, "\\")
-insert into root.sg(time, a) values(2, "\t")
-insert into root.sg(time, a) values(3, "\"")
-insert into root.sg(time, a) values(4, "\u96d5")
-```
-
-查询 root.sg.a 的数据，可以看到字符串进行了反转义：
-
-```Plain%20Text
-// 查询结果
-+-----------------------------+---------+
-|                         Time|root.sg.a|
-+-----------------------------+---------+
-|1970-01-01T08:00:00.001+08:00|        \|
-|1970-01-01T08:00:00.002+08:00|         |
-|1970-01-01T08:00:00.003+08:00|        "|
-|1970-01-01T08:00:00.004+08:00|       雕|
-+-----------------------------+---------+
-```
 
 ## 字面值常量
 
@@ -464,7 +332,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 
 ```SQL
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -616,7 +484,7 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 ## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、数据库（database）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 

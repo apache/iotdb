@@ -20,11 +20,25 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
 
 /** This loader is used to load deletion plan. */
 public class DeletionLoader implements ILoader {
+  private static final Logger logger = LoggerFactory.getLogger(DeletionLoader.class);
 
   private Deletion deletion;
 
@@ -38,10 +52,37 @@ public class DeletionLoader implements ILoader {
       throw new PipeDataLoadException("storage engine readonly");
     }
     try {
-      StorageEngine.getInstance()
-          .delete(deletion.getPath(), deletion.getStartTime(), deletion.getEndTime(), 0, null);
+      Statement statement = generateStatement();
+      long queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .execute(
+                  statement,
+                  queryId,
+                  null,
+                  "",
+                  PARTITION_FETCHER,
+                  SCHEMA_FETCHER,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logger.error(String.format("Delete %s error, statement: %s.", deletion, statement));
+        logger.error(String.format("Delete result status : %s.", result.status));
+        throw new LoadFileException(
+            String.format("Can not execute delete statement: %s", statement));
+      }
     } catch (Exception e) {
       throw new PipeDataLoadException(e.getMessage());
     }
+  }
+
+  private Statement generateStatement() {
+    if (deletion.getStartTime() == Long.MIN_VALUE && deletion.getEndTime() == Long.MAX_VALUE) {
+      return new DeleteTimeSeriesStatement(Collections.singletonList(deletion.getPath()));
+    }
+    DeleteDataStatement statement = new DeleteDataStatement();
+    statement.setPathList(Collections.singletonList(deletion.getPath()));
+    statement.setDeleteStartTime(deletion.getStartTime());
+    statement.setDeleteEndTime(deletion.getEndTime());
+    return statement;
   }
 }

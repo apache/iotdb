@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.protocol.influxdb.handler.NewQueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
+import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -39,8 +42,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** InfluxDBMetaManager for NewIoTDB When schema region is memory or schema file */
 public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
+  // NewIoTDB uses ClientRPCServiceImpl to handle the request
   private final ClientRPCServiceImpl clientRPCService;
 
   private NewInfluxDBMetaManager() {
@@ -51,16 +56,22 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     return InfluxDBMetaManagerHolder.INSTANCE;
   }
 
+  /** recover the influxdb metadata */
   @Override
   public void recover() {
     long sessionID = 0;
     try {
+      IClientSession clientSession = new InternalClientSession("InfluxDB-Recovery");
+      SessionManager.getInstance().registerSession(clientSession);
       TSOpenSessionResp tsOpenSessionResp =
           clientRPCService.openSession(
-              new TSOpenSessionReq().setUsername("root").setPassword("root"));
+              new TSOpenSessionReq()
+                  .setUsername("root")
+                  .setPassword("root")
+                  .setZoneId("Asia/Shanghai"));
       sessionID = tsOpenSessionResp.getSessionId();
       TSExecuteStatementResp resp =
-          NewQueryHandler.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
+          NewInfluxDBServiceImpl.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
       IoTDBJDBCDataSet dataSet = QueryResultUtils.creatIoTJDBCDataset(resp);
       try {
         Map<String, Map<String, Integer>> measurement2TagOrders;
@@ -93,9 +104,16 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
       throw new InfluxDBException(e.getMessage());
     } finally {
       clientRPCService.closeSession(new TSCloseSessionReq().setSessionId(sessionID));
+      SessionManager.getInstance().removeCurrSession();
     }
   }
 
+  /**
+   * create database
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   @Override
   public void setStorageGroup(String database, long sessionID) {
     TSStatus status = clientRPCService.setStorageGroup(sessionID, "root." + database);
@@ -106,6 +124,12 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     throw new InfluxDBException(status.getMessage());
   }
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   @Override
   public void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID) {
     try {
@@ -119,6 +143,37 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
+  }
+
+  /**
+   * get field orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of field orders
+   */
+  @Override
+  public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
+    Map<String, Integer> fieldOrders = new HashMap<>();
+    String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
+    TSExecuteStatementResp executeStatementResp =
+        NewInfluxDBServiceImpl.executeStatement(showTimeseriesSql, sessionID);
+    List<String> paths = QueryResultUtils.getFullPaths(executeStatementResp);
+    Map<String, Integer> tagOrders =
+        InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, sessionID);
+    int tagOrderNums = tagOrders.size();
+    int fieldNums = 0;
+    for (String path : paths) {
+      String filed = StringUtils.getFieldByPath(path);
+      if (!fieldOrders.containsKey(filed)) {
+        // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
+        // and finally all fields)
+        fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
+        fieldNums++;
+      }
+    }
+    return fieldOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

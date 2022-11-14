@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.sync.persistence;
 
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
@@ -38,8 +39,8 @@ public class SyncLogReader {
   private static final Logger logger = LoggerFactory.getLogger(SyncLogReader.class);
   // <pipeSinkName, PipeSink>
   private final Map<String, PipeSink> pipeSinks = new ConcurrentHashMap<>();
-  private final Map<String, Map<Long, PipeInfo>> pipes = new ConcurrentHashMap<>();
-  private PipeInfo runningPipe;
+  // <pipeName, Pipe>
+  private final Map<String, PipeInfo> pipes = new ConcurrentHashMap<>();
   private final File dir;
   private final String fileName;
 
@@ -69,12 +70,8 @@ public class SyncLogReader {
     return pipeSinks;
   }
 
-  public Map<String, Map<Long, PipeInfo>> getAllPipeInfos() {
+  public Map<String, PipeInfo> getPipes() {
     return pipes;
-  }
-
-  public PipeInfo getRunningPipeInfo() {
-    return runningPipe;
   }
 
   private void recoverPipe(InputStream inputStream) throws IOException {
@@ -90,25 +87,20 @@ public class SyncLogReader {
           pipeSinks.remove(ReadWriteIOUtils.readString(inputStream));
           break;
         case CREATE_PIPE:
-          runningPipe = PipeInfo.deserializePipeInfo(inputStream);
-          pipes
-              .computeIfAbsent(runningPipe.getPipeName(), i -> new ConcurrentHashMap<>())
-              .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
+          PipeInfo pipeInfo = PipeInfo.deserializePipeInfo(inputStream);
+          pipes.putIfAbsent(pipeInfo.getPipeName(), pipeInfo);
           break;
         case STOP_PIPE:
-          // TODO: support multiple pipe
-          ReadWriteIOUtils.readString(inputStream);
-          runningPipe.stop();
+          String pipeName = ReadWriteIOUtils.readString(inputStream);
+          pipes.get(pipeName).setStatus(PipeStatus.STOP);
           break;
         case START_PIPE:
-          // TODO: support multiple pipe
-          ReadWriteIOUtils.readString(inputStream);
-          runningPipe.start();
+          pipeName = ReadWriteIOUtils.readString(inputStream);
+          pipes.get(pipeName).setStatus(PipeStatus.RUNNING);
           break;
         case DROP_PIPE:
-          // TODO: support multiple pipe
-          ReadWriteIOUtils.readString(inputStream);
-          runningPipe.drop();
+          pipeName = ReadWriteIOUtils.readString(inputStream);
+          pipes.remove(pipeName);
           break;
         default:
           throw new UnsupportedOperationException(

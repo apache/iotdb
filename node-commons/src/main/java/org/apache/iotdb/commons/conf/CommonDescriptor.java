@@ -61,56 +61,72 @@ public class CommonDescriptor {
 
   public void loadCommonProps(Properties properties) {
     config.setAuthorizerProvider(
-        properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()));
+        properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
     config.setOpenIdProviderUrl(
-        properties.getProperty("openID_url", config.getOpenIdProviderUrl()));
-    config.setAdminName(properties.getProperty("admin_name", config.getAdminName()));
+        properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
+    config.setAdminName(properties.getProperty("admin_name", config.getAdminName()).trim());
 
-    config.setAdminPassword(properties.getProperty("admin_password", config.getAdminPassword()));
+    config.setAdminPassword(
+        properties.getProperty("admin_password", config.getAdminPassword()).trim());
     config.setEncryptDecryptProvider(
-        properties.getProperty(
-            "iotdb_server_encrypt_decrypt_provider", config.getEncryptDecryptProvider()));
+        properties
+            .getProperty(
+                "iotdb_server_encrypt_decrypt_provider", config.getEncryptDecryptProvider())
+            .trim());
 
     config.setEncryptDecryptProviderParameter(
         properties.getProperty(
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
-    config.setDefaultTTL(
+    config.setDefaultTTLInMs(
         Long.parseLong(
-            properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
-    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
+            properties
+                .getProperty("default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))
+                .trim()));
+    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()).trim());
 
-    config.setWalDirs(properties.getProperty("wal_dirs", config.getWalDirs()[0]).split(","));
+    config.setWalDirs(
+        properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).trim().split(","));
 
-    config.setRpcThriftCompressionEnabled(
+    config.setCnRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "rpc_thrift_compression_enable",
-                String.valueOf(config.isRpcThriftCompressionEnabled()))));
+            properties
+                .getProperty(
+                    "cn_rpc_thrift_compression_enable",
+                    String.valueOf(config.isCnRpcThriftCompressionEnabled()))
+                .trim()));
 
-    config.setConnectionTimeoutInMS(
+    config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
-            properties.getProperty(
-                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+            properties
+                .getProperty(
+                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
+                .trim()));
 
-    config.setSelectorNumOfClientManager(
+    config.setCnSelectorNumOfClientManager(
         Integer.parseInt(
-            properties.getProperty(
-                "selector_thread_nums_of_client_manager",
-                String.valueOf(config.getSelectorNumOfClientManager()))));
+            properties
+                .getProperty(
+                    "cn_selector_thread_nums_of_client_manager",
+                    String.valueOf(config.getCnSelectorNumOfClientManager()))
+                .trim()));
 
     config.setHandleSystemErrorStrategy(
         HandleSystemErrorStrategy.valueOf(
-            properties.getProperty(
-                "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
+            properties
+                .getProperty(
+                    "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))
+                .trim()));
 
     config.setDiskSpaceWarningThreshold(
         Double.parseDouble(
-            properties.getProperty(
-                "disk_space_warning_threshold",
-                String.valueOf(config.getDiskSpaceWarningThreshold()))));
+            properties
+                .getProperty(
+                    "disk_space_warning_threshold",
+                    String.valueOf(config.getDiskSpaceWarningThreshold()))
+                .trim()));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

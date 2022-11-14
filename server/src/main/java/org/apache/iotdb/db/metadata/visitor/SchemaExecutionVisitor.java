@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -36,17 +39,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -66,8 +67,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
-      schemaRegion.createTimeseries((CreateTimeSeriesPlan) plan, -1);
+      schemaRegion.createTimeseries(node, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -79,8 +79,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitCreateAlignedTimeSeries(
       CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
-      schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
+      schemaRegion.createAlignedTimeSeries(node);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -118,9 +117,9 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
-  private CreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
+  private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
       PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
-    return new CreateTimeSeriesPlan(
+    return SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
         devicePath.concatNode(measurementGroup.getMeasurements().get(index)),
         measurementGroup.getDataTypes().get(index),
         measurementGroup.getEncodings().get(index),
@@ -198,8 +197,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
     List<TSEncoding> encodingList = measurementGroup.getEncodings();
     List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
-    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-        new CreateAlignedTimeSeriesPlan(
+    ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
             devicePath,
             measurementList,
             dataTypeList,
@@ -280,12 +279,9 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitActivateTemplate(ActivateTemplateNode node, ISchemaRegion schemaRegion) {
     try {
-      ActivateTemplateInClusterPlan plan =
-          (ActivateTemplateInClusterPlan)
-              new PhysicalPlanTransformer().visitActivateTemplate(node, new TransformerContext());
       Template template = ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
-      plan.setAligned(template.isDirectAligned());
-      schemaRegion.activateSchemaTemplate(plan, template);
+      node.setAligned(template.isDirectAligned());
+      schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);
@@ -329,51 +325,42 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
+  public TSStatus visitPreDeactivateTemplate(
+      PreDeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+    try {
+      int preDeactivateNum = schemaRegion.constructSchemaBlackListWithTemplate(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateNum));
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitRollbackPreDeactivateTemplate(
+      RollbackPreDeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.rollbackSchemaBlackListWithTemplate(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitDeactivateTemplate(DeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.deactivateTemplateInBlackList(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
   public TSStatus visitPlan(PlanNode node, ISchemaRegion context) {
     return null;
   }
-
-  // TODO need remove
-  private static class PhysicalPlanTransformer
-      extends PlanVisitor<PhysicalPlan, TransformerContext> {
-    @Override
-    public PhysicalPlan visitPlan(PlanNode node, TransformerContext context) {
-      throw new NotImplementedException();
-    }
-
-    public PhysicalPlan visitCreateTimeSeries(
-        CreateTimeSeriesNode node, TransformerContext context) {
-      return new CreateTimeSeriesPlan(
-          node.getPath(),
-          node.getDataType(),
-          node.getEncoding(),
-          node.getCompressor(),
-          node.getProps(),
-          node.getTags(),
-          node.getAttributes(),
-          node.getAlias());
-    }
-
-    public PhysicalPlan visitCreateAlignedTimeSeries(
-        CreateAlignedTimeSeriesNode node, TransformerContext context) {
-      return new CreateAlignedTimeSeriesPlan(
-          node.getDevicePath(),
-          node.getMeasurements(),
-          node.getDataTypes(),
-          node.getEncodings(),
-          node.getCompressors(),
-          node.getAliasList(),
-          node.getTagsList(),
-          node.getAttributesList());
-    }
-
-    @Override
-    public PhysicalPlan visitActivateTemplate(
-        ActivateTemplateNode node, TransformerContext context) {
-      return new ActivateTemplateInClusterPlan(
-          node.getActivatePath(), node.getTemplateSetLevel(), node.getTemplateId());
-    }
-  }
-
-  private static class TransformerContext {}
 }

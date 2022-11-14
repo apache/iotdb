@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ public class MockSchemaFile implements ISchemaFile {
         new StorageGroupMNode(
             null,
             storageGroupPath.getTailNode(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     writeMNode(storageGroupMNode);
     return cloneMNode(storageGroupMNode);
   }
@@ -98,6 +99,11 @@ public class MockSchemaFile implements ISchemaFile {
       return Collections.emptyIterator();
     }
     return new MockSchemaFileIterator(getSegment(parent).values().iterator());
+  }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    return false;
   }
 
   @Override

@@ -28,14 +28,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -44,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -112,9 +110,14 @@ public class LoadTsFileManager {
     TsFileWriterManager writerManager =
         uuid2WriterManager.computeIfAbsent(
             uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
-    for (ChunkData chunkData : pieceNode.getAllChunkData()) {
-      writerManager.write(
-          new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      if (!tsFileData.isModification()) {
+        ChunkData chunkData = (ChunkData) tsFileData;
+        writerManager.write(
+            new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+      } else {
+        writerManager.writeDeletion(tsFileData);
+      }
     }
   }
 
@@ -172,7 +175,9 @@ public class LoadTsFileManager {
     }
 
     private void clearDir(File dir) {
-      FileUtils.deleteDirectory(dir);
+      if (dir.exists()) {
+        FileUtils.deleteDirectory(dir);
+      }
       if (dir.mkdirs()) {
         logger.info(String.format("Load TsFile dir %s is created.", dir.getPath()));
       }
@@ -204,6 +209,15 @@ public class LoadTsFileManager {
       chunkData.writeToFileWriter(writer);
     }
 
+    private void writeDeletion(TsFileData deletionData) throws IOException {
+      if (isClosed) {
+        throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
+      }
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        deletionData.writeToFileWriter(entry.getValue());
+      }
+    }
+
     private void loadAll() throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
@@ -219,23 +233,15 @@ public class LoadTsFileManager {
     }
 
     private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {
-      TsFileResource tsFileResource = new TsFileResource(writer.getFile());
-      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-          writer.getDeviceTimeseriesMetadataMap();
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          deviceTimeseriesMetadataMap.entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-          tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
-          tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
-        }
-      }
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
     }
 
     private void close() {
+      if (isClosed) {
+        return;
+      }
       if (dataPartition2Writer != null) {
         for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
           try {
@@ -243,7 +249,7 @@ public class LoadTsFileManager {
             if (writer.canWrite()) {
               writer.close();
             }
-            if (!writer.getFile().delete()) {
+            if (writer.getFile().exists() && !writer.getFile().delete()) {
               logger.warn(String.format("Delete File %s error.", writer.getFile()));
             }
           } catch (IOException e) {

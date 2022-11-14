@@ -41,6 +41,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -159,12 +160,17 @@ public class ClusterSchemaTree implements ISchemaTree {
     appendSingleMeasurement(
         measurementPath,
         (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.getTagMap(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
   }
 
   public void appendSingleMeasurement(
-      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+      PartialPath path,
+      MeasurementSchema schema,
+      Map<String, String> tagMap,
+      String alias,
+      boolean isAligned) {
     String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -177,6 +183,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             measurementNode.setAlias(alias);
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
+          measurementNode.setTagMap(tagMap);
           child = measurementNode;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
@@ -189,6 +196,9 @@ public class ClusterSchemaTree implements ISchemaTree {
       } else if (i == nodes.length - 2 && !child.isEntity()) {
         SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
         cur.replaceChild(nodes[i], entityNode);
+        if (!entityNode.isAligned()) {
+          entityNode.setAligned(isAligned);
+        }
         child = entityNode;
       }
       cur = child;
@@ -274,12 +284,12 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param pathName only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   @Override
   public String getBelongedStorageGroup(String pathName) {
@@ -288,7 +298,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         return storageGroup;
       }
     }
-    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+    throw new RuntimeException("No matched database. Please check the path " + pathName);
   }
 
   @Override

@@ -72,20 +72,20 @@ public class ConfigMTreeTest {
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals(
-          "some children of root.edge1 have already been set to storage group", e.getMessage());
+          "some children of root.edge1 have already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge2"));
       root.setStorageGroup(new PartialPath("root.edge2.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+      assertEquals("root.edge2 has already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+      assertEquals("root.edge1.access has already been created as database", e.getMessage());
     }
   }
 
@@ -147,7 +147,7 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
@@ -373,7 +373,7 @@ public class ConfigMTreeTest {
     }
 
     try {
-      List<String> pathList = root.getPathsSetOnTemplate(0);
+      List<String> pathList = root.getPathsSetOnTemplate(0, false);
       Assert.assertTrue(pathList.contains("root.a.template0"));
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {

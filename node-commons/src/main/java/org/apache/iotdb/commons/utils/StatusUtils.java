@@ -122,10 +122,10 @@ public class StatusUtils {
         status.setMessage("Meet error while sync connecting. ");
         break;
       case DATA_REGION_ERROR:
-        status.setMessage("Storage group processor related error. ");
+        status.setMessage("Database processor related error. ");
         break;
       case STORAGE_GROUP_ERROR:
-        status.setMessage("No associated storage group. ");
+        status.setMessage("No associated database. ");
         break;
       case STORAGE_ENGINE_ERROR:
         status.setMessage("Storage engine related error. ");
@@ -152,7 +152,7 @@ public class StatusUtils {
         status.setMessage("Meet error while setting time zone. ");
         break;
       case NOT_STORAGE_GROUP_ERROR:
-        status.setMessage("Operating object is not a storage group. ");
+        status.setMessage("Operating object is not a database. ");
         break;
       case QUERY_NOT_ALLOWED:
         status.setMessage("Query statements are not allowed error. ");

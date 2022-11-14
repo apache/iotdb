@@ -34,12 +34,15 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class ConfigNodeRemoveCheck {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
@@ -77,7 +80,8 @@ public class ConfigNodeRemoveCheck {
                   .findFirst()
                   .orElse(null);
         } catch (BadNodeUrlException e2) {
-          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          LOGGER.info(
+              "Usage: remove-confignode.sh <confignode-id> or remove-confignode.sh <internal_address>:<internal_port>");
           return nodeLocation;
         }
       }
@@ -91,7 +95,12 @@ public class ConfigNodeRemoveCheck {
   public void removeConfigNode(TConfigNodeLocation removedNode)
       throws BadNodeUrlException, IOException {
     TSStatus status = new TSStatus();
-    for (TConfigNodeLocation configNodeLocation : getConfigNodeList()) {
+    // Using leader ConfigNode id firstly
+    List<TConfigNodeLocation> configNodeList =
+        getConfigNodeList().stream()
+            .sorted(Comparator.comparing(TConfigNodeLocation::getConfigNodeId))
+            .collect(Collectors.toList());
+    for (TConfigNodeLocation configNodeLocation : configNodeList) {
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
@@ -102,10 +111,16 @@ public class ConfigNodeRemoveCheck {
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }
+
+      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode()) {
+        LOGGER.warn("Execute removeConfigNode failed for: {}", status.getMessage());
+        break;
+      }
     }
+
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(status.getMessage());
-      throw new IOException("Remove ConfigNode failed:");
+      throw new IOException("Remove ConfigNode failed: " + status.getMessage());
     }
   }
 
@@ -115,7 +130,7 @@ public class ConfigNodeRemoveCheck {
   }
 
   public int getConsensusPort() {
-    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT));
+    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CN_CONSENSUS_PORT));
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {

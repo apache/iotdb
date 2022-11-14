@@ -25,10 +25,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,6 +40,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** region migrate procedure */
@@ -80,71 +83,67 @@ public class RegionMigrateProcedure
       return Flow.NO_MORE_STATE;
     }
     TSStatus tsStatus;
+    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
         case CREATE_NEW_REGION_PEER:
-          env.getDataNodeRemoveHandler().createNewRegionPeer(consensusGroupId, destDataNode);
+          handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for ADD_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("Failed to add region peer");
           }
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
-          env.getDataNodeRemoveHandler().changeRegionLeader(consensusGroupId, originalDataNode);
+          handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait REMOVE_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("Failed to remove region peer");
           }
           setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .deleteOldRegionPeer(originalDataNode, consensusGroupId);
+          tsStatus = handler.deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for DELETE_OLD_REGION_PEER finished, regionId: {}", consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId, state);
           }
-          // remove consensus group after a node stop, which will be failed, but we will
+          // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
-          env.getDataNodeRemoveHandler()
-              .updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
+          handler.updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       LOG.error(
-          "Meets error in region migrate state, please do the rollback operation yourself manually according to the error message!!! "
+          "{}, Meets error in region migrate state, "
+              + "please do the rollback operation yourself manually according to the error message!!! "
               + "error state: {}, migrateResult: {}",
+          REMOVE_DATANODE_PROCESS,
           state,
           migrateResult);
       if (isRollbackSupported(state)) {
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "Failed state is not support rollback, filed state {}, originalDataNode: {}",
+            "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
+            REMOVE_DATANODE_PROCESS,
             state,
-            originalDataNode);
+            getIdWithRpcEndpoint(originalDataNode));
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
@@ -217,7 +216,7 @@ public class RegionMigrateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.REGION_MIGRATE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.REGION_MIGRATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(originalDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);
@@ -249,8 +248,15 @@ public class RegionMigrateProcedure
     return false;
   }
 
-  public TSStatus waitForOneMigrationStepFinished(TConsensusGroupId consensusGroupId)
-      throws Exception {
+  public TSStatus waitForOneMigrationStepFinished(
+      TConsensusGroupId consensusGroupId, RegionTransitionState state) throws Exception {
+
+    LOG.info(
+        "{}, Wait for state {} finished, regionId: {}",
+        REMOVE_DATANODE_PROCESS,
+        state,
+        consensusGroupId);
+
     TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
     synchronized (regionMigrateLock) {
       try {
@@ -262,7 +268,7 @@ public class RegionMigrateProcedure
               String.format("Region migrate failed, regionId: %s", consensusGroupId));
         }
       } catch (InterruptedException e) {
-        LOG.error("region migrate {} interrupt", consensusGroupId, e);
+        LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage("wait region migrate interrupt," + e.getMessage());
@@ -274,14 +280,20 @@ public class RegionMigrateProcedure
   /** DataNode report region migrate result to ConfigNode, and continue */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
-    LOG.info("ConfigNode received DataNode reported region migrate result: {} ", req);
+    LOG.info(
+        "{}, ConfigNode received region migrate result reported by DataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        req);
 
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       TSStatus migrateStatus = req.getMigrateResult();
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOG.info("Region migrate executed failed in DataNode, migrateStatus: {}", migrateStatus);
+        LOG.info(
+            "{}, Region migrate failed in DataNode, migrateStatus: {}",
+            REMOVE_DATANODE_PROCESS,
+            migrateStatus);
         migrateSuccess = false;
         migrateResult = migrateStatus.toString();
       }

@@ -362,7 +362,7 @@ public class LastQueryExecutor {
             StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
         return table.getLastCache(new TimeseriesID(fullPath));
       } catch (StorageEngineException | MetadataException e) {
-        logger.error("last query can't find storage group: path is: " + fullPath);
+        logger.error("last query can't find database: path is: " + fullPath);
       }
 
       return null;
@@ -375,7 +375,7 @@ public class LastQueryExecutor {
             StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
         table.updateLastCache(new TimeseriesID(fullPath), pair, false, Long.MIN_VALUE);
       } catch (MetadataException | StorageEngineException e) {
-        logger.error("last query can't find storage group: path is: " + fullPath);
+        logger.error("last query can't find database: path is: " + fullPath);
       }
     }
   }

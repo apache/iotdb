@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 
@@ -32,6 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_CONFIGNODE_USAGE;
 
 public class ConfigNodeCommandLine extends ServerCommandLine {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeCommandLine.class);
@@ -78,11 +79,11 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       }
       ConfigNode.getInstance().active();
     } else if (MODE_REMOVE.equals(mode)) {
-      // remove node
+      // remove ConfigNode
       try {
-        doRemoveNode(args);
+        doRemoveConfigNode(args);
       } catch (IOException e) {
-        LOGGER.error("Meet error when doing remove", e);
+        LOGGER.error("Meet error when doing remove ConfigNode", e);
         return -1;
       }
     } else {
@@ -93,12 +94,14 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     return 0;
   }
 
-  private void doRemoveNode(String[] args) throws IOException {
-    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
+  private void doRemoveConfigNode(String[] args) throws IOException {
+
     if (args.length != 2) {
-      LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+      LOGGER.info(REMOVE_CONFIGNODE_USAGE);
       return;
     }
+
+    LOGGER.info("Starting to remove ConfigNode, parameter: {}, {}", args[0], args[1]);
 
     try {
       TConfigNodeLocation removeConfigNodeLocation =
@@ -112,7 +115,11 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
+      return;
     }
-    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
+
+    LOGGER.info(
+        "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
+        args[1]);
   }
 }

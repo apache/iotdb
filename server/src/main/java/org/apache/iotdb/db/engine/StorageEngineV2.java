@@ -96,15 +96,10 @@ public class StorageEngineV2 implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
-  /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's
-   * TimestampPrecision
-   */
+  /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionIntervalForStorage = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
-
-  private final boolean enableMemControl = config.isEnableMemControl();
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -131,7 +126,8 @@ public class StorageEngineV2 implements IService {
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
-  private ExecutorService recoveryThreadPool;
+  /** used to do short-lived asynchronous tasks */
+  private ExecutorService cachedThreadPool;
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -155,11 +151,6 @@ public class StorageEngineV2 implements IService {
       initTimePartition();
     }
     return timePartitionIntervalForStorage;
-  }
-
-  @TestOnly
-  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
   }
 
   public static long getTimePartition(long time) {
@@ -208,16 +199,16 @@ public class StorageEngineV2 implements IService {
 
   public void recover() {
     setAllSgReady(false);
-    recoveryThreadPool =
+    cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
+            ThreadName.STORAGE_ENGINE_CACHED_SERVICE.getName());
 
     List<Future<Void>> futures = new LinkedList<>();
-    asyncRecover(recoveryThreadPool, futures);
+    asyncRecover(futures);
 
     // wait until wal is recovered
     if (!config.isClusterMode()
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
@@ -225,28 +216,17 @@ public class StorageEngineV2 implements IService {
       }
     }
 
-    // operations after all virtual storage groups are recovered
+    // operations after all data regions are recovered
     Thread recoverEndTrigger =
         new Thread(
             () -> {
-              for (Future<Void> future : futures) {
-                try {
-                  future.get();
-                } catch (ExecutionException e) {
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-                }
-              }
-              recoveryThreadPool.shutdown();
+              checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
             });
     recoverEndTrigger.start();
   }
 
-  private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
-
+  private void asyncRecover(List<Future<Void>> futures) {
     Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
     localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
@@ -272,7 +252,7 @@ public class StorageEngineV2 implements IService {
                   recoverDataRegionNum);
               return null;
             };
-        futures.add(pool.submit(recoverDataRegionTask));
+        futures.add(cachedThreadPool.submit(recoverDataRegionTask));
       }
     }
   }
@@ -408,7 +388,7 @@ public class StorageEngineV2 implements IService {
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
         unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
-    recoveryThreadPool.shutdownNow();
+    cachedThreadPool.shutdownNow();
     dataRegionMap.clear();
   }
 
@@ -426,7 +406,7 @@ public class StorageEngineV2 implements IService {
     shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
-    recoveryThreadPool.shutdownNow();
+    cachedThreadPool.shutdownNow();
     dataRegionMap.clear();
   }
 
@@ -442,19 +422,6 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
-      throws ShutdownException {
-    if (pool != null) {
-      pool.shutdownNow();
-      try {
-        pool.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 30s", poolName);
-        throw new ShutdownException(e);
-      }
-    }
-  }
-
   @Override
   public ServiceType getID() {
     return ServiceType.STORAGE_ENGINE_SERVICE;
@@ -464,14 +431,14 @@ public class StorageEngineV2 implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param logicalStorageGroupName logical storage group name e.g. root.sg1
+   * @param logicalStorageGroupName database name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
       String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
       throws DataRegionException {
     DataRegion dataRegion;
     logger.info(
-        "construct a data region instance, the storage group is {}, Thread is {}",
+        "construct a data region instance, the database is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     dataRegion =
@@ -480,7 +447,7 @@ public class StorageEngineV2 implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
-    dataRegion.setDataTTL(ttl);
+    dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
     return dataRegion;
@@ -499,41 +466,80 @@ public class StorageEngineV2 implements IService {
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start closing all database processor");
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        dataRegion.syncCloseAllWorkingTsFileProcessors();
+        tasks.add(
+            cachedThreadPool.submit(
+                () -> {
+                  dataRegion.syncCloseAllWorkingTsFileProcessors();
+                  return null;
+                }));
       }
     }
+    checkResults(tasks, "Failed to sync close processor.");
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start force closing all storage group processor");
+    logger.info("Start force closing all database processor");
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        dataRegion.forceCloseAllWorkingTsFileProcessors();
+        tasks.add(
+            cachedThreadPool.submit(
+                () -> {
+                  dataRegion.forceCloseAllWorkingTsFileProcessors();
+                  return null;
+                }));
       }
     }
+    checkResults(tasks, "Failed to force close processor.");
   }
 
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
+    List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
-            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+            tasks.add(
+                cachedThreadPool.submit(
+                    () -> {
+                      dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+                      return null;
+                    }));
           }
         } else {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+            tasks.add(
+                cachedThreadPool.submit(
+                    () -> {
+                      dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+                      return null;
+                    }));
           }
         }
+      }
+    }
+    checkResults(tasks, "Failed to close database processor.");
+  }
+
+  private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
+    for (Future<V> task : tasks) {
+      try {
+        task.get();
+      } catch (ExecutionException e) {
+        throw new StorageEngineFailureException(errorMsg, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException(errorMsg, e);
       }
     }
   }
 
   /**
-   * merge all storage groups.
+   * merge all databases.
    *
    * @throws StorageEngineException StorageEngineException
    */
@@ -566,7 +572,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(dataTTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
       }
     }
   }
@@ -637,7 +643,7 @@ public class StorageEngineV2 implements IService {
         if (config.isClusterMode()
             && config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.MultiLeaderConsensus)) {
+                .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
           WALManager.getInstance()
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
@@ -678,19 +684,6 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
-  //  public TSStatus setTTL(TSetTTLReq req) {
-  //    Map<String, List<DataRegionId>> localDataRegionInfo =
-  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
-  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
-  //    for (DataRegionId dataRegionId : dataRegionIdList) {
-  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-  //      if (dataRegion != null) {
-  //        dataRegion.setDataTTL(req.TTL);
-  //      }
-  //    }
-  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  //  }
-
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();
@@ -700,7 +693,7 @@ public class StorageEngineV2 implements IService {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {
-        dataRegion.setDataTTL(req.TTL);
+        dataRegion.setDataTTLWithTimePrecisionCheck(req.TTL);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -781,6 +774,35 @@ public class StorageEngineV2 implements IService {
     }
 
     return status;
+  }
+
+  /** reboot timed flush sequence/unsequence memetable thread */
+  public void rebootTimedService() throws ShutdownException {
+    logger.info("Start rebooting all timed service.");
+
+    // exclude ttl check thread
+    stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
+    stopTimedServiceAndThrow(
+        unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
+
+    logger.info("Stop all timed service successfully, and now restart them.");
+
+    startTimedService();
+
+    logger.info("Reboot all timed service successfully");
+  }
+
+  private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
+      throws ShutdownException {
+    if (pool != null) {
+      pool.shutdownNow();
+      try {
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("{} still doesn't exit after 30s", poolName);
+        throw new ShutdownException(e);
+      }
+    }
   }
 
   static class InstanceHolder {

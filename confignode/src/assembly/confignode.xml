@@ -41,9 +41,19 @@
             <outputDirectory>sbin</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-        </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf/iotdb-confignode-metric.yml</source>
+            <destName>conf/iotdb-confignode-metric.yml</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf/iotdb-common.properties</source>
+            <destName>conf/iotdb-common.properties</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
+            <destName>sbin/iotdb-common.sh</destName>
+        </file>
+    </files>
 </assembly>

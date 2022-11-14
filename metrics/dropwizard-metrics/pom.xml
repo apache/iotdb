@@ -44,12 +44,6 @@
             <version>${dropwizard.metrics.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.sun.jersey</groupId>
-            <artifactId>jersey-core</artifactId>
-            <version>${jersey-core.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>io.projectreactor.netty</groupId>
             <artifactId>reactor-netty-http</artifactId>
             <version>${reactor-netty-http.version}</version>
@@ -57,6 +51,6 @@
     </dependencies>
     <properties>
         <jersey-core.version>1.9</jersey-core.version>
-        <reactor-netty-http.version>1.0.4</reactor-netty-http.version>
+        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
     </properties>
 </project>

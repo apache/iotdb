@@ -22,10 +22,9 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
@@ -43,7 +42,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class RoundRobinStrategyTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final String[] walDirs =
       new String[] {
@@ -81,7 +79,7 @@ public class RoundRobinStrategyTest {
         } else {
           assertEquals(walNodes[i % 6], walNode);
         }
-        walNode.log(i, getInsertRowPlan());
+        walNode.log(i, getInsertRowNode());
       }
       for (String walDir : walDirs) {
         File walDirFile = new File(walDir);
@@ -103,7 +101,7 @@ public class RoundRobinStrategyTest {
     }
   }
 
-  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+  private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -123,11 +121,14 @@ public class RoundRobinStrategyTest {
     columns[4] = false + "";
     columns[5] = "hh" + 0;
 
-    return new InsertRowPlan(
+    return new InsertRowNode(
+        new PlanNodeId("0"),
         new PartialPath("root.test_sg.test_d"),
-        time,
+        false,
         new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
         dataTypes,
-        columns);
+        time,
+        columns,
+        true);
   }
 }

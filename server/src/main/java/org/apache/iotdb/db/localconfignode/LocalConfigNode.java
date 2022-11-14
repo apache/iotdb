@@ -55,7 +55,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -120,7 +121,7 @@ import java.util.stream.Collectors;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
- * configs include storage group, schema region and template. The data config is dataRegion.
+ * configs include database, schema region and template. The data config is dataRegion.
  */
 public class LocalConfigNode {
 
@@ -259,12 +260,12 @@ public class LocalConfigNode {
 
   // endregion
 
-  // region Interfaces for storage group management
+  // region Interfaces for database management
 
-  // region Interfaces for storage group write operation
+  // region Interfaces for database write operation
 
   /**
-   * Set storage group of the given path to MTree.
+   * CREATE DATABASE of the given path to MTree.
    *
    * @param storageGroup root.node.(node)*
    */
@@ -300,7 +301,7 @@ public class LocalConfigNode {
 
     schemaPartitionTable.deleteStorageGroup(storageGroup);
 
-    // delete storage group after all related resources have been cleared
+    // delete database after all related resources have been cleared
     storageGroupSchemaManager.deleteStorageGroup(storageGroup);
   }
 
@@ -312,12 +313,12 @@ public class LocalConfigNode {
 
     File sgDir = new File(config.getSchemaDir() + File.separator + storageGroup.getFullPath());
     if (sgDir.delete()) {
-      logger.info("delete storage group folder {}", sgDir.getAbsolutePath());
+      logger.info("delete database folder {}", sgDir.getAbsolutePath());
     } else {
       if (sgDir.exists()) {
-        logger.info("delete storage group folder {} failed.", sgDir.getAbsolutePath());
+        logger.info("delete database folder {} failed.", sgDir.getAbsolutePath());
         throw new MetadataException(
-            String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
+            String.format("Failed to delete database folder %s", sgDir.getAbsolutePath()));
       }
     }
   }
@@ -329,7 +330,7 @@ public class LocalConfigNode {
   }
 
   /**
-   * Delete storage groups of given paths from MTree.
+   * Delete databases of given paths from MTree.
    *
    * @param storageGroups list of paths to be deleted.
    */
@@ -374,10 +375,10 @@ public class LocalConfigNode {
 
   // endregion
 
-  // region Interfaces for storage group info query
+  // region Interfaces for database info query
 
   /**
-   * Check if the given path is storage group or not.
+   * Check if the given path is database or not.
    *
    * @param path Format: root.node.(node)*
    */
@@ -385,16 +386,16 @@ public class LocalConfigNode {
     return storageGroupSchemaManager.isStorageGroup(path);
   }
 
-  /** Check whether the given path contains a storage group */
+  /** Check whether the given path contains a database */
   public boolean checkStorageGroupByPath(PartialPath path) {
     return storageGroupSchemaManager.checkStorageGroupByPath(path);
   }
 
   /**
-   * Check whether the storage group of given path is set. The path may be a prefix path of some
-   * storage group. Besides, the given path may be also beyond the MTreeAboveSG scope, then return
-   * true if the covered part exists, which means there's storage group on this path. The rest part
-   * will be checked by certain storage group subTree.
+   * Check whether the database of given path is set. The path may be a prefix path of some
+   * database. Besides, the given path may be also beyond the MTreeAboveSG scope, then return true
+   * if the covered part exists, which means there's database on this path. The rest part will be
+   * checked by certain database subTree.
    *
    * @param path a full path or a prefix path
    */
@@ -403,7 +404,7 @@ public class LocalConfigNode {
   }
 
   /**
-   * To calculate the count of storage group for given path pattern. If using prefix match, the path
+   * To calculate the count of database for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
@@ -413,26 +414,26 @@ public class LocalConfigNode {
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param path only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     return storageGroupSchemaManager.getBelongedStorageGroup(path);
   }
 
   /**
-   * Get the storage group that given path pattern matches or belongs to.
+   * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path pattern
+   * @return a list contains all databases related to given path pattern
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
@@ -440,37 +441,37 @@ public class LocalConfigNode {
   }
 
   /**
-   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
+   * Get all database matching given path pattern. If using prefix match, the path pattern is used
+   * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern a pattern of a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return A ArrayList instance which stores storage group paths matching given path pattern.
+   * @return A ArrayList instance which stores database paths matching given path pattern.
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return storageGroupSchemaManager.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
-  /** Get all storage group paths */
+  /** Get all database paths */
   public List<PartialPath> getAllStorageGroupPaths() {
     return storageGroupSchemaManager.getAllStorageGroupPaths();
   }
 
   /**
-   * For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve the
-   * path or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
+   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
+   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
    *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group
-   * name and (2) the sub path which is substring that begin after the storage group name.
+   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
+   * (2) the sub path which is substring that begin after the database name.
    *
-   * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
    * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
    * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the storage groups are found and the wildcard will be kept. (2)
-   * Suppose the part of the path is a substring that begin after the storage group name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*"). For
-   * this part, keep what it is.
+   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
+   * the part of the path is a substring that begin after the database name. (e.g., For
+   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
+   * part, keep what it is.
    *
    * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
    * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
@@ -488,7 +489,7 @@ public class LocalConfigNode {
     Map<String, List<PartialPath>> sgPathMap =
         storageGroupSchemaManager.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
-      logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+      logger.debug("The databases of path {} are {}", path, sgPathMap.keySet());
     }
     return sgPathMap;
   }
@@ -509,9 +510,9 @@ public class LocalConfigNode {
   /**
    * To collect nodes in the given level for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All nodes start with the matched prefix path will be
-   * collected. This method only count in nodes above storage group. Nodes below storage group,
-   * including storage group node will be collected by certain SchemaRegion. The involved storage
-   * groups will be collected to fetch schemaRegion.
+   * collected. This method only count in nodes above database. Nodes below database, including
+   * database node will be collected by certain SchemaRegion. The involved databases will be
+   * collected to fetch schemaRegion.
    *
    * @param pathPattern a path pattern or a full path
    * @param nodeLevel the level should match the level of the path
@@ -529,8 +530,8 @@ public class LocalConfigNode {
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain Storage Group.
+   * nodes above database. Nodes below database, including database node will be counted by certain
+   * database.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -547,8 +548,8 @@ public class LocalConfigNode {
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain Storage Group.
+   * nodes above database. Nodes below database, including database node will be counted by certain
+   * database.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -567,14 +568,14 @@ public class LocalConfigNode {
 
   // region Interfaces for StorageGroupMNode Query
 
-  /** Get storage group node by path. the give path don't need to be storage group path. */
+  /** Get database node by path. the give path don't need to be database path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
-    // used for storage engine auto create storage group
+    // used for storage engine auto create database
     ensureStorageGroup(path);
     return storageGroupSchemaManager.getStorageGroupNodeByPath(path);
   }
 
-  /** Get all storage group MNodes */
+  /** Get all database MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return storageGroupSchemaManager.getAllStorageGroupNodes();
   }
@@ -588,9 +589,8 @@ public class LocalConfigNode {
   /**
    * Get the target SchemaRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
-   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegionId of
-   * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
-   * thrown.
+   * path, e.g., root.sg1 is a database and path = root.sg1.d1, return SchemaRegionId of root.sg1.
+   * If there's no database on the given path, StorageGroupNotSetException will be thrown.
    */
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
@@ -607,20 +607,20 @@ public class LocalConfigNode {
     if (schemaRegionId == null) {
       throw new MetadataException(
           String.format(
-              "Storage group %s has not been prepared well. Schema region for %s has not been allocated or is not initialized.",
+              "database %s has not been prepared well. Schema region for %s has not been allocated or is not initialized.",
               storageGroup, path));
     }
     ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       throw new MetadataException(
           String.format(
-              "Storage group [%s] has not been prepared well. Schema region [%s] is not initialized.",
+              "database [%s] has not been prepared well. Schema region [%s] is not initialized.",
               storageGroup, schemaRegionId));
     }
     return schemaRegionId;
   }
 
-  // This interface involves storage group and schema region auto creation
+  // This interface involves database and schema region auto creation
   public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
       throws MetadataException {
     PartialPath storageGroup = ensureStorageGroup(path);
@@ -639,8 +639,8 @@ public class LocalConfigNode {
   /**
    * Get the target SchemaRegionIds, which will be involved/covered by the given pathPattern. The
    * path may contain wildcards, * or **. This method is the first step when there's a task on
-   * multiple paths represented by the given pathPattern. If isPrefixMatch, all storage groups under
-   * the prefixPath that matches the given pathPattern will be collected.
+   * multiple paths represented by the given pathPattern. If isPrefixMatch, all databases under the
+   * prefixPath that matches the given pathPattern will be collected.
    */
   public List<SchemaRegionId> getInvolvedSchemaRegionIds(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
@@ -847,9 +847,8 @@ public class LocalConfigNode {
   /**
    * Get the target DataRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
-   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return DataRegionId of
-   * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
-   * thrown.
+   * path, e.g., root.sg1 is a database and path = root.sg1.d1, return DataRegionId of root.sg1. If
+   * there's no database on the given path, StorageGroupNotSetException will be thrown.
    */
   public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
@@ -862,13 +861,13 @@ public class LocalConfigNode {
     if (dataRegion == null) {
       throw new DataRegionException(
           String.format(
-              "Storage group %s has not been prepared well. Data region for %s is not initialized.",
+              "Database %s has not been prepared well. Data region for %s is not initialized.",
               storageGroup, path));
     }
     return dataRegionId;
   }
 
-  // This interface involves storage group and data region auto creation
+  // This interface involves database and data region auto creation
   public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath devicePath)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(devicePath);
@@ -1196,7 +1195,7 @@ public class LocalConfigNode {
         continue;
       }
       for (PartialPath path : authorStatement.getNodeNameList()) {
-        if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())) {
           rolePrivilegeSet.add(pathPrivilege.toString());
         }
       }
@@ -1235,7 +1234,7 @@ public class LocalConfigNode {
           continue;
         }
         for (PartialPath path : authorStatement.getNodeNameList()) {
-          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
               && !userPrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add("");
             userPrivilegeSet.add(pathPrivilege.toString());
@@ -1257,7 +1256,7 @@ public class LocalConfigNode {
             continue;
           }
           for (PartialPath path : authorStatement.getNodeNameList()) {
-            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path.getFullPath())
                 && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
               rolePrivileges.add(roleN);
               rolePrivilegeSet.add(pathPrivilege.toString());
@@ -1337,7 +1336,7 @@ public class LocalConfigNode {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public List<PipeSink> showPipeSink(String pipeSinkName) {
+  public List<PipeSink> showPipeSink(String pipeSinkName) throws PipeSinkException {
     boolean showAll = StringUtils.isEmpty(pipeSinkName);
     if (showAll) {
       return syncService.getAllPipeSink();
@@ -1348,7 +1347,9 @@ public class LocalConfigNode {
 
   public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
     try {
-      syncService.addPipe(createPipeStatement);
+      syncService.addPipe(
+          SyncPipeUtil.parseCreatePipeStatementAsPipeInfo(
+              createPipeStatement, System.currentTimeMillis()));
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
@@ -1383,7 +1384,7 @@ public class LocalConfigNode {
   }
 
   public TShowPipeResp showPipe(String pipeName) {
-    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    List<TShowPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
     return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }

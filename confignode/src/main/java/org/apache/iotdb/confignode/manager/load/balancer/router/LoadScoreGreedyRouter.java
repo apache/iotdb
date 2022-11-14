@@ -32,18 +32,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /** The LoadScoreGreedyRouter always pick the Replica with the lowest loadScore */
 public class LoadScoreGreedyRouter implements IRouter {
 
-  // Map<DataNodeId, loadScore>
-  private final Map<Integer, Long> loadScoreMap;
-
-  /** The constructor is used to pass in the load information needed by the algorithm */
-  public LoadScoreGreedyRouter(Map<Integer, Long> loadScoreMap) {
-    this.loadScoreMap = loadScoreMap;
+  public LoadScoreGreedyRouter() {
+    // Empty constructor
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
-      List<TRegionReplicaSet> replicaSets) {
-    Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
+  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
+      List<TRegionReplicaSet> replicaSets,
+      Map<TConsensusGroupId, Integer> regionLeaderMap,
+      Map<Integer, Long> dataNodeLoadScoreMap) {
+
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
@@ -51,7 +50,7 @@ public class LoadScoreGreedyRouter implements IRouter {
           sortedReplicaSet.setRegionId(replicaSet.getRegionId());
 
           // List<Pair<loadScore, TDataNodeLocation>> for sorting
-          List<Pair<Double, TDataNodeLocation>> sortList = new Vector<>();
+          List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
           replicaSet
               .getDataNodeLocations()
               .forEach(
@@ -61,20 +60,19 @@ public class LoadScoreGreedyRouter implements IRouter {
                     // In this case we put a maximum loadScore into the sortList.
                     sortList.add(
                         new Pair<>(
-                            (double)
-                                loadScoreMap.computeIfAbsent(
-                                    dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
+                            dataNodeLoadScoreMap.computeIfAbsent(
+                                dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
 
-          sortList.sort(Comparator.comparingDouble(Pair::getLeft));
-          for (Pair<Double, TDataNodeLocation> entry : sortList) {
+          sortList.sort(Comparator.comparingLong(Pair::getLeft));
+          for (Pair<Long, TDataNodeLocation> entry : sortList) {
             sortedReplicaSet.addToDataNodeLocations(entry.getRight());
           }
 
-          result.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
+          regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
         });
 
-    return result;
+    return regionPriorityMap;
   }
 }

@@ -112,6 +112,22 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
+  public boolean takeSnapshot(File snapshotDir, String snapshotId) {
+    try {
+      return new SnapshotTaker(region)
+          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotId, true);
+    } catch (Exception e) {
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getStorageGroupName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
+    }
+  }
+
+  @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     DataRegion newRegion =
         new SnapshotLoader(

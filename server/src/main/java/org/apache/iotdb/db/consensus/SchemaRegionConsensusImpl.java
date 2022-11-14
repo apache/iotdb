@@ -58,6 +58,7 @@ public class SchemaRegionConsensusImpl {
           ConsensusFactory.getConsensusImpl(
                   conf.getSchemaRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(conf.getDataNodeId())
                       .setThisNode(
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
@@ -75,6 +76,8 @@ public class SchemaRegionConsensusImpl {
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getSchemaRatisConsensusLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          conf.getSchemaRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -94,11 +97,34 @@ public class SchemaRegionConsensusImpl {
                                               conf
                                                   .getSchemaRatisConsensusLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
+                                      .setRequestTimeout(
+                                          TimeDuration.valueOf(
+                                              conf.getSchemaRatisConsensusRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisFirstElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
                                       .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
                                           conf.getSchemaRatisConsensusLogAppenderBufferSizeMax())
+                                      .build())
+                              .setRatisConsensus(
+                                  RatisConfig.RatisConsensus.newBuilder()
+                                      .setClientRequestTimeoutMillis(
+                                          conf.getSchemaRatisConsensusRequestTimeoutMs())
+                                      .setClientMaxRetryAttempt(
+                                          conf.getSchemaRatisConsensusMaxRetryAttempts())
+                                      .setClientRetryInitialSleepTimeMs(
+                                          conf.getSchemaRatisConsensusInitialSleepTimeMs())
+                                      .setClientRetryMaxSleepTimeMs(
+                                          conf.getSchemaRatisConsensusMaxSleepTimeMs())
                                       .build())
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())

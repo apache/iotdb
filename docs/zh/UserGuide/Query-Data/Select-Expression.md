@@ -420,7 +420,7 @@ It costs 0.005s
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|
@@ -843,7 +843,163 @@ Total line number = 10
 It costs 0.041s
 ```
 
+### M4函数
+
+M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）：
+
+-   第一个点是拥有这个窗口内最小时间戳的点；
+-   最后一个点是拥有这个窗口内最大时间戳的点；
+-   最小值点是拥有这个窗口内最小值的点（如果有多个这样的点，M4只返回其中一个）；
+-   最大值点是拥有这个窗口内最大值的点（如果有多个这样的点，M4只返回其中一个）。
+
+<img src="https://user-images.githubusercontent.com/33376433/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
+
+| 函数名 | 可接收的输入序列类型           | 属性参数                                                     | 输出序列类型                   | 功能类型                                                     |
+| ------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
+| M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`displayWindowBegin`和`displayWindowEnd`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
+
+#### 属性参数
+
+**(1) 包含固定点数的窗口（SlidingSizeWindowAccessStrategy）使用的属性参数:**
+
++ `windowSize`: 一个窗口内的点数。Int数据类型。必需的属性参数。
++ `slidingStep`: 按照设定的点数来滑动窗口。Int数据类型。可选的属性参数；如果没有设置，默认取值和`windowSize`一样。
+
+<img src="https://user-images.githubusercontent.com/33376433/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+
+*(图片来源: https://iotdb.apache.org/UserGuide/Master/Process-Data/UDF-User-Defined-Function.html#udtf-user-defined-timeseries-generating-function)*
+
+**(2) 滑动时间窗口（SlidingTimeWindowAccessStrategy）使用的属性参数:**
+
++ `timeInterval`: 一个窗口的时间长度。Long数据类型。必需的属性参数。
++ `slidingStep`: 按照设定的时长来滑动窗口。Long数据类型。可选的属性参数；如果没有设置，默认取值和`timeInterval`一样。
++ `displayWindowBegin`: 窗口滑动的起始时间戳位置（包含在内）。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MIN_VALUE，意为使用输入的时间序列的第一个点的时间戳作为窗口滑动的起始时间戳位置。
++ `displayWindowEnd`: 结束时间限制（不包含在内；本质上和`WHERE time < displayWindowEnd`起的效果是一样的)。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MAX_VALUE，意为除了输入的时间序列自身数据读取完毕之外没有增加额外的结束时间过滤条件限制。
+
+<img src="https://user-images.githubusercontent.com/33376433/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+
+*(图片来源: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
+
+#### 演示
+
+输入的时间序列：
+
+```sql
++-----------------------------+------------------+
+|                         Time|root.vehicle.d1.s1|
++-----------------------------+------------------+
+|1970-01-01T08:00:00.001+08:00|               5.0|
+|1970-01-01T08:00:00.002+08:00|              15.0|
+|1970-01-01T08:00:00.005+08:00|              10.0|
+|1970-01-01T08:00:00.008+08:00|               8.0|
+|1970-01-01T08:00:00.010+08:00|              30.0|
+|1970-01-01T08:00:00.020+08:00|              20.0|
+|1970-01-01T08:00:00.025+08:00|               8.0|
+|1970-01-01T08:00:00.027+08:00|              20.0|
+|1970-01-01T08:00:00.030+08:00|              40.0|
+|1970-01-01T08:00:00.033+08:00|               9.0|
+|1970-01-01T08:00:00.035+08:00|              10.0|
+|1970-01-01T08:00:00.040+08:00|              20.0|
+|1970-01-01T08:00:00.045+08:00|              30.0|
+|1970-01-01T08:00:00.052+08:00|               8.0|
+|1970-01-01T08:00:00.054+08:00|              18.0|
++-----------------------------+------------------+
+```
+
+查询语句1：
+
+```sql
+select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1
+```
+
+输出结果1：
+
+```sql
++-----------------------------+-----------------------------------------------------------------------------------------------+
+|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "displayWindowBegin"="0", "displayWindowEnd"="100")|
++-----------------------------+-----------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                                                            5.0|
+|1970-01-01T08:00:00.010+08:00|                                                                                           30.0|
+|1970-01-01T08:00:00.020+08:00|                                                                                           20.0|
+|1970-01-01T08:00:00.025+08:00|                                                                                            8.0|
+|1970-01-01T08:00:00.030+08:00|                                                                                           40.0|
+|1970-01-01T08:00:00.045+08:00|                                                                                           30.0|
+|1970-01-01T08:00:00.052+08:00|                                                                                            8.0|
+|1970-01-01T08:00:00.054+08:00|                                                                                           18.0|
++-----------------------------+-----------------------------------------------------------------------------------------------+
+Total line number = 8
+```
+
+查询语句2：
+
+```sql
+select M4(s1,'windowSize'='10') from root.vehicle.d1
+```
+
+输出结果2：
+
+```sql
++-----------------------------+-----------------------------------------+
+|                         Time|M4(root.vehicle.d1.s1, "windowSize"="10")|
++-----------------------------+-----------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                      5.0|
+|1970-01-01T08:00:00.030+08:00|                                     40.0|
+|1970-01-01T08:00:00.033+08:00|                                      9.0|
+|1970-01-01T08:00:00.035+08:00|                                     10.0|
+|1970-01-01T08:00:00.045+08:00|                                     30.0|
+|1970-01-01T08:00:00.052+08:00|                                      8.0|
+|1970-01-01T08:00:00.054+08:00|                                     18.0|
++-----------------------------+-----------------------------------------+
+Total line number = 7
+```
+
+
+
+#### 推荐的使用场景
+
+**(1) 使用场景：保留极端点的降采样**
+
+由于M4为每个窗口聚合其第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`），因此M4通常保留了极值点，因此比其他下采样方法（如分段聚合近似 (PAA)）能更好地保留模式。如果你想对时间序列进行下采样并且希望保留极值点，你可以试试 M4。
+
+**(2) 使用场景：基于数据缩约的大规模时间序列的零误差双色折线图可视化**
+
+参考论文: ["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf).
+
+假设屏幕画布的像素宽乘高是`w*h`，假设时间序列root.vehicle.d1.s1要可视化的时间范围是`[tqs,tqe)`（在这个使用场景里面，需要请你自行将tqe自适应调整使得(tqe-tqs)是w的整数倍），那么落在第i个时间跨度`Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` 内的点将会被画在第i个像素列中，i=1,2,...,w。
+
+于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。最终结果点数不会超过`4*w`个，使用这些聚合点画出来的折线图与使用原始数据画出来的图在像素级别上是完全一致的。
+
+
+
+#### 和其它SQL的功能比较
+
+| SQL                                               | 是否支持M4聚合                                               | 滑动窗口类型                                      | 示例                                                         | 相关文档                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1. 带有Group By子句的内置聚合函数                 | 不支持，缺少`BOTTOM_TIME`和`TOP_TIME`，即缺少最小值点和最大值点的时间戳。 | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
+| 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (内置UDF)          | 支持*                                                        | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
+| **3. M4 (内置UDF)**                               | 支持*                                                        | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | 本文档                                                       |
+| 4. 扩展带有Group By子句的内置聚合函数来支持M4聚合 | 未实施                                                       | 未实施                                            | 未实施                                                       | 未实施                                                       |
+
+进一步比较`EQUAL_SIZE_BUCKET_M4_SAMPLE`和`M4`：
+
+**(1) 不同的M4聚合函数定义：**
+
+在每个窗口内，`EQUAL_SIZE_BUCKET_M4_SAMPLE`从排除了第一个点和最后一个点之后剩余的点中提取最小值点和最大值点。
+
+而`M4`则是从窗口内所有点中（包括第一个点和最后一个点）提取最小值点和最大值点，这个定义与元数据中保存的`max_value`和`min_value`的语义更加一致。
+
+值得注意的是，在一个窗口内的聚合点输出之前，`EQUAL_SIZE_BUCKET_M4_SAMPLE`和`M4`都会将它们按照时间戳递增排序并且去重。 
+
+**(2) 不同的滑动窗口：** 
+
+`EQUAL_SIZE_BUCKET_M4_SAMPLE`使用SlidingSizeWindowAccessStrategy，并且通过采样比例（`proportion`）来间接控制窗口点数（`windowSize`)，转换公式是`windowSize = 4*(int)(1/proportion)`。
+
+`M4`支持两种滑动窗口：SlidingSizeWindowAccessStrategy和SlidingTimeWindowAccessStrategy，并且`M4`通过相应的参数直接控制窗口的点数或者时长。
+
+
+
 ### JEXL自定义函数
+
 Java Expression Language (JEXL) 是一个表达式语言引擎。我们使用JEXL来扩展UDF，在命令行中，通过简易的lambda表达式来实现UDF。lambda表达式中支持的运算符详见链接 [JEXL中lambda表达式支持的运算符](https://commons.apache.org/proper/commons-jexl/apidocs/org/apache/commons/jexl3/package-summary.html#customization) 。
 
 

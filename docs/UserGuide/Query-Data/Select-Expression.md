@@ -417,7 +417,7 @@ The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|
@@ -841,6 +841,161 @@ Result:
 Total line number = 10
 It costs 0.041s
 ```
+
+### M4 Function
+
+M4 is used to sample the `first, last, bottom, top` points for each sliding window:
+
+-   the first point is the point with the **m**inimal time;
+-   the last point is the point with the **m**aximal time;
+-   the bottom point is the point with the **m**inimal value (if there are multiple such points, M4 returns one of them);
+-   the top point is the point with the **m**aximal value (if there are multiple such points, M4 returns one of them).
+
+<img src="https://user-images.githubusercontent.com/33376433/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
+
+| Function Name | Allowed Input Series Data Types | Attributes                                                   | Output Series Data Type        | Series Data Type  Description                                |
+| ------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
+| M4            | INT32 / INT64 / FLOAT / DOUBLE  | Different attributes used by the size window and the time window. The size window uses attributes `windowSize` and `slidingStep`. The time window uses attributes `timeInterval`, `slidingStep`, `displayWindowBegin`, and `displayWindowEnd`. More details see below. | INT32 / INT64 / FLOAT / DOUBLE | Returns the `first, last, bottom, top` points in each sliding window. M4 sorts and deduplicates the aggregated points within the window before outputting them. |
+
+#### Attributes
+
+**(1) Attributes for the size window:**
+
++ `windowSize`: The number of points in a window. Int data type. **Required**.
++ `slidingStep`: Slide a window by the number of points. Int data type. Optional. If not set, default to the same as `windowSize`.
+
+<img src="https://user-images.githubusercontent.com/33376433/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+
+*(image source: https://iotdb.apache.org/UserGuide/Master/Process-Data/UDF-User-Defined-Function.html#udtf-user-defined-timeseries-generating-function)*
+
+**(2) Attributes for the time window:**
+
++ `timeInterval`: The time interval length of a window. Long data type. **Required**.
++ `slidingStep`: Slide a window by the time length. Long data type. Optional. If not set, default to the same as `timeInterval`.
++ `displayWindowBegin`: The starting position of the window (included). Long data type. Optional. If not set, default to Long.MIN_VALUE, meaning using the time of the first data point of the input time series as the starting position of the window.
++ `displayWindowEnd`: End time limit (excluded, essentially playing the same role as `WHERE time < displayWindowEnd`). Long data type. Optional. If not set, default to Long.MAX_VALUE, meaning there is no additional end time limit other than the end of the input time series itself.
+
+<img src="https://user-images.githubusercontent.com/33376433/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+
+*(image source: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
+
+#### Examples
+
+Input series:
+
+```sql
++-----------------------------+------------------+
+|                         Time|root.vehicle.d1.s1|
++-----------------------------+------------------+
+|1970-01-01T08:00:00.001+08:00|               5.0|
+|1970-01-01T08:00:00.002+08:00|              15.0|
+|1970-01-01T08:00:00.005+08:00|              10.0|
+|1970-01-01T08:00:00.008+08:00|               8.0|
+|1970-01-01T08:00:00.010+08:00|              30.0|
+|1970-01-01T08:00:00.020+08:00|              20.0|
+|1970-01-01T08:00:00.025+08:00|               8.0|
+|1970-01-01T08:00:00.027+08:00|              20.0|
+|1970-01-01T08:00:00.030+08:00|              40.0|
+|1970-01-01T08:00:00.033+08:00|               9.0|
+|1970-01-01T08:00:00.035+08:00|              10.0|
+|1970-01-01T08:00:00.040+08:00|              20.0|
+|1970-01-01T08:00:00.045+08:00|              30.0|
+|1970-01-01T08:00:00.052+08:00|               8.0|
+|1970-01-01T08:00:00.054+08:00|              18.0|
++-----------------------------+------------------+
+```
+
+SQL for query1:
+
+```sql
+select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1
+```
+
+Output1:
+
+```sql
++-----------------------------+-----------------------------------------------------------------------------------------------+
+|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "displayWindowBegin"="0", "displayWindowEnd"="100")|
++-----------------------------+-----------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                                                            5.0|
+|1970-01-01T08:00:00.010+08:00|                                                                                           30.0|
+|1970-01-01T08:00:00.020+08:00|                                                                                           20.0|
+|1970-01-01T08:00:00.025+08:00|                                                                                            8.0|
+|1970-01-01T08:00:00.030+08:00|                                                                                           40.0|
+|1970-01-01T08:00:00.045+08:00|                                                                                           30.0|
+|1970-01-01T08:00:00.052+08:00|                                                                                            8.0|
+|1970-01-01T08:00:00.054+08:00|                                                                                           18.0|
++-----------------------------+-----------------------------------------------------------------------------------------------+
+Total line number = 8
+```
+
+SQL for query2:
+
+```sql
+select M4(s1,'windowSize'='10') from root.vehicle.d1
+```
+
+Output2:
+
+```sql
++-----------------------------+-----------------------------------------+
+|                         Time|M4(root.vehicle.d1.s1, "windowSize"="10")|
++-----------------------------+-----------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                      5.0|
+|1970-01-01T08:00:00.030+08:00|                                     40.0|
+|1970-01-01T08:00:00.033+08:00|                                      9.0|
+|1970-01-01T08:00:00.035+08:00|                                     10.0|
+|1970-01-01T08:00:00.045+08:00|                                     30.0|
+|1970-01-01T08:00:00.052+08:00|                                      8.0|
+|1970-01-01T08:00:00.054+08:00|                                     18.0|
++-----------------------------+-----------------------------------------+
+Total line number = 7
+```
+
+
+
+#### Suggested Use Cases
+
+**(1) Use Case: Extreme-point-preserving downsampling**
+
+As M4 aggregation selects the `first, last, bottom, top` points for each window, M4 usually preserves extreme points and thus patterns better than other downsampling methods such as Piecewise Aggregate Approximation (PAA). Therefore, if you want to downsample the time series while preserving extreme points, you may give M4 a try.
+
+**(2) Use case: Error-free two-color line chart visualization of large-scale time series using reduced data**
+
+Refer to paper: ["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf).
+
+Given a chart of `w*h` pixels, suppose the visualization time range of the time series root.vehicle.d1.s1 is `[tqs,tqe)`(in this use case please extend tqe to make sure (tqe-tqs) is divisible by w), the points that fall within the  `i`-th time span `Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` will be drawn on the `i`-th pixel column, i=1,2,...,w.
+
+Therefore, from a visualization-driven perspective, use the sql: `"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"` to sample the `first, last, bottom, top` points for each time span. The resulting series has no more than `4*w` points, a big reduction compared to the original large-scale time series. The line chart drawn from the reduced data is identical that to that drawn from the original data (pixel-level consistency).
+
+
+
+#### Comparison with Other SQL
+
+| SQL                                                          | Whether support M4 aggregation                               | Sliding window type                               | Example                                                      | Docs                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1. native built-in aggregate functions with Group By clause  | No. Lack `BOTTOM_TIME` and `TOP_TIME`, which are respectively the time of the points that have the mininum and maximum value. | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
+| 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (built-in UDF)                | Yes*                                                         | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
+| **3. M4 (built-in UDF)**                                     | Yes*                                                         | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | refer to this doc                                            |
+| 4. extend native built-in aggregate functions with Group By clause to support M4 aggregation | not implemented                                              | not implemented                                   | not implemented                                              | not implemented                                              |
+
+Further compare `EQUAL_SIZE_BUCKET_M4_SAMPLE` and `M4`:
+
+**(1) Different M4 aggregation definition:**
+
+For each window, `EQUAL_SIZE_BUCKET_M4_SAMPLE` extracts the top and bottom points from points **EXCLUDING** the first and last points.
+
+In contrast, `M4` extracts the top and bottom points from points **INCLUDING** the first and last points, which is more consistent with the semantics of `max_value` and `min_value` stored in metadata.
+
+It is worth noting that both functions sort and deduplicate the aggregated points in a window before outputting them to the collectors.
+
+**(2) Different sliding windows:** 
+
+`EQUAL_SIZE_BUCKET_M4_SAMPLE` uses SlidingSizeWindowAccessStrategy and **indirectly** controls sliding window size by sampling proportion. The conversion formula is `windowSize = 4*(int)(1/proportion)`. 
+
+`M4` supports two types of sliding window: SlidingSizeWindowAccessStrategy and SlidingTimeWindowAccessStrategy. `M4` **directly** controls the window point size or time length using corresponding parameters.
+
+
 
 ### JEXL Function
 

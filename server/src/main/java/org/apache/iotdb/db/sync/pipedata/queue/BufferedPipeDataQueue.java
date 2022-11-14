@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,8 +125,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
               : recoverPipeData.get(recoverPipeDataSize - 1).getSerialNumber();
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Can not recover inputQueue from %s, because %s.", writingPipeLog.getPath(), e));
+          String.format("Can not recover inputQueue from %s.", writingPipeLog.getPath()), e);
     }
   }
 
@@ -146,8 +146,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     } catch (IOException e) {
       logger.error(
           String.format(
-              "deserialize remove serial number error, remove serial number has been set to %d, because %s",
-              commitSerialNumber, e));
+              "deserialize remove serial number error, remove serial number has been set to %d.",
+              commitSerialNumber),
+          e);
     }
   }
 
@@ -170,9 +171,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       }
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Recover output deque from pipe log %s error, because %s.",
-              readingPipeLog.getPath(), e));
+          String.format("Recover output deque from pipe log %s error.", readingPipeLog.getPath()),
+          e);
     }
   }
 
@@ -191,20 +191,20 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       try {
         moveToNextPipeLog(pipeData.getSerialNumber());
       } catch (IOException e) {
-        logger.error(String.format("Move to next pipe log %s error, because %s.", pipeData, e));
+        logger.error(String.format("Move to next pipe log %s error.", pipeData), e);
       }
     }
-    if (!inputDeque.offer(pipeData)) {
-      return false;
-    }
     synchronized (waitLock) {
+      if (!inputDeque.offer(pipeData)) {
+        return false;
+      }
       waitLock.notifyAll();
     }
 
     try {
       writeToDisk(pipeData);
     } catch (IOException e) {
-      logger.error(String.format("Record pipe data %s error, because %s.", pipeData, e));
+      logger.error(String.format("Record pipe data %s error.", pipeData), e);
       return false;
     }
     return true;
@@ -249,8 +249,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       } else if (serialNumber == pipeLogStartNumber.peekLast() && inputDeque != null) {
         outputDeque = inputDeque;
       } else {
+        long nextStartNumber =
+            pipeLogStartNumber.stream().filter(o -> o >= serialNumber).findFirst().get();
         List<PipeData> parsePipeData =
-            parsePipeLog(new File(pipeLogDir, SyncPathUtil.getPipeLogName(serialNumber)));
+            parsePipeLog(new File(pipeLogDir, SyncPathUtil.getPipeLogName(nextStartNumber)));
         int parsePipeDataSize = parsePipeData.size();
         outputDeque = new LinkedBlockingDeque<>();
         for (int i = 0; i < parsePipeDataSize; i++) {
@@ -264,30 +266,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   @Override
   public List<PipeData> pull(long serialNumber) {
-    List<PipeData> resPipeData = new ArrayList<>();
-
-    pullSerialNumber = commitSerialNumber;
-    while (pullSerialNumber < serialNumber) {
-      try {
-        PipeData pullPipeData = pullOnePipeData(pullSerialNumber);
-        if (pullPipeData != null) {
-          resPipeData.add(pullPipeData);
-          pullSerialNumber = pullPipeData.getSerialNumber();
-        } else {
-          break;
-        }
-      } catch (IOException e) {
-        logger.error(
-            String.format(
-                "Pull pipe data serial number %s error, because %s.", pullSerialNumber + 1, e));
-        break;
-      }
-    }
-
-    for (int i = resPipeData.size() - 1; i >= 0; --i) {
-      outputDeque.addFirst(resPipeData.get(i));
-    }
-    return resPipeData;
+    throw new NotImplementedException("Not implement pull");
   }
 
   @Override
@@ -302,8 +281,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       }
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Blocking pull pipe data number %s error, because %s", commitSerialNumber + 1, e));
+          String.format("Blocking pull pipe data number %s error.", commitSerialNumber + 1), e);
     }
     outputDeque.addFirst(pipeData);
     pullSerialNumber = pipeData.getSerialNumber();
@@ -327,11 +305,11 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private void deletePipeData(long serialNumber) {
     while (commitSerialNumber < serialNumber) {
-      commitSerialNumber += 1;
+      PipeData commitData = null;
       try {
-        PipeData commitData = pullOnePipeData(commitSerialNumber);
+        commitData = pullOnePipeData(commitSerialNumber);
         if (commitData == null) {
-          continue;
+          return;
         }
         if (PipeData.PipeDataType.TSFILE.equals(commitData.getType())) {
           List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
@@ -341,8 +319,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         }
       } catch (IOException e) {
         logger.error(
-            String.format(
-                "Commit pipe data serial number %s error, because %s.", commitSerialNumber, e));
+            String.format("Commit pipe data serial number %s error.", commitSerialNumber), e);
+      }
+      if (commitData != null) {
+        commitSerialNumber = commitData.getSerialNumber();
       }
     }
   }
@@ -357,8 +337,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
             Files.deleteIfExists(
                 new File(pipeLogDir, SyncPathUtil.getPipeLogName(nowPipeLogStartNumber)).toPath());
           } catch (IOException e) {
-            logger.warn(
-                String.format("Delete %s-pipe.log error, because %s.", nowPipeLogStartNumber, e));
+            logger.warn(String.format("Delete %s-pipe.log error.", nowPipeLogStartNumber), e);
           }
         } else {
           break;
@@ -385,8 +364,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       }
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Serialize commit serial number %s error, because %s.", commitSerialNumber, e));
+          String.format("Serialize commit serial number %s error.", commitSerialNumber), e);
     }
   }
 
@@ -439,7 +417,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       }
     } catch (EOFException e) {
     } catch (IllegalPathException e) {
-      logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
+      logger.error(String.format("Parsing pipeLog %s error.", file.getPath()), e);
       throw new IOException(e);
     }
     return pipeData;

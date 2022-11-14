@@ -18,11 +18,12 @@
 # under the License.
 #
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
-fi
+source "$(dirname "$0")/../sbin/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+eval set -- "$VARS"
 
-IOTDB_CONF=${IOTDB_HOME}/conf
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

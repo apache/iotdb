@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -39,7 +39,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -59,8 +59,8 @@ public class EnvironmentUtils {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -70,7 +70,7 @@ public class EnvironmentUtils {
 
   private static String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -95,7 +95,7 @@ public class EnvironmentUtils {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldSeqTsFileSize = config.getSeqTsFileSize();
@@ -110,12 +110,8 @@ public class EnvironmentUtils {
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    // clean storage group manager
-    if (!StorageEngine.getInstance().deleteAll()) {
-      logger.error("Can't close the storage group manager in EnvironmentUtils");
-      Assert.fail();
-    }
-    StorageEngine.getInstance().reset();
+    // clean database manager
+    StorageEngineV2.getInstance().reset();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
     // clean wal
@@ -177,10 +173,10 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e);
     }
-    StorageEngine.getInstance().reset();
+    StorageEngineV2.getInstance().reset();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
@@ -193,7 +189,7 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
-    // create storage group
+    // create database
     createDir(config.getSystemDir());
     // create wal
     for (String walDir : commonConfig.getWalDirs()) {

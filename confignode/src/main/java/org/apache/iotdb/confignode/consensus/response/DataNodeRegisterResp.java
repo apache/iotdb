@@ -20,12 +20,14 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class DataNodeRegisterResp implements DataSet {
@@ -35,7 +37,11 @@ public class DataNodeRegisterResp implements DataSet {
   private Integer dataNodeId;
   private TGlobalConfig globalConfig;
   private TRatisConfig ratisConfig;
+
+  private TCQConfig cqConfig;
   private byte[] templateInfo;
+  private List<ByteBuffer> allTriggerInformation;
+  private List<ByteBuffer> allUDFInformation;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -66,8 +72,24 @@ public class DataNodeRegisterResp implements DataSet {
     this.ratisConfig = ratisConfig;
   }
 
+  public void setCqConfig(TCQConfig cqConfig) {
+    this.cqConfig = cqConfig;
+  }
+
   public void setTemplateInfo(byte[] templateInfo) {
     this.templateInfo = templateInfo;
+  }
+
+  public List<ByteBuffer> getTriggerInformation() {
+    return allTriggerInformation;
+  }
+
+  public void setTriggerInformation(List<ByteBuffer> triggerInformation) {
+    this.allTriggerInformation = triggerInformation;
+  }
+
+  public void setAllUDFInformation(List<ByteBuffer> allUDFInformation) {
+    this.allUDFInformation = allUDFInformation;
   }
 
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
@@ -76,11 +98,15 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setConfigNodeList(configNodeList);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()
+        || status.getCode() == TSStatusCode.DATANODE_NOT_EXIST.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
       resp.setTemplateInfo(templateInfo);
       resp.setRatisConfig(ratisConfig);
+      resp.setCqConfig(cqConfig);
+      resp.setAllTriggerInformation(allTriggerInformation);
+      resp.setAllUDFInformation(allUDFInformation);
     }
 
     return resp;

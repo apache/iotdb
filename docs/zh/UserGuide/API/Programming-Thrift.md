@@ -80,7 +80,7 @@ TSStatus setTimeZone(1:TSSetTimeZoneReq req);
 // 获取服务端配置
 ServerProperties getProperties();
 
-// 设置存储组
+// 设置 database
 TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 // 创建时间序列
@@ -92,7 +92,7 @@ TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 // 删除时间序列
 TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
-// 删除存储组
+// 删除 database
 TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
 // 按行插入数据

@@ -310,7 +310,7 @@ public class PipeOpManager {
   public long getNextIndex(String sgName) {
     PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
     if (pipeOpSgManager == null) {
-      logger.error("getNextIndex(), can not find Storage Group: {}.", sgName);
+      logger.error("getNextIndex(), can not find database: {}.", sgName);
       return Long.MIN_VALUE;
     }
 

@@ -22,8 +22,10 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -49,12 +51,14 @@ public class CreateTriggerProcedureTest {
             new PartialPath("root.test.**"),
             "test",
             "test.class",
+            true,
             "test.jar",
             null,
             TriggerEvent.AFTER_INSERT,
             TTriggerState.INACTIVE,
             false,
             null,
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     CreateTriggerProcedure p1 =
         new CreateTriggerProcedure(triggerInformation, new Binary(new byte[] {1, 2, 3}));
@@ -85,12 +89,14 @@ public class CreateTriggerProcedureTest {
             new PartialPath("root.test.**"),
             "test",
             "test.class",
+            true,
             "test.jar",
             null,
             TriggerEvent.AFTER_INSERT,
             TTriggerState.INACTIVE,
             false,
             null,
+            FailureStrategy.OPTIMISTIC,
             "testMD5test");
     CreateTriggerProcedure p1 = new CreateTriggerProcedure(triggerInformation, null);
 

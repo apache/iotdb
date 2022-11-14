@@ -154,25 +154,25 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 |名字| data\_replication\_factor |
 |:---:|:---|
-|描述| 存储组的默认数据副本数|
+|描述| Database 的默认数据副本数|
 |类型| Int |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
 
 * data\_region\_consensus\_protocol\_class
 
-|名字| data\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|描述| 数据副本的共识协议，1 副本时可以使用 StandAloneConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
-|类型| String |
-|默认值| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|名字| data\_region\_consensus\_protocol\_class                                              |
+|:---:|:--------------------------------------------------------------------------------------|
+|描述| 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
+|类型| String                                                                                |
+|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus                                     |
+|改后生效方式| 仅允许在第一次启动服务前修改                                                                        |
 
 * schema\_replication\_factor
 
 |名字| schema\_replication\_factor |
 |:---:|:---|
-|描述| 存储组的默认元数据副本数 |
+|描述| Database 的默认元数据副本数 |
 |类型| Int |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
@@ -181,9 +181,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 |名字| schema\_region\_consensus\_protocol\_class |
 |:---:|:---|
-|描述| 元数据副本的共识协议，1 副本时可以使用 StandAloneConsensus 协议，多副本时只能使用 RatisConsensus |
+|描述| 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
 |类型| String |
-|默认值| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
+|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
 * region\_allocate\_strategy
@@ -228,7 +228,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |默认值| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-### 存储组配置
+### Database 配置
 
 * default\_ttl
 
@@ -243,10 +243,10 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 |名字| time\_partition\_interval\_for\_routing |
 |:--:|:----------------------------------------|
-|描述| 存储组默认的数据时间分区间隔                          |
+|描述| Database 默认的数据时间分区间隔                          |
 |类型| Long                                    |
 |单位| 毫秒                                      |
-|默认值| 86400000                                |
+|默认值| 604800000                                |
 |改后生效方式| 仅允许在第一次启动服务前修改                          |
 
 ### 数据目录

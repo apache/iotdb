@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -127,7 +127,8 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
+          reader.readTimeseriesMetadata(
+              new Path(key.device, key.measurement, true), ignoreNotExists);
       return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
           ? null
           : timeseriesMetadata;
@@ -147,7 +148,7 @@ public class TimeSeriesMetadataCache {
         // double check
         timeseriesMetadata = lruCache.getIfPresent(key);
         if (timeseriesMetadata == null) {
-          Path path = new Path(key.device, key.measurement);
+          Path path = new Path(key.device, key.measurement, true);
           // bloom filter part
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()

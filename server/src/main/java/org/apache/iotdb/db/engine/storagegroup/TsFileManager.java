@@ -145,13 +145,12 @@ public class TsFileManager {
    * first, if insert Pos = 1, then to the second.
    */
   public void insertToPartitionFileList(
-      TsFileResource tsFileResource, boolean sequence, int insertPos) {
+      TsFileResource tsFileResource, long timePartition, boolean sequence, int insertPos) {
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       TsFileResourceList tsFileResources =
-          selectedMap.computeIfAbsent(
-              tsFileResource.getTimePartition(), o -> new TsFileResourceList());
+          selectedMap.computeIfAbsent(timePartition, o -> new TsFileResourceList());
       tsFileResources.set(insertPos, tsFileResource);
     } finally {
       writeUnlock();
@@ -442,5 +441,11 @@ public class TsFileManager {
     } catch (NullPointerException e) {
       return false;
     }
+  }
+
+  // determine whether time partition is the latest(largest) or not
+  public boolean isLatestTimePartition(long timePartitionId) {
+    return (sequenceFiles.higherKey(timePartitionId) == null
+        && unsequenceFiles.higherKey(timePartitionId) == null);
   }
 }

@@ -47,9 +47,9 @@ public class ImportCsvTestIT extends AbstractScript {
 
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.fit.d1",
-        "SET STORAGE GROUP TO root.fit.d2",
-        "SET STORAGE GROUP TO root.fit.p",
+        "CREATE DATABASE root.fit.d1",
+        "CREATE DATABASE root.fit.d2",
+        "CREATE DATABASE root.fit.p",
         "CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE",
         "CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN",
         "CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE",

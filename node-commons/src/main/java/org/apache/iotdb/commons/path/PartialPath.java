@@ -169,8 +169,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * "root.a.b.b.c", "root.a.b.**.b.c", since the multi-level wildcard can match 'a', 'a.b', and any
    * other sub paths start with 'a.b'.
    *
-   * <p>The goal of this method is to reduce the search space when querying a storage group with a
-   * path with wildcard.
+   * <p>The goal of this method is to reduce the search space when querying a database with a path
+   * with wildcard.
+   *
+   * <p>If this path or path pattern doesn't start with given prefix, return empty list. For
+   * example, "root.a.b.c".alterPrefixPath("root.b") or "root.a.**".alterPrefixPath("root.b")
+   * returns [].
    *
    * @param prefix The prefix. Cannot be null and cannot contain any wildcard.
    */
@@ -616,6 +620,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return true;
   }
 
+  public boolean startWith(String otherNode) {
+    return nodes[0].equals(otherNode);
+  }
+
+  public boolean containNode(String otherNode) {
+    for (String node : nodes) {
+      if (node.equals(otherNode)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public String toString() {
     return getFullPath();
@@ -636,7 +653,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDevice(), getMeasurement());
+    return new Path(getDevice(), getMeasurement(), true);
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {

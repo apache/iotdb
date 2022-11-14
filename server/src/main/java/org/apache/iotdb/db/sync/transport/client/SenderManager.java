@@ -118,6 +118,7 @@ public class SenderManager {
           if (!syncClient.handshake()) {
             SyncService.getInstance()
                 .recordMessage(
+                    pipe.getName(),
                     new PipeMessage(
                         PipeMessage.PipeMessageType.ERROR,
                         String.format("Can not handshake with %s", pipeSink)));
@@ -129,6 +130,7 @@ public class SenderManager {
               // can do something.
               SyncService.getInstance()
                   .recordMessage(
+                      pipe.getName(),
                       new PipeMessage(
                           PipeMessage.PipeMessageType.WARN,
                           String.format(

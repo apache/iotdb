@@ -242,7 +242,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -270,7 +270,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -337,7 +337,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -411,7 +411,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -544,9 +544,9 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show devices with storage group:
+请求示例 show devices with database:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 响应示例:
@@ -556,7 +556,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "expressions": null,
   "columnNames": [
     "devices",
-    "storage group",
+    "database",
     "isAligned"
   ],
   "timestamps": null,
@@ -798,7 +798,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
 响应参数:
@@ -835,7 +835,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 | dataTypes | array | 是  | 数据类型  |
 |  values | array | 是  | 值列，每一列中的值可以为 `null` |
 |  isAligned | boolean | 是  | 是否是对齐时间序列 |
-|  deviceId | boolean | 是  | 设备名称 |
+|  deviceId | string | 是  | 设备名称 |
 
 请求示例：
 ```shell

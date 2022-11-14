@@ -894,6 +894,79 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 ```
 
+## Quantile
+
+### Usage
+
+The function is used to compute the approximate quantile of a numeric time series. A quantile is value of element in the certain rank of the sorted series.
+
+**Name:** QUANTILE
+
+**Input Series:** Only support a single input series. The data type is INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameter:**
+
++ `rank`: The rank of the quantile. It should be (0,1] and the default value is 0.5. For instance, a quantile with `rank`=0.5 is the median.
++ `K`: The size of KLL sketch maintained in the query. It should be within [100,+inf) and the default value is 800. For instance, the 0.5-quantile computed by a KLL sketch with K=800 items is a value with rank quantile 0.49~0.51 with a confidence of at least 99%. The result will be more accurate as K increases.
+
+**Output Series:** Output a single series. The type is the same as input series. The timestamp of the only data point is 0.
+
+**Note:** Missing points, null points and `NaN` in the input series will be ignored.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+------------+
+|                         Time|root.test.s0|
++-----------------------------+------------+
+|2021-03-17T10:32:17.054+08:00|   0.5319929|
+|2021-03-17T10:32:18.054+08:00|   0.9304316|
+|2021-03-17T10:32:19.054+08:00|  -1.4800133|
+|2021-03-17T10:32:20.054+08:00|   0.6114087|
+|2021-03-17T10:32:21.054+08:00|   2.5163336|
+|2021-03-17T10:32:22.054+08:00|  -1.0845392|
+|2021-03-17T10:32:23.054+08:00|   1.0562582|
+|2021-03-17T10:32:24.054+08:00|   1.3867859|
+|2021-03-17T10:32:25.054+08:00| -0.45429882|
+|2021-03-17T10:32:26.054+08:00|   1.0353678|
+|2021-03-17T10:32:27.054+08:00|   0.7307929|
+|2021-03-17T10:32:28.054+08:00|   2.3167255|
+|2021-03-17T10:32:29.054+08:00|    2.342443|
+|2021-03-17T10:32:30.054+08:00|   1.5809103|
+|2021-03-17T10:32:31.054+08:00|   1.4829416|
+|2021-03-17T10:32:32.054+08:00|   1.5800357|
+|2021-03-17T10:32:33.054+08:00|   0.7124368|
+|2021-03-17T10:32:34.054+08:00| -0.78597564|
+|2021-03-17T10:32:35.054+08:00|   1.2058644|
+|2021-03-17T10:32:36.054+08:00|   1.4215064|
+|2021-03-17T10:32:37.054+08:00|   1.2808295|
+|2021-03-17T10:32:38.054+08:00|  -0.6173715|
+|2021-03-17T10:32:39.054+08:00|  0.06644377|
+|2021-03-17T10:32:40.054+08:00|    2.349338|
+|2021-03-17T10:32:41.054+08:00|   1.7335888|
+|2021-03-17T10:32:42.054+08:00|   1.5872132|
+............
+Total line number = 10000
+```
+
+SQL for query:
+
+```sql
+select quantile(s0, "rank"="0.2", "K"="800") from root.test
+```
+
+Output series:
+
+```
++-----------------------------+------------------------------------------------------+
+|                         Time|quantile(root.test.s0, "rank"="0.2", "K"="800")|
++-----------------------------+------------------------------------------------------+
+|1970-01-01T08:00:00.000+08:00|                                    0.1801469624042511|
++-----------------------------+------------------------------------------------------+
+```
+
 ## Period
 
 ### Usage
@@ -1162,11 +1235,13 @@ Output series:
 
 This function is used to sample the input series,
 that is, select a specified number of data points from the input series and output them.
-Currently, two sampling methods are supported:
+Currently, three sampling methods are supported:
 **Reservoir sampling** randomly selects data points.
 All of the points have the same probability of being sampled.
 **Isometric sampling** selects data points at equal index intervals.
-
+**Triangle sampling** assigns data points to the buckets based on the number of sampling. 
+Then it calculates the area of the triangle based on these points inside the bucket and selects the point with the largest area of the triangle. 
+For more detail, please read [paper](http://skemman.is/stream/get/1946/15343/37285/3/SS_MSthesis.pdf)
 
 **Name:** SAMPLE
 
@@ -1174,7 +1249,7 @@ All of the points have the same probability of being sampled.
 
 **Parameters:**
 
-+ `method`: The method of sampling, which is 'reservoir' or 'isometric'. By default, reservoir sampling is used.
++ `method`: The method of sampling, which is 'reservoir', 'isometric' or 'triangle'. By default, reservoir sampling is used.
 + `k`: The number of sampling, which is a positive integer. By default, it's 1.
 
 **Output Series:** Output a single series. The type is the same as the input. The length of the output series is `k`. Each data point in the output series comes from the input series.

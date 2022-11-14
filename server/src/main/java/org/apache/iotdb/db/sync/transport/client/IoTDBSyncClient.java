@@ -69,7 +69,7 @@ public class IoTDBSyncClient implements ISyncClient {
   private final int port;
   /* local IP address*/
   private final String localIP;
-  /* storage group name that client belongs to*/
+  /* database name that client belongs to*/
   private final String storageGroupName;
 
   private final Pipe pipe;
@@ -79,7 +79,7 @@ public class IoTDBSyncClient implements ISyncClient {
    * @param remoteAddress remote ip address
    * @param port remote port
    * @param localAddress local ip address
-   * @param storageGroupName storage group name that client belongs to
+   * @param storageGroupName database name that client belongs to
    */
   public IoTDBSyncClient(
       Pipe pipe, String remoteAddress, int port, String localAddress, String storageGroupName) {

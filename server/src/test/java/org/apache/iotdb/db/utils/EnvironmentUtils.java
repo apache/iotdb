@@ -22,20 +22,18 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -57,7 +55,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -108,16 +106,13 @@ public class EnvironmentUtils {
 
     // deregister all user defined classes
     try {
-      if (UDFRegistrationService.getInstance() != null) {
-        UDFRegistrationService.getInstance().deregisterAll();
+      if (UDFManagementService.getInstance() != null) {
+        UDFManagementService.getInstance().deregisterAll();
       }
       if (TriggerRegistrationService.getInstance() != null) {
         TriggerRegistrationService.getInstance().deregisterAll();
       }
-      if (ContinuousQueryService.getInstance() != null) {
-        ContinuousQueryService.getInstance().deregisterAll();
-      }
-    } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
+    } catch (UDFManagementException | TriggerManagementException e) {
       fail(e.getMessage());
     }
 
@@ -152,11 +147,12 @@ public class EnvironmentUtils {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
 
-    // clean storage group manager
-    if (!StorageEngine.getInstance().deleteAll()) {
-      logger.error("Can't close the storage group manager in EnvironmentUtils");
-      fail();
-    }
+    StorageEngineV2.getInstance().stop();
+    // clean database manager
+    //    if (!StorageEngine.getInstance().deleteAll()) {
+    //      logger.error("Can't close the database manager in EnvironmentUtils");
+    //      fail();
+    //    }
 
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
@@ -303,6 +299,7 @@ public class EnvironmentUtils {
     }
     try {
       EnvironmentUtils.daemon.active();
+      StorageEngineV2.getInstance().start();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -313,19 +310,21 @@ public class EnvironmentUtils {
     // reset id method
     DeviceIDFactory.getInstance().reset();
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
   public static void stopDaemon() {
     if (daemon != null) {
       daemon.stop();
+      StorageEngineV2.getInstance().stop();
     }
   }
 
   public static void shutdownDaemon() throws Exception {
     if (daemon != null) {
       daemon.shutdown();
+      StorageEngineV2.getInstance().shutdown(10000);
     }
   }
 
@@ -364,7 +363,7 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
-    // create storage group
+    // create database
     createDir(config.getSystemDir());
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
