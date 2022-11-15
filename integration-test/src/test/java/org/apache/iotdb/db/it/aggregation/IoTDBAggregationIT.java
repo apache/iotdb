@@ -119,7 +119,6 @@ public class IoTDBAggregationIT {
 
   // add test for part of points in page don't satisfy filter
   // details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
-  // TODO: remove ignore after supporting value filter
   @Test
   public void test() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
