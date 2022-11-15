@@ -46,16 +46,13 @@ Here is a list of Status Code and related message:
 |:--|:---|:---|
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
-|202|INVALID_HANDLE_STATUS||
 |203|INCOMPATIBLE_VERSION|Incompatible version|
 |298|NODE_DELETE_FAILED_ERROR|Failed while deleting node|
 |299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
 |300|PATH_ALREADY_EXIST_ERROR|Path already exists|
-|302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
 |304|PATH_NOT_EXIST_ERROR|Path does not exist|
 |305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|
-|306|HEAVY_WORKLOAD|IoTDB system load is too large|
 |307|MERGE_ERROR|Meet error while merging|
 |308|SYSTEM_CHECK_ERROR|Meet error while system checking|
 |310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
@@ -85,7 +82,6 @@ Here is a list of Status Code and related message:
 |335|PIPE_ERROR| PIPE error |
 |336|PIPESERVER_ERROR| PIPE server error |
 |337|SERIES_OVERFLOW| Series number exceeds the threshold |
-|339|TEMPLATE_NOT_EXIST| Schema template does not exist |
 |340|CREATE_TEMPLATE_ERROR| Create schema template error |
 |341|SYNC_FILE_REBASE| Sync TsFile error |
 |342|SYNC_FILE_ERROR| Sync TsFile error |
@@ -101,16 +97,13 @@ Here is a list of Status Code and related message:
 |364|DROP_TRIGGER_INSTANCE_ERROR| Error when drop trigger instance |
 |365|UPDATE_TRIGGER_LOCATION_ERROR| Error when move stateful trigger to new datanode |
 |370|UDF_LOAD_CLASS_ERROR| Error when loading UDF class |
-|371|UDF_DOWNLOAD_ERROR| Error when download UDF class from ConfigNode |
 |372|CREATE_FUNCTION_ON_DATANODE_ERROR| Error when create UDF on DataNode |
 |373|DROP_FUNCTION_ON_DATANODE_ERROR| Error when drop a UDF on DataNode |
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_STORAGE_GROUP_ERROR|Operating object is not a database|
 |405|QUERY_NOT_ALLOWED|Query statements are not allowed error|
-|406|AST_FORMAT_ERROR|AST format related error|
 |407|LOGICAL_OPERATOR_ERROR|Logical operator related error|
 |408|LOGICAL_OPTIMIZE_ERROR|Logical optimize related error|
 |409|UNSUPPORTED_FILL_TYPE_ERROR|Unsupported fill type related error|
@@ -118,8 +111,6 @@ Here is a list of Status Code and related message:
 |411|QUERY_PROCESS_ERROR|Query process related error|
 |412|WRITE_PROCESS_ERROR|Writing data related error|
 |413|WRITE_PROCESS_REJECT|Writing data rejected error|
-|414|QUERY_ID_NOT_EXIST|Kill query with non existent queryId|
-|415|SNAPSHOT_DIR_NOT_LEGAL|Snapshot dir name is illegal |
 |416|SEMANTIC_ERROR|SQL semantic error|
 |417|LOAD_PIECE_OF_TSFILE_ERROR|Error when load a piece of TsFile when loading|
 |423|MEMORY_NOT_ENOUGH|Not enough memory for task execution in MPP|
@@ -130,7 +121,6 @@ Here is a list of Status Code and related message:
 |504|START_UP_ERROR|Meet error while starting up|
 |505|SHUT_DOWN_ERROR|Meet error while shutdown|
 |506|MULTIPLE_ERROR|Meet error when executing multiple statements|
-|507|SESSION_EXPIRED|Session expired|
 |508|TSBLOCK_SERIALIZE_ERROR|TsBlock serialization error|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
@@ -140,9 +130,7 @@ Here is a list of Status Code and related message:
 |606|ROLE_NOT_EXIST_ERROR|Role does not exist|
 |607|AUTHENTICATION_ERROR|Error in authentication|
 |608|CLEAR_PERMISSION_CACHE_ERROR|Error when clear the permission cache|
-|700|PARTITION_NOT_READY|Partition table not ready|
 |701|TIME_OUT|Operation timeout|
-|702|NO_LEADER|No leader|
 |703|UNSUPPORTED_OPERATION|Unsupported operation|
 |706|NO_CONNECTION|Can not get connection error|
 |707|NEED_REDIRECTION|Need direction|
@@ -155,7 +143,6 @@ Here is a list of Status Code and related message:
 |715|CONSENSUS_NOT_INITIALIZED|Consensus is not initialized and cannot provide service|
 |800|CONFIG_ERROR|Configuration error|
 |901|DATANODE_ALREADY_REGISTERED|DataNode already registered in cluster |
-|902|CREATE_DATABASE_ERROR|Create Database failed|
 |903|DATABASE_ALREADY_EXISTS|Database already exist|
 |904|NOT_ENOUGH_DATA_NODE|The number of DataNode is not enough|
 |905|ERROR_GLOBAL_CONFIG|Global config in cluster does not consistent|

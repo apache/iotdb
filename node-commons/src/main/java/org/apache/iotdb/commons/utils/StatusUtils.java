@@ -60,12 +60,6 @@ public class StatusUtils {
       case TIME_OUT:
         status.setMessage("Request timed out.");
         break;
-      case NO_LEADER:
-        status.setMessage("Leader cannot be found.");
-        break;
-      case PARTITION_NOT_READY:
-        status.setMessage("Partition table is not ready.");
-        break;
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version.");
         break;
@@ -81,17 +75,11 @@ public class StatusUtils {
       case PATH_NOT_EXIST_ERROR:
         status.setMessage("Path does not exist.");
         break;
-      case UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR:
-        status.setMessage("Unsupported fetch metadata operation.");
-        break;
       case METADATA_ERROR:
         status.setMessage("Meet error when dealing with metadata.");
         break;
       case OUT_OF_TTL_ERROR:
         status.setMessage("Insertion time is less than TTL time bound.");
-        break;
-      case HEAVY_WORKLOAD:
-        status.setMessage("IoTDB system load is too large.");
         break;
       case MERGE_ERROR:
         status.setMessage("Meet error while merging.");
@@ -129,14 +117,8 @@ public class StatusUtils {
       case SET_TIME_ZONE_ERROR:
         status.setMessage("Meet error while setting time zone.");
         break;
-      case NOT_STORAGE_GROUP_ERROR:
-        status.setMessage("Operating object is not a database.");
-        break;
       case QUERY_NOT_ALLOWED:
         status.setMessage("Query statements are not allowed error.");
-        break;
-      case AST_FORMAT_ERROR:
-        status.setMessage("AST format related error.");
         break;
       case LOGICAL_OPERATOR_ERROR:
         status.setMessage("Logical operator related error.");
