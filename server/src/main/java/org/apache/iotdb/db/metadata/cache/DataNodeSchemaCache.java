@@ -34,6 +34,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -100,6 +102,7 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    List<String> storageGroupList = new ArrayList<>();
     SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
       PartialPath path = devicePath.concatNode(measurement);
@@ -112,24 +115,28 @@ public class DataNodeSchemaCache {
             schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
+        storageGroupList.add(schemaCacheEntry.getStorageGroup());
       }
     }
+    schemaTree.setStorageGroups(storageGroupList);
     return schemaTree;
   }
 
   public void put(ISchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      putSingleMeasurementPath(measurementPath);
+      putSingleMeasurementPath(
+          schemaTree.getBelongedStorageGroup(measurementPath), measurementPath);
     }
   }
 
-  public void put(MeasurementPath measurementPath) {
-    putSingleMeasurementPath(measurementPath);
+  public void put(String storageGroup, MeasurementPath measurementPath) {
+    putSingleMeasurementPath(storageGroup, measurementPath);
   }
 
-  private void putSingleMeasurementPath(MeasurementPath measurementPath) {
+  private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
     SchemaCacheEntry schemaCacheEntry =
         new SchemaCacheEntry(
+            storageGroup,
             (MeasurementSchema) measurementPath.getMeasurementSchema(),
             measurementPath.getTagMap(),
             measurementPath.isUnderAlignedEntity());
@@ -165,6 +172,7 @@ public class DataNodeSchemaCache {
    * aligned sensor without only one sub sensor
    */
   public void updateLastCache(
+      String storageGroup,
       MeasurementPath measurementPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
@@ -177,6 +185,7 @@ public class DataNodeSchemaCache {
         if (null == entry) {
           entry =
               new SchemaCacheEntry(
+                  storageGroup,
                   (MeasurementSchema) measurementPath.getMeasurementSchema(),
                   measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());

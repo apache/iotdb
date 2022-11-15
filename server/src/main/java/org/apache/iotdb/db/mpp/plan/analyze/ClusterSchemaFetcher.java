@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -62,6 +61,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,7 +77,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
-  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -119,14 +118,17 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
     }
 
-    ClusterSchemaTree schemaTree;
-    if (fullPathList.size() == pathPatternList.size()) {
-      boolean isAllCached = true;
-      schemaTree = new ClusterSchemaTree();
-      String[] measurement = new String[1];
-      schemaCache.takeReadLock();
-      try {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree schemaTree;
+      if (fullPathList.size() == pathPatternList.size()) {
+        boolean isAllCached = true;
+        schemaTree = new ClusterSchemaTree();
+        String[] measurement = new String[1];
         ClusterSchemaTree cachedSchema;
+        Set<String> storageGroupSet = new HashSet<>();
         for (PartialPath fullPath : fullPathList) {
           measurement[0] = fullPath.getMeasurement();
           cachedSchema = schemaCache.get(fullPath.getDevicePath(), measurement);
@@ -135,24 +137,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             break;
           } else {
             schemaTree.mergeSchemaTree(cachedSchema);
+            storageGroupSet.addAll(schemaTree.getStorageGroups());
           }
         }
-      } finally {
-        schemaCache.releaseReadLock();
+        if (isAllCached) {
+          schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
+          return schemaTree;
+        }
       }
-      if (isAllCached) {
-        SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-        schemaTree.setStorageGroups(
-            new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet()));
-        return schemaTree;
-      }
-    }
 
-    schemaTree =
-        executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+      schemaTree =
+          executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
 
-    schemaCache.takeReadLock();
-    try {
       // only cache the schema fetched by full path
       List<MeasurementPath> measurementPathList;
       for (PartialPath fullPath : fullPathList) {
@@ -160,13 +156,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         if (measurementPathList.isEmpty()) {
           continue;
         }
-        schemaCache.put(measurementPathList.get(0));
+        schemaCache.put(
+            schemaTree.getBelongedStorageGroup(measurementPathList.get(0)),
+            measurementPathList.get(0));
       }
+      return schemaTree;
     } finally {
       schemaCache.releaseReadLock();
     }
-
-    return schemaTree;
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
