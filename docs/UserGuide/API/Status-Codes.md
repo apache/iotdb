@@ -82,9 +82,9 @@ Here is a list of Status Code and related message:
 |335|PIPE_ERROR|PIPE error|
 |336|PIPESERVER_ERROR|PIPE server error|
 |337|SERIES_OVERFLOW|Series number exceeds the threshold|
-|340|CREATE_TEMPLATE_ERROR|Create schema template error|
-|341|SYNC_FILE_REBASE|Sync TsFile error|
-|342|SYNC_FILE_ERROR|Sync TsFile error|
+|340|CREATE_TEMPLATE_FAILED|Create schema template error|
+|341|SYNC_FILE_REDIRECTION_FAILED|Sync TsFile redirection error|
+|342|SYNC_FILE_FAILED|Sync TsFile error|
 |343|VERIFY_METADATA_ERROR|Meet error in validate timeseries schema|
 |344|TIMESERIES_IN_BLACK_LIST|Timeseries is being deleted|
 |349|OVERSIZE_RECORD|Size of record exceeds the threshold of page of SchemaFile|
