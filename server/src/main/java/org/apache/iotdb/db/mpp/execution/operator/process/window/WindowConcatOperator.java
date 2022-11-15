@@ -64,7 +64,7 @@ public class WindowConcatOperator implements ProcessOperator {
     }
 
     TsBlock inputTsBlock = child.next();
-    if (inputTsBlock == null) {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return null;
     }
 

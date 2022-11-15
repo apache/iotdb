@@ -17,6 +17,8 @@
 #
 
 # Uncomment the following line to use apache-iotdb module installed by pip3
+import random
+
 import numpy as np
 
 from iotdb.Session import Session
@@ -36,19 +38,21 @@ session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC
 session.open(False)
 
 ts_path_list = [
-    "root.sg1.d1.s1",
-    "root.sg1.d1.s2"
+    "root.eg.exchange.s0",
+    "root.eg.exchange.s1"
 ]
 
 fetch_args = {
-    "start_time": 0,
-    "end_time": 32,
-    "interval": 4,
-    "sliding_step": 1,
-    "indexes": [9, 0, 5, 3]
+    "start_time": 631123200000,
+    "end_time": 1286640000000,
+    "interval": 86400000 * 96,
+    "sliding_step": 86400000,
+    "indexes": [666, 555, 222]
+    # "indexes": random.sample([i for i in range(0, 7501)], 100)
 }
 
-print(session.fetch_window_batch(ts_path_list, "sin", fetch_args))
+result = session.fetch_window_batch(ts_path_list, None, fetch_args)
+print(result.shape)
 
 # # set and delete storage groups
 # session.set_storage_group("root.sg_test_01")

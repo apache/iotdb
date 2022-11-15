@@ -1483,6 +1483,7 @@ class Session(object):
                     )
 
                     window_df = window_session_data_set.to_df(window_session_data_set)
+                    print(window_df)
                     window_batch.append(window_df)
                 return np.array(window_batch)
             else:

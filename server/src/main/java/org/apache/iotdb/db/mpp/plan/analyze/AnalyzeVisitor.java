@@ -39,6 +39,8 @@ import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -120,6 +122,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1227,6 +1230,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     logger.info("[EndFetchSchema]");
 
+    analyzeGlobalTimeFilter(analysis, fetchWindowBatchStatement);
+
     // set source
     List<MeasurementPath> measurementPaths = schemaTree.getAllMeasurement();
     Set<Expression> sourceExpressions =
@@ -1280,6 +1285,38 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;
+  }
+
+  private void analyzeGlobalTimeFilter(Analysis analysis, FetchWindowBatchStatement statement) {
+    GroupByTimeParameter groupByTimeParameter = statement.getGroupByTimeParameter();
+    ITimeRangeIterator iterator =
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            groupByTimeParameter.getStartTime(),
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            true,
+            false,
+            false,
+            true,
+            false);
+    long totalNum = iterator.getTotalIntervalNum();
+
+    long minIndex = Long.MAX_VALUE, maxIndex = -1;
+    for (Integer index : statement.getSamplingIndexes()) {
+      minIndex = Math.min(minIndex, index);
+      maxIndex = Math.max(maxIndex, index);
+      if (index < 0 || index >= totalNum) {
+        throw new SemanticException("index should be bulabula...");
+      }
+    }
+
+    long minTime =
+        groupByTimeParameter.getStartTime() + minIndex * groupByTimeParameter.getSlidingStep();
+    long maxTime =
+        groupByTimeParameter.getStartTime() + maxIndex * groupByTimeParameter.getSlidingStep();
+    analysis.setGlobalTimeFilter(
+        FilterFactory.and(TimeFilter.gtEq(minTime), TimeFilter.ltEq(maxTime)));
   }
 
   @Override
