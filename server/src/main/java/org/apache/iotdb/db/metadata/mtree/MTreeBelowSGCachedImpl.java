@@ -53,6 +53,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -137,6 +138,18 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroup.getNodeLength() - 1;
+
+    // recover measurement
+    MeasurementCollector<?> collector =
+        new MeasurementCollector<Void>(
+            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            SchemaStatisticsManager.getInstance().addTimeseries(1);
+          }
+        };
+    collector.setPrefixMatch(true);
+    collector.traverse();
   }
 
   /** Only used for load snapshot */

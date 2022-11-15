@@ -405,7 +405,6 @@ public class CachedMTreeStore implements IMTreeStore {
       File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
-    file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
 

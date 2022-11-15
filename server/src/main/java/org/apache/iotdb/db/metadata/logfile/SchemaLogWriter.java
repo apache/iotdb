@@ -107,7 +107,7 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     }
   }
 
-  public void reset() throws IOException {
+  public synchronized void reset() throws IOException {
     fileOutputStream.close();
     fileOutputStream = new FileOutputStream(logFile, false);
   }
