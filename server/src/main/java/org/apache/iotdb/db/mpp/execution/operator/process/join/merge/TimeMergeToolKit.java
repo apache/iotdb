@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -13,29 +31,19 @@ public class TimeMergeToolKit implements MergeSortToolKit {
   Ordering timeOrdering;
   long[] startKey;
   long[] endKey;
-  long targetKey;
-  int targetIndex;
   TsBlock[] tsBlocks;
   boolean[] tsBlocksEmpty;
-
+  long targetKey;
   int tsBlockCount;
 
-  TimeMergeToolKit(List<SortItem> sortItemList, int childNum) {
-    this.deviceOrdering = sortItemList.get(0).getOrdering();
-    this.timeOrdering = sortItemList.get(1).getOrdering();
+  public TimeMergeToolKit(List<SortItem> sortItemList, int childNum) {
+    this.deviceOrdering = sortItemList.get(1).getOrdering();
+    this.timeOrdering = sortItemList.get(0).getOrdering();
     this.tsBlockCount = childNum;
     this.startKey = new long[tsBlockCount];
     this.endKey = new long[tsBlockCount];
     this.tsBlocksEmpty = new boolean[tsBlockCount];
-  }
-
-  @Override
-  public void addTsBlocks(TsBlock[] tsBlocks) {
-    this.tsBlocks = tsBlocks;
-    for (int i = 0; i < tsBlocks.length; i++) {
-      startKey[i] = tsBlocks[i].getStartTime();
-      endKey[i] = tsBlocks[i].getEndTime();
-    }
+    this.tsBlocks = new TsBlock[tsBlockCount];
   }
 
   @Override
@@ -64,40 +72,42 @@ public class TimeMergeToolKit implements MergeSortToolKit {
       targetTsBlockIndex.add(0);
       return targetTsBlockIndex;
     }
-
-    long minEndKey = endKey[0];
-    int index = 0;
-    for (int i = 1; i < tsBlockCount; i++) {
-      if (greater(minEndKey, endKey[i])) {
+    // find the targetValue in TsBlocks
+    // it is:
+    // (1) the smallest endKey when ordering is asc
+    // (2) the biggest endKey when ordering is desc
+    // which is controlled by greater method
+    long minEndKey = Long.MIN_VALUE;
+    int index = Integer.MAX_VALUE;
+    for (int i = 0; i < tsBlockCount; i++) {
+      if (!tsBlocksEmpty[i]) {
         minEndKey = endKey[i];
         index = i;
+        break;
       }
     }
+    for (int i = index + 1; i < tsBlockCount; i++) {
+      if (!tsBlocksEmpty[i] && greater(minEndKey, endKey[i])) {
+        minEndKey = endKey[i];
+      }
+    }
+    this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
       if (greater(minEndKey, startKey[i]) || minEndKey == startKey[i]) {
         targetTsBlockIndex.add(i);
       }
     }
-    this.targetKey = minEndKey;
-    this.targetIndex = index;
     return targetTsBlockIndex;
   }
 
   /** Comparator */
   @Override
-  public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
-    return timeOrdering == Ordering.ASC
-        ? tsBlockIterator.currentTime() <= tsBlocks[targetIndex].getTimeByIndex(0)
-        : tsBlockIterator.currentTime() >= tsBlocks[targetIndex].getTimeByIndex(0);
-  }
-
-  @Override
   public boolean greater(
       TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
     if (t.currentTime() == s.currentTime()) {
       return deviceOrdering == Ordering.ASC
-          ? ((String) t.currentValue()).compareTo((String) s.currentValue()) > 0
-          : ((String) t.currentValue()).compareTo((String) s.currentValue()) < 0;
+          ? (t.currentValue().toString()).compareTo(s.currentValue().toString()) > 0
+          : (t.currentValue().toString()).compareTo(s.currentValue().toString()) < 0;
     } else {
       return timeOrdering == Ordering.ASC
           ? t.currentTime() > s.currentTime()
@@ -107,5 +117,12 @@ public class TimeMergeToolKit implements MergeSortToolKit {
 
   public boolean greater(long t, long s) {
     return timeOrdering == Ordering.ASC ? t > s : t < s;
+  }
+
+  @Override
+  public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
+    return timeOrdering == Ordering.ASC
+        ? tsBlockIterator.currentTime() <= targetKey
+        : tsBlockIterator.currentTime() >= targetKey;
   }
 }

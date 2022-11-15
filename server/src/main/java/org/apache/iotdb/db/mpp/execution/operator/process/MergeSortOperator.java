@@ -91,6 +91,7 @@ public class MergeSortOperator implements ProcessOperator {
       int index = targetTsBlockIndex.get(0);
       TsBlock resultTsBlock = inputTsBlocks[index];
       inputTsBlocks[index] = null;
+      mergeSortToolKit.updateTsBlock(index, -1);
       return resultTsBlock;
     }
 
@@ -112,8 +113,9 @@ public class MergeSortOperator implements ProcessOperator {
       int minIndex = -1;
       hasMatchKey = false;
       // find the targetTsBlock which has the smallest keyValue
-      for (int i = 1; i < targetTsBlockSize; i++) {
-        if (mergeSortToolKit.satisfyCurrentEndValue(tsBlockIterators[i])) {
+      for (int i = 0; i < targetTsBlockSize; i++) {
+        if (tsBlockIterators[i].hasNext()
+            && mergeSortToolKit.satisfyCurrentEndValue(tsBlockIterators[i])) {
           hasMatchKey = true;
           if (minIndex == -1) {
             minIndex = i;
@@ -137,8 +139,8 @@ public class MergeSortOperator implements ProcessOperator {
           }
         }
         tsBlockIterators[minIndex].next();
+        tsBlockBuilder.declarePosition();
       }
-      tsBlockBuilder.declarePosition();
     }
     // update inputTsBlocks after consuming
     for (int i = 0; i < targetTsBlockSize; i++) {

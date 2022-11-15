@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -15,29 +33,18 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
   String[] startKey;
   String[] endKey;
   TsBlock[] tsBlocks;
-  boolean tsBlocksEmpty[];
+  boolean[] tsBlocksEmpty;
   String targetKey;
-  int targetIndex;
-
   int tsBlockCount;
 
-  DeviceMergeToolKit(List<SortItem> sortItemList, int childNum) {
+  public DeviceMergeToolKit(List<SortItem> sortItemList, int childNum) {
     this.deviceOrdering = sortItemList.get(0).getOrdering();
     this.timeOrdering = sortItemList.get(1).getOrdering();
     this.tsBlockCount = childNum;
     this.startKey = new String[tsBlockCount];
     this.endKey = new String[tsBlockCount];
     this.tsBlocksEmpty = new boolean[tsBlockCount];
-  }
-
-  @Override
-  public void addTsBlocks(TsBlock[] tsBlocks) {
-    this.tsBlocks = tsBlocks;
-    for (int i = 0; i < tsBlocks.length; i++) {
-      startKey[i] = tsBlocks[i].getColumn(0).getBinary(0).toString();
-      endKey[i] = startKey[i];
-      tsBlocksEmpty[i] = false;
-    }
+    this.tsBlocks = new TsBlock[tsBlockCount];
   }
 
   @Override
@@ -66,18 +73,27 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
       targetTsBlockIndex.add(0);
       return targetTsBlockIndex;
     }
-    // find the smallest startKey and endKey in tsBlocks
-    String minEndKey = endKey[0];
+    // find the targetValue in TsBlocks
+    // it is:
+    // (1) the smallest endKey when ordering is asc
+    // (2) the biggest endKey when ordering is desc
+    // which is controlled by greater method
+    String minEndKey = "";
     int index = 0;
-    for (int i = 1; i < tsBlockCount; i++) {
+    for (int i = 0; i < tsBlockCount; i++) {
+      if (!tsBlocksEmpty[i]) {
+        minEndKey = endKey[i];
+        index = i;
+        break;
+      }
+    }
+    for (int i = index + 1; i < tsBlockCount; i++) {
       if (tsBlocksEmpty[i]) continue;
       if (greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
-        index = i;
       }
     }
     this.targetKey = minEndKey;
-    this.targetIndex = index;
     for (int i = 0; i < tsBlockCount; i++) {
       if (tsBlocksEmpty[i]) continue;
       if (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i])) {
@@ -91,33 +107,25 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
   @Override
   public boolean greater(
       TsBlock.TsBlockSingleColumnIterator t, TsBlock.TsBlockSingleColumnIterator s) {
-    return timeOrdering == Ordering.ASC
-        ? t.currentTime() > s.currentTime()
-        : t.currentTime() < s.currentTime();
+    if (Objects.equals(t.currentValue().toString(), s.currentValue().toString())) {
+      return timeOrdering == Ordering.ASC
+          ? t.currentTime() > s.currentTime()
+          : t.currentTime() < s.currentTime();
+    } else {
+      return deviceOrdering == Ordering.ASC
+          ? t.currentValue().toString().compareTo(s.currentValue().toString()) > 0
+          : t.currentValue().toString().compareTo(s.currentValue().toString()) < 0;
+    }
   }
 
   public boolean greater(String t, String s) {
     return deviceOrdering == Ordering.ASC ? t.compareTo(s) > 0 : t.compareTo(s) < 0;
   }
 
-  public boolean equals(String t, String s) {
-    return Objects.equals(s, t);
-  }
-
   @Override
   public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
     return deviceOrdering == Ordering.ASC
-        ? tsBlocks[targetIndex]
-                .getColumn(0)
-                .getBinary(0)
-                .toString()
-                .compareTo((String) tsBlockIterator.currentValue())
-            >= 0
-        : tsBlocks[targetIndex]
-                .getColumn(0)
-                .getBinary(0)
-                .toString()
-                .compareTo((String) tsBlockIterator.currentValue())
-            <= 0;
+        ? targetKey.compareTo(tsBlockIterator.currentValue().toString()) >= 0
+        : targetKey.compareTo(tsBlockIterator.currentValue().toString()) <= 0;
   }
 }
