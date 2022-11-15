@@ -20,11 +20,15 @@ package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.rpc.TSStatusCode.STORAGE_GROUP_NOT_READY;
 
 public class OperationSyncDMLProtector extends OperationSyncProtector {
 
@@ -61,7 +65,25 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
         } catch (IoTDBConnectionException connectionException) {
           // warn IoTDBConnectionException and retry
-          LOGGER.warn("OperationSyncDMLProtector can't transmit, retrying...", connectionException);
+          LOGGER.warn(
+              "OperationSyncDMLProtector can't transmit for connection error, retrying...",
+              connectionException);
+        } catch (BatchExecutionException batchExecutionException) {
+          LOGGER.error(
+              "OperationSyncDMLProtector can't transmit for batchExecutionException",
+              batchExecutionException);
+          if (batchExecutionException.getStatusList().stream()
+              .noneMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+            break;
+          }
+        } catch (StatementExecutionException statementExecutionException) {
+          LOGGER.error(
+              "OperationSyncDMLProtector can't transmit for statementExecutionException",
+              statementExecutionException);
+          if (statementExecutionException.getStatusCode()
+              != STORAGE_GROUP_NOT_READY.getStatusCode()) {
+            break;
+          }
         } catch (Exception e) {
           // error exception and break
           LOGGER.error("OperationSyncDMLProtector can't transmit", e);
