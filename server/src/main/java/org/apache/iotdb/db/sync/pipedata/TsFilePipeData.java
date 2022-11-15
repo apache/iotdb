@@ -121,7 +121,7 @@ public class TsFilePipeData extends PipeData {
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.TSFILE;
   }
 

@@ -54,7 +54,7 @@ public class DeletionPipeData extends PipeData {
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.DELETION;
   }
 
