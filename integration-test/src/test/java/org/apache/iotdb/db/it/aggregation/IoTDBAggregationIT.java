@@ -905,6 +905,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
 
       for (int i = 7500; i < 8500; i++) {
@@ -913,6 +914,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
@@ -921,6 +923,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
         statement.addBatch(
@@ -928,6 +931,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
+      statement.clearBatch();
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
@@ -936,6 +940,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.executeBatch();
+      statement.clearBatch();
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
         statement.addBatch(
@@ -943,6 +948,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
+      statement.clearBatch();
 
       for (String sql : dataSet3) {
         statement.execute(sql);

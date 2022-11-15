@@ -350,6 +350,7 @@ public class IoTDBDeletionIT {
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
       statement.executeBatch();
+      statement.clearBatch();
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150 and time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 300 and time <= 400");
@@ -358,6 +359,7 @@ public class IoTDBDeletionIT {
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
       statement.executeBatch();
+      statement.clearBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 500 and time <= 800");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 900 and time <= 1100");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 1650");
