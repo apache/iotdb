@@ -309,7 +309,7 @@ public class RegionWriteExecutor {
           if (failingMeasurementMap.isEmpty()) {
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
-            MetadataException metadataException = failingMeasurementMap.get(0);
+            MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.error("Metadata error: ", metadataException);
             RegionExecutionResult result = new RegionExecutionResult();
             result.setAccepted(false);

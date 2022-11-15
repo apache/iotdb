@@ -1266,6 +1266,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateTimeseries(
       CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+    if (createTimeSeriesStatement.getPath().getNodeLength() < 3) {
+      throw new RuntimeException(
+          new IllegalPathException(createTimeSeriesStatement.getPath().getFullPath()));
+    }
     context.setQueryType(QueryType.WRITE);
     if (createTimeSeriesStatement.getTags() != null
         && !createTimeSeriesStatement.getTags().isEmpty()
@@ -1344,6 +1348,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+    if (createAlignedTimeSeriesStatement.getDevicePath().getNodeLength() < 2) {
+      throw new RuntimeException(
+          new IllegalPathException(createAlignedTimeSeriesStatement.getDevicePath().getFullPath()));
+    }
     context.setQueryType(QueryType.WRITE);
     List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
     Set<String> measurementsSet = new HashSet<>(measurements);
