@@ -237,6 +237,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    // TODO: make sure persist header info in logfile
     updateHeader();
   }
 
