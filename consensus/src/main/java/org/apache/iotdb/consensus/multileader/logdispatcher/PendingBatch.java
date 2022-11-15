@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.multileader.logdispatcher;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,7 +56,8 @@ public class PendingBatch {
   public void addTLogBatch(TLogBatch batch) {
     batches.add(batch);
     // TODO Maybe we need to add in additional fields for more accurate calculations
-    serializedSize += batch.getData() == null ? 0 : batch.getData().length;
+    serializedSize +=
+        batch.getData() == null ? 0 : batch.getData().stream().mapToInt(Buffer::capacity).sum();
   }
 
   public boolean canAccumulate() {

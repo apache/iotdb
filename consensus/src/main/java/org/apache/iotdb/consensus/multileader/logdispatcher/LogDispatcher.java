@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
@@ -44,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -156,9 +154,6 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
-    request.buildSerializedRequests();
-    // we put the serialization step outside the synchronized block because it is stateless and
-    // time-consuming
     synchronized (this) {
       threads.forEach(
           thread -> {
@@ -500,18 +495,15 @@ public class LogDispatcher {
         }
         targetIndex = data.getSearchIndex() + 1;
         // construct request from wal
-        for (IConsensusRequest innerRequest : data.getRequests()) {
-          logBatches.addTLogBatch(
-              new TLogBatch(innerRequest.serializeToByteBuffer(), data.getSearchIndex(), true));
-        }
+        logBatches.addTLogBatch(
+            new TLogBatch(data.getSerializedRequests(), data.getSearchIndex(), true));
       }
     }
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, PendingBatch logBatches) {
-      for (ByteBuffer innerRequest : request.getSerializedRequests()) {
-        logBatches.addTLogBatch(new TLogBatch(innerRequest, request.getSearchIndex(), false));
-      }
+      logBatches.addTLogBatch(
+          new TLogBatch(request.getSerializedRequests(), request.getSearchIndex(), false));
     }
   }
 }
