@@ -242,7 +242,7 @@ public class ReceiverManager {
     logger.info(
         "Start load pipeData with serialize number {} and type {},value={}",
         pipeData.getSerialNumber(),
-        pipeData.getType(),
+        pipeData.getPipeDataType(),
         pipeData);
     try {
       pipeData.createLoader().load();
