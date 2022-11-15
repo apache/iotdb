@@ -131,7 +131,7 @@ public class DataNode implements DataNodeMBean {
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBStartCheck.getInstance().checkConfig();
     // TODO: check configuration for data node
-
+    IoTDBDescriptor.getInstance().getConfig().setCachedMNodeSizeInSchemaFileMode(1);
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
       if (endPoint.getIp().equals("0.0.0.0")) {
         throw new ConfigurationException(

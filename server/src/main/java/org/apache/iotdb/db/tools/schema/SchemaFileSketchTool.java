@@ -100,7 +100,7 @@ public class SchemaFileSketchTool {
     args =
         new String[] {
           "-f",
-          "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/server/target/tmp/system/schema/root.laptop/0/schema_file.pst"
+          "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/target/datanode1/system/schema/root.test.g_0/1/schema_file.pst"
         };
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
