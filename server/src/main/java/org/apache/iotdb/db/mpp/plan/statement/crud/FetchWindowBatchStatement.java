@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import java.util.HashSet;
 import java.util.List;
 
 public class FetchWindowBatchStatement extends Statement {
@@ -81,5 +83,9 @@ public class FetchWindowBatchStatement extends Statement {
     return visitor.visitFetchWindowBatch(this, context);
   }
 
-  public void semanticCheck() {}
+  public void semanticCheck() {
+    if (samplingIndexes.size() > new HashSet<>(samplingIndexes).size()) {
+      throw new SemanticException("The index of the sampling window is not allowed to be repeated");
+    }
+  }
 }
