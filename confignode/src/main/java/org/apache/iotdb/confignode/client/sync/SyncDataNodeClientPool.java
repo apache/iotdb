@@ -79,7 +79,7 @@ public class SyncDataNodeClientPool {
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+    return new TSStatus(TSStatusCode.ALL_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
@@ -101,7 +101,7 @@ public class SyncDataNodeClientPool {
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+    return new TSStatus(TSStatusCode.ALL_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
@@ -173,7 +173,7 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
-      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;

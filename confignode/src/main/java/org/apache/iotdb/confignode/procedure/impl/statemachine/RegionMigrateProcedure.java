@@ -270,7 +270,7 @@ public class RegionMigrateProcedure
       } catch (InterruptedException e) {
         LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage("wait region migrate interrupt," + e.getMessage());
       }
     }

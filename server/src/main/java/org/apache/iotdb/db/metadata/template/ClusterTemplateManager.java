@@ -101,7 +101,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (TException | IOException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_FAILED.getStatusCode()));
+              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     }
   }
 

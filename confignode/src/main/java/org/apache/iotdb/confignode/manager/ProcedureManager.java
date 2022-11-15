@@ -347,7 +347,7 @@ public class ProcedureManager {
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
-      return new TSStatus(TSStatusCode.CREATE_REGION_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
   }
@@ -363,14 +363,14 @@ public class ProcedureManager {
     try {
       if (jarFile != null
           && new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize() > planSizeLimit) {
-        return new TSStatus(TSStatusCode.CREATE_TRIGGER_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
                     "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
-      return new TSStatus(TSStatusCode.CREATE_TRIGGER_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
 
@@ -381,7 +381,7 @@ public class ProcedureManager {
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
-      return new TSStatus(TSStatusCode.CREATE_TRIGGER_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
   }
@@ -399,7 +399,7 @@ public class ProcedureManager {
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
-      return new TSStatus(TSStatusCode.DROP_TRIGGER_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
   }

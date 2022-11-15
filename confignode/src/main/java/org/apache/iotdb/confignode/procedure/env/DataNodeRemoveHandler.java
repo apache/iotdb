@@ -141,7 +141,7 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn("Cannot find region replica nodes, region: {}", regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage("Cannot find region replica nodes, region: " + regionId);
       return null;
     }
@@ -173,7 +173,7 @@ public class DataNodeRemoveHandler {
           "{}, Cannot find region replica nodes in createPeer, regionId: {}",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
       return status;
     }
@@ -232,7 +232,7 @@ public class DataNodeRemoveHandler {
               + "please check RegionGroup: {} by show regions sql command",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
           "There are no other DataNodes could be selected to perform the add peer process, "
               + "please check by show regions sql command");
@@ -638,7 +638,7 @@ public class DataNodeRemoveHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
-      status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }
     return status;

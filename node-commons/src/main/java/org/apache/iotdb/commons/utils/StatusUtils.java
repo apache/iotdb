@@ -63,7 +63,7 @@ public class StatusUtils {
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version.");
         break;
-      case NODE_DELETE_FAILED:
+      case NODE_DELETE_ERROR:
         status.setMessage("Failed while deleting node.");
         break;
       case ALIAS_ALREADY_EXIST:
@@ -81,7 +81,7 @@ public class StatusUtils {
       case OUT_OF_TTL:
         status.setMessage("Insertion time is less than TTL time bound.");
         break;
-      case MERGE_ERROR:
+      case COMPACTION_ERROR:
         status.setMessage("Meet error while merging.");
         break;
       case SYSTEM_CHECK_ERROR:

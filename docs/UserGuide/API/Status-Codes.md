@@ -47,13 +47,13 @@ Here is a list of Status Code and related message:
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |203|INCOMPATIBLE_VERSION|Incompatible version|
-|298|NODE_DELETE_FAILED|Failed while deleting node|
+|298|NODE_DELETE_ERROR|Failed while deleting node|
 |299|ALIAS_ALREADY_EXIST|Alias already exists|
 |300|PATH_ALREADY_EXIST|Path already exists|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
 |304|PATH_NOT_EXIST|Path does not exist|
 |305|OUT_OF_TTL|Insertion time is less than TTL time bound|
-|307|MERGE_ERROR|Meet error while merging|
+|307|COMPACTION_ERROR|Meet error while merging|
 |308|SYSTEM_CHECK_ERROR|Meet error while system checking|
 |310|SYNC_CONNECTION_ERROR|Meet error while sync connecting|
 |311|DATABASE_PROCESS_ERROR|Database processor related error|
@@ -78,13 +78,13 @@ Here is a list of Status Code and related message:
 |331|SEGMENT_OUT_OF_SPACE|No enough space on schema segment|
 |332|SCHEMA_FILE_NOT_EXISTS|SchemaFile does not exist|
 |333|WRITE_AHEAD_LOG_ERROR|WAL error|
-|334|CREATE_PIPE_SINK_FAILED|Failed to create a PIPE sink|
+|334|CREATE_PIPE_SINK_ERROR|Failed to create a PIPE sink|
 |335|PIPE_ERROR|PIPE error|
 |336|PIPESERVER_ERROR|PIPE server error|
 |337|SERIES_OVERFLOW|Series number exceeds the threshold|
-|340|CREATE_TEMPLATE_FAILED|Create schema template error|
-|341|SYNC_FILE_REDIRECTION_FAILED|Sync TsFile redirection error|
-|342|SYNC_FILE_FAILED|Sync TsFile error|
+|340|CREATE_TEMPLATE_ERROR|Create schema template error|
+|341|SYNC_FILE_REDIRECTION_ERROR|Sync TsFile redirection error|
+|342|SYNC_FILE_ERROR|Sync TsFile error|
 |343|VERIFY_METADATA_ERROR|Meet error in validate timeseries schema|
 |344|TIMESERIES_IN_BLACK_LIST|Timeseries is being deleted|
 |349|OVERSIZE_RECORD|Size of record exceeds the threshold of page of SchemaFile|
@@ -133,35 +133,35 @@ Here is a list of Status Code and related message:
 |703|UNSUPPORTED_OPERATION|Unsupported operation|
 |706|NO_CONNECTION|Can not get connection error|
 |707|NEED_REDIRECTION|Need direction|
-|709|ALL_RETRY_FAILED|All retry failed|
-|710|MIGRATE_REGION_FAILED|Error when migrate region|
-|711|CREATE_REGION_FAILED|Create region error|
-|712|DELETE_REGION_FAILED|Delete region error|
-|713|PARTITION_CACHE_UPDATE_FAIL|Update partition cache failed|
-|714|DESERIALIZE_PIECE_OF_TSFILE_FAILED|Error when deserialize a piece of TsFile|
+|709|ALL_RETRY_ERROR|All retry failed|
+|710|MIGRATE_REGION_ERROR|Error when migrate region|
+|711|CREATE_REGION_ERROR|Create region error|
+|712|DELETE_REGION_ERROR|Delete region error|
+|713|PARTITION_CACHE_UPDATE_ERROR|Update partition cache failed|
+|714|DESERIALIZE_PIECE_OF_TSFILE_ERROR|Error when deserialize a piece of TsFile|
 |715|CONSENSUS_NOT_INITIALIZED|Consensus is not initialized and cannot provide service|
 |800|CONFIGURATION_ERROR|Configuration error|
 |901|DATANODE_ALREADY_REGISTERED|DataNode already registered in cluster|
 |903|DATABASE_ALREADY_EXISTS|Database already exist|
 |904|NOT_ENOUGH_DATANODE|The number of DataNode is not enough|
 |905|ERROR_GLOBAL_CONFIG|Global config in cluster does not consistent|
-|906|ADD_CONFIGNODE_FAILED|Add ConfigNode failed|
-|907|REMOVE_CONFIGNODE_FAILED|Remove ConfigNode failed|
+|906|ADD_CONFIGNODE_ERROR|Add ConfigNode failed|
+|907|REMOVE_CONFIGNODE_ERROR|Remove ConfigNode failed|
 |912|DATANODE_NOT_EXIST|DataNode not exist error|
 |916|DATANODE_NO_LARGER_THAN_REPLICATION|DataNode no larger than replication factor, cannot remove|
 |917|DATANODE_STOP_FAILED|DataNode stop error|
-|918|REGION_LEADER_CHANGE_FAILED|Region leader migration failed|
-|919|REMOVE_DATANODE_FAILED|Remove datanode failed|
+|918|REGION_LEADER_CHANGE_ERROR|Region leader migration failed|
+|919|REMOVE_DATANODE_ERROR|Remove datanode failed|
 |920|OVERLAP_WITH_EXISTING_TASK|Current task has some conflict with existing tasks|
 |921|NOT_AVAILABLE_REGION_GROUP|Cannot find an available region group|
-|922|CREATE_TRIGGER_FAILED|ConfigNode create trigger error|
-|923|DROP_TRIGGER_FAILED|ConfigNode delete Trigger error|
+|922|CREATE_TRIGGER_ERROR|ConfigNode create trigger error|
+|923|DROP_TRIGGER_ERROR|ConfigNode delete Trigger error|
 |925|REGISTER_REMOVED_DATANODE|The DataNode to be registered is removed before|
 |930|NO_SUCH_CQ|CQ task does not exist|
 |931|CQ_ALREADY_ACTIVE|CQ is already active|
 |932|CQ_AlREADY_EXIST|CQ is already exist|
-|933|CQ_UPDATE_LAST_EXEC_TIME_FAILED|CQ update last execution time failed|
+|933|CQ_UPDATE_LAST_EXEC_TIME_ERROR|CQ update last execution time failed|
 
-> All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
+> All exceptions are refactored in the latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.
 
