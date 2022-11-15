@@ -276,7 +276,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               isAligned);
 
       schemaTree.mergeSchemaTree(missingSchemaTree);
-      schemaCache.put(missingSchemaTree);
 
       return schemaTree;
     } finally {
@@ -346,7 +345,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                 compressionTypesList == null ? null : compressionTypesList.get(i),
                 isAlignedList.get(i));
         schemaTree.mergeSchemaTree(missingSchemaTree);
-        schemaCache.put(missingSchemaTree);
       }
       return schemaTree;
     } finally {
@@ -525,8 +523,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           null,
           isAligned);
     }
-
-    schemaCache.put(schemaTree);
 
     return schemaTree;
   }
