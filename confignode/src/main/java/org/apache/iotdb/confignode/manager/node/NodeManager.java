@@ -249,7 +249,7 @@ public class NodeManager {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REJECT_REMOVED_DATANODE.getStatusCode());
+      status.setCode(TSStatusCode.REGISTER_REMOVED_DATANODE.getStatusCode());
       status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
     }
 
@@ -290,7 +290,7 @@ public class NodeManager {
     if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataSet.setStatus(
-          new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.NODE_DELETE_FAILED.getStatusCode())
               .setMessage("Fail to do transfer of the DataNodes"));
       return dataSet;
     }
@@ -302,7 +302,7 @@ public class NodeManager {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("Server accepted the request");
     } else {
-      status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED.getStatusCode());
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);

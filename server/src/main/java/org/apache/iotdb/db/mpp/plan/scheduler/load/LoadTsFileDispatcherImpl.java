@@ -157,7 +157,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
       if (pieceNode == null) {
         throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_FAILED.getStatusCode()));
       }
       TSStatus resultStatus =
           StorageEngineV2.getInstance()

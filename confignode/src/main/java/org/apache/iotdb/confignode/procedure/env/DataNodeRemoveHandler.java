@@ -141,7 +141,7 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn("Cannot find region replica nodes, region: {}", regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
       status.setMessage("Cannot find region replica nodes, region: " + regionId);
       return null;
     }
@@ -173,7 +173,7 @@ public class DataNodeRemoveHandler {
           "{}, Cannot find region replica nodes in createPeer, regionId: {}",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
       status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
       return status;
     }
@@ -232,7 +232,7 @@ public class DataNodeRemoveHandler {
               + "please check RegionGroup: {} by show regions sql command",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
       status.setMessage(
           "There are no other DataNodes could be selected to perform the add peer process, "
               + "please check by show regions sql command");
@@ -498,7 +498,7 @@ public class DataNodeRemoveHandler {
               dataNodeLocation);
         }
         if (removedDataNodes.size() == 0) {
-          status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+          status.setCode(TSStatusCode.DATANODE_NO_LARGER_THAN_REPLICATION.getStatusCode());
           status.setMessage("Failed to remove all requested data nodes");
           return status;
         }
@@ -507,7 +507,7 @@ public class DataNodeRemoveHandler {
 
     int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
-      status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_NO_LARGER_THAN_REPLICATION.getStatusCode());
       status.setMessage(
           String.format(
               "Can't remove datanode due to the limit of replication factor, "

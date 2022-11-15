@@ -123,7 +123,7 @@ public class DataNodeRegionManager {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_FAILED.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (IllegalPathException e1) {
@@ -132,7 +132,7 @@ public class DataNodeRegionManager {
       tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
     } catch (MetadataException e2) {
       LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_FAILED.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
     }
@@ -159,12 +159,12 @@ public class DataNodeRegionManager {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_FAILED.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (DataRegionException e) {
       LOGGER.error("Create Data Region {} failed because {}", storageGroup, e.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_FAILED.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
@@ -185,7 +185,7 @@ public class DataNodeRegionManager {
       }
     } catch (Exception e) {
       LOGGER.error("create new region {} error", regionId, e);
-      status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.CREATE_REGION_FAILED.getStatusCode());
       status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
       return status;
     }

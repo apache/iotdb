@@ -101,7 +101,7 @@ public class UDFManager {
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
-        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+        return new TSStatus(TSStatusCode.CREATE_TRIGGER_FAILED.getStatusCode())
             .setMessage(
                 String.format(
                     "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",

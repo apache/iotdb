@@ -63,7 +63,7 @@ public class StatusUtils {
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version.");
         break;
-      case NODE_DELETE_FAILED_ERROR:
+      case NODE_DELETE_FAILED:
         status.setMessage("Failed while deleting node.");
         break;
       case ALIAS_ALREADY_EXIST_ERROR:
@@ -78,7 +78,7 @@ public class StatusUtils {
       case METADATA_ERROR:
         status.setMessage("Meet error when dealing with metadata.");
         break;
-      case OUT_OF_TTL_ERROR:
+      case OUT_OF_TTL:
         status.setMessage("Insertion time is less than TTL time bound.");
         break;
       case MERGE_ERROR:
@@ -126,11 +126,8 @@ public class StatusUtils {
       case LOGICAL_OPTIMIZE_ERROR:
         status.setMessage("Logical optimize related error.");
         break;
-      case UNSUPPORTED_FILL_TYPE_ERROR:
+      case UNSUPPORTED_FILL_TYPE:
         status.setMessage("Unsupported fill type related error.");
-        break;
-      case PATH_ERROR:
-        status.setMessage("Path related error.");
         break;
       case QUERY_PROCESS_ERROR:
         status.setMessage("Query process related error.");
@@ -144,22 +141,22 @@ public class StatusUtils {
       case CLOSE_OPERATION_ERROR:
         status.setMessage("Meet error in close operation.");
         break;
-      case READ_ONLY_SYSTEM_ERROR:
+      case READ_ONLY_SYSTEM:
         status.setMessage("Database is read-only.");
         break;
-      case DISK_SPACE_INSUFFICIENT_ERROR:
+      case DISK_SPACE_INSUFFICIENT:
         status.setMessage("Disk space is insufficient.");
         break;
       case START_UP_ERROR:
         status.setMessage("Meet error while starting up.");
         break;
-      case WRONG_LOGIN_PASSWORD_ERROR:
+      case WRONG_LOGIN_PASSWORD:
         status.setMessage("Username or password is wrong.");
         break;
-      case NOT_LOGIN_ERROR:
+      case NOT_LOGIN:
         status.setMessage("Has not logged in.");
         break;
-      case NO_PERMISSION_ERROR:
+      case NO_PERMISSION:
         status.setMessage("No permissions for this operation, please add privilege.");
         break;
       case UNINITIALIZED_AUTH_ERROR:

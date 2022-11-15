@@ -286,7 +286,7 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
-          status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+          status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
           status.setMessage(
               String.format(
                   "Add peer for region error, peerId: %s, regionId: %s, errorMessage: %s",
@@ -303,7 +303,7 @@ public class RegionMigrateService implements IService {
             newPeerNode,
             regionId,
             resp);
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
         status.setMessage(
             String.format(
                 "Add peer for region error, peerId: %s, regionId: %s, resp: %s",
@@ -403,7 +403,7 @@ public class RegionMigrateService implements IService {
           removePeerSucceed = false;
           taskLogger.error(
               "Remove peer {} for region {} error, retry times: {}", oldPeerNode, regionId, i, e);
-          status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+          status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
           status.setMessage(
               "remove peer: "
                   + oldPeerNode
@@ -420,7 +420,7 @@ public class RegionMigrateService implements IService {
       if (!removePeerSucceed || resp == null || !resp.isSuccess()) {
         taskLogger.error(
             "Remove old peer {} for region {} failed, resp: {}", oldPeerNode, regionId, resp);
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
         status.setMessage("remove old peer " + oldPeerNode + " for region " + regionId + " failed");
         return status;
       }
@@ -491,14 +491,14 @@ public class RegionMigrateService implements IService {
         }
       } catch (Throwable e) {
         taskLogger.error("DeleteOldRegionPeer error, regionId: {}", regionId, e);
-        status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
         status.setMessage(
             "deleteOldRegionPeer for region: " + regionId + " error. exception: " + e.getMessage());
         return status;
       }
       if (!resp.isSuccess()) {
         taskLogger.error("deleteOldRegionPeer error, regionId: {}", regionId, resp.getException());
-        status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
         status.setMessage(
             String.format(
                 "deleteOldRegionPeer error, regionId: %s, errorMessage: %s",
@@ -522,7 +522,7 @@ public class RegionMigrateService implements IService {
         }
       } catch (Throwable e) {
         taskLogger.error("delete the region {} failed", regionId, e);
-        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+        status.setCode(TSStatusCode.DELETE_REGION_FAILED.getStatusCode());
         status.setMessage("delete region " + regionId + "failed, " + e.getMessage());
         return status;
       }

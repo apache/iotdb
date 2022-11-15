@@ -348,7 +348,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
-          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_FAILED.getStatusCode()));
     }
 
     TSStatus resultStatus =
@@ -1152,7 +1152,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
-            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+            TSStatusCode.DELETE_REGION_FAILED, response.getException().getMessage());
       }
       return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
@@ -1161,7 +1161,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
-            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+            TSStatusCode.DELETE_REGION_FAILED, response.getException().getMessage());
       }
       return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
     }
@@ -1247,7 +1247,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
     status.setMessage("Submit addRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1265,7 +1265,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
     status.setMessage("Submit removeRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1283,7 +1283,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
     status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1450,7 +1450,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           peers,
           regionId,
           resp.getException());
-      status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.MIGRATE_REGION_FAILED.getStatusCode());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
@@ -1495,7 +1495,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage("stop datanode succeed");
     } catch (Exception e) {
       LOGGER.error("Stop Data Node error", e);
-      status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_STOP_FAILED.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;
