@@ -341,12 +341,13 @@ public class InsertRowPlan extends InsertPlan {
     serializeMeasurementsAndValues(stream);
   }
 
+  /** Serialize measurements and values, ignoring failed time series */
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
     stream.writeInt(measurements.length - getFailedMeasurementNumber());
 
-    for (String m : measurements) {
-      if (m != null) {
-        putString(stream, m);
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        putString(stream, measurement);
       }
     }
 
@@ -367,6 +368,9 @@ public class InsertRowPlan extends InsertPlan {
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
       if (values[i] == null) {
+        if (failedIndices == null || !failedIndices.contains(i)) {
+          ReadWriteIOUtils.write(TYPE_NULL, outputStream);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -405,6 +409,9 @@ public class InsertRowPlan extends InsertPlan {
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
       if (values[i] == null) {
+        if (failedIndices == null || !failedIndices.contains(i)) {
+          ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -446,8 +453,11 @@ public class InsertRowPlan extends InsertPlan {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
-        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
+      if (typeNum == TYPE_RAW_STRING) {
+        values[i] = ReadWriteIOUtils.readString(buffer);
+        continue;
+      } else if (typeNum == TYPE_NULL) {
+        values[i] = null;
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -489,6 +499,7 @@ public class InsertRowPlan extends InsertPlan {
     serializeMeasurementsAndValues(buffer);
   }
 
+  /** Serialize measurements and values, ignoring failed time series */
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
 

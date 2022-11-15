@@ -25,6 +25,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -3102,6 +3104,15 @@ public class Session {
 
   public void setEnableCacheLeader(boolean enableCacheLeader) {
     this.enableCacheLeader = enableCacheLeader;
+  }
+
+  public TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
+    return defaultSessionConnection.getBackupConfiguration();
+  }
+
+  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
+    return defaultSessionConnection.fetchAllConnections();
   }
 
   public static class Builder {

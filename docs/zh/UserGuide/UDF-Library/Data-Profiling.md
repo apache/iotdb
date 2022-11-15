@@ -1,29 +1,29 @@
 <!--
 
-​    Licensed to the Apache Software Foundation (ASF) under one
-​    or more contributor license agreements.  See the NOTICE file
-​    distributed with this work for additional information
-​    regarding copyright ownership.  The ASF licenses this file
-​    to you under the Apache License, Version 2.0 (the
-​    "License"); you may not use this file except in compliance
-​    with the License.  You may obtain a copy of the License at
-​    
-​        http://www.apache.org/licenses/LICENSE-2.0
-​    
-​    Unless required by applicable law or agreed to in writing,
-​    software distributed under the License is distributed on an
-​    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-​    KIND, either express or implied.  See the License for the
-​    specific language governing permissions and limitations
-​    under the License.
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
-# 数据画像
+## 数据画像
 
-## ACF
+### ACF
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算时间序列的自相关函数值，即序列与自身之间的互相关函数，详情参见`XCorr`函数文档。
 
@@ -37,7 +37,7 @@
 
 + 序列中的`NaN`值会被忽略，在计算中表现为0。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -78,9 +78,9 @@ select acf(s1) from root.test.d1 where time <= 2020-01-01 00:00:05
 +-----------------------------+--------------------+
 ```
 
-## Distinct
+### Distinct
 
-### 函数简介
+#### 函数简介
 
 本函数可以返回输入序列中出现的所有不同的元素。
 
@@ -97,7 +97,7 @@ select acf(s1) from root.test.d1 where time <= 2020-01-01 00:00:05
 + 字符串区分大小写
 
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -131,9 +131,9 @@ select distinct(s2) from root.test.d2
 +-----------------------------+-------------------------+
 ```
 
-## Histogram
+### Histogram
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的分布直方图。
 
@@ -155,7 +155,7 @@ select distinct(s2) from root.test.d2
 + 如果某个数据点的数值小于`min`，它会被放入第 1 个桶；如果某个数据点的数值大于`max`，它会被放入最后 1 个桶。
 + 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -211,9 +211,9 @@ select histogram(s1,"min"="1","max"="20","count"="10") from root.test.d1
 +-----------------------------+---------------------------------------------------------------+
 ```
 
-## Integral
+### Integral
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算时间序列的数值积分，即以时间为横坐标、数值为纵坐标绘制的折线图中折线以下的面积。
 
@@ -234,9 +234,9 @@ select histogram(s1,"min"="1","max"="20","count"="10") from root.test.d1
 
 + 数据中`NaN`将会被忽略。折线将以临近两个有值数据点为准。
 
-### 使用示例
+#### 使用示例
 
-#### 参数缺省
+##### 参数缺省
 
 缺省情况下积分以1s为时间单位。
 
@@ -278,7 +278,7 @@ select integral(s1) from root.test.d1 where time <= 2020-01-01 00:00:10
 $$\frac{1}{2}[(1+2)\times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 57.5$$
 
 
-### 指定时间单位
+##### 指定时间单位
 
 指定以分钟为时间单位。
 
@@ -302,9 +302,9 @@ select integral(s1, "unit"="1m") from root.test.d1 where time <= 2020-01-01 00:0
 其计算公式为：
 $$\frac{1}{2\times 60}[(1+2) \times 1 + (2+3) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 0.958$$
 
-## IntegralAvg
+### IntegralAvg
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算时间序列的函数均值，即在相同时间单位下的数值积分除以序列总的时间跨度。更多关于数值积分计算的信息请参考`Integral`函数。
 
@@ -323,7 +323,7 @@ $$\frac{1}{2\times 60}[(1+2) \times 1 + (2+3) \times 1 + (5+6) \times 1 + (6+7) 
 
 + 输入序列为空时，函数输出结果为 0；仅有一个数据点时，输出结果为该点数值。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -362,9 +362,9 @@ select integralavg(s1) from root.test.d1 where time <= 2020-01-01 00:00:10
 其计算公式为：
 $$\frac{1}{2}[(1+2)\times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] / 10 = 5.75$$
 
-## Mad
+### Mad
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的精确或近似绝对中位差，绝对中位差为所有数值与其中位数绝对偏移量的中位数。
 
@@ -383,9 +383,9 @@ $$\frac{1}{2}[(1+2)\times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 +
 
 **提示：** 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
-#### 精确查询
+##### 精确查询
 
 当`error`参数缺省或为0时，本函数计算精确绝对中位差。
 
@@ -441,7 +441,7 @@ select mad(s0) from root.test
 +-----------------------------+------------------+
 ```
 
-#### 近似查询
+##### 近似查询
 
 当`error`参数取值不为 0 时，本函数计算近似绝对中位差。
 
@@ -461,9 +461,9 @@ select mad(s0, "error"="0.01") from root.test
 +-----------------------------+---------------------------------+
 ```
 
-## Median
+### Median
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的精确或近似中位数。中位数是顺序排列的一组数据中居于中间位置的数；当序列有偶数个时，中位数为中间二者的平均数。
 
@@ -477,7 +477,7 @@ select mad(s0, "error"="0.01") from root.test
 
 **输出序列：** 输出单个序列，类型为 DOUBLE，序列仅包含一个时间戳为 0、值为中位数的数据点。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -531,9 +531,9 @@ select median(s0, "error"="0.01") from root.test
 +-----------------------------+------------------------------------+
 ```
 
-## MinMax
+### MinMax
 
-### 函数简介
+#### 函数简介
 
 本函数将输入序列使用 min-max 方法进行标准化。最小值归一至 0，最大值归一至 1.
 
@@ -549,9 +549,9 @@ select median(s0, "error"="0.01") from root.test
 
 **输出序列**：输出单个序列，类型为 DOUBLE。
 
-### 使用示例
+#### 使用示例
 
-#### 全数据计算
+##### 全数据计算
 
 输入序列：
 
@@ -617,9 +617,9 @@ select minmax(s1) from root.test
 +-----------------------------+--------------------+
 ```
 
-## Mode
+### Mode
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算时间序列的众数，即出现次数最多的元素。
 
@@ -634,7 +634,7 @@ select minmax(s1) from root.test
 + 如果有多个出现次数最多的元素，将会输出任意一个。
 + 数据中的空值和缺失值将会被忽略，但`NaN`不会被忽略。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -672,9 +672,9 @@ select mode(s2) from root.test.d2
 +-----------------------------+---------------------+
 ```
 
-## MvAvg
+### MvAvg
 
-### 函数简介
+#### 函数简介
 
 本函数计算序列的移动平均。
 
@@ -688,9 +688,9 @@ select mode(s2) from root.test.d2
 
 **输出序列**：输出单个序列，类型为 DOUBLE。
 
-### 使用示例
+#### 使用示例
 
-#### 指定窗口长度
+##### 指定窗口长度
 
 输入序列：
 
@@ -754,9 +754,9 @@ select mvavg(s1, "window"="3") from root.test
 +-----------------------------+---------------------------------+
 ```
 
-## PACF
+### PACF
 
-### 函数简介
+#### 函数简介
 
 本函数通过求解 Yule-Walker 方程，计算序列的偏自相关系数。对于特殊的输入序列，方程可能没有解，此时输出`NaN`。
 
@@ -770,9 +770,9 @@ select mvavg(s1, "window"="3") from root.test
 
 **输出序列**：输出单个序列，类型为 DOUBLE。
 
-### 使用示例
+#### 使用示例
 
-#### 指定滞后阶数
+##### 指定滞后阶数
 
 输入序列：
 
@@ -825,9 +825,9 @@ select pacf(s1, "lag"="5") from root.test
 +-----------------------------+-----------------------------+
 ```
 
-## Percentile
+### Percentile
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的精确或近似分位数。
 
@@ -844,7 +844,7 @@ select pacf(s1, "lag"="5") from root.test
 
 **提示：** 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
 
 输入序列：
@@ -899,9 +899,9 @@ select percentile(s0, "rank"="0.2", "error"="0.01") from root.test
 +-----------------------------+------------------------------------------------------+
 ```
 
-## Period
+### Period
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的周期。
 
@@ -911,7 +911,7 @@ select percentile(s0, "rank"="0.2", "error"="0.01") from root.test
 
 **输出序列：** 输出单个序列，类型为 INT32，序列仅包含一个时间戳为 0、值为周期的数据点。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -947,9 +947,9 @@ select period(s1) from root.test.d3
 +-----------------------------+-----------------------+
 ```
 
-## QLB
+### QLB
 
-### 函数简介
+#### 函数简介
 
 本函数对输入序列计算$Q_{LB} $统计量，并计算对应的p值。p值越小表明序列越有可能为非平稳序列。
 
@@ -965,9 +965,9 @@ select period(s1) from root.test.d3
 
 **提示：** $Q_{LB} $统计量由自相关系数求得，如需得到统计量而非 p 值，可以使用 ACF 函数。
 
-### 使用示例
+#### 使用示例
 
-#### 使用默认参数
+##### 使用默认参数
 
 输入序列：
 
@@ -1032,9 +1032,9 @@ select QLB(s1) from root.test.d1
 +-----------------------------+--------------------+
 ```
 
-## Resample
+### Resample
 
-### 函数简介
+#### 函数简介
 
 本函数对输入序列按照指定的频率进行重采样，包括上采样和下采样。目前，本函数支持的上采样方法包括`NaN`填充法 (NaN)、前值填充法 (FFill)、后值填充法 (BFill) 以及线性插值法 (Linear)；本函数支持的下采样方法为分组聚合，聚合方法包括最大值 (Max)、最小值 (Min)、首值 (First)、末值 (Last)、平均值 (Mean)和中位数 (Median)。
 
@@ -1054,9 +1054,9 @@ select QLB(s1) from root.test.d1
 
 **提示：** 数据中的`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
-#### 上采样
+##### 上采样
 
 当重采样频率高于数据原始频率时，将会进行上采样。
 
@@ -1103,7 +1103,7 @@ select resample(s1,'every'='5m','interp'='linear') from root.test.d1
 +-----------------------------+----------------------------------------------------------+
 ```
 
-#### 下采样
+##### 下采样
 
 当重采样频率低于数据原始频率时，将会进行下采样。
 
@@ -1126,7 +1126,7 @@ select resample(s1,'every'='30m','aggr'='first') from root.test.d1
 ```
 
 
-#### 指定重采样时间段
+##### 指定重采样时间段
 
 可以使用`start`和`end`两个参数指定重采样的时间段，超出实际时间范围的部分会被插值填补。
 
@@ -1150,9 +1150,9 @@ select resample(s1,'every'='30m','start'='2021-03-06 15:00:00') from root.test.d
 +-----------------------------+-----------------------------------------------------------------------+
 ```
 
-## Sample
+### Sample
 
-### 函数简介
+#### 函数简介
 
 本函数对输入序列进行采样，即从输入序列中选取指定数量的数据点并输出。目前，本函数支持两种采样方法：**蓄水池采样法 (reservoir sampling)** 对数据进行随机采样，所有数据点被采样的概率相同；**等距采样法 (isometric sampling)** 按照相等的索引间隔对数据进行采样。
 
@@ -1169,10 +1169,10 @@ select resample(s1,'every'='30m','start'='2021-03-06 15:00:00') from root.test.d
 
 **提示：** 如果采样数大于序列长度，那么输入序列中所有的数据点都会被输出。
 
-### 使用示例
+#### 使用示例
 
 
-#### 蓄水池采样
+##### 蓄水池采样
 
 当`method`参数为 'reservoir' 或缺省时，采用蓄水池采样法对输入序列进行采样。由于该采样方法具有随机性，下面展示的输出序列只是一种可能的结果。
 
@@ -1217,7 +1217,7 @@ select sample(s1,'method'='reservoir','k'='5') from root.test.d1
 ```
 
 
-#### 等距采样
+##### 等距采样
 
 当`method`参数为 'isometric' 时，采用等距采样法对输入序列进行采样。
 
@@ -1241,9 +1241,9 @@ select sample(s1,'method'='isometric','k'='5') from root.test.d1
 +-----------------------------+------------------------------------------------------+
 ```
 
-## Segment
+### Segment
 
-### 函数简介
+#### 函数简介
 
 本函数按照数据的线性变化趋势将数据划分为多个子序列，返回分段直线拟合后的子序列首值或所有拟合值。
 
@@ -1261,7 +1261,7 @@ select sample(s1,'method'='isometric','k'='5') from root.test.d1
 
 **提示：** 函数默认所有数据等时间间隔分布。函数读取所有数据，若原始数据过多，请先进行降采样处理。拟合采用自底向上方法，子序列的尾值可能会被认作子序列首值输出。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -1333,9 +1333,9 @@ select segment(s1,"error"="0.1") from root.test
 +-----------------------------+------------------------------------+
 ```
 
-## Skew
+### Skew
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的总体偏度
 
@@ -1347,7 +1347,7 @@ select segment(s1,"error"="0.1") from root.test
 
 **提示：** 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -1394,9 +1394,9 @@ select skew(s1) from root.test.d1
 +-----------------------------+-----------------------+
 ```
 
-## Spline
+### Spline
 
-### 函数简介
+#### 函数简介
 
 本函数提供对原始序列进行三次样条曲线拟合后的插值重采样。
 
@@ -1412,9 +1412,9 @@ select skew(s1) from root.test.d1
 
 **提示**：输出序列保留输入序列的首尾值，等时间间隔采样。仅当输入点个数不少于 4 个时才计算插值。
 
-### 使用示例
+#### 使用示例
 
-#### 指定插值个数
+##### 指定插值个数
 
 输入序列：
 
@@ -1601,9 +1601,9 @@ select spline(s1, "points"="151") from root.test
 +-----------------------------+------------------------------------+
 ```
 
-## Spread
+### Spread
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算时间序列的极差，即最大值减去最小值的结果。
 
@@ -1615,7 +1615,7 @@ select spline(s1, "points"="151") from root.test
 
 **提示：** 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -1657,9 +1657,9 @@ select spread(s1) from root.test.d1 where time <= 2020-01-01 00:00:30
 +-----------------------------+-----------------------+
 ```
 
-## Stddev
+### Stddev
 
-### 函数简介
+#### 函数简介
 
 本函数用于计算单列数值型数据的总体标准差。
 
@@ -1671,7 +1671,7 @@ select spread(s1) from root.test.d1 where time <= 2020-01-01 00:00:30
 
 **提示：** 数据中的空值、缺失值和`NaN`将会被忽略。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -1718,9 +1718,9 @@ select stddev(s1) from root.test.d1
 +-----------------------------+-----------------------+
 ```
 
-## ZScore
+### ZScore
 
-### 函数简介
+#### 函数简介
 
 本函数将输入序列使用z-score方法进行归一化。
 
@@ -1736,9 +1736,9 @@ select stddev(s1) from root.test.d1
 
 **输出序列**：输出单个序列，类型为 DOUBLE。
 
-### 使用示例
+#### 使用示例
 
-#### 全数据计算
+##### 全数据计算
 
 输入序列：
 

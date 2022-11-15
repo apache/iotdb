@@ -18,8 +18,8 @@
     under the License.
 
 -->
-
-# IoTDB社区Integration Test改造说明
+# 集成测试
+## IoTDB社区Integration Test改造说明
 
 - 步骤0. 前提须知
   - **位置已移动**；所有的Integration Test已被移动至单独的integration模块。

@@ -123,7 +123,7 @@ public class MetadataIndexConstructor {
    * @param out tsfile output
    * @param type MetadataIndexNode type
    */
-  private static MetadataIndexNode generateRootNode(
+  public static MetadataIndexNode generateRootNode(
       Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)
       throws IOException {
     int queueSize = metadataIndexNodeQueue.size();
@@ -148,12 +148,47 @@ public class MetadataIndexConstructor {
     return metadataIndexNodeQueue.poll();
   }
 
-  private static void addCurrentIndexNodeToQueue(
+  public static void addCurrentIndexNodeToQueue(
       MetadataIndexNode currentIndexNode,
       Queue<MetadataIndexNode> metadataIndexNodeQueue,
       TsFileOutput out)
       throws IOException {
     currentIndexNode.setEndOffset(out.getPosition());
     metadataIndexNodeQueue.add(currentIndexNode);
+  }
+
+  public static MetadataIndexNode checkAndBuildLevelIndex(
+      Map<String, MetadataIndexNode> deviceMetadataIndexMap, TsFileOutput out) throws IOException {
+    // if not exceed the max child nodes num, ignore the device index and directly point to the
+    // measurement
+    if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
+      MetadataIndexNode metadataIndexNode =
+          new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+      for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
+        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
+        entry.getValue().serializeTo(out.wrapAsStream());
+      }
+      metadataIndexNode.setEndOffset(out.getPosition());
+      return metadataIndexNode;
+    }
+
+    // else, build level index for devices
+    Queue<MetadataIndexNode> deviceMetadataIndexQueue = new ArrayDeque<>();
+    MetadataIndexNode currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+
+    for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
+      // when constructing from internal node, each node is related to an entry
+      if (currentIndexNode.isFull()) {
+        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+        currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+      }
+      currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
+      entry.getValue().serializeTo(out.wrapAsStream());
+    }
+    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+    MetadataIndexNode deviceMetadataIndexNode =
+        generateRootNode(deviceMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
+    deviceMetadataIndexNode.setEndOffset(out.getPosition());
+    return deviceMetadataIndexNode;
   }
 }

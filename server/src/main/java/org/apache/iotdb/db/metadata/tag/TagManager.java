@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -68,28 +66,10 @@ public class TagManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
+  public TagManager() {}
 
-    private TagManagerHolder() {
-      // allowed to do nothing
-    }
-
-    private static final TagManager INSTANCE = new TagManager();
-  }
-
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  private TagManager() {}
-
-  public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+  public void init(String schemaDir, String logFileName) throws IOException {
+    tagLogFile = new TagLogFile(schemaDir, logFileName);
   }
 
   public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
@@ -573,6 +553,12 @@ public class TagManager {
     return tagLogFile.write(tags, attributes);
   }
 
+  /**
+   * Read tags and attributes from tag file
+   *
+   * @param tagFileOffset file offset
+   * @return tagAndAttributePair
+   */
   public Pair<Map<String, String>, Map<String, String>> readTagFile(long tagFileOffset)
       throws IOException {
     return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);

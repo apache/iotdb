@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.doublelive;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -30,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 public class OperationSyncDDLProtector extends OperationSyncProtector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncDDLProtector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncDDLProtector.class);;
 
   private final SessionPool operationSyncSessionPool;
 
@@ -49,20 +50,26 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
-
-      try {
-        // try operation sync
-        planBuffer.position(0);
-        transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
-      } catch (IoTDBConnectionException connectionException) {
-        // warn IoTDBConnectionException and retry
-        LOGGER.warn("OperationSyncDDLProtector can't transmit, retrying...", connectionException);
-      } catch (Exception e) {
-        // error exception and break
-        LOGGER.error("OperationSyncDDLProtector can't transmit", e);
-        break;
+      if (StorageEngine.isSecondaryAlive().get()) {
+        try {
+          // try operation sync
+          planBuffer.position(0);
+          transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
+        } catch (IoTDBConnectionException connectionException) {
+          // warn IoTDBConnectionException and retry
+          LOGGER.warn("OperationSyncDDLProtector can't transmit, retrying...", connectionException);
+        } catch (Exception e) {
+          // error exception and break
+          LOGGER.error("OperationSyncDDLProtector can't transmit", e);
+          break;
+        }
+      } else {
+        try {
+          TimeUnit.SECONDS.sleep(30);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
-
       if (transmitStatus) {
         break;
       } else {

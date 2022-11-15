@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -45,16 +44,19 @@ public class SubCompactionTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
-  private final Set<String> measurementList;
+  private final List<String> measurementList;
+
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
+
+  // schema of all measurements of this device
   private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
 
   public SubCompactionTask(
       String device,
-      Set<String> measurementList,
+      List<String> measurementList,
       QueryContext queryContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
@@ -71,25 +73,30 @@ public class SubCompactionTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    for (String measurement : measurementList) {
-      List<IMeasurementSchema> measurementSchemas =
-          Collections.singletonList(schemaMap.get(measurement));
+    try {
+      for (String measurement : measurementList) {
+        List<IMeasurementSchema> measurementSchemas =
+            Collections.singletonList(schemaMap.get(measurement));
 
-      IBatchReader dataBatchReader =
-          CompactionUtils.constructReader(
-              device,
-              Collections.singletonList(measurement),
-              measurementSchemas,
-              measurementList,
-              queryContext,
-              queryDataSource,
-              false);
+        IBatchReader dataBatchReader =
+            CompactionUtils.constructReader(
+                device,
+                Collections.singletonList(measurement),
+                measurementSchemas,
+                schemaMap.keySet(),
+                queryContext,
+                queryDataSource,
+                false);
 
-      if (dataBatchReader.hasNextBatch()) {
-        compactionWriter.startMeasurement(measurementSchemas, taskId);
-        CompactionUtils.writeWithReader(compactionWriter, dataBatchReader, taskId);
-        compactionWriter.endMeasurement(taskId);
+        if (dataBatchReader.hasNextBatch()) {
+          compactionWriter.startMeasurement(measurementSchemas, taskId);
+          CompactionUtils.writeWithReader(compactionWriter, dataBatchReader, taskId);
+          compactionWriter.endMeasurement(taskId);
+        }
       }
+    } catch (Throwable t) {
+      logger.error("Meets exception when executing sub-task", t);
+      throw t;
     }
     return null;
   }

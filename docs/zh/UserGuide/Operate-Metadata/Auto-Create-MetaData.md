@@ -19,12 +19,12 @@
 
 -->
 
-# 自动创建元数据
+## 自动创建元数据
 
 自动创建元数据指的是根据写入数据的特征自动创建出用户未定义的时间序列，
 这既能解决海量序列场景下设备及测点难以提前预测与建模的难题，又能为用户提供开箱即用的写入体验。
 
-## 自动创建存储组的元数据
+### 自动创建存储组的元数据
 
 * enable\_auto\_create\_schema
 
@@ -52,7 +52,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create storage group example">
 
-## 自动创建序列的元数据（前端指定数据类型）
+### 自动创建序列的元数据（前端指定数据类型）
 
 * 用户在写入时精确指定数据类型：
 
@@ -66,7 +66,7 @@
 
 * 插入数据的同时自动创建序列，效率较高。
 
-## 自动创建序列的元数据（类型推断）
+### 自动创建序列的元数据（类型推断）
 
 * 在写入时直接传入字符串，数据库推断数据类型：
   
@@ -80,7 +80,7 @@
 
 * 由于类型推断会增加写入时间，所以通过类型推断自动创建序列元数据的效率要低于通过前端指定数据类型自动创建序列元数据，建议用户在可行时先选用前端指定数据类型的方式自动创建序列的元数据。
 
-### 类型推断
+#### 类型推断
 
 | 数据(String) | 字符串格式 | iotdb-engine.properties配置项 | 默认值 |
 |:---:|:---|:---|:---|
@@ -95,7 +95,7 @@
 
 * long_string_infer_type 配置项的目的是防止使用 FLOAT 推断 integer_string_infer_type 而造成精度缺失。
 
-### 编码方式
+#### 编码方式
 
 | 数据类型 | iotdb-engine.properties配置项 | 默认值 |
 |:---|:---|:---|

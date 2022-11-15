@@ -22,6 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -478,5 +480,38 @@ public class SessionPoolTest {
     assertTrue(pool.isEnableCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
+  }
+
+  @Test
+  public void testFetchConnections() {
+    SessionPool pool =
+        new SessionPool(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            3,
+            1,
+            60000,
+            false,
+            null,
+            false,
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+
+    try {
+
+      TSConnectionInfoResp resp = pool.fetchAllConnections();
+
+      assertEquals(1, resp.connectionInfoList.size());
+      assertEquals("root", resp.connectionInfoList.get(0).userName);
+      assertEquals(TSConnectionType.THRIFT_BASED, resp.connectionInfoList.get(0).type);
+      assertTrue(resp.connectionInfoList.get(0).connectionId.startsWith("127.0.0.1"));
+
+    } catch (IoTDBConnectionException e) {
+      logger.error("testFetchConnections failed", e);
+      fail(e.getMessage());
+    } finally {
+      pool.close();
+    }
   }
 }

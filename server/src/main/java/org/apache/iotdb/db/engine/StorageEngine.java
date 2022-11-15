@@ -30,6 +30,8 @@ import org.apache.iotdb.db.doublelive.OperationSyncLogService;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
 import org.apache.iotdb.db.doublelive.OperationSyncProducer;
 import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -62,17 +64,25 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -105,23 +115,26 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+  private static final long HEARTBEAT_CHECK_INTERVAL = 30L;
+  private static final long SECONDARY_METRIC_INTERVAL = 30L;
 
   /* OperationSync module */
   private static final boolean isEnableOperationSync =
       IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
-  private static SessionPool operationSyncsessionPool;
+  private static SessionPool operationSyncSessionPool;
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
+  private static AtomicBoolean isSecondaryAlive = new AtomicBoolean(false);
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -156,55 +169,83 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+  ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
+      arrayListBlockQueue;
+
+  private ArchivingManager archivingManager = ArchivingManager.getInstance();
 
   private StorageEngine() {
     if (isEnableOperationSync) {
-      /* Open OperationSync */
+      // Open OperationSync
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      int cacheNum = config.getOperationSyncProducerCacheNum();
+
       // create SessionPool for OperationSync
-      operationSyncsessionPool =
+      operationSyncSessionPool =
           new SessionPool(
               config.getSecondaryAddress(),
               config.getSecondaryPort(),
               config.getSecondaryUser(),
               config.getSecondaryPassword(),
-              5,
+              config.getSecondarySessionPoolMaxSize(),
               config.isRpcThriftCompressionEnable());
+      ThreadPoolExecutor threadPool =
+          new ThreadPoolExecutor(
+              cacheNum + 5,
+              cacheNum + 5,
+              3,
+              TimeUnit.SECONDS,
+              new ArrayBlockingQueue<>(5),
+              new ThreadPoolExecutor.AbortPolicy());
 
       // create operationSyncDDLProtector and operationSyncDDLLogService
-      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
-      new Thread(operationSyncDDLProtector).start();
+      ScheduledExecutorService secondaryCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
+
+      secondaryCheckThread.scheduleAtFixedRate(
+          this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
+
+      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncSessionPool);
+      threadPool.execute(operationSyncDDLProtector);
       operationSyncDDLLogService =
           new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
-      new Thread(operationSyncDDLLogService).start();
+      threadPool.execute(operationSyncDDLLogService);
 
       // create OperationSyncProducer
-      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
-      operationSyncProducer = new OperationSyncProducer(blockingQueue);
-
-      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      arrayListBlockQueue = new ArrayList<>(cacheNum);
+      for (int i = 0; i < cacheNum; i++) {
+        BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+            blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
+        arrayListBlockQueue.add(blockingQueue);
+      }
       OperationSyncDMLProtector operationSyncDMLProtector =
-          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncProducer);
-      new Thread(operationSyncDMLProtector).start();
+          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncSessionPool);
+      threadPool.execute(operationSyncDMLProtector);
       OperationSyncLogService operationSyncDMLLogService =
           new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
-      new Thread(operationSyncDMLLogService).start();
-
+      operationSyncProducer =
+          new OperationSyncProducer(arrayListBlockQueue, operationSyncDMLLogService);
+      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      threadPool.execute(operationSyncDMLLogService);
       // create OperationSyncConsumer
-      for (int i = 0; i < config.getOperationSyncConsumerConcurrencySize(); i++) {
-        OperationSyncConsumer consumer =
+      for (int i = 0; i < cacheNum; i++) {
+        threadPool.execute(
             new OperationSyncConsumer(
-                blockingQueue, operationSyncsessionPool, operationSyncDMLLogService);
-        new Thread(consumer).start();
+                arrayListBlockQueue.get(i), operationSyncSessionPool, operationSyncDMLLogService));
       }
-
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        ScheduledExecutorService secondaryMetricThread =
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Metric");
+        secondaryMetricThread.scheduleAtFixedRate(
+            this::secondaryMetric, 0L, SECONDARY_METRIC_INTERVAL, TimeUnit.SECONDS);
+      }
       logger.info("Successfully initialize OperationSync!");
     } else {
-      operationSyncsessionPool = null;
+      operationSyncSessionPool = null;
       operationSyncProducer = null;
       operationSyncDDLProtector = null;
       operationSyncDDLLogService = null;
+      arrayListBlockQueue = null;
     }
   }
 
@@ -214,7 +255,7 @@ public class StorageEngine implements IService {
 
   private static void initTimePartition() {
     timePartitionInterval =
-        convertMilliWithPrecision(
+        DateTimeUtils.convertMilliTimeWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
   }
 
@@ -246,31 +287,34 @@ public class StorageEngine implements IService {
         OperationSyncWriteTask ddlTask =
             new OperationSyncWriteTask(
                 buffer,
-                operationSyncsessionPool,
+                operationSyncSessionPool,
                 operationSyncDDLProtector,
                 operationSyncDDLLogService);
         ddlTask.run();
         break;
       case DMLPlan:
         // Put into OperationSyncProducer
-        operationSyncProducer.put(new Pair<>(buffer, planType));
+        operationSyncProducer.put(new Pair<>(buffer, planType), getDeviceNameByPlan(physicalPlan));
     }
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
+  public static String getDeviceNameByPlan(PhysicalPlan plan) {
+    if (plan instanceof InsertPlan) {
+      InsertPlan physicalPlan = (InsertPlan) plan;
+      if (physicalPlan.getDevicePath() == null) {
+        if (physicalPlan.getPaths() != null && physicalPlan.getPaths().size() > 0) {
+          return physicalPlan.getPaths().get(0).getDevice();
+        } else {
+          return null;
+        }
+      }
+      return physicalPlan.getDevicePath().getDevice();
     }
-    return result;
+    return null;
+  }
+
+  public static AtomicBoolean isSecondaryAlive() {
+    return isSecondaryAlive;
   }
 
   public static long getTimePartitionInterval() {
@@ -283,6 +327,9 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
   }
 
   public static long getTimePartition(long time) {
@@ -391,6 +438,28 @@ public class StorageEngine implements IService {
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
+  }
+
+  private void checkSecondaryIsLife() {
+    try {
+      isSecondaryAlive.set(operationSyncSessionPool.getSystemStatus() == SystemStatus.NORMAL);
+    } catch (IoTDBConnectionException e) {
+      isSecondaryAlive.set(false);
+    }
+  }
+
+  private void secondaryMetric() {
+    for (int i = 0; i < arrayListBlockQueue.size(); i++) {
+      MetricService.getInstance()
+          .getOrCreateGauge(
+              Metric.QUEUE.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "OperationSyncProducerQueueSize" + i,
+              Tag.STATUS.toString(),
+              "running")
+          .set(arrayListBlockQueue.get(i).size());
+    }
   }
 
   private void checkTTL() {
@@ -510,6 +579,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
+    archivingManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -705,7 +775,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;
@@ -788,17 +858,8 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
-    try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
-    } catch (StorageEngineException e) {
-      throw new StorageEngineException(
-          String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getDevicePath()),
-          e);
-    }
-
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+        getProcessor(insertTabletPlan.getDevicePath());
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
@@ -1252,6 +1313,27 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  /** push the archiving info to archivingManager */
+  public boolean setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    return archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
+  }
+
+  public boolean operateArchiving(
+      ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
+    if (taskId >= 0) {
+      return archivingManager.operate(operateType, taskId);
+    } else if (storageGroup != null) {
+      return archivingManager.operate(operateType, storageGroup);
+    } else {
+      logger.error("{} archiving cannot recognize taskId or storage group", operateType.name());
+      return false;
+    }
+  }
+
+  public ArchivingManager getArchivingManager() {
+    return archivingManager;
   }
 
   static class InstanceHolder {

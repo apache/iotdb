@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -44,13 +45,14 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
@@ -78,6 +80,7 @@ public class IoTDB implements IoTDBMBean {
       System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
+
     daemon.active();
   }
 
@@ -128,7 +131,16 @@ public class IoTDB implements IoTDBMBean {
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
     activated = true;
 
+    processPid();
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {
@@ -136,10 +148,10 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
+    initArchivingManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -180,9 +192,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-
-    // start reporter
-    MetricsService.getInstance().startAllReporter();
+    registerManager.register(MetricService.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
@@ -226,6 +236,11 @@ public class IoTDB implements IoTDBMBean {
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+  }
+
+  private void initArchivingManager() {
+    // recover ArchivingTasks, finish archiving unfinished tsfiles, start check threads
+    ArchivingManager.getInstance().init();
   }
 
   @Override

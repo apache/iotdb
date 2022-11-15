@@ -19,14 +19,14 @@
 
 -->
 
-
-# 写入数据
+# 数据写入和删除
+## 写入数据
 
 IoTDB 为用户提供多种插入实时数据的方式，例如在 [Cli/Shell 工具](../QuickStart/Command-Line-Interface.md) 中直接输入插入数据的 INSERT 语句，或使用 Java API（标准 [Java JDBC](../API/Programming-JDBC.md) 接口）单条或批量执行插入数据的 INSERT 语句。
 
 本节主要为您介绍实时数据接入的 INSERT 语句在场景中的实际使用示例，有关 INSERT SQL 语句的详细语法请参见本文 [INSERT 语句](../Reference/SQL-Reference.md) 节。
 
-## 使用 INSERT 语句
+### 使用 INSERT 语句
 
 使用 INSERT 语句可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的时间戳和一个数值或布尔值、字符串类型的传感器采集值组成。
 
@@ -82,7 +82,7 @@ IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
 ```
 **注意：** 当一次插入多行数据时必须指定时间戳。
 
-## 向对齐时间序列插入数据
+### 向对齐时间序列插入数据
 
 向对齐时间序列插入数据只需在SQL中增加`ALIGNED`关键词，其他类似。
 

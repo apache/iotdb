@@ -25,15 +25,10 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.db.service.metrics.MetricService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,31 +51,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
-      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        MetricsService.getInstance()
-            .getMetricManager()
-            .getOrCreateAutoGauge(
-                Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
-                flushPool,
-                AbstractPoolManager::getWaitingTasksNumber,
-                Tag.NAME.toString(),
-                "flush",
-                Tag.STATUS.toString(),
-                "waiting");
-        MetricsService.getInstance()
-            .getMetricManager()
-            .getOrCreateAutoGauge(
-                Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
-                flushPool,
-                AbstractPoolManager::getWorkingTasksNumber,
-                Tag.NAME.toString(),
-                "flush",
-                Tag.STATUS.toString(),
-                "running");
-      }
-
+      MetricService.getInstance().addMetricSet(new FlushManagerMetrics(this));
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -96,6 +67,11 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public ServiceType getID() {
     return ServiceType.FLUSH_SERVICE;
+  }
+
+  @Override
+  public int getNumberOfWaitingTasks() {
+    return flushPool.getWaitingTasksNumber();
   }
 
   @Override

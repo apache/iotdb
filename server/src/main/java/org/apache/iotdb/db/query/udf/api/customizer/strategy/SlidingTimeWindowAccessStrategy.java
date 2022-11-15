@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -101,7 +101,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    *     2011-12-03T10:15:30+01:00.
    * @param displayWindowEndString display window end in string. format: 2011-12-03T10:15:30 or
    *     2011-12-03T10:15:30+01:00.
-   * @see DatetimeUtils.DurationUnit
+   * @see DateTimeUtils.DurationUnit
    */
   public SlidingTimeWindowAccessStrategy(
       String timeIntervalString,
@@ -124,7 +124,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
    * @param slidingStepString sliding step in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
-   * @see DatetimeUtils.DurationUnit
+   * @see DateTimeUtils.DurationUnit
    */
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
     inputInString = true;
@@ -139,7 +139,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
-   * @see DatetimeUtils.DurationUnit
+   * @see DateTimeUtils.DurationUnit
    */
   public SlidingTimeWindowAccessStrategy(String timeIntervalString) {
     inputInString = true;
@@ -244,18 +244,18 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   private void parseStringParameters() throws QueryProcessException {
-    timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
+    timeInterval = DateTimeUtils.convertDurationStrToLong(timeIntervalString);
     slidingStep =
         slidingStepString == null
             ? timeInterval
-            : DatetimeUtils.convertDurationStrToLong(slidingStepString);
+            : DateTimeUtils.convertDurationStrToLong(slidingStepString);
     displayWindowBegin =
         displayWindowBeginString == null
             ? Long.MIN_VALUE
-            : DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
+            : DateTimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
     displayWindowEnd =
         displayWindowEndString == null
             ? Long.MAX_VALUE
-            : DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
+            : DateTimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
   }
 }
