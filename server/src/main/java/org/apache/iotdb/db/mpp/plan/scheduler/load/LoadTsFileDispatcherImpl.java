@@ -138,7 +138,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -226,7 +226,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }

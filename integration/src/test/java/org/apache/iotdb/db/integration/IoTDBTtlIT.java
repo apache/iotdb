@@ -61,12 +61,12 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("CREATE DATABASE root.TTL_SG1");
@@ -88,12 +88,12 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.** 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.**");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.PATH_NOT_EXIST_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       try {

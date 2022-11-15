@@ -48,14 +48,14 @@ Here is a list of Status Code and related message:
 |201|STILL_EXECUTING_STATUS||
 |203|INCOMPATIBLE_VERSION|Incompatible version|
 |298|NODE_DELETE_FAILED|Failed while deleting node|
-|299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
-|300|PATH_ALREADY_EXIST_ERROR|Path already exists|
+|299|ALIAS_ALREADY_EXIST|Alias already exists|
+|300|PATH_ALREADY_EXIST|Path already exists|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
-|304|PATH_NOT_EXIST_ERROR|Path does not exist|
+|304|PATH_NOT_EXIST|Path does not exist|
 |305|OUT_OF_TTL|Insertion time is less than TTL time bound|
 |307|MERGE_ERROR|Meet error while merging|
 |308|SYSTEM_CHECK_ERROR|Meet error while system checking|
-|310|SYNC_CONNECTION_EXCEPTION|Meet error while sync connecting|
+|310|SYNC_CONNECTION_ERROR|Meet error while sync connecting|
 |311|DATABASE_PROCESS_ERROR|Database processor related error|
 |313|STORAGE_ENGINE_ERROR|Storage engine related error|
 |314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
@@ -78,7 +78,7 @@ Here is a list of Status Code and related message:
 |331|SEGMENT_OUT_OF_SPACE|No enough space on schema segment|
 |332|SCHEMA_FILE_NOT_EXISTS|SchemaFile does not exist|
 |333|WRITE_AHEAD_LOG_ERROR|WAL error|
-|334|CREATE_PIPE_SINK_ERROR|Error in creating PIPE sink|
+|334|CREATE_PIPE_SINK_FAILED|Failed to create a PIPE sink|
 |335|PIPE_ERROR|PIPE error|
 |336|PIPESERVER_ERROR|PIPE server error|
 |337|SERIES_OVERFLOW|Series number exceeds the threshold|

@@ -66,13 +66,13 @@ public class StatusUtils {
       case NODE_DELETE_FAILED:
         status.setMessage("Failed while deleting node.");
         break;
-      case ALIAS_ALREADY_EXIST_ERROR:
+      case ALIAS_ALREADY_EXIST:
         status.setMessage("Alias already exists.");
         break;
-      case PATH_ALREADY_EXIST_ERROR:
+      case PATH_ALREADY_EXIST:
         status.setMessage("Path already exist.");
         break;
-      case PATH_NOT_EXIST_ERROR:
+      case PATH_NOT_EXIST:
         status.setMessage("Path does not exist.");
         break;
       case METADATA_ERROR:
@@ -87,7 +87,7 @@ public class StatusUtils {
       case SYSTEM_CHECK_ERROR:
         status.setMessage("Meet error while system checking.");
         break;
-      case SYNC_CONNECTION_EXCEPTION:
+      case SYNC_CONNECTION_ERROR:
         status.setMessage("Meet error while sync connecting.");
         break;
       case DATABASE_PROCESS_ERROR:

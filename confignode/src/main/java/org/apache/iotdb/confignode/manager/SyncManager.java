@@ -95,7 +95,7 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_FAILED.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -106,7 +106,7 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_FAILED.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
