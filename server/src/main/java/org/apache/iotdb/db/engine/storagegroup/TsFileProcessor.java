@@ -269,7 +269,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
-    // tsFileResource.updatePlanIndexes(insertRowNode.getIndex());
+    tsFileResource.updatePlanIndexes(0);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -366,8 +366,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
-    // TODO: PlanIndex
-    // tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
+    tsFileResource.updatePlanIndexes(0);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
