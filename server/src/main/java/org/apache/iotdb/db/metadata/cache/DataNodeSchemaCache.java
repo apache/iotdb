@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -109,8 +110,7 @@ public class DataNodeSchemaCache {
       schemaCacheEntry = cache.getIfPresent(path);
       if (schemaCacheEntry != null) {
         schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(
-                schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
+            devicePath.concatNode(schemaCacheEntry.getSchemaEntryId()),
             schemaCacheEntry.getMeasurementSchema(),
             schemaCacheEntry.getTagMap(),
             null,
@@ -119,6 +119,21 @@ public class DataNodeSchemaCache {
       }
     }
     schemaTree.setStorageGroups(storageGroupList);
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree get(PartialPath fullPath) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
+    if (schemaCacheEntry != null) {
+      schemaTree.appendSingleMeasurement(
+          fullPath,
+          schemaCacheEntry.getMeasurementSchema(),
+          schemaCacheEntry.getTagMap(),
+          null,
+          schemaCacheEntry.isAligned());
+      schemaTree.setStorageGroups(Collections.singletonList(schemaCacheEntry.getStorageGroup()));
+    }
     return schemaTree;
   }
 

@@ -105,11 +105,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
-    List<PartialPath> fullPathList = new ArrayList<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
-      if (!pattern.hasWildcard() && !withTags) {
+    }
+
+    if (withTags) {
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    }
+
+    List<PartialPath> fullPathList = new ArrayList<>();
+    for (PartialPath pattern : pathPatternList) {
+      if (!pattern.hasWildcard()) {
         fullPathList.add(pattern);
       }
     }
@@ -126,12 +133,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (fullPathList.size() == pathPatternList.size()) {
         boolean isAllCached = true;
         schemaTree = new ClusterSchemaTree();
-        String[] measurement = new String[1];
         ClusterSchemaTree cachedSchema;
         Set<String> storageGroupSet = new HashSet<>();
         for (PartialPath fullPath : fullPathList) {
-          measurement[0] = fullPath.getMeasurement();
-          cachedSchema = schemaCache.get(fullPath.getDevicePath(), measurement);
+          cachedSchema = schemaCache.get(fullPath);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
