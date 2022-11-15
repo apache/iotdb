@@ -98,7 +98,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         for (String value : values) {
           try {
             intSet.add(Integer.valueOf(value));
-          } catch (Exception e) {
+          } catch (IllegalArgumentException e) {
             throw new SemanticException(
                 String.format("\"%s\" cannot be cast to [%s]", value, childType));
           }
@@ -109,7 +109,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         for (String value : values) {
           try {
             longSet.add(Long.valueOf(value));
-          } catch (Exception e) {
+          } catch (IllegalArgumentException e) {
             throw new SemanticException(
                 String.format("\"%s\" cannot be cast to [%s]", value, childType));
           }
