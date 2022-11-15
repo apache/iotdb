@@ -261,8 +261,8 @@ public class ReceiverManager {
    * Receive TsFile based on startIndex.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
-   *     TSStatusCode#SYNC_FILE_REDIRECTION_FAILED} if startIndex needs to rollback because mismatched; {@link
-   *     TSStatusCode#SYNC_FILE_FAILED} if fail to receive file.
+   *     TSStatusCode#SYNC_FILE_REDIRECTION_FAILED} if startIndex needs to rollback because
+   *     mismatched; {@link TSStatusCode#SYNC_FILE_FAILED} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
    *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
    */
