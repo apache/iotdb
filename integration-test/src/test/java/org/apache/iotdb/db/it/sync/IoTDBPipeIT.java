@@ -102,10 +102,10 @@ public class IoTDBPipeIT {
         String[] expectedRetSet =
             new String[] {
               String.format(
-                  "%s,p1,sender,demo,STOP,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  "%s,p1,sender,demo,STOP,SyncDelOp=false,DataStartTimestamp=1648569600000,NORMAL,",
                   createTime1),
               String.format(
-                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
+                  "%s,p2,sender,demo,STOP,SyncDelOp=true,DataStartTimestamp=0,NORMAL,", createTime2)
             };
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
@@ -115,10 +115,10 @@ public class IoTDBPipeIT {
             new String[] {
               // there is no data now, so no connection in receiver
               String.format(
-                  "%s,p1,sender,demo,RUNNING,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  "%s,p1,sender,demo,RUNNING,SyncDelOp=false,DataStartTimestamp=1648569600000,NORMAL,",
                   createTime1),
               String.format(
-                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
+                  "%s,p2,sender,demo,STOP,SyncDelOp=true,DataStartTimestamp=0,NORMAL,", createTime2)
             };
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
@@ -132,7 +132,7 @@ public class IoTDBPipeIT {
         String[] expectedRetSet =
             new String[] {
               String.format(
-                  "%s,p1,sender,demo,RUNNING,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  "%s,p1,sender,demo,RUNNING,SyncDelOp=false,DataStartTimestamp=1648569600000,NORMAL,",
                   createTime1)
             };
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
@@ -143,10 +143,10 @@ public class IoTDBPipeIT {
         String[] expectedRetSet =
             new String[] {
               String.format(
-                  "%s,p1,sender,demo,STOP,syncDelOp=false,dataStartTimestamp=1648569600000,NORMAL,",
+                  "%s,p1,sender,demo,STOP,SyncDelOp=false,DataStartTimestamp=1648569600000,NORMAL,",
                   createTime1),
               String.format(
-                  "%s,p2,sender,demo,STOP,syncDelOp=true,dataStartTimestamp=0,NORMAL,", createTime2)
+                  "%s,p2,sender,demo,STOP,SyncDelOp=true,DataStartTimestamp=0,NORMAL,", createTime2)
             };
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
