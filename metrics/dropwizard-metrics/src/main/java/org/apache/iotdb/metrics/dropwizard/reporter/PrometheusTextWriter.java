@@ -38,7 +38,7 @@ class PrometheusTextWriter extends FilterWriter {
     write('\n');
   }
 
-  public void writeType(String name, MetricType type) throws IOException {
+  public void writeType(String name, DropwizardMetricType type) throws IOException {
     write("# TYPE ");
     write(name);
     write(' ');

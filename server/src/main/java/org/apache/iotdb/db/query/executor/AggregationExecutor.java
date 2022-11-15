@@ -290,6 +290,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), true);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
@@ -304,6 +305,7 @@ public class AggregationExecutor {
       aggregateFromReader(seriesReader, ascAggregateResultList);
     }
     if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), false);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
@@ -342,6 +344,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (ascAggregateResultList != null && !isAggregateResultEmpty(ascAggregateResultList)) {
+      QueryUtils.fillOrderIndexes(queryDataSource, alignedPath.getDevice(), true);
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,
@@ -356,6 +359,7 @@ public class AggregationExecutor {
       aggregateFromAlignedReader(seriesReader, ascAggregateResultList);
     }
     if (descAggregateResultList != null && !isAggregateResultEmpty(descAggregateResultList)) {
+      QueryUtils.fillOrderIndexes(queryDataSource, alignedPath.getDevice(), false);
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,

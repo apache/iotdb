@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.doublelive;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
@@ -27,13 +29,13 @@ import java.util.concurrent.TimeUnit;
 public class OperationSyncDMLProtector extends OperationSyncProtector {
 
   private final OperationSyncDDLProtector ddlProtector;
-  private final OperationSyncProducer producer;
+  private final SessionPool operationSyncSessionPool;
 
   public OperationSyncDMLProtector(
-      OperationSyncDDLProtector ddlProtector, OperationSyncProducer producer) {
+      OperationSyncDDLProtector ddlProtector, SessionPool operationSyncSessionPool) {
     super();
     this.ddlProtector = ddlProtector;
-    this.producer = producer;
+    this.operationSyncSessionPool = operationSyncSessionPool;
   }
 
   @Override
@@ -49,7 +51,38 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
 
   @Override
   protected void transmitPhysicalPlan(ByteBuffer planBuffer, PhysicalPlan physicalPlan) {
-    producer.put(
-        new Pair<>(planBuffer, OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan)));
+    while (true) {
+      // transmit E-Plan until it's been received
+      boolean transmitStatus = false;
+      if (StorageEngine.isSecondaryAlive().get()) {
+        try {
+          // try operation sync
+          planBuffer.position(0);
+          transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
+        } catch (IoTDBConnectionException connectionException) {
+          // warn IoTDBConnectionException and retry
+          LOGGER.warn("OperationSyncDMLProtector can't transmit, retrying...", connectionException);
+        } catch (Exception e) {
+          // error exception and break
+          LOGGER.error("OperationSyncDMLProtector can't transmit", e);
+          break;
+        }
+      } else {
+        try {
+          TimeUnit.SECONDS.sleep(30);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      if (transmitStatus) {
+        break;
+      } else {
+        try {
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+          LOGGER.warn("OperationSyncDMLProtector is interrupted", e);
+        }
+      }
+    }
   }
 }

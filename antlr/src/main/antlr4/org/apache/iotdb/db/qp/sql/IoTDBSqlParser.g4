@@ -46,6 +46,7 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
+    | setArchiving | cancelArchiving | pauseArchiving | resumeArchiving | showArchiving
     ;
 
 dmlStatement
@@ -328,6 +329,39 @@ countTimeseries
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
+    ;
+
+// Set Archiving
+setArchiving
+    : SET ARCHIVING TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    | SET ARCHIVING TO setArchivingClause*
+    ;
+
+setArchivingClause
+    : STORAGE_GROUP     OPERATOR_EQ storageGroup=prefixPath
+    | START_TIME        OPERATOR_EQ startTime=DATETIME_LITERAL
+    | TTL               OPERATOR_EQ ttl=INTEGER_LITERAL
+    | TARGET_DIR        OPERATOR_EQ targetDir=STRING_LITERAL
+    ;
+
+// Cancel Archiving
+cancelArchiving
+    : CANCEL ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Pause Archiving
+pauseArchiving
+    : PAUSE ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Unpause/Resume Archiving
+resumeArchiving
+    : RESUME ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Show Archiving
+showArchiving
+    : SHOW ALL? ARCHIVING (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 

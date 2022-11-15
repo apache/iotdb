@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.2-SNAPSHOT</version>
+        <version>0.13.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>tsfile</artifactId>
@@ -104,6 +104,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${tsfile.ut.skip}</skipTests>
+                    <forkMode>once</forkMode>
                 </configuration>
             </plugin>
             <plugin>

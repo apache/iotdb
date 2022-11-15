@@ -106,8 +106,7 @@ mvn clean install -Dmaven.test.skip=true
 * **measurement**: 时间序列描述的是一个物理或者形式的测量 (measurement)，比如：城市的温度，一些商品的销售数量或者是火车在不同时间的速度。
 传统的传感器（如温度计）也采用单次测量 (measurement) 并产生时间序列，我们将在下面交替使用测量 (measurement) 和传感器。
 
-* **device**: 一个设备指的是一个正在进行多次测量（产生多个时间序列）的实体，例如，
-  ​    ​    ​    一列正在运行的火车监控它的速度、油表、它已经运行的英里数，当前的乘客每个都被传送到一个时间序列。
+* **device**: 一个设备指的是一个正在进行多次测量（产生多个时间序列）的实体，例如，一列正在运行的火车监控它的速度、油表、它已经运行的英里数，当前的乘客每个都被传送到一个时间序列。
 
 **单行数据**: 在许多工业应用程序中，一个设备通常包含多个传感器，这些传感器可能同时具有多个值，这称为一行数据。
 
@@ -191,7 +190,7 @@ TsFile 可以通过以下三个步骤生成，完整的代码参见"写入 TsFil
     ```
   
     你可以在`TsFileWriter`类中使用以下接口来添加额外的测量 (measurement):
-    ​      
+      
     ```java
     public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
     ```
@@ -553,7 +552,7 @@ public class TsFileRead {
 }
 ```
 
-### 修改 TsFile 配置项
+#### 修改 TsFile 配置项
 
 ```java
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();

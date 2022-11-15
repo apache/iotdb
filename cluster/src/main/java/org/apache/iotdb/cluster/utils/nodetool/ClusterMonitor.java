@@ -42,7 +42,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -122,8 +122,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     List<Node> ring = getRing();
     for (Node node : ring) {
       Integer count = leaderCountMap.getOrDefault(node, 0);
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .gauge(
               count,
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
@@ -151,8 +150,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           ClientUtils.putBackSyncClient(client);
         }
       }
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .gauge(
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -43,6 +44,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -504,12 +506,22 @@ public class TsFileResource {
     modFile = null;
   }
 
-  /** Remove the data file, its resource file, and its modification file physically. */
+  /**
+   * Remove the data file, its resource file, its meta file, and its modification file physically.
+   */
   public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
+    }
+    File metaFile =
+        new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    try {
+      fsFactory.deleteIfExists(metaFile);
+    } catch (IOException e) {
+      LOGGER.error("Metadata file {} cannot be deleted: {}", metaFile, e.getMessage());
       return false;
     }
     if (!removeResourceFile()) {
@@ -533,6 +545,35 @@ public class TsFileResource {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Move its data file, resource file, and modification file physically.
+   *
+   * @return moved data file
+   */
+  public File archive(File targetDir) {
+    // get the resource and mod files
+    File resourceFile = fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX);
+    File modFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+
+    // get the target file locations
+    File archivedFile = fsFactory.getFile(targetDir, file.getName());
+    File archivedResourceFile = fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX);
+    File archivedModificationFile =
+        fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
+
+    // move
+    if (file.exists()) {
+      fsFactory.moveFile(file, archivedFile);
+    }
+    if (resourceFile.exists()) {
+      fsFactory.moveFile(resourceFile, archivedResourceFile);
+    }
+    if (modFile.exists()) {
+      fsFactory.moveFile(modFile, archivedModificationFile);
+    }
+    return archivedFile;
   }
 
   void moveTo(File targetDir) {
@@ -729,7 +770,7 @@ public class TsFileResource {
 
   /** @return whether the given time falls in ttl */
   private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   public void setProcessor(TsFileProcessor processor) {
@@ -947,6 +988,18 @@ public class TsFileResource {
       return cmpVersion;
     } else {
       return cmp;
+    }
+  }
+
+  public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
+    try {
+      TsFileNameGenerator.TsFileName n1 =
+          TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
+      TsFileNameGenerator.TsFileName n2 =
+          TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
+      return (int) (n2.getVersion() - n1.getVersion());
+    } catch (IOException e) {
+      return 0;
     }
   }
 

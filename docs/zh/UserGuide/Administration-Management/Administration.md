@@ -105,7 +105,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
 ```
 
 现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。
@@ -145,7 +145,7 @@ Msg: The statement is executed successfully.
 REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
 ```
 
 ### SQL 语句

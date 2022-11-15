@@ -16,43 +16,42 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class RPCServiceThriftHandler implements TServerEventHandler {
+import java.util.concurrent.atomic.AtomicLong;
+
+public class RPCServiceThriftHandler extends BaseServerContextHandler
+    implements TServerEventHandler {
+  private static final Logger logger = LoggerFactory.getLogger(RPCServiceThriftHandler.class);
   private TSServiceImpl serviceImpl;
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
 
   public RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
     this.serviceImpl = serviceImpl;
+    MetricService.getInstance()
+        .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
-  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateGauge(
-            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
-        .incr(1L);
-    return null;
+  public ServerContext createContext(TProtocol in, TProtocol out) {
+    thriftConnectionNumber.incrementAndGet();
+    return super.createContext(in, out);
   }
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
     serviceImpl.handleClientExit();
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateGauge(
-            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
-        .decr(1L);
+    thriftConnectionNumber.decrementAndGet();
+    super.deleteContext(arg0, arg1, arg2);
   }
 
   @Override
@@ -64,4 +63,11 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
     // nothing
   }
+
+  /**
+   * get the SessionManager Instance. <br>
+   * in v0.13, Cluster mode uses different SessionManager instance...
+   *
+   * @return
+   */
 }

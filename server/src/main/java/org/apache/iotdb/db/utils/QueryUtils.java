@@ -80,9 +80,7 @@ public class QueryUtils {
               if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
                 return true;
               } else {
-                if (!metaData.isModified()
-                    && range.overlaps(
-                        new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
                   metaData.setModified(true);
                 }
               }
@@ -138,11 +136,9 @@ public class QueryUtils {
                   currentRemoved = true;
                   break;
                 } else {
-                  if (!valueChunkMetadata.isModified()
-                      && range.overlaps(
-                          new TimeRange(
-                              valueChunkMetadata.getStartTime(),
-                              valueChunkMetadata.getEndTime()))) {
+                  if (range.overlaps(
+                      new TimeRange(
+                          valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
                     valueChunkMetadata.setModified(true);
                     modified = true;
                   }

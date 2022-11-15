@@ -438,7 +438,8 @@ public class CrossSpaceCompactionTest {
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
+                    mergeResource.getUnseqFiles(),
+                    0);
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
@@ -741,7 +742,8 @@ public class CrossSpaceCompactionTest {
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
+                    mergeResource.getUnseqFiles(),
+                    0);
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
@@ -1043,7 +1045,8 @@ public class CrossSpaceCompactionTest {
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
+                    mergeResource.getUnseqFiles(),
+                    0);
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {

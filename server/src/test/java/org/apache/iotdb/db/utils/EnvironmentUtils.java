@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -143,11 +145,16 @@ public class EnvironmentUtils {
       fail();
     }
 
+    // clear archiving manager
+    ArchivingManager.getInstance().clear();
+
     IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
+    // clean wal
+    MultiFileLogNodeManager.getInstance().close();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();

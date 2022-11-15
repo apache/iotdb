@@ -1,29 +1,29 @@
 <!--
 
-​    Licensed to the Apache Software Foundation (ASF) under one
-​    or more contributor license agreements.  See the NOTICE file
-​    distributed with this work for additional information
-​    regarding copyright ownership.  The ASF licenses this file
-​    to you under the Apache License, Version 2.0 (the
-​    "License"); you may not use this file except in compliance
-​    with the License.  You may obtain a copy of the License at
-​    
-​        http://www.apache.org/licenses/LICENSE-2.0
-​    
-​    Unless required by applicable law or agreed to in writing,
-​    software distributed under the License is distributed on an
-​    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-​    KIND, either express or implied.  See the License for the
-​    specific language governing permissions and limitations
-​    under the License.
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
-# 异常检测
+## 异常检测
 
-## IQR
+### IQR
 
-### 函数简介
+#### 函数简介
 
 本函数用于检验超出上下四分位数1.5倍IQR的数据分布异常。
 
@@ -41,9 +41,9 @@
 
 **说明**：$IQR=Q_3-Q_1$
 
-### 使用示例
+#### 使用示例
 
-#### 全数据计算
+##### 全数据计算
 
 输入序列：
 
@@ -90,9 +90,9 @@ select iqr(s1) from root.test
 +-----------------------------+-----------------+
 ```
 
-## KSigma
+### KSigma
 
-### 函数简介
+#### 函数简介
 
 本函数利用动态 K-Sigma 算法进行异常检测。在一个窗口内，与平均值的差距超过k倍标准差的数据将被视作异常并输出。
 
@@ -110,9 +110,9 @@ select iqr(s1) from root.test
 
 **提示：** k 应大于 0，否则将不做输出。
 
-### 使用示例
+#### 使用示例
 
-#### 指定k
+##### 指定k
 
 输入序列：
 
@@ -157,9 +157,9 @@ select ksigma(s1,"k"="1.0") from root.test.d1 where time <= 2020-01-01 00:00:30
 +-----------------------------+---------------------------------+
 ```
 
-## LOF
+### LOF
 
-### 函数简介
+#### 函数简介
 
 本函数使用局部离群点检测方法用于查找序列的密度异常。将根据提供的第k距离数及局部离群点因子(lof)阈值，判断输入数据是否为离群点，即异常，并输出各点的 LOF 值。
 
@@ -179,9 +179,9 @@ select ksigma(s1,"k"="1.0") from root.test.d1 where time <= 2020-01-01 00:00:30
 **提示：** 不完整的数据行会被忽略，不参与计算，也不标记为离群点。
 
 
-### 使用示例
+#### 使用示例
 
-#### 默认参数
+##### 默认参数
 
 输入序列：
 
@@ -224,7 +224,7 @@ select lof(s1,s2) from root.test.d1 where time<1000
 +-----------------------------+-------------------------------------+
 ```
 
-#### 诊断一维时间序列
+##### 诊断一维时间序列
 
 输入序列：
 
@@ -286,9 +286,9 @@ select lof(s1, "method"="series") from root.test.d1 where time<1000
 +-----------------------------+--------------------+
 ```
 
-## MissDetect
+### MissDetect
 
-### 函数简介
+#### 函数简介
 
 本函数用于检测数据中的缺失异常。在一些数据中，缺失数据会被线性插值填补，在数据中出现完美的线性片段，且这些片段往往长度较大。本函数通过在数据中发现这些完美线性片段来检测缺失异常。
 
@@ -305,7 +305,7 @@ select lof(s1, "method"="series") from root.test.d1 where time<1000
 **提示：** 数据中的`NaN`将会被忽略。
 
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -373,9 +373,9 @@ select missdetect(s2,'minlen'='10') from root.test.d2
 +-----------------------------+------------------------------------------+
 ```
 
-## Range
+### Range
 
-### 函数简介
+#### 函数简介
 
 本函数用于查找时间序列的范围异常。将根据提供的上界与下界，判断输入数据是否越界，即异常，并输出所有异常点为新的时间序列。
 
@@ -393,9 +393,9 @@ select missdetect(s2,'minlen'='10') from root.test.d2
 **提示：** 应满足`upper_bound`大于`lower_bound`，否则将不做输出。
 
 
-### 使用示例
+#### 使用示例
 
-#### 指定上界与下界
+##### 指定上界与下界
 
 输入序列：
 
@@ -438,9 +438,9 @@ select range(s1,"lower_bound"="101.0","upper_bound"="125.0") from root.test.d1 w
 +-----------------------------+------------------------------------------------------------------+
 ```
 
-## TwoSidedFilter
+### TwoSidedFilter
 
-### 函数简介
+#### 函数简介
 
 本函数基于双边窗口检测法对输入序列中的异常点进行过滤。
 
@@ -455,7 +455,7 @@ select range(s1,"lower_bound"="101.0","upper_bound"="125.0") from root.test.d1 w
 - `len`：双边窗口检测法中的窗口大小，取值范围为正整数，默认值为 5.如当`len`=3 时，算法向前、向后各取长度为3的窗口，在窗口中计算异常度。
 - `threshold`：异常度的阈值，取值范围为(0,1)，默认值为 0.3。阈值越高，函数对于异常度的判定标准越严格。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 

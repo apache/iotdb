@@ -34,7 +34,8 @@ public class CrossSpaceCompactionTaskFactory {
       long timePartitionId,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      long memoryCost) {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getCrossCompactionStrategy()
@@ -44,6 +45,7 @@ public class CrossSpaceCompactionTaskFactory {
             timePartitionId,
             tsFileManager,
             selectedSeqTsFileResourceList,
-            selectedUnSeqTsFileResourceList);
+            selectedUnSeqTsFileResourceList,
+            memoryCost);
   }
 }

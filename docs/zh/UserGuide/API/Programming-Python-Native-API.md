@@ -19,13 +19,13 @@
 
 -->
 
-# Python 原生接口
+## Python 原生接口
 
-## 依赖
+### 依赖
 
 在使用 Python 原生接口包前，您需要安装 thrift (>=0.13) 依赖。
 
-## 如何使用 （示例）
+### 如何使用 （示例）
 
 首先下载最新安装包：`pip3 install apache-iotdb`
 
@@ -51,11 +51,11 @@ session.open(False)
 zone = session.get_time_zone()
 session.close()
 ```
-## 基本接口说明
+### 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
 
-### 初始化
+#### 初始化
 
 * 初始化 Session
 
@@ -77,9 +77,9 @@ session.open(enable_rpc_compression=False)
 session.close()
 ```
 
-### 数据定义接口 DDL
+#### 数据定义接口 DDL
 
-#### 存储组管理
+##### 存储组管理
 
 * 设置存储组
 
@@ -93,7 +93,7 @@ session.set_storage_group(group_name)
 session.delete_storage_group(group_name)
 session.delete_storage_groups(group_name_lst)
 ```
-#### 时间序列管理
+##### 时间序列管理
 
 * 创建单个或多个时间序列
 
@@ -129,9 +129,9 @@ session.delete_time_series(paths_list)
 session.check_time_series_exists(path)
 ```
 
-### 数据操作接口 DML
+#### 数据操作接口 DML
 
-#### 数据写入
+##### 数据写入
 
 推荐使用 insert_tablet 帮助提高写入效率
 
@@ -216,7 +216,7 @@ session.insert_records(
 session.insert_records_of_one_device(device_id, time_list, measurements_list, data_types_list, values_list)
 ```
 
-#### 带有类型推断的写入
+##### 带有类型推断的写入
 
 当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
@@ -224,7 +224,7 @@ session.insert_records_of_one_device(device_id, time_list, measurements_list, da
 session.insert_str_record(device_id, timestamp, measurements, string_values)
 ```
 
-#### 对齐时间序列的写入
+##### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insert_aligned_xxx 接口，其余与上述接口类似：
 
@@ -235,7 +235,7 @@ session.insert_str_record(device_id, timestamp, measurements, string_values)
 * insert_aligned_tablets
 
 
-### IoTDB-SQL 接口
+#### IoTDB-SQL 接口
 
 * 执行查询语句
 
@@ -298,13 +298,13 @@ class MyTestCase(unittest.TestCase):
 默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
 
-## 给开发人员
+### 给开发人员
 
-### 介绍
+#### 介绍
 
 这是一个使用 thrift rpc 接口连接到 IoTDB 的示例。在 Windows 和 Linux 上操作几乎是一样的，但要注意路径分隔符等不同之处。
 
-### 依赖
+#### 依赖
 
 首选 Python3.7 或更高版本。
 
@@ -319,7 +319,7 @@ http://thrift.apache.org/docs/install/
 pip install -r requirements_dev.txt
 ```
 
-### 编译 thrift 库并调试
+#### 编译 thrift 库并调试
 
 在 IoTDB 源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
 
@@ -329,7 +329,7 @@ pip install -r requirements_dev.txt
 
 **注意**不要将`iotdb/thrift`上传到 git 仓库中 ！
 
-### Session 客户端 & 使用示例 
+#### Session 客户端 & 使用示例 
 
 我们将 thrift 接口打包到`client-py/src/iotdb/session.py `中（与 Java 版本类似），还提供了一个示例文件`client-py/src/SessionExample.py`来说明如何使用 Session 模块。请仔细阅读。
 
@@ -348,7 +348,7 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-### 测试
+#### 测试
 
 请在`tests`文件夹中添加自定义测试。
 
@@ -356,12 +356,12 @@ session.close()
 
 **注意**一些测试需要在您的系统上使用 docker，因为测试的 IoTDB 实例是使用 [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html) 在 docker 容器中启动的。
 
-### 其他工具
+#### 其他工具
 
 [black](https://pypi.org/project/black/) 和 [flake8](https://pypi.org/project/flake8/) 分别用于自动格式化和 linting。
 它们可以通过 `black .` 或 `flake8 .` 分别运行。
 
-## 发版
+#### 发版
 
 要进行发版，
 
@@ -373,11 +373,11 @@ session.close()
 
 最后，您就可以将包发布到 pypi 了。
 
-### 准备您的环境
+##### 准备您的环境
 
 首先，通过`pip install -r requirements_dev.txt`安装所有必要的开发依赖。
 
-### 发版
+##### 发版
 
 有一个脚本`release.sh`可以用来执行发版的所有步骤。
 

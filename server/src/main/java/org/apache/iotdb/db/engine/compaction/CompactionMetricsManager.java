@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -42,8 +42,7 @@ public class CompactionMetricsManager {
     if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       return;
     }
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum / 1024L,
             Metric.DATA_WRITTEN.toString(),
@@ -56,8 +55,7 @@ public class CompactionMetricsManager {
             aligned ? "ALIGNED" : "NOT_ALIGNED",
             Tag.TYPE.toString(),
             processChunkType.toString());
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum / 1024L,
             Metric.DATA_WRITTEN.toString(),
@@ -72,8 +70,7 @@ public class CompactionMetricsManager {
     if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       return;
     }
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .count(
             byteNum,
             Metric.DATA_READ.toString(),
@@ -99,8 +96,7 @@ public class CompactionMetricsManager {
     switch (status) {
       case ADD_TO_QUEUE:
       case POLL_FROM_QUEUE:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -111,8 +107,7 @@ public class CompactionMetricsManager {
             .set(size);
         break;
       case READY_TO_EXECUTE:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -123,8 +118,7 @@ public class CompactionMetricsManager {
             .set(size);
         break;
       case FINISHED:
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -133,8 +127,7 @@ public class CompactionMetricsManager {
                 Tag.STATUS.toString(),
                 "running")
             .set(size);
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .timer(
                 task.getTimeCost(),
                 TimeUnit.MILLISECONDS,
@@ -145,8 +138,7 @@ public class CompactionMetricsManager {
                 Tag.NAME.toString(),
                 isInnerTask ? "inner" : "cross");
         if (isInnerTask) {
-          MetricsService.getInstance()
-              .getMetricManager()
+          MetricService.getInstance()
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),
@@ -158,8 +150,7 @@ public class CompactionMetricsManager {
                       ? "sequence"
                       : "unsequence");
         } else {
-          MetricsService.getInstance()
-              .getMetricManager()
+          MetricService.getInstance()
               .count(
                   1,
                   Metric.COMPACTION_TASK_COUNT.toString(),

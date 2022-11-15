@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.db.service.metrics.MetricService;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
@@ -36,56 +32,30 @@ public class TsFileProcessorInfo {
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
     this.memCost = 0L;
+    if (null != storageGroupInfo.getVirtualStorageGroupProcessor()) {
+      MetricService.getInstance()
+          .addMetricSet(
+              new TsFileProcessorInfoMetrics(
+                  storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName(),
+                  memCost));
+    }
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_"
-                  + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
-          .incr(cost);
-    }
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_"
-                  + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
-          .decr(cost);
-    }
   }
 
   /** called when closing TSP */
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_"
-                  + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
-          .decr(memCost);
-    }
     memCost = 0L;
   }
 }

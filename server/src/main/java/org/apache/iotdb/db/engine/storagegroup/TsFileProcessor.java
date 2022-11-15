@@ -377,7 +377,8 @@ public class TsFileProcessor {
                 : 0;
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT
+          && insertRowPlan.getValues()[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
@@ -432,7 +433,8 @@ public class TsFileProcessor {
                 * insertRowPlan.getDataTypes()[i].getDataTypeSize();
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT
+          && insertRowPlan.getValues()[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
@@ -1037,7 +1039,7 @@ public class TsFileProcessor {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",
               storageGroupName,
-              tsFileResource.getTsFile().getName());
+              tsFileResource.getTsFile().getAbsolutePath());
           synchronized (flushingMemTables) {
             flushingMemTables.notifyAll();
           }
@@ -1045,21 +1047,21 @@ public class TsFileProcessor {
           logger.error(
               "{}: {} meet error when flushing a memtable, change system mode to error",
               storageGroupName,
-              tsFileResource.getTsFile().getName(),
+              tsFileResource.getTsFile().getAbsolutePath(),
               e);
           IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e);
             writer.reset();
           } catch (IOException e1) {
             logger.error(
                 "{}: {} Truncate corrupted data meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           // release resource
@@ -1084,7 +1086,7 @@ public class TsFileProcessor {
             logger.error(
                 "{}: {} Release resource meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           return;
@@ -1116,7 +1118,7 @@ public class TsFileProcessor {
     } catch (IOException e) {
       logger.error(
           "Meet error when writing into ModificationFile file of {} ",
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1126,7 +1128,7 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} try get lock to release a memtable (signal={})",
           storageGroupName,
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           memTableToFlush.isSignalMemTable());
     }
 
@@ -1138,7 +1140,7 @@ public class TsFileProcessor {
     while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
-        updateCompressionRatio(memTableToFlush);
+        updateCompressionRatio();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: {} flushingMemtables is empty and will close the file",
@@ -1198,25 +1200,15 @@ public class TsFileProcessor {
     }
   }
 
-  private void updateCompressionRatio(IMemTable memTableToFlush) {
+  private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
-      if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
-        logger.error(
-            "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
-            storageGroupName,
-            writer.getFile().getAbsolutePath(),
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          compressionRatio,
+          totalMemTableSize,
+          writer.getPos());
       CompressionRatio.getInstance().updateRatio(compressionRatio);
     } catch (IOException e) {
       logger.error(

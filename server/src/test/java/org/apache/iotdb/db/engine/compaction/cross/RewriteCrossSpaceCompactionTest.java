@@ -227,7 +227,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     rewriteCrossSpaceCompactionTask.call();
 
     for (TsFileResource resource : seqResources) {
@@ -464,7 +465,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     rewriteCrossSpaceCompactionTask.call();
 
     for (TsFileResource resource : seqResources) {
@@ -611,7 +613,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -731,7 +734,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction

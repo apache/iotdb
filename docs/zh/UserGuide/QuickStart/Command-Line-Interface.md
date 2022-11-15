@@ -24,7 +24,7 @@
 IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。下面介绍每个 cli/Shell 工具的运行方式和相关参数。
 > \$IOTDB\_HOME 表示 IoTDB 的安装目录所在路径。
 
-## 安装
+### 安装
 在 iotdb 的根目录下执行
 
 ```shell
@@ -33,9 +33,9 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 
 在生成完毕之后，IoTDB 的 cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
 
-## 运行
+### 运行
 
-### Cli 运行方式
+#### Cli 运行方式
 安装后的 IoTDB 中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行 IoTDB 客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/sbin 文件夹下的`start-cli`脚本。启动脚本时需要指定运行 IP 和 RPC PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为 6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h 和-p 项处使用服务器的 IP 和 RPC PORT。</br>
 用户也可以在启动脚本的最前方设置自己的环境变量，如 JAVA_HOME 等 （对于 linux 用户，脚本路径为："/sbin/start-cli.sh"； 对于 windows 用户，脚本路径为："/sbin/start-cli.bat")
 
@@ -63,7 +63,7 @@ IoTDB> login successfully
 ```
 输入`quit`或`exit`可退出 cli 结束本次会话，cli 输出`quit normally`表示退出成功。
 
-### Cli 运行参数
+#### Cli 运行参数
 
 |参数名|参数类型|是否为必需参数| 说明| 例子 |
 |:---|:---|:---|:---|:---|
@@ -90,11 +90,11 @@ Windows 系统启动命令如下：
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
-### 使用 OpenID 作为用户名认证登录
+#### 使用 OpenID 作为用户名认证登录
 
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
 
-#### 配置
+##### 配置
 配置位于 iotdb-engines.properties，设定 authorizer_provider_class 为 org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
 
 ```
@@ -105,7 +105,8 @@ authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
 ```
 openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
 ```
-####keycloack 配置
+
+#### keycloack 配置
 
 1、下载 keycloack 程序，在 keycloack/bin 中启动 keycloack
 

@@ -217,7 +217,8 @@ public class RewriteFileTool {
             while (dataSize > 0) {
               PageHeader pageHeader =
                   reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               timePageHeaders.add(pageHeader);
               timePageDatas.add(pageData);
@@ -246,7 +247,8 @@ public class RewriteFileTool {
             while (dataSize > 0) {
               PageHeader pageHeader =
                   reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               if (valuePageHeadersList.size() == pageIndex) {
                 valuePageHeadersList.add(new ArrayList<>());
@@ -282,7 +284,8 @@ public class RewriteFileTool {
               valueDecoder.reset();
               PageHeader pageHeader =
                   reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
                   new PageReader(
@@ -447,7 +450,8 @@ public class RewriteFileTool {
         tablet.rowSize++;
         // calculate curTabletSize based on timestamp and value
         curTabletSize += 8;
-        for (TSDataType dataType : dataTypes) {
+        for (int i = 0; i < dataTypes.size(); i++) {
+          TSDataType dataType = dataTypes.get(i);
           switch (dataType) {
             case BOOLEAN:
               curTabletSize += 1;
@@ -461,7 +465,8 @@ public class RewriteFileTool {
               curTabletSize += 8;
               break;
             case TEXT:
-              curTabletSize += 4 + ((Binary) batchData.currentValue()).getLength();
+              curTabletSize +=
+                  4 + ((TsPrimitiveType[]) batchData.currentValue())[i].getBinary().getLength();
               break;
             default:
               throw new UnSupportedDataTypeException(

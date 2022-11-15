@@ -97,7 +97,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -134,7 +141,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -171,7 +185,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -216,7 +237,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -258,7 +286,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -298,7 +333,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(2), unseqResources.get(2));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -341,7 +383,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -383,7 +432,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -424,7 +480,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -466,7 +529,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -508,7 +578,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -550,7 +627,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -593,7 +677,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -637,7 +728,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -681,7 +779,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -726,7 +831,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -772,7 +884,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -818,7 +937,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -864,7 +990,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -910,7 +1043,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -955,7 +1095,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -996,7 +1143,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1038,7 +1192,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1080,7 +1241,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1122,7 +1290,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1165,7 +1340,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1209,7 +1391,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1253,7 +1442,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1298,7 +1494,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1344,7 +1547,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1390,7 +1600,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1436,7 +1653,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1482,7 +1706,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1527,7 +1758,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1570,7 +1808,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1614,7 +1859,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1658,7 +1910,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1702,7 +1961,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1747,7 +2013,14 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+            "0",
+            COMPACTION_TEST_SG,
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            new AtomicInteger(0),
+            0)
         .call();
 
     validateSeqFiles();
@@ -1760,5 +2033,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap();
   }
 }
