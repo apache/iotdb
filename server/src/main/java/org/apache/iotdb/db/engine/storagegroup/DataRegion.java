@@ -3370,6 +3370,10 @@ public class DataRegion {
     return dataRegionInfo.getMemCost();
   }
 
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
   @TestOnly
   public ILastFlushTimeMap getLastFlushTimeMap() {
     return lastFlushTimeMap;
