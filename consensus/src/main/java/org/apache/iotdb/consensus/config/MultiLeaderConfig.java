@@ -287,7 +287,7 @@ public class MultiLeaderConfig {
     public static class Builder {
 
       private int maxRequestNumPerBatch = 30;
-      private int maxSizePerBatch = 4 * 1024 * 1024;
+      private int maxSizePerBatch = 16 * 1024 * 1024;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
       private int maxPendingBatch = 5;
