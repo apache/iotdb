@@ -134,21 +134,23 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
-    File pmtFile = SystemFileFactory.INSTANCE.getFile(dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME);
+    File pmtFile =
+        SystemFileFactory.INSTANCE.getFile(
+            dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME);
     if (!pmtFile.exists()) {
       return new SchemaFile(
-            sgName,
-            schemaRegionId,
-            true,
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-            false);
-    }else {
+          sgName,
+          schemaRegionId,
+          true,
+          CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+          false);
+    } else {
       return new SchemaFile(
-              sgName,
-              schemaRegionId,
-              false,
-              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
-              false);
+          sgName,
+          schemaRegionId,
+          false,
+          CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+          false);
     }
   }
 
@@ -235,6 +237,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    updateHeader();
   }
 
   @Override
@@ -328,14 +331,8 @@ public class SchemaFile implements ISchemaFile {
   private void initFileHeader() throws IOException, MetadataException {
     if (channel.size() == 0) {
       // new schema file
-      lastPageIndex = 0;
-      ReadWriteIOUtils.write(lastPageIndex, headerContent);
-      ReadWriteIOUtils.write(dataTTL, headerContent);
-      ReadWriteIOUtils.write(isEntity, headerContent);
-      ReadWriteIOUtils.write(templateHash, headerContent);
-      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
-      lastSGAddr = 0L;
       pageManager = new BTreePageManager(channel, -1, logPath);
+      updateHeader();
     } else {
       channel.read(headerContent);
       headerContent.clear();

@@ -468,12 +468,17 @@ public class CachedMTreeStore implements IMTreeStore {
       return;
     }
     hasFlushTask = true;
-    flushTaskManager.submit(()->{this.flushVolatileNodes(flushCallback);});
+    flushTaskManager.submit(
+        () -> {
+          this.flushVolatileNodes(flushCallback);
+        });
   }
 
-  /** Sync all volatile nodes to schemaFile and execute memory release after flush.
+  /**
+   * Sync all volatile nodes to schemaFile and execute memory release after flush.
+   *
    * @param flushCallback Call back function. Ignore if null.
-   * */
+   */
   private void flushVolatileNodes(Runnable flushCallback) {
     writeLock.lock();
     try {
@@ -493,7 +498,7 @@ public class CachedMTreeStore implements IMTreeStore {
       executeMemoryRelease();
       hasFlushTask = false;
       flushCount++;
-      if(flushCallback!=null){
+      if (flushCallback != null) {
         flushCallback.run();
       }
     } catch (Throwable e) {
