@@ -134,8 +134,8 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | The number of registered/online/offline datanodes                                            | data_node{name="total",status="Registered",} 3.0                             |
 | partition_table           | name="number"                                                      | core      | The number of partition table                                                                | partition_table{name="number",} 2.0                                          |
 | region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in database                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in database                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ##### 1.3.3.6.2. MultiLeader
 | Metric       | Tag                                                                                          | level     | 说明                                                                          | 示例                                                                                                             |
@@ -389,7 +389,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 1. `Overview`:
    1. `The number of entity`: The number of entities, currently including the number of timeseries
    2. `write point per minute`: the cumulative number of write points per minute
-   3. `storage group used memory`: The memory size used by each storage group
+   3. `database used memory`: The memory size used by each database
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second
    2. `The time consumed of Interface`: The average time consumed by the system interface
@@ -425,8 +425,8 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 3. `Region`:
    1. `Total Region in Node`: The total number of Regions in different Nodes
    2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
-   3. `Region in Storage Group` (Normal level): The number of Regions in different storage groups, including SchemaRegion, DataRegion
-   4. `Slot in Storage Group` (Normal level): The number of Slots in different storage groups, including the number of DataSlots and the number of SchemaSlots
+   3. `Region in Database` (Normal level): The number of Regions in different databases, including SchemaRegion, DataRegion
+   4. `Slot in Database` (Normal level): The number of Slots in different databases, including the number of DataSlots and the number of SchemaSlots
 4. `System`:
    1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
    2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
@@ -443,7 +443,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 1. `Overview`:
    1. `The number of entity`: The number of entities, currently including the number of timeseries
    2. `write point per minute`: the cumulative number of write points per minute
-   3. `storage group used memory`: The memory size used by each storage group
+   3. `database used memory`: The memory size used by each database
    4. `Memory`：The size of system memory and used system memory
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second

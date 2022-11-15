@@ -115,7 +115,7 @@ public class IoTDBDatabaseMetadataTest {
     resp.setSubStatus(resExpected);
 
     statement.clearBatch();
-    statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
+    statement.addBatch("CREATE DATABASE root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     int[] result = statement.executeBatch();
@@ -126,9 +126,9 @@ public class IoTDBDatabaseMetadataTest {
     List<String> dataTypeList = new ArrayList<String>();
     dataTypeList.add("TEXT");
     List<String> columnsList = new ArrayList<String>();
-    columnsList.add("storage group");
+    columnsList.add("database");
     Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
-    columnNameIndexMap.put("storage group", 0);
+    columnNameIndexMap.put("database", 0);
     when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
         .thenReturn(execStatementResp);
     when(execStatementResp.getStatus()).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));

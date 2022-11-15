@@ -23,8 +23,8 @@ package org.apache.iotdb.db.query.dataset;
 //  private final Planner processor = new Planner();
 //
 //  private final String[] sqls = {
-//    "SET STORAGE GROUP TO root.vehicle",
-//    "SET STORAGE GROUP TO root.test",
+//    "CREATE DATABASE root.vehicle",
+//    "CREATE DATABASE root.test",
 //    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
 //    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
 //    "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -82,10 +82,10 @@ package org.apache.iotdb.db.query.dataset;
 //      throws TException, StorageEngineException, QueryFilterOptimizationException,
 //          MetadataException, IOException, InterruptedException, SQLException,
 //          QueryProcessException {
-//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count storage group");
+//    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count databases");
 //    QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 //    Assert.assertTrue(dataSet instanceof SingleDataSet);
-//    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
+//    Assert.assertEquals("[database]", dataSet.getPaths().toString());
 //    while (dataSet.hasNext()) {
 //      RowRecord record = dataSet.next();
 //      Assert.assertEquals("0\t2", record.toString());

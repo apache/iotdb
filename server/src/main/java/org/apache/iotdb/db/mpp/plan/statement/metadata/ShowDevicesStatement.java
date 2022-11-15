@@ -30,7 +30,7 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>SHOW DEVICES [pathPattern] [WITH STORAGE GROUP] [LIMIT limit] [OFFSET offset]
+ * <p>SHOW DEVICES [pathPattern] [WITH DATABASE] [LIMIT limit] [OFFSET offset]
  */
 public class ShowDevicesStatement extends ShowStatement {
 

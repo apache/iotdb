@@ -47,9 +47,9 @@ Two machines A and B, which are installed with iotdb, we want to continuously sy
 - The sender side of the sync-tool currently supports IoTDB version 1.0 **only if data_replication_factor is set to 1**. The receiver side supports any IoTDB version 1.0 configuration
 - A normal Pipe has two states: RUNNING indicates that it is synchronizing data to the receiver, and STOP indicates that synchronization to the receiver is suspended.
 - When one or more senders send data to a receiver, there should be no intersection between the respective device path sets of these senders and receivers, otherwise unexpected errors may occur.
-  - e.g. When sender A includes path `root.sg.d.s`, sender B also includes the path `root.sg.d.s`, sender A deletes storage group `root.sg` will also delete all data of B stored in the path `root.sg.d.s` at receiver.
+  - e.g. When sender A includes path `root.sg.d.s`, sender B also includes the path `root.sg.d.s`, sender A deletes database `root.sg` will also delete all data of B stored in the path `root.sg.d.s` at receiver.
 - The two "ends" do not support synchronization with each other.
-- The Sync Tool only synchronizes insertions, delete data, delete timeseires. If no storage group is created on the receiver, a storage group of the same level as the sender will be automatically created. Do not support TTL settings, trigger and other operations.
+- The Sync Tool only synchronizes insertions, delete data, delete timeseires. If no database is created on the receiver, a database of the same level as the sender will be automatically created. Do not support TTL settings, trigger and other operations.
   - If TTL is set on the sender side, all unexpired data in the IoTDB and all future data writes and deletions will be synchronized to the receiver side when Pipe is started.
 - When operating a synchronization task, ensure that all DataNode nodes in `SHOW DATANODES` that are in the Running state are connected, otherwise the execution will fail.
 
@@ -231,7 +231,7 @@ IoTDB> DROP PIPE <PipeName>
   - `status`: the Pipe's status.
   - `attributes`: the attributes of Pipe
     - When role is sender, the value of this field is the synchronization start time of the Pipe and whether to synchronize the delete operation.
-    - When role is receiver, the value of this field is the name of the storage group corresponding to the synchronization connection created on this DataNode.
+    - When role is receiver, the value of this field is the name of the database corresponding to the synchronization connection created on this DataNode.
 
   - `message`: the status message of this pipe. When pipe runs normally, this column is usually empty. When an exception occurs, messages may appear in  following two states.
     - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
@@ -313,7 +313,7 @@ IoTDB> SHOW PIPE p
 Execute SQL on sender.
 
 ```
-SET STORAGE GROUP TO root.vehicle;
+CREATE DATABASE root.vehicle;
 CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE;
 CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN;
 CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;

@@ -67,13 +67,13 @@ public class IoTDBCreateStorageGroupIT {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
-  /** The test creates three storage groups */
+  /** The test creates three databases */
   @Test
   public void testCreateStorageGroup() throws Exception {
     String[] storageGroups = {"root.sg1", "root.sg2", "root.sg3"};
 
     for (String storageGroup : storageGroups) {
-      statement.execute(String.format("create storage group %s", storageGroup));
+      statement.execute(String.format("create database %s", storageGroup));
     }
 
     // ensure that current StorageGroup in cache is right.
@@ -92,9 +92,9 @@ public class IoTDBCreateStorageGroupIT {
   private void createStorageGroupTool(String[] storageGroups) throws SQLException {
 
     List<String> resultList = new ArrayList<>();
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String storageGroupPath = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
+        String storageGroupPath = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(storageGroupPath);
       }
     }
@@ -107,32 +107,32 @@ public class IoTDBCreateStorageGroupIT {
     Assert.assertEquals(storageGroups[2], resultList.get(2));
   }
 
-  /** Test creating a storage group that path is an existence storage group */
+  /** Test creating a database that path is an existence database */
   @Test
   public void testCreateExistStorageGroup1() throws Exception {
     String storageGroup = "root.sg";
 
-    statement.execute(String.format("set storage group to %s", storageGroup));
+    statement.execute(String.format("CREATE DATABASE %s", storageGroup));
 
     try {
-      statement.execute(String.format("create storage group %s", storageGroup));
+      statement.execute(String.format("create database %s", storageGroup));
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals("903: root.sg has already been set to storage group", e.getMessage());
+      Assert.assertEquals("903: root.sg has already been created as database", e.getMessage());
     }
   }
 
-  /** Test the parent node has been set as a storage group */
+  /** Test the parent node has been set as a database */
   @Test
   public void testCreateExistStorageGroup2() throws Exception {
 
-    statement.execute("create storage group root.sg");
+    statement.execute("create database root.sg");
 
     try {
-      statement.execute("create storage group root.sg.`device`");
+      statement.execute("create database root.sg.`device`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals("903: root.sg has already been set to storage group", e.getMessage());
+      Assert.assertEquals("903: root.sg has already been created as database", e.getMessage());
     }
   }
 }

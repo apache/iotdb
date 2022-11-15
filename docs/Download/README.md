@@ -280,7 +280,7 @@ Query the data of root.sg.a, you can see that the string is unescaped:
   * __NOTICE 1: V0.12 changes many settings in conf/iotdb-engine.properties, so do not use previous 
     configuration file directly.__
   * __NOTICE 2: V0.12 doesn't support upgrade from v0.9 or lower version, please upgrade to v0.10 first if needed.__
-  * __NOTICE 3: We don't recommend deleting data before the upgrading finished. The deletion will fail if you try to delete data in the storage group with upgrading files.__
+  * __NOTICE 3: We don't recommend deleting data before the upgrading finished. The deletion will fail if you try to delete data in the database with upgrading files.__
 
 - How to upgrade from v.10.x to v0.11.x?
   * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is 

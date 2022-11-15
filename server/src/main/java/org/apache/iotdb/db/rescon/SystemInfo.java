@@ -65,10 +65,10 @@ public class SystemInfo {
   }
 
   /**
-   * Report current mem cost of storage group to system. Called when the memory of storage group
-   * newly accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
+   * Report current mem cost of database to system. Called when the memory of database newly
+   * accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
    *
-   * @param dataRegionInfo storage group
+   * @param dataRegionInfo database
    * @throws WriteProcessRejectException
    */
   public synchronized boolean reportStorageGroupStatus(
@@ -80,8 +80,7 @@ public class SystemInfo {
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Report Storage Group Status to the system. "
-              + "After adding {}, current sg mem cost is {}.",
+          "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
           delta,
           totalStorageGroupMemCost);
     }
@@ -92,7 +91,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
-          "The total storage group mem costs are too large, call for flushing. "
+          "The total database mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
           totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
@@ -110,7 +109,7 @@ public class SystemInfo {
           return true;
         } else {
           throw new WriteProcessRejectException(
-              "Total Storage Group MemCost "
+              "Total database MemCost "
                   + totalStorageGroupMemCost
                   + " is over than memorySizeForWriting "
                   + memorySizeForMemtable);
@@ -125,7 +124,7 @@ public class SystemInfo {
    * Report resetting the mem cost of sg to system. It will be called after flushing, closing and
    * failed to insert
    *
-   * @param dataRegionInfo storage group
+   * @param dataRegionInfo database
    */
   public synchronized void resetStorageGroupStatus(DataRegionInfo dataRegionInfo) {
     long delta = 0;

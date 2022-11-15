@@ -92,7 +92,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create storage group root.sg1");
+      statement.execute("create database root.sg1");
       statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(0,0,0)");

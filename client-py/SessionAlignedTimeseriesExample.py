@@ -30,7 +30,7 @@ password_ = "root"
 session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
 session.open(False)
 
-# set and delete storage groups
+# set and delete databases
 session.set_storage_group("root.sg_test_01")
 session.set_storage_group("root.sg_test_02")
 session.set_storage_group("root.sg_test_03")
@@ -216,7 +216,7 @@ session.insert_aligned_string_records_of_one_device(
     values_list,
 )
 
-# delete storage group
+# delete database
 session.delete_storage_group("root.sg_test_01")
 
 # close session connection.

@@ -44,7 +44,7 @@ public class IoTDBTimeZoneIT {
 
   private static String[] insertSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.timezone",
+        "CREATE DATABASE root.timezone",
         "CREATE TIMESERIES root.timezone.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",
       };
   private final String TIMESTAMP_STR = "Time";
@@ -80,8 +80,8 @@ public class IoTDBTimeZoneIT {
   }
 
   /**
-   * // execute in cli-tool SET STORAGE GROUP TO root.timezone CREATE TIMESERIES root.timezone.tz1
-   * WITH DATATYPE = INT32, ENCODING = PLAIN set time_zone=+08:00 insert into
+   * // execute in cli-tool CREATE DATABASE root.timezone CREATE TIMESERIES root.timezone.tz1 WITH
+   * DATATYPE = INT32, ENCODING = PLAIN set time_zone=+08:00 insert into
    * root.timezone(timestamp,tz1) values(1514779200000,1) insert into root.timezone(timestamp,tz1)
    * values(2018-1-1T12:00:01,2) insert into root.timezone(timestamp,tz1)
    * values(2018-1-1T12:00:02+08:00,3) insert into root.timezone(timestamp,tz1)

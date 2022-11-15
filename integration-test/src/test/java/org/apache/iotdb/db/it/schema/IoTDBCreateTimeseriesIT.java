@@ -59,14 +59,14 @@ public class IoTDBCreateTimeseriesIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
-  /** Test if creating a time series will cause the storage group with same name to disappear */
+  /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("SET storage group TO %s", storageGroup));
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -75,7 +75,7 @@ public class IoTDBCreateTimeseriesIT {
     } catch (Exception ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     createTimeSeriesTool(storageGroup);
   }
 
@@ -85,7 +85,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
+        String str = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
         resultList.add(str);
       }
     }
@@ -93,9 +93,9 @@ public class IoTDBCreateTimeseriesIT {
     resultList.clear();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("show storage group")) {
+        ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String res = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
+        String res = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(res);
       }
     }

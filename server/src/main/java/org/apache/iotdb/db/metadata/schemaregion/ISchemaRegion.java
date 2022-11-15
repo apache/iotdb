@@ -274,7 +274,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.

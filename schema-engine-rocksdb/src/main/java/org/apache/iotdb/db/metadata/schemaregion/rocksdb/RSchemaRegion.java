@@ -559,9 +559,9 @@ public class RSchemaRegion implements ISchemaRegion {
         } else {
           if (start == nodes.length) {
             // make sure sg node and entity node are different
-            // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
+            // eg.,'root.a' is a database path, 'root.a.b' can not be a timeseries
             if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
-              throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+              throw new MetadataException("Database Node and Entity Node could not be same!");
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
@@ -1938,7 +1938,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public String toString() {
-    return String.format("storage group:[%s]", storageGroupFullPath);
+    return String.format("database:[%s]", storageGroupFullPath);
   }
 
   @TestOnly

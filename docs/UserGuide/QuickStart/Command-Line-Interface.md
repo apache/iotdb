@@ -86,7 +86,7 @@ Enter ```quit``` or `exit` can exit Cli. The cli will shows `quit normally`
 |-pw <`password`>|string, no quotation marks|No|The password used for IoTDB to connect to the server. If no password is entered, IoTDB will ask for password in Cli command|-pw root|
 |-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
 |-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
-|-e <`execute`> |string|No|manipulate IoTDB in batches without entering cli input mode|-e "show storage group"|
+|-e <`execute`> |string|No|manipulate IoTDB in batches without entering cli input mode|-e "show databases"|
 |-c | empty | No | If the server enables `rpc_thrift_compression_enable=true`, then cli must use `-c` | -c |
 
 Following is a cli command which connects the host with IP
@@ -168,7 +168,7 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
-9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create storage group, add users, roles and other functions
+9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create database, add users, roles and other functions
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
@@ -244,7 +244,7 @@ In the Windows environment, the SQL statement of the -e parameter needs to use `
 
 In order to better explain the use of -e parameter, take following as an example(On linux system).
 
-Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
+Suppose you want to create a database root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
 
 ```shell
 # !/bin/bash
@@ -254,7 +254,7 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create database root.demo"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"

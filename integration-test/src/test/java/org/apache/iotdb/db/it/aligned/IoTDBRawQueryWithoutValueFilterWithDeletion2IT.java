@@ -59,8 +59,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s2 where time <= 40");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
       statement.execute("delete from root.sg1.d1.s5 where time <= 31 and time > 20");

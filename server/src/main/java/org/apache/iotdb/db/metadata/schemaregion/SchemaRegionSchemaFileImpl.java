@@ -167,13 +167,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   //  private File logFile;
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
-  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final SchemaStatisticsManager schemaStatisticsManager =
+      SchemaStatisticsManager.getInstance();
+  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
-  private LoadingCache<PartialPath, IMNode> mNodeCache;
+  private final LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
   // seriesNumberMonitor may be null
@@ -259,10 +260,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", storageGroupDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create storage group schema folder {} failed.", storageGroupDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
           throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
@@ -1237,7 +1238,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.

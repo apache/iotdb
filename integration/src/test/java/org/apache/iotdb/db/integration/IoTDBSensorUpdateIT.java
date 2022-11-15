@@ -52,7 +52,7 @@ public class IoTDBSensorUpdateIT {
   public void testMerge() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.demo");
+      statement.execute("CREATE DATABASE root.demo");
       statement.execute("create timeseries root.demo.d1.s1 with datatype=INT64,encoding=RLE");
       statement.execute("create timeseries root.demo.d1.s2 with datatype=INT64,encoding=RLE");
       statement.execute("create timeseries root.demo.d1.s3 with datatype=INT64,encoding=RLE");

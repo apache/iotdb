@@ -88,7 +88,7 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.fans");
+      statement.execute("CREATE DATABASE root.fans");
       statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.fans.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE");
 

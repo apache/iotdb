@@ -271,10 +271,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", storageGroupDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create storage group schema folder {} failed.", storageGroupDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
           throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
@@ -1145,7 +1145,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.

@@ -48,22 +48,22 @@ It costs 0.417s
 
 ## Schema Statement
 
-* Set Storage Group
+* Create Database
 
 ``` SQL
-SET STORAGE GROUP TO <FullPath>
-Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
+CREATE DATABASE <FullPath>
+Eg: IoTDB > CREATE DATABASE root.ln.wf01.wt01
 Note: FullPath can not include wildcard `*` or `**`
 ```
 
-* Delete Storage Group
+* Delete database
 
 ```
-DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
-Eg: IoTDB > DELETE STORAGE GROUP root.**
+DELETE DATABASE <PathPattern> [COMMA <PathPattern>]*
+Eg: IoTDB > DELETE DATABASE root.ln.wf01.wt01
+Eg: IoTDB > DELETE DATABASE root.ln.wf01.wt01, root.ln.wf01.wt02
+Eg: IoTDB > DELETE DATABASE root.ln.wf01.*
+Eg: IoTDB > DELETE DATABASE root.**
 ```
 
 * Create Timeseries Statement
@@ -265,20 +265,20 @@ Eg: show timeseries root.ln.** where description contains 'test1'
 Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
-* Show Storage Group Statement
+* Show Databases Statement
 
 ```
-SHOW STORAGE GROUP
-Eg: IoTDB > SHOW STORAGE GROUP
+SHOW DATABASES
+Eg: IoTDB > SHOW DATABASES
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* Show Specific Storage Group Statement
+* Show Specific database Statement
 
 ```
-SHOW STORAGE GROUP <Path>
-Eg: IoTDB > SHOW STORAGE GROUP root.*
-Eg: IoTDB > SHOW STORAGE GROUP root.ln
+SHOW DATABASES <Path>
+Eg: IoTDB > SHOW DATABASES root.*
+Eg: IoTDB > SHOW DATABASES root.ln
 Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
@@ -327,21 +327,21 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show All Devices Statement
 
 ```
-SHOW DEVICES (WITH STORAGE GROUP)? limitClause? 
+SHOW DEVICES (WITH DATABASE)? limitClause? 
 Eg: IoTDB > SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES WITH DATABASE
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Devices Statement
 
 ```
-SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
+SHOW DEVICES <PathPattern> (WITH DATABASE)? limitClause?
 Eg: IoTDB > SHOW DEVICES root.**
 Eg: IoTDB > SHOW DEVICES root.ln.**
 Eg: IoTDB > SHOW DEVICES root.*.wf01
-Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
-Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.ln WITH DATABASE
+Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH DATABASE
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -1113,13 +1113,13 @@ This example means that data of all time will be accepted in this group.
 SHOW ALL TTL
 SHOW TTL ON StorageGroupNames
 Eg.1 SHOW ALL TTL
-This example will show TTLs of all storage groups.
+This example will show TTLs of all databases.
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 This example will show TTLs of the specified 3 groups.
-Notice: storage groups without TTL will show a "null"
+Notice: databases without TTL will show a "null"
 ```
 
-Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
+Notice: When you set TTL to some databases, data out of the TTL will be made invisible
 immediately, but because the data files may contain both out-dated and living data or the data files may
 be being used by queries, the physical removal of data is stale. If you increase or unset TTL
 just after setting it previously, some previously invisible data may be seen again, but the
@@ -1132,7 +1132,7 @@ to suffer the unpredictability.
 ```
 DELETE PARTITION StorageGroupName INT(COMMA INT)*
 Eg DELETE PARTITION root.sg1 0,1,2
-This example will delete the first 3 time partitions of storage group root.sg1.
+This example will delete the first 3 time partitions of database root.sg1.
 ```
 The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
 

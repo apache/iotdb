@@ -71,6 +71,7 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -169,7 +170,7 @@ public class IoTDB implements IoTDBMBean {
     }
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());

@@ -43,7 +43,7 @@ public class WalChecker {
 
   private static final Logger logger = LoggerFactory.getLogger(WalChecker.class);
 
-  /** the root dir of wals, which should have wal directories of storage groups as its children. */
+  /** the root dir of wals, which should have wal directories of databases as its children. */
   private String walFolder;
 
   public WalChecker(String walFolder) {

@@ -76,14 +76,11 @@ import java.util.stream.IntStream;
 public abstract class SchemaRegionBasicTest {
 
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  boolean isMppMode;
   boolean isClusterMode;
 
   @Before
   public void setUp() {
-    isMppMode = config.isMppMode();
     isClusterMode = config.isClusterMode();
-    config.setMppMode(true);
     config.setClusterMode(true);
     IoTDB.configManager.init();
   }
@@ -91,7 +88,6 @@ public abstract class SchemaRegionBasicTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.setMppMode(isMppMode);
     config.setClusterMode(isClusterMode);
   }
 

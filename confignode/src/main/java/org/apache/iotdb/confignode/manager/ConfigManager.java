@@ -240,9 +240,15 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    consensusManager.close();
-    partitionManager.getRegionMaintainer().shutdown();
-    procedureManager.shiftExecutor(false);
+    if (consensusManager != null) {
+      consensusManager.close();
+    }
+    if (partitionManager != null) {
+      partitionManager.getRegionMaintainer().shutdown();
+    }
+    if (procedureManager != null) {
+      procedureManager.shiftExecutor(false);
+    }
   }
 
   @Override
@@ -1014,8 +1020,8 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * @param storageGroups the storage groups to check
-   * @return List of PartialPath the storage groups that not exist
+   * @param storageGroups the databases to check
+   * @return List of PartialPath the databases that not exist
    */
   public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
@@ -1336,7 +1342,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // Get all storage groups and slots by getting schema partition
+    // Get all databases and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
