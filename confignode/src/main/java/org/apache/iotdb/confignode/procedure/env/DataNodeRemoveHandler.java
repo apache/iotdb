@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -37,7 +36,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -53,6 +51,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.consensus.ConsensusFactory.MULTI_LEADER_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class DataNodeRemoveHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
@@ -85,7 +85,7 @@ public class DataNodeRemoveHandler {
         .filter(
             rg ->
                 rg.getDataNodeLocations().contains(dataNodeLocation)
-                    && rg.regionId.getType() != TConsensusGroupType.PartitionRegion)
+                    && rg.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
@@ -138,11 +138,11 @@ public class DataNodeRemoveHandler {
    */
   public TDataNodeLocation findDestDataNode(TConsensusGroupId regionId) {
     TSStatus status;
-    List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
+    List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
-      LOGGER.warn("Not find region replica nodes, region: {}", regionId);
+      LOGGER.warn("Cannot find region replica nodes, region: {}", regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("not find region replica nodes, region: " + regionId);
+      status.setMessage("Cannot find region replica nodes, region: " + regionId);
       return null;
     }
 
@@ -167,10 +167,10 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus createNewRegionPeer(TConsensusGroupId regionId, TDataNodeLocation destDataNode) {
     TSStatus status;
-    List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
+    List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn(
-          "{}, Not find region replica nodes in createPeer, regionId: {}",
+          "{}, Cannot find region replica nodes in createPeer, regionId: {}",
           REMOVE_DATANODE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
@@ -249,11 +249,11 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {}, destDataNode: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
         REMOVE_DATANODE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(selectedDataNode.get()),
-        destDataNode);
+        getIdWithRpcEndpoint(destDataNode));
     return status;
   }
 
@@ -312,20 +312,6 @@ public class DataNodeRemoveHandler {
   public TSStatus deleteOldRegionPeer(
       TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
-    // When DataReplicationFactor==1, execute deleteOldRegionPeer method will cause error
-    // User must delete the related data manually
-    // TODO if multi-leader supports deleteOldRegionPeer when DataReplicationFactor==1?
-    if (CONF.getDataReplicationFactor() == 1
-        && TConsensusGroupType.DataRegion.equals(regionId.getType())) {
-      String errorMessage =
-          "deleteOldRegionPeer is not supported for dataRegion when DataReplicationFactor equals 1, "
-              + "you are supposed to delete the region data of datanode manually";
-      LOGGER.info("{}, {}", REMOVE_DATANODE_PROCESS, errorMessage);
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(errorMessage);
-      return status;
-    }
-
     TSStatus status;
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
@@ -354,40 +340,40 @@ public class DataNodeRemoveHandler {
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode) {
     LOGGER.info(
-        "Start to update region {} location from {} to {} when it migrate succeed",
+        "Start to updateRegionLocationCache {} location from {} to {} when it migrate succeed",
         regionId,
-        originalDataNode.getInternalEndPoint().getIp(),
-        destDataNode.getInternalEndPoint().getIp());
+        getIdWithRpcEndpoint(originalDataNode),
+        getIdWithRpcEndpoint(destDataNode));
     UpdateRegionLocationPlan req =
         new UpdateRegionLocationPlan(regionId, originalDataNode, destDataNode);
     TSStatus status = configManager.getPartitionManager().updateRegionLocation(req);
     LOGGER.info(
-        "Update region {} location finished, result:{}, old:{}, new:{}",
+        "UpdateRegionLocationCache finished, region:{}, result:{}, old:{}, new:{}",
         regionId,
         status,
-        originalDataNode.getInternalEndPoint().getIp(),
-        destDataNode.getInternalEndPoint().getIp());
+        getIdWithRpcEndpoint(originalDataNode),
+        getIdWithRpcEndpoint(destDataNode));
+
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   /**
-   * Find region replication Nodes
+   * Find all DataNodes which contains the given regionId
    *
    * @param regionId region id
-   * @return data node location
+   * @return DataNode locations
    */
-  public List<TDataNodeLocation> findRegionReplicaNodes(TConsensusGroupId regionId) {
-    List<TRegionReplicaSet> regionReplicaSets =
+  public List<TDataNodeLocation> findRegionLocations(TConsensusGroupId regionId) {
+    Optional<TRegionReplicaSet> regionReplicaSet =
         configManager.getPartitionManager().getAllReplicaSets().stream()
             .filter(rg -> rg.regionId.equals(regionId))
-            .collect(Collectors.toList());
-    if (regionReplicaSets.isEmpty()) {
-      LOGGER.warn("not find TRegionReplica for region: {}", regionId);
-      return Collections.emptyList();
+            .findAny();
+    if (regionReplicaSet.isPresent()) {
+      return regionReplicaSet.get().getDataNodeLocations();
     }
 
-    return regionReplicaSets.get(0).getDataNodeLocations();
+    return Collections.emptyList();
   }
 
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(
@@ -412,14 +398,21 @@ public class DataNodeRemoveHandler {
    * @param dataNode old data node
    */
   public void stopDataNode(TDataNodeLocation dataNode) {
-    LOGGER.info("{}, Begin to stop Data Node {}", REMOVE_DATANODE_PROCESS, dataNode);
-    AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
+    LOGGER.info(
+        "{}, Begin to stop DataNode and kill the DataNode process {}",
+        REMOVE_DATANODE_PROCESS,
+        dataNode);
+
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
+            .sendSyncRequestToDataNodeWithGivenRetry(
+                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
     configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info("{}, Stop Data Node {} result: {}", REMOVE_DATANODE_PROCESS, dataNode, status);
+    LOGGER.info(
+        "{}, Stop Data Node result: {}, stoppedDataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        status,
+        dataNode);
   }
 
   /**
@@ -536,20 +529,56 @@ public class DataNodeRemoveHandler {
    * @param tDataNodeLocation data node location
    */
   public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
-    removeDataNodes.add(tDataNodeLocation);
+    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 
-  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
+  /**
+   * Change the leader of given Region.
+   *
+   * <p>For MULTI_LEADER_CONSENSUS, using `changeLeaderForMultiLeaderConsensus` method to change the
+   * regionLeaderMap maintained in ConfigNode.
+   *
+   * <p>For RATIS_CONSENSUS, invoking `changeRegionLeader` DataNode RPC method to change the leader.
+   *
+   * @param regionId The region to be migrated
+   * @param originalDataNode The DataNode where the region locates
+   * @param migrateDestDataNode The DataNode where the region is to be migrated
+   */
+  public void changeRegionLeader(
+      TConsensusGroupId regionId,
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation migrateDestDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+
+    if (TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      if (CONF.getDataReplicationFactor() == 1) {
+        newLeaderNode = Optional.of(migrateDestDataNode);
+      }
+      if (newLeaderNode.isPresent()) {
+        configManager
+            .getLoadManager()
+            .getRouteBalancer()
+            .changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
+
+        LOGGER.info(
+            "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+            REMOVE_DATANODE_PROCESS,
+            regionId,
+            newLeaderNode);
+      }
+
+      return;
+    }
+
     if (newLeaderNode.isPresent()) {
       SyncDataNodeClientPool.getInstance()
           .changeRegionLeader(
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
-          "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
+          "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
           REMOVE_DATANODE_PROCESS,
           regionId,
           newLeaderNode);
@@ -571,31 +600,28 @@ public class DataNodeRemoveHandler {
    */
   private Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
-    List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
-    if (regionReplicaNodes.isEmpty()) {
-      LOGGER.warn("Not find region replica nodes, region: {}", regionId);
+    List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
+    if (regionLocations.isEmpty()) {
+      LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
       return Optional.empty();
     }
 
+    // Choosing the RUNNING DataNodes to execute firstly
+    // If all DataNodes are not RUNNING, then choose the REMOVING DataNodes secondly
     List<TDataNodeLocation> aliveDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
 
-    // filter the RUNNING datanode firstly
-    // if all the datanodes are not in RUNNING status, choose the REMOVING datanode
-    // because REMOVING datanode is also alive, it can execute rpc request
-    if (aliveDataNodes.isEmpty()) {
-      aliveDataNodes =
-          configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Removing).stream()
-              .map(TDataNodeConfiguration::getLocation)
-              .collect(Collectors.toList());
-    }
+    aliveDataNodes.addAll(
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Removing).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toList()));
 
     // TODO return the node which has lowest load.
-    for (TDataNodeLocation regionReplicaNode : regionReplicaNodes) {
-      if (aliveDataNodes.contains(regionReplicaNode) && !regionReplicaNode.equals(filterLocation)) {
-        return Optional.of(regionReplicaNode);
+    for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
+      if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
+        return Optional.of(aliveDataNode);
       }
     }
 
@@ -610,8 +636,8 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }

@@ -115,8 +115,7 @@ public class TsFileResource {
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
-   * 0.12/v3
+   * load upgraded TsFile Resources to database processor used for upgrading v0.11.x/v2 -> 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
@@ -1073,6 +1072,12 @@ public class TsFileResource {
           ResourceByPathUtils.getResourceInstance(path)
               .generateTimeSeriesMetadata(
                   pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+    }
+  }
+
+  public void updateEndTime(Map<String, Long> times) {
+    for (Map.Entry<String, Long> entry : times.entrySet()) {
+      timeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
   }
 

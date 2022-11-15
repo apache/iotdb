@@ -63,7 +63,7 @@ import static org.mockito.Mockito.when;
    The test utilizes the mockito framework to mock responses from an IoTDB server.
    The status of the IoTDB server mocked here is determined by the following sql commands:
 
-   "SET STORAGE GROUP TO root.vehicle",
+   "CREATE DATABASE root.vehicle",
    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
    "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",

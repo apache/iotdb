@@ -20,11 +20,11 @@
 -->
 
 
-# 字面值常量
+## 字面值常量
 
 该部分对 IoTDB 中支持的字面值常量进行说明，包括字符串常量、数值型常量、时间戳常量、布尔型常量和空值。
 
-## 字符串常量
+### 字符串常量
 
 > 我们参照了 MySQL 对 字符串的定义：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
 
@@ -37,7 +37,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 "another string"
 ```
 
-### 使用场景
+#### 使用场景
 
 - `INSERT` 或者 `SELECT` 中用于表达 `TEXT` 类型数据的场景。
 
@@ -108,7 +108,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 
 - 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
-### 如何在字符串内使用引号
+#### 如何在字符串内使用引号
 
 - 在单引号引起的字符串内，双引号无需特殊处理。同理，在双引号引起的字符串内，单引号无需特殊处理。
 - 在单引号引起的字符串里，可以通过双写单引号来表示一个单引号，即单引号 ' 可以表示为 ''。
@@ -128,7 +128,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 """string"  // "string
 ```
 
-## 数值型常量
+### 数值型常量
 
 数值型常量包括整型和浮点型。
 
@@ -140,27 +140,27 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 
 在浮点上下文中可以使用整数，它会被解释为等效的浮点数。
 
-## 时间戳常量
+### 时间戳常量
 
 时间戳是一个数据到来的时间点，在 IoTDB 中分为绝对时间戳和相对时间戳。详细信息可参考 [数据类型文档](https://iotdb.apache.org/zh/UserGuide/Master/Data-Concept/Data-Type.html)。
 
 特别地，`NOW()`表示语句开始执行时的服务端系统时间戳。
 
-## 布尔型常量
+### 布尔型常量
 
 布尔值常量 `TRUE` 和 `FALSE` 分别等价于 `1` 和 `0`，它们对大小写不敏感。
 
-## 空值
+### 空值
 
 `NULL`值表示没有数据。`NULL`对大小写不敏感。
 
-# 标识符
+## 标识符
 
-## 使用场景
+### 使用场景
 
 在 IoTDB 中，触发器名称、UDF函数名、元数据模板名称、用户与角色名、连续查询标识、Pipe、PipeSink、键值对中的键和值、别名等可以作为标识符。
 
-## 约束
+### 约束
 
 请注意，此处约束是标识符的通用约束，具体标识符可能还附带其它约束条件，如用户名限制字符数大于等于4，更严格的约束请参考具体标识符相关的说明文档。
 
@@ -181,7 +181,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 - 标识符包含不允许的特殊字符。
 - 标识符为实数。
 
-## 如何在反引号引起的标识符中使用引号
+### 如何在反引号引起的标识符中使用引号
 
 **在反引号引起的标识符中可以直接使用单引号和双引号。**
 
@@ -197,7 +197,7 @@ create schema template `t1't"t`
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
-## 特殊情况示例
+### 特殊情况示例
 
 需要使用反引号进行引用的部分情况示例：
 
@@ -277,11 +277,11 @@ create schema template `t1't"t`
 - 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
 
-# 路径结点名
+## 路径结点名
 
 路径结点名是特殊的标识符，其还可以是通配符 \* 或 \*\*。在创建时间序列时，各层级的路径结点名不能为通配符 \* 或 \*\*。在查询语句中，可以用通配符 \* 或 \*\* 来表示路径结点名，以匹配一层或多层路径。
 
-## 通配符
+### 通配符
 
 `*`在路径中表示一层。例如`root.vehicle.*.sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次等于 4 层的路径。
 
@@ -312,7 +312,7 @@ select a*b from root.sg
 |Time|root.sg.a * root.sg.b|
 ```
 
-## 标识符
+### 标识符
 
 路径结点名不为通配符时，使用方法和标识符一致。**在 SQL 中需要使用反引号引用的路径结点，在结果集中也会用反引号引起。**
 
@@ -332,7 +332,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 
 ```SQL
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -377,7 +377,7 @@ select `111` from root.sg
 +-----------------------------+-------------+
 ```
 
-# 键值对
+## 键值对
 
 **键值对的键和值可以被定义为标识符或者常量。**
 
@@ -476,15 +476,15 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
 ```
 
-# 关键字和保留字
+## 关键字和保留字
 
 关键字是在 SQL 具有特定含义的词，可以作为标识符。保留字是关键字的一个子集，保留字不能用于标识符。
 
 关于 IoTDB 的关键字和保留字列表，可以查看 [关键字和保留字](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Keywords.html) 。
 
-# Session、TsFile API
+## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、数据库（database）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 
@@ -581,7 +581,7 @@ String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"}
 List<String> pathList = Arrays.asList(paths);
 ```
 
-# 词法与文法详细定义
+## 词法与文法详细定义
 
 请阅读代码仓库中的词法和语法描述文件：
 

@@ -420,7 +420,7 @@ It costs 0.005s
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|

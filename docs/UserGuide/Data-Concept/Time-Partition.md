@@ -38,7 +38,7 @@ Time partition divides data according to time, and a time partition is used to s
 
 |Name| time\_partition\_interval\_for\_storage                                                                |
 |:---:|:-------------------------------------------------------------------------------------------------------|
-|Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
+|Description| Time range for dividing database, time series data will be divided into groups by this time range |
 |Type| Int64                                                                                                  |
 |Default| 604800000                                                                                               |
 |Effective| Only allowed to be modified in first start up                                                          |

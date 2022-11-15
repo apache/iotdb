@@ -42,7 +42,7 @@ public class MetaUtils {
   private MetaUtils() {}
 
   /**
-   * Get storage group path when creating schema automatically is enable
+   * Get database path when creating schema automatically is enable
    *
    * <p>e.g., path = root.a.b.c and level = 1, return root.a
    *

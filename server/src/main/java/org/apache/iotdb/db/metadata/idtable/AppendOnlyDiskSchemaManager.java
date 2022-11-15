@@ -80,8 +80,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     // create dirs
     if (dir.mkdirs()) {
       logger.info(
-          "ID table create storage group system dir {} doesn't exist, create it",
-          dir.getParentFile());
+          "ID table create database system dir {} doesn't exist, create it", dir.getParentFile());
     }
 
     dataFile = new File(dir, FILE_NAME);

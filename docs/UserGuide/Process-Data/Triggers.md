@@ -139,12 +139,12 @@ Descriptions of the interfaces are as followed.
 
 #### Lifecycle related interfaces
 
-| Interface                                                    | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| *default void validate(TriggerAttributes attributes) throws Exception {}* | When you creates a trigger using the `CREATE TRIGGER` statement, you can specify the parameters that the trigger needs to use, and this interface will be used to verify the correctness of the parameters。 |
-| *default void onCreate(TriggerAttributes attributes) throws Exception {}* | This interface is called once when you create a trigger using the `CREATE TRIGGER` statement. During the lifetime of each trigger instance, this interface will be called only once. This interface is mainly used for the following functions: helping users to parse custom attributes in SQL statements (using `TriggerAttributes`). You can create or apply for resources, such as establishing external links, opening files, etc. |
-| *default void onDrop() throws Exception {}*                  | This interface is called when you drop a trigger using the `DROP TRIGGER` statement. During the lifetime of each trigger instance, this interface will be called only once. This interface mainly has the following functions: it can perform the operation of resource release and can be used to persist the results of trigger calculations. |
-| *default void restore() throws Exception {}*                 | When the DataNode is restarted, the cluster will restore the trigger instance registered on the DataNode, and this interface will be called once during the process. After the DataNode where the stateful trigger instance is located goes down, the cluster will restore the trigger instance on another available DataNode, calling this interface once in the process. This interface can be used to customize recovery logic. |
+| Interface                                                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------ |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| *default void validate(TriggerAttributes attributes) throws Exception {}* | When you creates a trigger using the `CREATE TRIGGER` statement, you can specify the parameters that the trigger needs to use, and this interface will be used to verify the correctness of the parameters。                                                                                                                                                                                                                                             |
+| *default void onCreate(TriggerAttributes attributes) throws Exception {}* | This interface is called once when you create a trigger using the `CREATE TRIGGER` statement. During the lifetime of each trigger instance, this interface will be called only once. This interface is mainly used for the following functions: helping users to parse custom attributes in SQL statements (using `TriggerAttributes`). You can create or apply for resources, such as establishing external links, opening files, etc.                 |
+| *default void onDrop() throws Exception {}*                  | This interface is called when you drop a trigger using the `DROP TRIGGER` statement. During the lifetime of each trigger instance, this interface will be called only once. This interface mainly has the following functions: it can perform the operation of resource release and can be used to persist the results of trigger calculations.                                                                                                         |
+| *default void restore() throws Exception {}*                 | When the DataNode is restarted, the cluster will restore the trigger instance registered on the DataNode, and this interface will be called once for stateful trigger during the process. After the DataNode where the stateful trigger instance is located goes down, the cluster will restore the trigger instance on another available DataNode, calling this interface once in the process. This interface can be used to customize recovery logic. |
 
 #### Data change listening related interfaces
 
@@ -455,7 +455,7 @@ During the process of creating and dropping triggers in the cluster, we maintain
 ## Notes
 
 - The trigger takes effect from the time of registration, and does not process the existing historical data. **That is, only insertion requests that occur after the trigger is successfully registered will be listened to by the trigger. **
-- The fire process of trigger is synchronous currently, so you need to ensure the efficiency of the trigger, otherwise the writing performance may be greatly affected.
+- The fire process of trigger is synchronous currently, so you need to ensure the efficiency of the trigger, otherwise the writing performance may be greatly affected. **You need to guarantee concurrency safety of triggers yourself**.
 - Please do no register too many triggers in the cluster. Because the trigger information is fully stored in the ConfigNode, and there is a copy of the information in all DataNodes
 - **It is recommended to stop writing when registering triggers**. Registering a trigger is not an atomic operation. When registering a trigger, there will be an intermediate state in which some nodes in the cluster have registered the trigger, and some nodes have not yet registered successfully. To avoid write requests on some nodes being listened to by triggers and not being listened to on some nodes, we recommend not to perform writes when registering triggers.
 - When the node holding the stateful trigger instance goes down, we will try to restore the corresponding instance on another node. During the recovery process, we will call the restore interface of the trigger class once.
@@ -464,15 +464,6 @@ During the process of creating and dropping triggers in the cluster, we maintain
 
 ## Configuration Parameters
 
-Configuration parameters on ConfigNode:
-
 | Parameter         | Meaning                                   |
 | ----------------- | ----------------------------------------- |
 | *trigger_lib_dir* | Directory to save the trigger jar package |
-
-Configuration parameters on DataNode:
-
-| Parameter                   | Meaning                                            |
-| --------------------------- | -------------------------------------------------- |
-| *trigger_root_dir*          | Directory to save the trigger jar package          |
-| *trigger_temporary_lib_dir* | Directory to save the temporary file when managing |

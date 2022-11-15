@@ -72,6 +72,7 @@ keyWords
     | DESCRIBE
     | DEVICE
     | DEVICES
+    | DETAILS
     | DISABLE
     | DISCARD
     | DROP

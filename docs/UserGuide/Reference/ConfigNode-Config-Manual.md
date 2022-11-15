@@ -233,13 +233,13 @@ The global configuration of cluster is in ConfigNode.
 |Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |Effective|Only allowed to be modified in first start up|
 
-### Storage Group
+### Database
 
 * default\_ttl
 
 |Name| default\_ttl |
 |:---:|:---|
-|Description| Default ttl when each storage group created |
+|Description| Default ttl when each database created |
 |Type| Long |
 |Default| Infinity |
 |Effective|After restarting system|

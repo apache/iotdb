@@ -59,11 +59,7 @@ public class MQTTService implements IService {
     IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
     IConfig config = createBrokerConfig(iotDBConfig);
     List<InterceptHandler> handlers = new ArrayList<>(1);
-    if (iotDBConfig.isMppMode()) {
-      handlers.add(new MPPPublishHandler(iotDBConfig));
-    } else {
-      throw new UnsupportedOperationException();
-    }
+    handlers.add(new MPPPublishHandler(iotDBConfig));
     IAuthenticator authenticator = new BrokerAuthenticator();
 
     server.startServer(config, handlers, null, authenticator, null);

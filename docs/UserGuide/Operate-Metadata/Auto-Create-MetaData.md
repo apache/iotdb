@@ -25,7 +25,7 @@ Automatically creating schema means creating time series based on the characteri
 This function can not only solve the problem that entities and measurements are difficult to predict and model in advance under massive time series scenarios,
 but also provide users with an out-of-the-box writing experience.
 
-## Auto create storage group metadata
+## Auto create database metadata
 
 * enable\_auto\_create\_schema
 
@@ -40,18 +40,18 @@ but also provide users with an out-of-the-box writing experience.
 
 | Name | default\_storage\_group\_level |
 |:---:|:---|
-| Description | Specify which level storage group is in the time series, the default level is 1 (root is on level 0) |
+| Description | Specify which level database is in the time series, the default level is 1 (root is on level 0) |
 | Type | int |
 | Default | 1 |
 | Effective | Only allowed to be modified in first start up |
 
 Illustrated as the following figure:
 
-* When default_storage_group_level=1, root.turbine1 and root.turbine2 will be set as storage group.
+* When default_storage_group_level=1, root.turbine1 and root.turbine2 will be created as database.
 
-* When default_storage_group_level=2, root.turbine1.d1, root.turbine1.d2, root.turbine2.d1 and root.turbine2.d2 will be set as storage group.
+* When default_storage_group_level=2, root.turbine1.d1, root.turbine1.d2, root.turbine2.d1 and root.turbine2.d2 will be created as database.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create storage group example">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create database example">
 
 ## Auto create time series metadata(specify data type in the frontend)
 

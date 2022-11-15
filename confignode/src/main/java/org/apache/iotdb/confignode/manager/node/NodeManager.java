@@ -248,6 +248,9 @@ public class NodeManager {
 
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
+    } else {
+      status.setCode(TSStatusCode.REJECT_REMOVED_DATANODE.getStatusCode());
+      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
     }
 
     dataSet.setStatus(status);
@@ -353,6 +356,16 @@ public class NodeManager {
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    if (configManager.getConsensusManager() == null) {
+      TSStatus errorStatus = new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+      errorStatus.setMessage(
+          "ConsensusManager of target-ConfigNode is not initialized, "
+              + "please make sure the target-ConfigNode has been started successfully.");
+      return new TConfigNodeRegisterResp()
+          .setStatus(errorStatus)
+          .setConfigNodeId(ERROR_STATUS_NODE_ID);
+    }
+
     // Check global configuration
     TSStatus status = configManager.getConsensusManager().confirmLeader();
 
@@ -410,6 +423,19 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     return nodeInfo.getRegisteredDataNodes();
+  }
+
+  /**
+   * Only leader use this interface
+   *
+   * <p>Notice: The result will be an empty TDataNodeConfiguration if the specified DataNode doesn't
+   * register
+   *
+   * @param dataNodeId The specified DataNode's index
+   * @return The specified registered DataNode
+   */
+  public TDataNodeConfiguration getRegisteredDataNode(int dataNodeId) {
+    return nodeInfo.getRegisteredDataNode(dataNodeId);
   }
 
   public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations() {

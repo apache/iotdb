@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
@@ -235,7 +234,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   public long getTimePartition(String tsFilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
-        return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
+        return StorageEngineV2.getTimePartition(
+            startTimes[deviceToIndex.values().iterator().next()]);
       }
       String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);

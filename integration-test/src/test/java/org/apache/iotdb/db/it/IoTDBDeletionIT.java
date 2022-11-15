@@ -48,8 +48,8 @@ public class IoTDBDeletionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -219,7 +219,7 @@ public class IoTDBDeletionIT {
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt01");
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN," + " ENCODING=PLAIN");
       statement.execute(

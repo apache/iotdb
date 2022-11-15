@@ -111,7 +111,7 @@ public class IoTDBEngineTimeGeneratorIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      // create storage group and measurement
+      // create database and measurement
       for (String sql : TestConstant.createSql) {
         statement.execute(sql);
       }

@@ -129,7 +129,9 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
+    config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkDirectory();
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -163,7 +165,6 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    config.setClusterMode(true);
     return true;
   }
 
@@ -175,9 +176,6 @@ public class DataNode implements DataNodeMBean {
 
     // Register services
     JMXService.registerMBean(getInstance(), mbeanName);
-    // set the mpp mode to true
-    config.setMppMode(true);
-    config.setClusterMode(true);
   }
 
   /** register DataNode with ConfigNode */
@@ -337,7 +335,7 @@ public class DataNode implements DataNodeMBean {
     registerUdfServices();
 
     logger.info(
-        "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
@@ -594,7 +592,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -642,10 +640,6 @@ public class DataNode implements DataNodeMBean {
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
     logger.info("Spent {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        config.getSeqTsFileSize(),
-        config.getUnSeqTsFileSize());
   }
 
   public void stop() {

@@ -24,20 +24,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -56,7 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** id table belongs to a storage group and mapping timeseries path to it's schema */
+/** id table belongs to a database and mapping timeseries path to it's schema */
 public class IDTableHashmapImpl implements IDTable {
 
   // number of table slot
@@ -174,73 +169,6 @@ public class IDTableHashmapImpl implements IDTable {
       }
     }
     return new Pair<>(deletedNum, failedNames);
-  }
-
-  /**
-   * check inserting timeseries existence and fill their measurement mnode
-   *
-   * @param plan insert plan
-   * @return reusable device id
-   * @throws MetadataException if insert plan's aligned value is inconsistent with device
-   */
-  @Override
-  public synchronized IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException {
-    PartialPath devicePath = plan.getDevicePath();
-    String[] measurementList = plan.getMeasurements();
-    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-
-    // 1. get device entry and check align
-    DeviceEntry deviceEntry =
-        getDeviceEntryWithAlignedCheck(devicePath.toString(), plan.isAligned());
-
-    // 2. get schema of each measurement
-    for (int i = 0; i < measurementList.length; i++) {
-      try {
-        // get MeasurementMNode, auto create if absent
-        try {
-          IMeasurementMNode measurementMNode =
-              getOrCreateMeasurementIfNotExist(deviceEntry, plan, i);
-
-          SchemaRegionUtils.checkDataTypeMatch(plan, i, measurementMNode.getSchema().getType());
-          measurementMNodes[i] = measurementMNode;
-        } catch (DataTypeMismatchException mismatchException) {
-          logger.warn(mismatchException.getMessage());
-          if (!config.isEnablePartialInsert()) {
-            throw mismatchException;
-          } else {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, mismatchException);
-          }
-        }
-      } catch (MetadataException e) {
-        if (config.isClusterMode()) {
-          logger.debug(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        } else {
-          logger.warn(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        }
-        if (config.isEnablePartialInsert()) {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, e);
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    // set reusable device id
-    plan.setDeviceID(deviceEntry.getDeviceID());
-    // change device path to device id string for insertion
-    plan.setDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID(), false));
-
-    return deviceEntry.getDeviceID();
   }
 
   /**
@@ -387,68 +315,6 @@ public class IDTableHashmapImpl implements IDTable {
       offsets.add(schemaEntry.getDiskPointer());
     }
     return getIDiskSchemaManager().getDiskSchemaEntriesByOffset(offsets);
-  }
-
-  /**
-   * check whether a time series is exist if exist, check the type consistency if not exist, call
-   * SchemaProcessor to create it
-   *
-   * @return measurement MNode of the time series or null if type is not match
-   */
-  private IMeasurementMNode getOrCreateMeasurementIfNotExist(
-      DeviceEntry deviceEntry, InsertPlan plan, int loc) throws MetadataException {
-    String measurementName = plan.getMeasurements()[loc];
-    PartialPath seriesKey = new PartialPath(plan.getDevicePath().toString(), measurementName);
-
-    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
-
-    // if not exist, we create it
-    if (schemaEntry == null) {
-      // we have to copy plan's mnode for using id table's last cache
-      IMeasurementMNode[] insertPlanMNodeBackup =
-          new IMeasurementMNode[plan.getMeasurementMNodes().length];
-      System.arraycopy(
-          plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup, 0, insertPlanMNodeBackup.length);
-      try {
-        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
-
-      // if the timeseries is in template, SchemaProcessor will not create timeseries. so we have to
-      // put it
-      // in id table here
-      for (IMeasurementMNode measurementMNode : plan.getMeasurementMNodes()) {
-        if (measurementMNode != null && !deviceEntry.contains(measurementMNode.getName())) {
-          IMeasurementSchema schema = measurementMNode.getSchema();
-          SchemaEntry curEntry =
-              new SchemaEntry(
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor(),
-                  deviceEntry.getDeviceID(),
-                  seriesKey,
-                  deviceEntry.isAligned(),
-                  IDiskSchemaManager);
-          deviceEntry.putSchemaEntry(measurementMNode.getName(), curEntry);
-        }
-      }
-
-      // copy back measurement mnode list
-      System.arraycopy(
-          insertPlanMNodeBackup, 0, plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup.length);
-
-      schemaEntry = deviceEntry.getSchemaEntry(measurementName);
-    }
-
-    // timeseries is using trigger, we should get trigger from SchemaProcessor
-    if (schemaEntry.isUsingTrigger()) {
-      IMeasurementMNode measurementMNode = IoTDB.schemaProcessor.getMeasurementMNode(seriesKey);
-      return new InsertMeasurementMNode(
-          measurementName, schemaEntry, measurementMNode.getTriggerExecutor());
-    }
-
-    return new InsertMeasurementMNode(measurementName, schemaEntry);
   }
 
   /**

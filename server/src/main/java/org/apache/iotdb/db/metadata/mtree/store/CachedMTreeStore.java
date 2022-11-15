@@ -76,9 +76,9 @@ public class CachedMTreeStore implements IMTreeStore {
   private final Lock readLock = readWriteLock.readLock();
   private final Lock writeLock = readWriteLock.writeLock();
 
-  public CachedMTreeStore(PartialPath rootPath, int schemaRegionId)
+  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId)
       throws MetadataException, IOException {
-    file = SchemaFile.initSchemaFile(rootPath.getFullPath(), schemaRegionId);
+    file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
 
@@ -383,8 +383,29 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    // todo implement snapshot for schema file mode
-    return false;
+    writeLock.lock();
+    try {
+      flushVolatileNodes();
+      return file.createSnapshot(snapshotDir);
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  public static CachedMTreeStore loadFromSnapshot(
+      File snapshotDir, String storageGroup, int schemaRegionId)
+      throws IOException, MetadataException {
+    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId);
+  }
+
+  private CachedMTreeStore(File snapshotDir, String storageGroup, int schemaRegionId)
+      throws IOException, MetadataException {
+    file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
+    root = file.init();
+    cacheManager.initRootStatus(root);
+
+    hasFlushTask = false;
+    hasReleaseTask = false;
   }
 
   private void ensureMemoryStatus() {

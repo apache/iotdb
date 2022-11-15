@@ -44,7 +44,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -119,7 +118,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces for lastCache operations
- *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
  *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
@@ -158,15 +156,14 @@ public class LocalSchemaProcessor {
   /**
    * Get the target SchemaRegion, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
-   * path, e.g., root.sg1 is a storage group and path = root.sg1.d1, return SchemaRegion of
-   * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
-   * thrown.
+   * path, e.g., root.sg1 is a database and path = root.sg1.d1, return SchemaRegion of root.sg1. If
+   * there's no database on the given path, StorageGroupNotSetException will be thrown.
    */
   private ISchemaRegion getBelongedSchemaRegion(PartialPath path) throws MetadataException {
     return schemaEngine.getSchemaRegion(configManager.getBelongedSchemaRegionId(path));
   }
 
-  // This interface involves storage group auto creation
+  // This interface involves database auto creation
   private ISchemaRegion getBelongedSchemaRegionWithAutoCreate(PartialPath path)
       throws MetadataException {
     return schemaEngine.getSchemaRegion(
@@ -176,7 +173,7 @@ public class LocalSchemaProcessor {
   /**
    * Get the target SchemaRegion, which will be involved/covered by the given pathPattern. The path
    * may contain wildcards, * or **. This method is the first step when there's a task on multiple
-   * paths represented by the given pathPattern. If isPrefixMatch, all storage groups under the
+   * paths represented by the given pathPattern. If isPrefixMatch, all databases under the
    * prefixPath that matches the given pathPattern will be collected.
    */
   private List<ISchemaRegion> getInvolvedSchemaRegions(
@@ -344,9 +341,9 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group. If
-   * using prefix match, the path pattern is used to match prefix path. All timeseries start with
-   * the matched prefix path will be deleted.
+   * Delete all timeseries matching the given path pattern, may cross different database. If using
+   * prefix match, the path pattern is used to match prefix path. All timeseries start with the
+   * matched prefix path will be deleted.
    *
    * @param pathPattern path to be deleted
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
@@ -381,7 +378,7 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different database
    *
    * @param pathPattern path to be deleted
    * @return deletion failed Timeseries
@@ -395,7 +392,7 @@ public class LocalSchemaProcessor {
   // including sg set and delete, and ttl set
 
   /**
-   * Set storage group of the given path to MTree.
+   * CREATE DATABASE of the given path to MTree.
    *
    * @param storageGroup root.node.(node)*
    */
@@ -404,7 +401,7 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * Delete storage groups of given paths from MTree.
+   * Delete databases of given paths from MTree.
    *
    * @param storageGroups list of paths to be deleted.
    */
@@ -441,7 +438,7 @@ public class LocalSchemaProcessor {
         }
         return false;
       } catch (StorageGroupNotSetException e) {
-        // path exists above storage group
+        // path exists above database
         return true;
       }
     } catch (MetadataException e) {
@@ -503,7 +500,7 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * To calculate the count of storage group for given path pattern. If using prefix match, the path
+   * To calculate the count of database for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
@@ -646,7 +643,7 @@ public class LocalSchemaProcessor {
 
   // region Interfaces for StorageGroup and TTL info Query
   /**
-   * Check if the given path is storage group or not.
+   * Check if the given path is database or not.
    *
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
@@ -655,32 +652,32 @@ public class LocalSchemaProcessor {
     return configManager.isStorageGroup(path);
   }
 
-  /** Check whether the given path contains a storage group */
+  /** Check whether the given path contains a database */
   public boolean checkStorageGroupByPath(PartialPath path) {
     return configManager.checkStorageGroupByPath(path);
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param path only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     return configManager.getBelongedStorageGroup(path);
   }
 
   /**
-   * Get the storage group that given path pattern matches or belongs to.
+   * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path pattern
+   * @return a list contains all databases related to given path pattern
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
@@ -688,19 +685,19 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
+   * Get all database matching given path pattern. If using prefix match, the path pattern is used
+   * to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern a pattern of a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return A ArrayList instance which stores storage group paths matching given path pattern.
+   * @return A ArrayList instance which stores database paths matching given path pattern.
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return configManager.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
-  /** Get all storage group paths */
+  /** Get all database paths */
   public List<PartialPath> getAllStorageGroupPaths() {
     return configManager.getAllStorageGroupPaths();
   }
@@ -751,7 +748,7 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult.
@@ -855,9 +852,9 @@ public class LocalSchemaProcessor {
 
     /*
      There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
      2. isOrderByHeat = false && limit != 0 : when finish the collection on one sg, the offset and limit should be decreased by the result taken from the current sg
-     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
      4. isOrderByHeat = true && limit != 0 : set the limit' = offset + limit and offset' = 0,
      which means collect top limit' result from each sg and then sort them and collect the top limit results start from offset.
      It is ensured that the target result could be extracted from the top limit' results of each sg.
@@ -942,12 +939,12 @@ public class LocalSchemaProcessor {
 
   // region Interfaces and methods for MNode query
 
-  /** Get storage group node by path. the give path don't need to be storage group path. */
+  /** Get database node by path. the give path don't need to be database path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     return configManager.getStorageGroupNodeByPath(path);
   }
 
-  /** Get all storage group MNodes */
+  /** Get all database MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return configManager.getAllStorageGroupNodes();
   }
@@ -1073,19 +1070,19 @@ public class LocalSchemaProcessor {
   // region Interfaces only for Cluster module usage
 
   /**
-   * For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve the
-   * path or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
+   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
+   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
    *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group
-   * name and (2) the sub path which is substring that begin after the storage group name.
+   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
+   * (2) the sub path which is substring that begin after the database name.
    *
-   * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
    * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
    * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the storage groups are found and the wildcard will be kept. (2)
-   * Suppose the part of the path is a substring that begin after the storage group name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*"). For
-   * this part, keep what it is.
+   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
+   * the part of the path is a substring that begin after the database name. (e.g., For
+   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
+   * part, keep what it is.
    *
    * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
    * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
@@ -1113,7 +1110,7 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
+   * StorageGroupFilter filters unsatisfied databases in metadata queries to speed up and
    * deduplicate.
    */
   @FunctionalInterface
@@ -1225,20 +1222,6 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * delete all the last cache value of any timeseries or aligned timeseries under the device
-   *
-   * <p>Invoking scenario (1) after upload tsfile
-   *
-   * @param deviceId path of device
-   */
-  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
-    IMNode node = getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(node.getAsEntityMNode());
-    }
-  }
-
-  /**
    * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
    * is under the device and matching the originalPath
    *
@@ -1258,23 +1241,6 @@ public class LocalSchemaProcessor {
           node.getAsEntityMNode(), originalPath, startTime, endTime);
     }
   }
-  // endregion
-
-  // region Interfaces and Implementation for InsertPlan process
-  /** get schema for device. Attention!!! Only support insertPlan */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    ISchemaRegion schemaRegion;
-    if (config.isAutoCreateSchemaEnabled()) {
-      schemaRegion = getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath());
-    } else {
-      schemaRegion = getBelongedSchemaRegion(plan.getDevicePath());
-    }
-
-    return schemaRegion.getSeriesSchemasAndReadLockDevice(plan);
-  }
-
   // endregion
 
   // region Interfaces and Implementation for Template operations

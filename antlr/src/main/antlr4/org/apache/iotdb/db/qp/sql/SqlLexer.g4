@@ -194,6 +194,10 @@ DESCRIBE
     : D E S C R I B E
     ;
 
+DETAILS
+    : D E T A I L S
+    ;
+
 DEVICE
     : D E V I C E
     ;

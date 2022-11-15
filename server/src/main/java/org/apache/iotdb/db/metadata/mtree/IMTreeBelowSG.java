@@ -36,12 +36,21 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public interface IMTreeBelowSG {
   void clear();
+
+  /**
+   * Create MTree snapshot
+   *
+   * @param snapshotDir specify snapshot directory
+   * @return false if failed to create snapshot; true if success
+   */
+  boolean createSnapshot(File snapshotDir);
 
   IMeasurementMNode createTimeseries(
       PartialPath path,
@@ -54,7 +63,7 @@ public interface IMTreeBelowSG {
 
   /**
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * storage group should be set first, throw exception otherwise
+   * timeseries, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -195,8 +204,8 @@ public interface IMTreeBelowSG {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
-   * current offset
+   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
+   * offset
    */
   Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException;

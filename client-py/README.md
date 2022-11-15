@@ -98,15 +98,15 @@ session.close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Storage Group Management
+#### DATABASE Management
 
-* Set storage group
+* CREATE DATABASE
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* Delete one or several storage groups
+* Delete one or several databases
 
 ```python
 session.delete_storage_group(group_name)
@@ -481,7 +481,7 @@ Converting the data model of IoTDB into the data model of SQLAlchemy.
 
 The metadata in the IoTDB are：
 
-1. Storage Group
+1. Database
 2. Path
 3. Entity
 4. Measurement
@@ -495,8 +495,8 @@ The mapping relationship between them is：
 
 | The metadata in the SQLAlchemy | The metadata in the IoTDB                            |
 | -------------------- | ---------------------------------------------- |
-| Schema               | Storage Group                                  |
-| Table                | Path ( from storage group to entity ) + Entity |
+| Schema               |      Database                                  |
+| Table                | Path ( from database to entity ) + Entity |
 | Column               | Measurement                                    |
 
 The following figure shows the relationship between the two more intuitively:

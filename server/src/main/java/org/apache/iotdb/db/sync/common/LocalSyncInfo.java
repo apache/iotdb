@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
 import org.slf4j.Logger;
@@ -67,15 +66,6 @@ public class LocalSyncInfo {
   }
 
   // region Implement of PipeSink
-
-  // TODO: delete this in new-standalone version
-  public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException, IOException {
-    syncMetadata.checkAddPipeSink(plan.getPipeSinkName());
-    PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkPlan(plan);
-    // should guarantee the adding pipesink is not exist.
-    syncMetadata.addPipeSink(pipeSink);
-    syncLogWriter.addPipeSink(pipeSink);
-  }
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
       throws PipeSinkException, IOException {

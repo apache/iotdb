@@ -145,6 +145,6 @@
 ### Raft Catch Up
 > 在 basedir/remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/目录下
 1. {fileName}.tsfile
-    + 远程 TsFile，拉取完毕会 load 进对应的存储组数据目录下
+    + 远程 TsFile，拉取完毕会 load 进对应的 database 数据目录下
 2. {fileName}.tsfile.mod
-    + 远程更新文件 TsFile.mod，拉取完毕会 load 进对应的存储组数据目录下
+    + 远程更新文件 TsFile.mod，拉取完毕会 load 进对应的 database 数据目录下
