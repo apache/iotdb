@@ -1404,7 +1404,7 @@ public class DataRegion {
   }
 
   /**
-   * delete the storageGroup's own folder in folder data/system/storage_groups
+   * delete the database's own folder in folder data/system/databases
    *
    * @param systemDir system dir
    */
