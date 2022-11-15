@@ -147,6 +147,13 @@ Supported input data types: `All Types`
 
 Output data type: `BOOLEAN`
 
+Note: Please ensure the value strings in set can be cast to the DataType of Operand
+> Example: 
+> 
+>`s1 in (1, 2, 3, 'test')`, DataType of `s1` is `INT32`
+> 
+> We will throw Exception because `'test'` cannot be cast to `INT32`
+
 #### String Match Operators
 
 Supported operators `LIKE`, `REGEXP`
