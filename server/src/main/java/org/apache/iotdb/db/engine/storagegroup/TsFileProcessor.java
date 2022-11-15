@@ -367,8 +367,7 @@ public class TsFileProcessor {
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
     // TODO: PlanIndex
-    tsFileResource.updatePlanIndexes(0);
-    //    tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
+    // tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity

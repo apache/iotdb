@@ -345,19 +345,19 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // todo improve to executeBatch
       for (int i = 1; i <= 1000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150 and time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 300 and time <= 400");
-      // todo improve to executeBatch
       for (int i = 1001; i <= 2000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 500 and time <= 800");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 900 and time <= 1100");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 1650");
@@ -468,8 +468,9 @@ public class IoTDBDeletionIT {
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -481,26 +482,27 @@ public class IoTDBDeletionIT {
 
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
       //      statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
       //      statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
     }
   }
 
