@@ -51,6 +51,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
 
   @Override
   protected void transmitPhysicalPlan(ByteBuffer planBuffer, PhysicalPlan physicalPlan) {
+    long sleepTimeInSeconds = 1;
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
@@ -72,6 +73,8 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
               .noneMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
             break;
           }
+          // sleep more time when meets `StorageGroupNotReadyException`
+          sleepTimeInSeconds = 30;
         } catch (StatementExecutionException statementExecutionException) {
           LOGGER.error(
               "OperationSyncDDLProtector can't transmit for statementExecutionException",
@@ -80,9 +83,11 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
               != STORAGE_GROUP_NOT_READY.getStatusCode()) {
             break;
           }
+          // sleep more time when meets `StorageGroupNotReadyException`
+          sleepTimeInSeconds = 30;
         } catch (Exception e) {
           // error exception and break
-          LOGGER.error("OperationSyncDDLProtector can't transmit", e);
+          LOGGER.error("OperationSyncDDLProtector can't transmit, discard it", e);
           break;
         }
       } else {
@@ -96,7 +101,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
         break;
       } else {
         try {
-          TimeUnit.SECONDS.sleep(1);
+          TimeUnit.SECONDS.sleep(sleepTimeInSeconds);
         } catch (InterruptedException e) {
           LOGGER.warn("OperationSyncDDLProtector is interrupted", e);
         }
