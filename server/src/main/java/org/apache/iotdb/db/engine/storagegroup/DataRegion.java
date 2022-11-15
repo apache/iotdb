@@ -1379,6 +1379,8 @@ public class DataRegion {
     logger.info(
         "Async close tsfile: {}",
         tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
+
+    boolean isEmptyFile = tsFileProcessor.isEmpty();
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
@@ -1399,6 +1401,16 @@ public class DataRegion {
       // controller
       if (!workSequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
+      }
+    }
+    if (isEmptyFile) {
+      try {
+        fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
+        tsFileManager.remove(tsFileProcessor.getTsFileResource(), sequence);
+      } catch (IOException e) {
+        logger.error(
+            "Remove empty file {} error",
+            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
     }
   }
@@ -2059,7 +2071,7 @@ public class DataRegion {
     }
   }
 
-  private boolean unsequenceFlushCallback(
+  private void unsequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
     TimePartitionManager.getInstance()
         .updateAfterFlushing(
@@ -2068,21 +2080,11 @@ public class DataRegion {
             systemFlushTime,
             lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
             workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
-    return true;
   }
 
-  private boolean sequenceFlushCallback(
+  private void sequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
-    boolean res = lastFlushTimeMap.updateLatestFlushTime(processor.getTimeRangeId(), updateMap);
-    if (!res) {
-      logger.warn(
-          "Partition: {} does't have latest time for each device. "
-              + "No valid record is written into memtable. Flushing tsfile is: {}",
-          processor.getTimeRangeId(),
-          processor.getTsFileResource().getTsFile());
-      return res;
-    }
-
+    lastFlushTimeMap.updateLatestFlushTime(processor.getTimeRangeId(), updateMap);
     TimePartitionManager.getInstance()
         .updateAfterFlushing(
             new DataRegionId(Integer.valueOf(dataRegionId)),
@@ -2090,7 +2092,6 @@ public class DataRegion {
             systemFlushTime,
             lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
             workUnsequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
-    return res;
   }
 
   /** used for upgrading */
@@ -3276,7 +3277,7 @@ public class DataRegion {
   @FunctionalInterface
   public interface UpdateEndTimeCallBack {
 
-    boolean call(TsFileProcessor caller, Map<String, Long> updateMap, long systemFlushTime);
+    void call(TsFileProcessor caller, Map<String, Long> updateMap, long systemFlushTime);
   }
 
   @FunctionalInterface
