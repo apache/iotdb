@@ -137,7 +137,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             break;
           } else {
             schemaTree.mergeSchemaTree(cachedSchema);
-            storageGroupSet.addAll(schemaTree.getStorageGroups());
+            storageGroupSet.addAll(cachedSchema.getStorageGroups());
           }
         }
         if (isAllCached) {
