@@ -74,19 +74,27 @@ public class OperationSyncConsumer implements Runnable {
           LOGGER.warn(
               "OperationSyncConsumer can't transmit for connection error", connectionException);
         } catch (BatchExecutionException batchExecutionException) {
-          LOGGER.error(
-              "OperationSyncConsumer can't transmit for batchExecutionException",
-              batchExecutionException);
           if (batchExecutionException.getStatusList().stream()
-              .noneMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+              .anyMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for STORAGE_GROUP_NOT_READY",
+                batchExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for batchExecutionException, discard it",
+                batchExecutionException);
             continue;
           }
         } catch (StatementExecutionException statementExecutionException) {
-          LOGGER.error(
-              "OperationSyncConsumer can't transmit for statementExecutionException",
-              statementExecutionException);
           if (statementExecutionException.getStatusCode()
-              != STORAGE_GROUP_NOT_READY.getStatusCode()) {
+              == STORAGE_GROUP_NOT_READY.getStatusCode()) {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for STORAGE_GROUP_NOT_READY",
+                statementExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for statementExecutionException, discard it",
+                statementExecutionException);
             continue;
           }
         } catch (Exception e) {

@@ -70,25 +70,31 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
               "OperationSyncDMLProtector can't transmit for connection error, retrying...",
               connectionException);
         } catch (BatchExecutionException batchExecutionException) {
-          LOGGER.error(
-              "OperationSyncDMLProtector can't transmit for batchExecutionException",
-              batchExecutionException);
           if (batchExecutionException.getStatusList().stream()
-              .noneMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+              .anyMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+            sleepTimeInSeconds = 10;
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for STORAGE_GROUP_NOT_READY",
+                batchExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for batchExecutionException, discard it",
+                batchExecutionException);
             break;
           }
-          // sleep more time when meets `StorageGroupNotReadyException`
-          sleepTimeInSeconds = 30;
         } catch (StatementExecutionException statementExecutionException) {
-          LOGGER.error(
-              "OperationSyncDMLProtector can't transmit for statementExecutionException",
-              statementExecutionException);
           if (statementExecutionException.getStatusCode()
-              != STORAGE_GROUP_NOT_READY.getStatusCode()) {
+              == STORAGE_GROUP_NOT_READY.getStatusCode()) {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for STORAGE_GROUP_NOT_READY",
+                statementExecutionException);
+            sleepTimeInSeconds = 10;
+          } else {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for statementExecutionException, discard it",
+                statementExecutionException);
             break;
           }
-          // sleep more time when meets `StorageGroupNotReadyException`
-          sleepTimeInSeconds = 30;
         } catch (Exception e) {
           // error exception and break
           LOGGER.error("OperationSyncDMLProtector can't transmit, discard it", e);
