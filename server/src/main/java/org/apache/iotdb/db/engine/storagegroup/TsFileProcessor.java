@@ -1273,7 +1273,7 @@ public class TsFileProcessor {
     logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
-    // tsFileResource.serialize();
+    tsFileResource.serialize();
     for (ISyncManager syncManager :
         SyncService.getInstance()
             .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
