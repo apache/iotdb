@@ -54,7 +54,7 @@ public class SnapshotLogger implements AutoCloseable {
 
   /**
    * Log the logical info for the link file, including its file name, time partition, data region
-   * id, storage group name, sequence or not.
+   * id, database name, sequence or not.
    *
    * @param sourceFile
    * @throws IOException

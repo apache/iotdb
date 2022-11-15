@@ -36,8 +36,8 @@ public class QueryDataSource {
   /**
    * TsFileResources used by query job.
    *
-   * <p>Note: Sequences under the same virtual storage group share two lists of TsFileResources (seq
-   * and unseq).
+   * <p>Note: Sequences under the same data region share two lists of TsFileResources (seq and
+   * unseq).
    */
   private List<TsFileResource> seqResources;
 
@@ -76,6 +76,11 @@ public class QueryDataSource {
 
   /** @return an updated filter concerning TTL */
   public Filter updateFilterUsingTTL(Filter filter) {
+    return updateFilterUsingTTL(filter, dataTTL);
+  }
+
+  /** @return an updated filter concerning TTL */
+  public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
         filter = new AndFilter(filter, TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL));

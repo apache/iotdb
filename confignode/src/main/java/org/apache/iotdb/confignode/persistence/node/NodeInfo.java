@@ -165,22 +165,23 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
     LOGGER.info(
-        "{}, There are {} data node in cluster before executed remove-datanode.sh",
+        "{}, There are {} data node in cluster before executed RemoveDataNodePlan",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
+
+    dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
-                LOGGER.info("removed the datanode {} from cluster", removeDataNodes);
+                LOGGER.info("Removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
-        "{}, There are {} data node in cluster after executed remove-datanode.sh",
+        "{}, There are {} data node in cluster after executed RemoveDataNodePlan",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -273,7 +274,7 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return All registered DataNodes */
+  /** @return All registered DataNodes */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
@@ -283,6 +284,16 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  /** @return The specified registered DataNode */
+  public TDataNodeConfiguration getRegisteredDataNode(int dataNodeId) {
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      return registeredDataNodes.getOrDefault(dataNodeId, new TDataNodeConfiguration()).deepCopy();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
   }
 
   /**

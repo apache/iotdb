@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -57,13 +57,16 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTemplateManager.class);
 
-  private Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
-  private Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
+  // <TemplateId, Template>
+  private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
+  // <TemplateName, TemplateId>
+  private final Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
+  // <FullPath, TemplateId>
+  private final Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
+  // <TemplateId, List<FullPath>>
+  private final Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
 
-  private Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
-  private Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
-
-  private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private static final class ClusterTemplateManagerHolder {
     private static final ClusterTemplateManager INSTANCE = new ClusterTemplateManager();
@@ -75,16 +78,16 @@ public class ClusterTemplateManager implements ITemplateManager {
     return ClusterTemplateManager.ClusterTemplateManagerHolder.INSTANCE;
   }
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   @Override
   public TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement) {
     TCreateSchemaTemplateReq req = constructTCreateSchemaTemplateReq(statement);
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
       // Get response or throw exception
@@ -119,7 +122,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public List<Template> getAllTemplates() {
     List<Template> templatesList = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetAllTemplatesResp tGetAllTemplatesResp = configNodeClient.getAllTemplates();
       // Get response or throw exception
       if (tGetAllTemplatesResp.getStatus().getCode()
@@ -148,7 +151,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   @Override
   public Template getTemplate(String name) {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         byte[] templateBytes = resp.getTemplate();
@@ -169,7 +172,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   @Override
   public void setSchemaTemplate(String name, PartialPath path) {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSetSchemaTemplateReq req = new TSetSchemaTemplateReq();
       req.setName(name);
       req.setPath(path.getFullPath());
@@ -186,7 +189,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public List<PartialPath> getPathsSetTemplate(String name) {
     List<PartialPath> listPath = new ArrayList<PartialPath>();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp.getPathList() != null) {

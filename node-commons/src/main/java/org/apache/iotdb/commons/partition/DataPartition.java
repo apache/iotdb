@@ -97,14 +97,6 @@ public class DataPartition extends Partition {
         .collect(Collectors.toList());
   }
 
-  public List<TRegionReplicaSet> getAllDataRegionReplicaSetForOneDevice(String deviceName) {
-    String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-        .flatMap(entry -> entry.getValue().stream())
-        .collect(Collectors.toList());
-  }
-
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
       String deviceName, TTimePartitionSlot timePartitionSlot) {
     // A list of data region replica sets will store data in a same time partition.
@@ -114,7 +106,7 @@ public class DataPartition extends Partition {
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     if (!dataPartitionMap.containsKey(storageGroup)) {
       throw new RuntimeException(
-          "Storage group not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
         dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()

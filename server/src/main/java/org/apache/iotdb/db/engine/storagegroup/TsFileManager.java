@@ -442,4 +442,10 @@ public class TsFileManager {
       return false;
     }
   }
+
+  // determine whether time partition is the latest(largest) or not
+  public boolean isLatestTimePartition(long timePartitionId) {
+    return (sequenceFiles.higherKey(timePartitionId) == null
+        && unsequenceFiles.higherKey(timePartitionId) == null);
+  }
 }

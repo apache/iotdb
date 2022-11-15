@@ -20,7 +20,8 @@ package org.apache.iotdb.db.qp.constant;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
-import java.util.HashMap;
+import com.google.common.collect.ImmutableMap;
+
 import java.util.Map;
 
 /** this class contains several constants used in SQL. */
@@ -190,7 +191,81 @@ public class SQLConstant {
   public static final int TOK_PIPE_SERVER_START = 210;
   public static final int TOK_PIPE_SERVER_STOP = 211;
 
-  public static final Map<Integer, String> tokenNames = new HashMap<>();
+  public static final Map<Integer, String> tokenNames =
+      new ImmutableMap.Builder<Integer, String>()
+          .put(TOK_WHERE, "TOK_WHERE")
+          .put(TOK_INSERT, "TOK_INSERT")
+          .put(TOK_DELETE, "TOK_DELETE")
+          .put(TOK_UPDATE, "TOK_UPDATE")
+          .put(TOK_QUERY, "TOK_QUERY")
+          .put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE")
+          .put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP")
+          .put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT")
+          .put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE")
+          .put(TOK_AUTHOR_UPDATE_USER, "TOK_AUTHOR_UPDATE_USER")
+          .put(TOK_DATALOAD, "TOK_DATALOAD")
+          .put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE")
+          .put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE")
+          .put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL")
+          .put(TOK_METADATA_DELETE_FILE_LEVEL, "TOK_METADATA_DELETE_FILE_LEVEL")
+          .put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE")
+          .put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL")
+          .put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL")
+          .put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK")
+          .put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK")
+          .put(TOK_LIST, "TOK_LIST")
+          .put(TOK_SET, "TOK_SET")
+          .put(TOK_UNSET, "TOK_UNSET")
+          .put(TOK_SHOW, "TOK_SHOW")
+          .put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION")
+          .put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO")
+          .put(TOK_LOAD_FILES, "TOK_LOAD_FILES")
+          .put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE")
+          .put(TOK_UNLOAD_FILE, "TOK_UNLOAD_FILE")
+          .put(TOK_SHOW_MERGE_STATUS, "TOK_SHOW_MERGE_STATUS")
+          .put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION")
+          .put(TOK_TRACING, "TOK_TRACING")
+          .put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE")
+          .put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP")
+          .put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS")
+          .put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX")
+          .put(TOK_DROP_INDEX, "TOK_DROP_INDEX")
+          .put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX")
+          .put(TOK_TRIGGER_CREATE, "TOK_TRIGGER_CREATE")
+          .put(TOK_TRIGGER_DROP, "TOK_TRIGGER_DROP")
+          .put(TOK_TRIGGER_START, "TOK_TRIGGER_START")
+          .put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP")
+          .put(TOK_SHOW_TRIGGERS, "TOK_SHOW_TRIGGERS")
+          .put(TOK_CONTINUOUS_QUERY_CREATE, "TOK_CONTINUOUS_QUERY_CREATE")
+          .put(TOK_CONTINUOUS_QUERY_DROP, "TOK_CONTINUOUS_QUERY_DROP")
+          .put(TOK_SHOW_CONTINUOUS_QUERIES, "TOK_SHOW_CONTINUOUS_QUERIES")
+          .put(TOK_SELECT_INTO, "TOK_SELECT_INTO")
+          .put(TOK_SETTLE, "TOK_SETTLE")
+          .put(TOK_SCHEMA_TEMPLATE_CREATE, "TOK_SCHEMA_TEMPLATE_CREATE")
+          .put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET")
+          .put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE")
+          .put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET")
+          .put(TOK_SCHEMA_TEMPLATE_APPEND, "TOK_SCHEMA_TEMPLATE_APPEND")
+          .put(TOK_SCHEMA_TEMPLATE_PRUNE, "TOK_SCHEMA_TEMPLATE_PRUNE")
+          .put(TOK_SCHEMA_TEMPLATE_DROP, "TOK_SCHEMA_TEMPLATE_DROP")
+          .put(TOK_SCHEMA_TEMPLATE_SHOW, "TOK_SCHEMA_TEMPLATE_SHOW")
+          .put(TOK_SCHEMA_TEMPLATE_SHOW_NODES, "TOK_SCHEMA_TEMPLATE_SHOW_NODES")
+          .put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET")
+          .put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING")
+          .put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE")
+          .put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK")
+          .put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK")
+          .put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK")
+          .put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE")
+          .put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE")
+          .put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE")
+          .put(TOK_STOP_PIPE, "TOK_STOP_PIPE")
+          .put(TOK_START_PIPE, "TOK_START_PIPE")
+          .put(TOK_DROP_PIPE, "TOK_DROP_PIPE")
+          .put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER")
+          .put(TOK_PIPE_SERVER_START, "TOK_PIPE_SERVER_START")
+          .put(TOK_PIPE_SERVER_STOP, "TOK_PIPE_SERVER_STOP")
+          .build();
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
@@ -198,97 +273,6 @@ public class SQLConstant {
 
   public static String[] getSingleTimeArray() {
     return SINGLE_TIME_ARRAY;
-  }
-
-  static {
-    tokenNames.put(TOK_WHERE, "TOK_WHERE");
-    tokenNames.put(TOK_INSERT, "TOK_INSERT");
-    tokenNames.put(TOK_DELETE, "TOK_DELETE");
-    tokenNames.put(TOK_UPDATE, "TOK_UPDATE");
-    tokenNames.put(TOK_QUERY, "TOK_QUERY");
-
-    tokenNames.put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE");
-    tokenNames.put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP");
-    tokenNames.put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT");
-    tokenNames.put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE");
-    tokenNames.put(TOK_AUTHOR_UPDATE_USER, "TOK_AUTHOR_UPDATE_USER");
-    tokenNames.put(TOK_DATALOAD, "TOK_DATALOAD");
-
-    tokenNames.put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
-    tokenNames.put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
-    tokenNames.put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
-    tokenNames.put(TOK_METADATA_DELETE_FILE_LEVEL, "TOK_METADATA_DELETE_FILE_LEVEL");
-    tokenNames.put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE");
-    tokenNames.put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL");
-    tokenNames.put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL");
-    tokenNames.put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK");
-    tokenNames.put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK");
-
-    tokenNames.put(TOK_LIST, "TOK_LIST");
-    tokenNames.put(TOK_SET, "TOK_SET");
-    tokenNames.put(TOK_UNSET, "TOK_UNSET");
-    tokenNames.put(TOK_SHOW, "TOK_SHOW");
-
-    tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
-    tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
-
-    tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
-    tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
-    tokenNames.put(TOK_UNLOAD_FILE, "TOK_UNLOAD_FILE");
-
-    tokenNames.put(TOK_SHOW_MERGE_STATUS, "TOK_SHOW_MERGE_STATUS");
-    tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
-
-    tokenNames.put(TOK_TRACING, "TOK_TRACING");
-
-    tokenNames.put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE");
-    tokenNames.put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP");
-    tokenNames.put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS");
-
-    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
-    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
-    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
-
-    tokenNames.put(TOK_TRIGGER_CREATE, "TOK_TRIGGER_CREATE");
-    tokenNames.put(TOK_TRIGGER_DROP, "TOK_TRIGGER_DROP");
-    tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");
-    tokenNames.put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP");
-    tokenNames.put(TOK_SHOW_TRIGGERS, "TOK_SHOW_TRIGGERS");
-
-    tokenNames.put(TOK_CONTINUOUS_QUERY_CREATE, "TOK_CONTINUOUS_QUERY_CREATE");
-    tokenNames.put(TOK_CONTINUOUS_QUERY_DROP, "TOK_CONTINUOUS_QUERY_DROP");
-    tokenNames.put(TOK_SHOW_CONTINUOUS_QUERIES, "TOK_SHOW_CONTINUOUS_QUERIES");
-
-    tokenNames.put(TOK_SELECT_INTO, "TOK_SELECT_INTO");
-
-    tokenNames.put(TOK_SETTLE, "TOK_SETTLE");
-
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_CREATE, "TOK_SCHEMA_TEMPLATE_CREATE");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_APPEND, "TOK_SCHEMA_TEMPLATE_APPEND");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_PRUNE, "TOK_SCHEMA_TEMPLATE_PRUNE");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_DROP, "TOK_SCHEMA_TEMPLATE_DROP");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW, "TOK_SCHEMA_TEMPLATE_SHOW");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_NODES, "TOK_SCHEMA_TEMPLATE_SHOW_NODES");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING");
-
-    tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
-
-    tokenNames.put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK");
-    tokenNames.put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK");
-    tokenNames.put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK");
-    tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
-    tokenNames.put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE");
-    tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
-    tokenNames.put(TOK_STOP_PIPE, "TOK_STOP_PIPE");
-    tokenNames.put(TOK_START_PIPE, "TOK_START_PIPE");
-    tokenNames.put(TOK_DROP_PIPE, "TOK_DROP_PIPE");
-    tokenNames.put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER");
-    tokenNames.put(TOK_PIPE_SERVER_START, "TOK_PIPE_SERVER_START");
-    tokenNames.put(TOK_PIPE_SERVER_STOP, "TOK_PIPE_SERVER_STOP");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

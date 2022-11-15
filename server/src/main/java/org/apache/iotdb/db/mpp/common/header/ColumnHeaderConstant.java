@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.collect.ImmutableList;
@@ -26,294 +28,301 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 
 public class ColumnHeaderConstant {
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // column names for query statement
-  public static final String COLUMN_TIME = "Time";
-  public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_DEVICE = "Device";
+  public static final String TIME = "Time";
+  public static final String VALUE = "Value";
+  public static final String DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_STORAGE_GROUP = "storage group";
-  public static final String COLUMN_TIMESERIES = "timeseries";
-  public static final String COLUMN_TIMESERIES_ALIAS = "alias";
-  public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
-  public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
-  public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
-  public static final String COLUMN_DEVICES = "devices";
-  public static final String COLUMN_TAGS = "tags";
-  public static final String COLUMN_ATTRIBUTES = "attributes";
-  public static final String COLUMN_IS_ALIGNED = "isAligned";
-  public static final String COLUMN_COUNT = "count";
-  public static final String COLUMN_TTL = "ttl(ms)";
-  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
-  public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
-  public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";
-  public static final String COLUMN_CHILDPATHS = "child paths";
-  public static final String COLUMN_NODETYPES = "node types";
-  public static final String COLUMN_CHILDNODES = "child nodes";
-  public static final String COLUMN_VERSION = "version";
-  public static final String COLUMN_BUILD_INFO = "build info";
-  public static final String COLUMN_PATHS = "paths";
+  public static final String DATABASE = "Database";
+  public static final String TIMESERIES = "Timeseries";
+  public static final String ALIAS = "Alias";
+  public static final String DATATYPE = "DataType";
+  public static final String ENCODING = "Encoding";
+  public static final String COMPRESSION = "Compression";
+  public static final String TAGS = "Tags";
+  public static final String ATTRIBUTES = "Attributes";
+  public static final String IS_ALIGNED = "IsAligned";
+  public static final String COUNT = "Count";
+  public static final String COLUMN_TTL = "TTL(ms)";
+  public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
+  public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
+  public static final String CHILD_PATHS = "ChildPaths";
+  public static final String NODE_TYPES = "NodeTypes";
+  public static final String CHILD_NODES = "ChildNodes";
+  public static final String VERSION = "Version";
+  public static final String BUILD_INFO = "BuildInfo";
+  public static final String PATHS = "Paths";
 
   // column names for count statement
-  public static final String COLUMN_COLUMN = "column";
-  public static final String COLUMN_COUNT_DEVICES = "count(devices)";
-  public static final String COLUMN_COUNT_NODES = "count(nodes)";
-  public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
-  public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
+  public static final String COLUMN = "Column";
+  public static final String COUNT_DEVICES = "count(devices)";
+  public static final String COUNT_NODES = "count(nodes)";
+  public static final String COUNT_TIMESERIES = "count(timeseries)";
+  public static final String COUNT_DATABASE = "count(database)";
 
-  // column names for show cluster statement
-  public static final String COLUMN_NODE_ID = "NodeID";
-  public static final String COLUMN_NODE_TYPE = "NodeType";
-  public static final String COLUMN_STATUS = "Status";
-  public static final String COLUMN_HOST = "Host";
-  public static final String COLUMN_INTERNAL_PORT = "InternalPort";
-  public static final String COLUMN_RPC_PORT = "RpcPort";
+  // column names for show cluster and show cluster details statements
+  public static final String NODE_ID = "NodeID";
+  public static final String NODE_TYPE = "NodeType";
+  public static final String STATUS = "Status";
+  public static final String HOST = "Host";
+  public static final String INTERNAL_ADDRESS = "InternalAddress";
+  public static final String INTERNAL_PORT = "InternalPort";
+  public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
+  public static final String RPC_ADDRESS = "RpcAddress";
+  public static final String RPC_PORT = "RpcPort";
+  public static final String DATA_CONSENSUS_PORT = "DataConsensusPort";
+  public static final String SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
+  public static final String MPP_PORT = "MppPort";
 
   // column names for show functions statement
-  public static final String COLUMN_FUNCTION_NAME = "function name";
-  public static final String COLUMN_FUNCTION_TYPE = "function type";
-  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+  public static final String FUNCTION_NAME = "FunctionName";
+  public static final String FUNCTION_TYPE = "FunctionType";
+  public static final String CLASS_NAME_UDF = "ClassName(UDF)";
 
   // column names for show triggers statement
-  public static final String COLUMN_TRIGGER_NAME = "TriggerName";
-  public static final String COLUMN_TRIGGER_EVENT = "Event";
-  public static final String COLUMN_TRIGGER_TYPE = "Type";
-  public static final String COLUMN_TRIGGER_STATE = "State";
-  public static final String COLUMN_TRIGGER_PATTERN = "PathPattern";
-  public static final String COLUMN_TRIGGER_CLASSNAME = "ClassName";
-  public static final String COLUMN_TRIGGER_LOCATION = "Node ID";
+  public static final String TRIGGER_NAME = "TriggerName";
+  public static final String EVENT = "Event";
+  public static final String STATE = "State";
+  public static final String PATH_PATTERN = "PathPattern";
+  public static final String CLASS_NAME = "ClassName";
 
   // column names for show region statement
-  public static final String COLUMN_REGION_ID = "RegionId";
-  public static final String COLUMN_TYPE = "Type";
-  public static final String COLUMN_SHOW_REGION_STORAGE_GROUP = "Storage Group";
-  public static final String COLUMN_DATANODE_ID = "DataNodeId";
-  public static final String COLUMN_SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String COLUMN_TIME_SLOT_ID = "TimeSlotId";
-  public static final String COLUMN_ROLE = "Role";
+  public static final String REGION_ID = "RegionId";
+  public static final String TYPE = "Type";
+  public static final String DATA_NODE_ID = "DataNodeId";
+  public static final String SERIES_SLOT_ID = "SeriesSlotId";
+  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String ROLE = "Role";
 
   // column names for show datanodes
-  public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
-  public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
+  public static final String DATA_REGION_NUM = "DataRegionNum";
+  public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
 
   // column names for show schema template statement
-  public static final String COLUMN_TEMPLATE_NAME = "template name";
-
-  // column names for show pipe sink type
-  public static final String COLUMN_PIPESINK_TYPE = "type";
+  public static final String TEMPLATE_NAME = "TemplateName";
 
   // column names for show pipe sink
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+  public static final String NAME = "Name";
 
   // column names for show pipe
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_MESSAGE = "message";
+  public static final String CREATE_TIME = "CreateTime";
+  public static final String REMOTE = "Remote";
+  public static final String MESSAGE = "Message";
 
   // column names for select into
-  public static final String COLUMN_SOURCE_DEVICE = "source device";
-  public static final String COLUMN_SOURCE_COLUMN = "source column";
-  public static final String COLUMN_TARGET_TIMESERIES = "target timeseries";
-  public static final String COLUMN_WRITTEN = "written";
+  public static final String SOURCE_DEVICE = "SourceDevice";
+  public static final String SOURCE_COLUMN = "SourceColumn";
+  public static final String TARGET_TIMESERIES = "TargetTimeseries";
+  public static final String WRITTEN = "Written";
 
   // column names for show cq
-  public static final String COLUMN_CQ_ID = "cq id";
-  public static final String COLUMN_QUERY = "query";
-  public static final String COLUMN_STATE = "state";
+  public static final String CQID = "CQId";
+  public static final String QUERY = "Query";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT));
+          new ColumnHeader(TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(VALUE, TSDataType.TEXT),
+          new ColumnHeader(DATATYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTimeSeriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ALIAS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TAGS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT));
+          new ColumnHeader(TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(ALIAS, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(DATATYPE, TSDataType.TEXT),
+          new ColumnHeader(ENCODING, TSDataType.TEXT),
+          new ColumnHeader(COMPRESSION, TSDataType.TEXT),
+          new ColumnHeader(TAGS, TSDataType.TEXT),
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT));
+          new ColumnHeader(DEVICE, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT));
+          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showStorageGroupColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
-          new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
-          new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64),
-          new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32),
-          new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32));
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
+          new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_NODETYPES, TSDataType.TEXT));
+          new ColumnHeader(CHILD_PATHS, TSDataType.TEXT),
+          new ColumnHeader(NODE_TYPES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showNodesInSchemaTemplateHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT));
+          new ColumnHeader(CHILD_NODES, TSDataType.TEXT),
+          new ColumnHeader(DATATYPE, TSDataType.TEXT),
+          new ColumnHeader(ENCODING, TSDataType.TEXT),
+          new ColumnHeader(COMPRESSION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showChildNodesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(CHILD_NODES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVersionColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_BUILD_INFO, TSDataType.TEXT));
+          new ColumnHeader(VERSION, TSDataType.TEXT),
+          new ColumnHeader(BUILD_INFO, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathsUsingTemplateHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathSetTemplateHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> countDevicesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_DEVICES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_DEVICES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countNodesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_NODES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_NODES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countLevelTimeSeriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_COLUMN, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
+          new ColumnHeader(COLUMN, TSDataType.TEXT),
+          new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countStorageGroupColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_STORAGE_GROUP, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TIME_SLOT_ID, TSDataType.INT64),
-          new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
-          new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TYPE, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
+          new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32),
+          new ColumnHeader(ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
-          new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
-          new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32));
+          new ColumnHeader(NODE_ID, TSDataType.INT32),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
+          new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showConfigNodesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32),
-          new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
+          new ColumnHeader(NODE_ID, TSDataType.INT32),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_PORT, TSDataType.INT32),
+          new ColumnHeader(ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32));
+          new ColumnHeader(NODE_ID, TSDataType.INT32),
+          new ColumnHeader(NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_PORT, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showClusterDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(NODE_ID, TSDataType.INT32),
+          new ColumnHeader(NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_PORT, TSDataType.INT32),
+          new ColumnHeader(CONFIG_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.TEXT),
+          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(MPP_PORT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT));
+          new ColumnHeader(FUNCTION_NAME, TSDataType.TEXT),
+          new ColumnHeader(FUNCTION_TYPE, TSDataType.TEXT),
+          new ColumnHeader(CLASS_NAME_UDF, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTriggersColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_TRIGGER_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_EVENT, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_STATE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_PATTERN, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_CLASSNAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TRIGGER_LOCATION, TSDataType.TEXT));
+          new ColumnHeader(TRIGGER_NAME, TSDataType.TEXT),
+          new ColumnHeader(EVENT, TSDataType.TEXT),
+          new ColumnHeader(TYPE, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(PATH_PATTERN, TSDataType.TEXT),
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(NODE_ID, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(TEMPLATE_NAME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPipeSinkTypeColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPipeSinkColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_PIPESINK_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPESINK_ATTRIBUTES, TSDataType.TEXT));
+          new ColumnHeader(NAME, TSDataType.TEXT),
+          new ColumnHeader(TYPE, TSDataType.TEXT),
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPipeColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_PIPE_CREATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_ATTRIBUTES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
+          new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(NAME, TSDataType.TEXT),
+          new ColumnHeader(ROLE, TSDataType.TEXT),
+          new ColumnHeader(REMOTE, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
+          new ColumnHeader(MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
+          new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(WRITTEN, TSDataType.INT32));
 
   public static final List<ColumnHeader> selectIntoAlignByDeviceColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_SOURCE_DEVICE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_SOURCE_COLUMN, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TARGET_TIMESERIES, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_WRITTEN, TSDataType.INT32));
+          new ColumnHeader(SOURCE_DEVICE, TSDataType.TEXT),
+          new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
+          new ColumnHeader(TARGET_TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(WRITTEN, TSDataType.INT32));
 
   public static final List<ColumnHeader> getRegionIdColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_SERIES_SLOT_ID, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_CQ_ID, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_QUERY, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STATE, TSDataType.TEXT));
+          new ColumnHeader(CQID, TSDataType.TEXT),
+          new ColumnHeader(QUERY, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT));
 }

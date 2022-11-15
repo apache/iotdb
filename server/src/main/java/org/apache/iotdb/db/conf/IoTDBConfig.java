@@ -88,7 +88,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = "127.0.0.1";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
@@ -103,7 +103,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -150,15 +150,15 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportion = 0.8;
+  private double writeProportionForMemtable = 0.8;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
-   * report to system.
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
+   * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -233,7 +233,7 @@ public class IoTDBConfig {
    */
   private int tlogBufferSize = 1024 * 1024;
 
-  /** System directory, including version file for each storage group and metadata */
+  /** System directory, including version file for each database and metadata */
   private String systemDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
@@ -261,8 +261,7 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
   /** External temporary lib directory for storing downloaded udf JAR files */
-  private String udfTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+  private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
@@ -270,7 +269,7 @@ public class IoTDBConfig {
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
+      triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -466,7 +465,7 @@ public class IoTDBConfig {
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
-  /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
+  /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
@@ -502,6 +501,8 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
+  /** Memory allocated proportion for time partition info */
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -555,9 +556,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
-  /** indicate whether current mode is mpp */
-  private boolean mppMode = false;
-
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
 
@@ -608,7 +606,7 @@ public class IoTDBConfig {
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
-  /** Storage group level when creating schema automatically is enabled */
+  /** Database level when creating schema automatically is enabled */
   private int defaultStorageGroupLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
@@ -643,8 +641,8 @@ public class IoTDBConfig {
   private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * A global merge will be performed each such interval, that is, each storage group will be merged
-   * (if proper merge candidates can be found). Unit: second.
+   * A global merge will be performed each such interval, that is, each database will be merged (if
+   * proper merge candidates can be found). Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
@@ -736,7 +734,7 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the num of memtable in each storage group */
+  /** the num of memtable in each database */
   private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
@@ -830,7 +828,7 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of data regions per user-defined storage group */
+  /** the number of data regions per user-defined database */
   private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
@@ -864,8 +862,14 @@ public class IoTDBConfig {
   /** maximum number of logged pages before log erased */
   private int schemaFileLogSize = 16384;
 
+  /**
+   * Maximum number of measurement in one create timeseries plan node. If the number of measurement
+   * in user request exceeds this limit, the request will be split.
+   */
+  private int maxMeasurementNumOfInternalRequest = 10000;
+
   /** Internal address for data node */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -880,8 +884,8 @@ public class IoTDBConfig {
   private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
-  /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
+  /** The time of data node waiting for the next retry to join into the cluster */
+  private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
@@ -905,7 +909,7 @@ public class IoTDBConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
 
-  /** The number of series partitions in a storage group */
+  /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */
@@ -1405,10 +1409,15 @@ public class IoTDBConfig {
 
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+    updateUdfTemporaryLibDir();
   }
 
   public String getUdfTemporaryLibDir() {
     return udfTemporaryLibDir;
+  }
+
+  public void updateUdfTemporaryLibDir() {
+    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getTriggerDir() {
@@ -1417,14 +1426,15 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
-  }
-
-  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
-    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
+    updateTriggerTemporaryLibDir();
   }
 
   public String getTriggerTemporaryLibDir() {
     return triggerTemporaryLibDir;
+  }
+
+  public void updateTriggerTemporaryLibDir() {
+    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getMqttDir() {
@@ -2095,6 +2105,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
     this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
+  }
+
+  public long getAllocateMemoryForTimePartitionInfo() {
+    return allocateMemoryForTimePartitionInfo;
+  }
+
+  public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
@@ -2917,6 +2935,14 @@ public class IoTDBConfig {
     this.schemaFileLogSize = schemaFileLogSize;
   }
 
+  public int getMaxMeasurementNumOfInternalRequest() {
+    return maxMeasurementNumOfInternalRequest;
+  }
+
+  public void setMaxMeasurementNumOfInternalRequest(int maxMeasurementNumOfInternalRequest) {
+    this.maxMeasurementNumOfInternalRequest = maxMeasurementNumOfInternalRequest;
+  }
+
   public String getInternalAddress() {
     return internalAddress;
   }
@@ -2957,12 +2983,12 @@ public class IoTDBConfig {
     this.targetConfigNodeList = targetConfigNodeList;
   }
 
-  public long getJoinClusterTimeOutMs() {
-    return joinClusterTimeOutMs;
+  public long getJoinClusterRetryIntervalMs() {
+    return joinClusterRetryIntervalMs;
   }
 
-  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
-    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  public void setJoinClusterRetryIntervalMs(long joinClusterRetryIntervalMs) {
+    this.joinClusterRetryIntervalMs = joinClusterRetryIntervalMs;
   }
 
   public String getDataRegionConsensusProtocolClass() {
@@ -3059,14 +3085,6 @@ public class IoTDBConfig {
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
-  public boolean isMppMode() {
-    return mppMode;
-  }
-
-  public void setMppMode(boolean mppMode) {
-    this.mppMode = mppMode;
   }
 
   public boolean isClusterMode() {
@@ -3250,12 +3268,12 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public double getWriteProportion() {
-    return writeProportion;
+  public double getWriteProportionForMemtable() {
+    return writeProportionForMemtable;
   }
 
-  public void setWriteProportion(double writeProportion) {
-    this.writeProportion = writeProportion;
+  public void setWriteProportionForMemtable(double writeProportionForMemtable) {
+    this.writeProportionForMemtable = writeProportionForMemtable;
   }
 
   public double getCompactionProportion() {

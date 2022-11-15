@@ -41,7 +41,7 @@ public class IoTDBGroupByUnseqIT {
 
   private static final String[] dataSet1 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.sg1.d1(time,s1) values(1, 1)",
         "INSERT INTO root.sg1.d1(time,s1) values(2, 2)",
@@ -59,7 +59,7 @@ public class IoTDBGroupByUnseqIT {
 
   private static final String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.sg2.d1(time,s1) values(1, 1)",
         "INSERT INTO root.sg2.d1(time,s1) values(10, 10)",

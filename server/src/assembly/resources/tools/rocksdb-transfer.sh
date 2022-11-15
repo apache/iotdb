@@ -66,7 +66,7 @@ classname=org.apache.iotdb.db.metadata.rocksdb.MetaDataTransfer
 launch_service()
 {
 	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-datanode.xml"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"

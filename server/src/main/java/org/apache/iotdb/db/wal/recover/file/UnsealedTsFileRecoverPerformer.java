@@ -31,8 +31,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
@@ -62,7 +60,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
 
   /** sequence file or not */
   private final boolean sequence;
-  /** add recovered TsFile back to virtual storage group */
+  /** add recovered TsFile back to data region */
   private final Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered;
   /** redo wal log to recover TsFile */
   private final TsFilePlanRedoer walRedoer;
@@ -187,13 +185,6 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     }
     try {
       switch (walEntry.getType()) {
-        case INSERT_ROW_PLAN:
-        case INSERT_TABLET_PLAN:
-          walRedoer.redoInsert((InsertPlan) walEntry.getValue());
-          break;
-        case DELETE_PLAN:
-          walRedoer.redoDelete((DeletePlan) walEntry.getValue());
-          break;
         case MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
@@ -207,6 +198,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
+        default:
+          throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
     } catch (Exception e) {
       logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);

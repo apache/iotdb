@@ -30,7 +30,7 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>COUNT {STORAGE GROUP | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
+ * <p>COUNT {DATABASES | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
  */
 public class CountStatement extends ShowStatement {
   protected PartialPath pathPattern;

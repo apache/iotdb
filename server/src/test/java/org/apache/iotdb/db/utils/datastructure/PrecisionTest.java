@@ -52,7 +52,7 @@ public class PrecisionTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.turbine1");
+      statement.execute("CREATE DATABASE root.turbine1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
 
@@ -76,7 +76,7 @@ public class PrecisionTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.turbine1");
+      statement.execute("CREATE DATABASE root.turbine1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
 
@@ -100,7 +100,7 @@ public class PrecisionTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.turbine1");
+      statement.execute("CREATE DATABASE root.turbine1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
 
@@ -124,7 +124,7 @@ public class PrecisionTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.turbine1");
+      statement.execute("CREATE DATABASE root.turbine1");
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
 

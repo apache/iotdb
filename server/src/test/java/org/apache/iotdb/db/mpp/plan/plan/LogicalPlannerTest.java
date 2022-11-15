@@ -537,7 +537,7 @@ public class LogicalPlannerTest {
 
   @Test
   public void testShowDevices() {
-    String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH DATABASE limit 20 offset 10";
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();

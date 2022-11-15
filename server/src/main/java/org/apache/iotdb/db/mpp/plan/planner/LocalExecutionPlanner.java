@@ -63,7 +63,8 @@ public class LocalExecutionPlanner {
       Filter timeFilter,
       DataRegion dataRegion)
       throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
@@ -132,7 +133,7 @@ public class LocalExecutionPlanner {
             TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.info(
+        LOGGER.debug(
             String.format(
                 "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
@@ -146,7 +147,7 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.info(
+                LOGGER.debug(
                     String.format(
                         "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));

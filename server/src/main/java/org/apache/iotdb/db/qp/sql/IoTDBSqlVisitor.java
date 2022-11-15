@@ -234,7 +234,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** 2. Data Definition Language (DDL) */
 
-  // Create Storage Group
+  // Create database
   @Override
   public Operator visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupOperator setStorageGroupOperator =
@@ -866,11 +866,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
     if (alterTimeSeriesOperator != null && ctx.ALIAS() != null) {
-      alterTimeSeriesOperator.setAlias(parseAlias(ctx.alias()));
+      alterTimeSeriesOperator.setAlias(parseAliasNode(ctx.alias()));
     }
   }
 
-  // Delete Storage Group
+  // Delete database
 
   @Override
   public Operator visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
@@ -1012,7 +1012,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return stopTriggerOperator;
   }
 
-  // Show Storage Group
+  // SHOW DATABASES
 
   @Override
   public Operator visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
@@ -1041,7 +1041,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesOperator);
     }
-    // show devices wtih storage group
+    // show devices wtih database
     if (ctx.WITH() != null) {
       showDevicesOperator.setSgCol(true);
     }
@@ -2235,7 +2235,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSettle(IoTDBSqlParser.SettleContext ctx) {
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
     if (ctx.prefixPath() != null) {
-      // Storage Group
+      // database
       PartialPath sgPath = parsePrefixPath(ctx.prefixPath());
       settleOperator.setSgPath(sgPath);
       settleOperator.setIsSgPath(true);
@@ -2714,13 +2714,28 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // alias
 
-  /** function for parsing Alias. */
+  /** function for parsing Alias of ResultColumn . */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
+    }
+    return alias;
+  }
+
+  /** function for parsing AliasNode. */
+  private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseConstant(ctx.constant());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
+      }
+    } else {
+      alias = parseNodeString(ctx.identifier().getText());
     }
     return alias;
   }

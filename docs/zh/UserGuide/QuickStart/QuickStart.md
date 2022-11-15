@@ -59,13 +59,13 @@ Linux 系统与 MacOS 系统启动命令如下：
 ```
 > nohup sbin/start-server.sh -f >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -b
+> nohup sbin/start-server.sh -d
 ```
 可选参数:
 - 默认不含任何参数时, iotdb 将在后台启动，并且不在控制台打印日志
 - "-v": 查看iotdb版本
 - "-f": 在控制台前台启动iotdb (v0.14前是默认设置)
-- "-b": 在后台启动iotdb，控制台不打印日志
+- "-d": 在后台启动iotdb，控制台不打印日志
 - "-p \<pidfile\>": 将pid保存到指定的文件中
 - "-h": 查看帮助
 - "printgc"(必须是最后一个参数): 打印GC日志 (从v0.14起，该参数将被-g取代)
@@ -122,30 +122,30 @@ IoTDB>
 
 在这里，我们首先介绍一下使用 Cli 工具创建时间序列、插入数据并查看数据的方法。
 
-数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用 SET STORAGE GROUP 语句定义存储组。SQL 语句如下：
+数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个 database。在定义时间序列之前，要首先使用 CREATE DATABASE 语句创建数据库。SQL 语句如下：
 
 ``` 
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们可以使用 SHOW STORAGE GROUP 语句来查看系统当前所有的存储组，SQL 语句如下：
+我们可以使用 SHOW DATABASES 语句来查看系统当前所有的 database，SQL 语句如下：
 
 ```
-IoTDB> SHOW STORAGE GROUP
+IoTDB> SHOW DATABASES
 ```
 
 执行结果为：
 
 ```
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |      root.ln|
 +-------------+
 Total line number = 1
 ```
 
-存储组设定后，使用 CREATE TIMESERIES 语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL 语句如下：
+Database 设定后，使用 CREATE TIMESERIES 语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL 语句如下：
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -164,7 +164,7 @@ IoTDB> SHOW TIMESERIES
 
 ```
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -182,7 +182,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 
 ```
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+

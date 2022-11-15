@@ -57,8 +57,8 @@ public class TriggerTable {
     return triggerTable.get(triggerName);
   }
 
-  public TriggerInformation removeTriggerInformation(String triggerName) {
-    return triggerTable.remove(triggerName);
+  public void removeTriggerInformation(String triggerName) {
+    triggerTable.remove(triggerName);
   }
 
   public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {

@@ -38,6 +38,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -199,6 +201,7 @@ public abstract class AbstractEnv implements BaseEnv {
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
+      logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
       fail("After 30 times retry, the cluster can't work!");
     }
   }
@@ -295,6 +298,18 @@ public abstract class AbstractEnv implements BaseEnv {
     Session session = new Session(dataNode.getIp(), dataNode.getPort());
     session.open();
     return session;
+  }
+
+  @Override
+  public SessionPool getSessionPool(int maxSize) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool(
+        dataNode.getIp(),
+        dataNode.getPort(),
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        maxSize);
   }
 
   protected NodeConnection getWriteConnection(

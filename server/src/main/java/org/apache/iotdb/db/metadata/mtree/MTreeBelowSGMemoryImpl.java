@@ -156,6 +156,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     storageGroupMNode = null;
   }
 
+  @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
@@ -180,7 +181,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   /**
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
-   * storage group should be set first, throw exception otherwise
+   * database should be set first, throw exception otherwise
    *
    * @param path timeseries path
    * @param dataType data type
@@ -276,7 +277,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   /**
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * storage group should be set first, throw exception otherwise
+   * timeseries, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -534,9 +535,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
     }
 
-    // delete all empty ancestors except storage group and MeasurementMNode
+    // delete all empty ancestors except database and MeasurementMNode
     while (isEmptyInternalMNode(curNode)) {
-      // if current storage group has no time series, return the storage group name
+      // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
         return curNode.getPartialPath();
       }
@@ -849,17 +850,17 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
-   * current offset
+   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
+   * offset
    */
   @Override
   public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
      2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
-     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
      4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
      The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
     */
@@ -1187,7 +1188,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   @Override
   public List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException {
     IMNode cur = storageGroupMNode;
-    // collect all the LeafMNode in this storage group
+    // collect all the LeafMNode in this database
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
     queue.add(cur);
@@ -1633,6 +1634,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return null;
   }
 
+  @Override
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
@@ -1697,6 +1699,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     entityMNode.setSchemaTemplateId(templateId);
   }
 
+  @Override
   public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     Set<String> result = new HashSet<>();
@@ -1704,7 +1707,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<Set<String>> collector =
         new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (node.getSchemaTemplateId() == templateId) {
               result.add(node.getFullPath());
             }
@@ -1720,7 +1723,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<List<IEntityMNode>> collector =
         new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (templateIdList.contains(node.getSchemaTemplateId())) {
               result.add(node);
             }
@@ -1736,7 +1739,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     EntityCollector<List<IEntityMNode>> collector =
         new EntityCollector<List<IEntityMNode>>(storageGroupMNode, pathPattern, store) {
           @Override
-          protected void collectEntity(IEntityMNode node) throws MetadataException {
+          protected void collectEntity(IEntityMNode node) {
             if (templateIdList.contains(node.getSchemaTemplateId())
                 && node.isPreDeactivateTemplate()) {
               result.add(node);
@@ -1747,6 +1750,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return result;
   }
 
+  @Override
   public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     CounterTraverser counterTraverser =

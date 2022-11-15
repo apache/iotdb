@@ -77,6 +77,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -121,6 +122,8 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
+  private AtomicBoolean stopped;
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -161,6 +164,7 @@ public class QueryExecution implements IQueryExecution {
             }
           }
         });
+    this.stopped = new AtomicBoolean(false);
   }
 
   @FunctionalInterface
@@ -297,7 +301,7 @@ public class QueryExecution implements IQueryExecution {
   public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-    if (isQuery()) {
+    if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
@@ -315,8 +319,11 @@ public class QueryExecution implements IQueryExecution {
 
   // Stop the workers for this query
   public void stop() {
-    if (this.scheduler != null) {
-      this.scheduler.stop();
+    // only stop once
+    if (stopped.compareAndSet(false, true)) {
+      if (this.scheduler != null) {
+        this.scheduler.stop();
+      }
     }
   }
 
@@ -577,6 +584,16 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getQueryId() {
     return context.getQueryId().getId();
+  }
+
+  @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
+  public Optional<String> getExecuteSQL() {
+    return Optional.ofNullable(context.getSql());
   }
 
   public String toString() {

@@ -215,7 +215,7 @@ public interface BaseConfig {
   }
 
   default String getConfigNodeConsesusProtocolClass() {
-    return "org.apache.iotdb.consensus.onecopy.OneCopyConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaRegionConsensusProtocolClass(
@@ -224,7 +224,7 @@ public interface BaseConfig {
   }
 
   default String getSchemaRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.onecopy.OneCopyConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
@@ -232,7 +232,7 @@ public interface BaseConfig {
   }
 
   default String getDataRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.onecopy.OneCopyConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
@@ -267,7 +267,7 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
     return 4000;
   }
 
@@ -341,5 +341,13 @@ public interface BaseConfig {
 
   default int getSelectIntoInsertTabletPlanRowLimit() {
     return 10000;
+  }
+
+  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    return this;
+  }
+
+  default boolean isEnableLeaderBalancing() {
+    return false;
   }
 }

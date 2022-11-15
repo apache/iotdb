@@ -194,10 +194,10 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         logger.error(String.format("Move to next pipe log %s error.", pipeData), e);
       }
     }
-    if (!inputDeque.offer(pipeData)) {
-      return false;
-    }
     synchronized (waitLock) {
+      if (!inputDeque.offer(pipeData)) {
+        return false;
+      }
       waitLock.notifyAll();
     }
 
@@ -311,7 +311,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         if (commitData == null) {
           return;
         }
-        if (PipeData.PipeDataType.TSFILE.equals(commitData.getType())) {
+        if (PipeData.PipeDataType.TSFILE.equals(commitData.getPipeDataType())) {
           List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
           for (File file : tsFiles) {
             Files.deleteIfExists(file.toPath());

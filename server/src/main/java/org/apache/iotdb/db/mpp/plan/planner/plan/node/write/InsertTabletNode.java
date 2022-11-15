@@ -40,6 +40,7 @@ import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,7 +81,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private int rowCount = 0;
 
-  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
+  // when this plan is sub-plan split from another InsertTabletNode, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
   // means that the first 3
@@ -182,7 +183,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (deviceSchemaInfo == null) {
       throw new PathNotExistException(
           Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + s)
+              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
               .collect(Collectors.toList()));
     }
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -219,7 +220,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    // only single device in single storage group
+    // only single device in single database
     List<WritePlanNode> result = new ArrayList<>();
     if (times.length == 0) {
       return Collections.emptyList();
@@ -1009,7 +1010,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int result = Objects.hash(super.hashCode(), rowCount, range);
     result = 31 * result + Arrays.hashCode(times);
     result = 31 * result + Arrays.hashCode(bitMaps);
-    result = 31 * result + Arrays.hashCode(columns);
+    result = 31 * result + Arrays.deepHashCode(columns);
     return result;
   }
 

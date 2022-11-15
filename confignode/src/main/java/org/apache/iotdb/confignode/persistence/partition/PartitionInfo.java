@@ -470,7 +470,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * update a region location
+   * Update the location info of given regionId
    *
    * @param req UpdateRegionLocationReq
    * @return TSStatus
@@ -480,18 +480,19 @@ public class PartitionInfo implements SnapshotProcessor {
     TConsensusGroupId regionId = req.getRegionId();
     TDataNodeLocation oldNode = req.getOldNode();
     TDataNodeLocation newNode = req.getNewNode();
-    storageGroupPartitionTables
-        .values()
-        .forEach(s -> s.updateRegionLocation(regionId, oldNode, newNode));
+    storageGroupPartitionTables.values().stream()
+        .filter(sgPartitionTable -> sgPartitionTable.containRegion(regionId))
+        .forEach(
+            sgPartitionTable -> sgPartitionTable.updateRegionLocation(regionId, oldNode, newNode));
 
     return status;
   }
 
   /**
-   * get storage group for region
+   * get database for region
    *
    * @param regionId regionId
-   * @return storage group name
+   * @return database name
    */
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
     Optional<StorageGroupPartitionTable> sgPartitionTableOptional =

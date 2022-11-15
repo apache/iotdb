@@ -33,23 +33,23 @@ public class EnvFactory {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
-        switch (System.getProperty("TestEnv", "Standalone")) {
-          case "Standalone":
-            env = (BaseEnv) Class.forName("org.apache.iotdb.db.it.env.StandaloneEnv").newInstance();
+        EnvType envType = EnvType.getSystemEnvType();
+        switch (envType) {
+          case Simple:
+            env = new SimpleEnv();
             break;
-          case "LocalStandaloneOnMpp":
-            env = new StandaloneOnMppEnv();
-            break;
-          case "Cluster1":
+          case Cluster1:
             env = new Cluster1Env();
             break;
-          case "Remote":
+          case Remote:
             env = new RemoteServerEnv();
             break;
           default:
-            throw new ClassNotFoundException("The Property class of TestEnv not found");
+            System.out.println("Unknown env type: " + envType);
+            System.exit(-1);
+            break;
         }
-      } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+      } catch (ClassNotFoundException e) {
         e.printStackTrace();
         System.exit(-1);
       }

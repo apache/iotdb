@@ -149,6 +149,13 @@ It costs 0.014s
 
 返回类型 `BOOLEAN`
 
+注意: 请确保集合中的值串可以被转为操作数的类型
+> 例如：
+>
+>`s1 in (1, 2, 3, 'test')`，`s1`的数据类型是`INT32`
+>
+> 我们将会抛出异常，因为`'test'`不能被转为`INT32`类型
+
 #### 字符串匹配运算符
 
 支持运算符 `LIKE`, `REGEXP`
@@ -420,7 +427,7 @@ It costs 0.005s
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|

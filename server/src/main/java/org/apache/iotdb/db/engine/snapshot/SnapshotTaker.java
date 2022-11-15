@@ -57,6 +57,14 @@ public class SnapshotTaker {
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
+    String snapshotId = snapshotDir.getName();
+    return takeFullSnapshot(snapshotDirPath, snapshotId, flushBeforeSnapshot);
+  }
+
+  public boolean takeFullSnapshot(
+      String snapshotDirPath, String snapshotId, boolean flushBeforeSnapshot)
+      throws DirectoryNotLegalException, IOException {
+    File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
         && snapshotDir.listFiles() != null
         && Objects.requireNonNull(snapshotDir.listFiles()).length > 0) {
@@ -73,7 +81,7 @@ public class SnapshotTaker {
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
       boolean success;
-      snapshotLogger.logSnapshotId(snapshotDir.getName());
+      snapshotLogger.logSnapshotId(snapshotId);
 
       try {
         readLockTheFile();
@@ -85,8 +93,8 @@ public class SnapshotTaker {
             dataRegion.writeUnlock();
           }
         }
-        success = createSnapshot(seqFiles, snapshotDir.getName());
-        success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
+        success = createSnapshot(seqFiles, snapshotId);
+        success = createSnapshot(unseqFiles, snapshotId) && success;
       } finally {
         readUnlockTheFile();
       }
@@ -96,14 +104,14 @@ public class SnapshotTaker {
             "Failed to take snapshot for {}-{}, clean up",
             dataRegion.getStorageGroupName(),
             dataRegion.getDataRegionId());
-        cleanUpWhenFail(snapshotDir.getName());
+        cleanUpWhenFail(snapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
             dataRegion.getStorageGroupName(),
             dataRegion.getDataRegionId(),
-            snapshotDirPath);
+            snapshotDir.getParentFile().getAbsolutePath() + File.separator + snapshotId);
       }
 
       return success;

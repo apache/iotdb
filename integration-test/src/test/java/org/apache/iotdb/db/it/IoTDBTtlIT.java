@@ -66,7 +66,7 @@ public class IoTDBTtlIT {
         assertEquals(322, e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
+      statement.execute("CREATE DATABASE root.TTL_SG1");
       statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
@@ -75,7 +75,7 @@ public class IoTDBTtlIT {
         fail(e.getMessage());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG2");
+      statement.execute("CREATE DATABASE root.TTL_SG2");
       statement.execute("CREATE TIMESERIES root.TTL_SG2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
@@ -162,8 +162,8 @@ public class IoTDBTtlIT {
         }
         assertTrue(cnt >= 200);
       }
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG3");
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG4");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG3");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG4");
       // SG3
       for (int i = 0; i < 100; i++) {
         statement.execute(

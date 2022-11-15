@@ -115,8 +115,7 @@ public class TsFileResource {
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
-   * 0.12/v3
+   * load upgraded TsFile Resources to database processor used for upgrading v0.11.x/v2 -> 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
@@ -645,7 +644,10 @@ public class TsFileResource {
       return isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
-    if (!mayContainsDevice(deviceId)) {
+    long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
+
+    // doesn't contain this device
+    if (startAndEndTime == null) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -653,8 +655,8 @@ public class TsFileResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    long startTime = startAndEndTime[0];
+    long endTime = isClosed() || !isSeq ? startAndEndTime[1] : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -1070,6 +1072,12 @@ public class TsFileResource {
           ResourceByPathUtils.getResourceInstance(path)
               .generateTimeSeriesMetadata(
                   pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+    }
+  }
+
+  public void updateEndTime(Map<String, Long> times) {
+    for (Map.Entry<String, Long> entry : times.entrySet()) {
+      timeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
   }
 

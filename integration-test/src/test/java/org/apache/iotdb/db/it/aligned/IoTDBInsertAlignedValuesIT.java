@@ -51,12 +51,12 @@ public class IoTDBInsertAlignedValuesIT {
   public void setUp() throws Exception {
     autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
@@ -335,6 +335,17 @@ public class IoTDBInsertAlignedValuesIT {
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
+    }
+  }
+
+  @Test
+  public void testInsertLargeNumber() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.d1(time, s98, s99) aligned values(10, 2, 271840880000000000000000)");
+    } catch (SQLException e) {
+      fail();
     }
   }
 }

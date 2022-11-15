@@ -82,7 +82,7 @@ public class DeleteStorageGroupProcedure
           setNextState(DeleteStorageGroupState.DELETE_PRE);
           break;
         case DELETE_PRE:
-          LOG.info("Pre delete for Storage group {}", deleteSgSchema.getName());
+          LOG.info("Pre delete for database {}", deleteSgSchema.getName());
           env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.EXECUTE, deleteSgSchema.getName());
           setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
           break;
@@ -129,10 +129,10 @@ public class DeleteStorageGroupProcedure
       }
     } catch (TException | IOException e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Delete storage group failed " + state));
+        setFailure(new ProcedureException("Delete database failed " + state));
       } else {
         LOG.error(
-            "Retriable error trying to delete storage group {}, state {}",
+            "Retriable error trying to delete database {}, state {}",
             deleteSgSchema.getName(),
             state,
             e);
