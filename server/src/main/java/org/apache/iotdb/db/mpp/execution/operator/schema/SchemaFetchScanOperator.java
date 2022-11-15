@@ -24,29 +24,25 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.object.ObjectSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public class SchemaFetchScanOperator implements SourceOperator {
+public class SchemaFetchScanOperator extends ObjectSourceOperator<SchemaFetchObjectEntry>
+    implements SourceOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);
 
@@ -67,6 +63,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
       boolean withTags) {
+    super(planNodeId, context);
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
@@ -81,22 +78,29 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
+  public ListenableFuture<?> isBlocked() {
+    return NOT_BLOCKED;
+  }
+
+  @Override
+  protected boolean hasNextBatch() {
+    return !isFinished;
+  }
+
+  @Override
+  protected List<SchemaFetchObjectEntry> nextBatch() {
     isFinished = true;
     try {
-      return fetchSchema();
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+      for (PartialPath path : partialPathList) {
+        schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap, withTags));
+      }
+      return Collections.singletonList(new SchemaFetchObjectEntry(schemaTree));
     } catch (MetadataException e) {
       logger.error("Error occurred during execute SchemaFetchOperator {}", sourceId, e);
       throw new RuntimeException(e);
     }
-  }
-
-  @Override
-  public boolean hasNext() {
-    return !isFinished;
   }
 
   @Override
@@ -107,28 +111,6 @@ public class SchemaFetchScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
-  }
-
-  private TsBlock fetchSchema() throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
-    for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap, withTags));
-    }
-
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      // to indicate this binary data is database info
-      ReadWriteIOUtils.write((byte) 1, outputStream);
-
-      schemaTree.serialize(outputStream);
-    } catch (IOException e) {
-      // Totally memory operation. This case won't happen.
-    }
-    return new TsBlock(
-        new TimeColumn(1, new long[] {0}),
-        new BinaryColumn(
-            1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
   }
 
   @Override

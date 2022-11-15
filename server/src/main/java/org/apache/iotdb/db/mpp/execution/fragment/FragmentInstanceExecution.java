@@ -125,6 +125,10 @@ public class FragmentInstanceExecution {
             // close the driver after sinkHandle is aborted or closed because in driver.close() it
             // will try to call ISinkHandle.setNoMoreTsBlocks()
             driver.close();
+
+            // release object generated during object query
+            context.releaseQueryObjectPool();
+
             // help for gc
             driver = null;
             if (newState.isFailed()) {

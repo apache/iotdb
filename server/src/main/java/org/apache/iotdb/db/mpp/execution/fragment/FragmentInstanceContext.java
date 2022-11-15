@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -71,6 +72,8 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endNanos = new AtomicLong();
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
+
+  private MPPObjectPool.QueryObjectPool queryObjectPool;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -231,5 +234,20 @@ public class FragmentInstanceContext extends QueryContext {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public void registerQueryObjectPool() {
+    if (queryObjectPool == null) {
+      queryObjectPool =
+          MPPObjectPool.getInstance().getQueryObjectPool(getId().getQueryId().getId());
+    }
+  }
+
+  public void releaseQueryObjectPool() {
+    MPPObjectPool.getInstance().clearQueryObjectPool(getId().getQueryId().getId());
+  }
+
+  public MPPObjectPool.QueryObjectPool getQueryObjectPool() {
+    return queryObjectPool;
   }
 }

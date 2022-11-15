@@ -62,6 +62,12 @@ public class LocalExecutionPlanContext {
 
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
+  private boolean isSinkOnSameNode;
+
+  private boolean isSourceOnSameNode;
+
+  private boolean needObjectBinary;
+
   public LocalExecutionPlanContext(
       TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
     this.typeProvider = typeProvider;
@@ -157,5 +163,29 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public boolean isSinkOnSameNode() {
+    return isSinkOnSameNode;
+  }
+
+  public void setSinkOnSameNode(boolean sinkOnSameNode) {
+    isSinkOnSameNode = sinkOnSameNode;
+  }
+
+  public boolean isSourceOnSameNode() {
+    return isSourceOnSameNode;
+  }
+
+  public void setSourceOnSameNode(boolean sourceOnSameNode) {
+    isSourceOnSameNode = sourceOnSameNode;
+  }
+
+  public boolean isNeedObjectBinary() {
+    return needObjectBinary;
+  }
+
+  public void setNeedObjectBinary(boolean needObjectBinary) {
+    this.needObjectBinary = needObjectBinary;
   }
 }

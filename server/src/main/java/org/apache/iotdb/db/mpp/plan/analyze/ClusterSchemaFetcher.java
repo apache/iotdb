@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -30,6 +30,9 @@ import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.object.MPPObjectPool;
+import org.apache.iotdb.db.mpp.common.object.ObjectResultHandler;
+import org.apache.iotdb.db.mpp.common.object.entry.SchemaFetchObjectEntry;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
@@ -46,24 +49,17 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -76,6 +72,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+  private final ClusterPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+  private final MPPObjectPool objectPool = MPPObjectPool.getInstance();
+
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -104,10 +103,85 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
+    List<PartialPath> fullPathList = new ArrayList<>();
+    PathPatternTree filteredPatternTree = new PathPatternTree();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+      if (pattern.hasWildcard()) {
+        filteredPatternTree.appendFullPath(pattern);
+      } else {
+        if (withTags) {
+          filteredPatternTree.appendFullPath(pattern);
+        } else {
+          fullPathList.add(pattern);
+        }
+      }
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+
+    if (fullPathList.isEmpty()) {
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    }
+
+    PathPatternTree cachedFullPathPatternTree = new PathPatternTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+
+    String[] measurement = new String[1];
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree cachedSchema;
+      for (PartialPath fullPath : fullPathList) {
+        measurement[0] = fullPath.getMeasurement();
+        cachedSchema = schemaCache.get(fullPath.getDevicePath(), measurement);
+        if (cachedSchema.isEmpty()) {
+          filteredPatternTree.appendFullPath(fullPath);
+        } else {
+          cachedFullPathPatternTree.appendFullPath(fullPath);
+          schemaTree.mergeSchemaTree(cachedSchema);
+        }
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+    }
+
+    cachedFullPathPatternTree.constructTree();
+    Set<String> storageGroups = new HashSet<>();
+    if (!cachedFullPathPatternTree.isEmpty()) {
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(cachedFullPathPatternTree);
+      storageGroups.addAll(schemaPartition.getSchemaPartitionMap().keySet());
+    }
+
+    filteredPatternTree.constructTree();
+    if (filteredPatternTree.isEmpty()) {
+      schemaTree.setStorageGroups(new ArrayList<>(storageGroups));
+      return schemaTree;
+    } else {
+      ClusterSchemaTree fetchedSchemaTree =
+          executeSchemaFetchQuery(
+              new SchemaFetchStatement(filteredPatternTree, templateMap, withTags));
+      if (fetchedSchemaTree.isEmpty()) {
+        schemaTree.setStorageGroups(new ArrayList<>(storageGroups));
+        return schemaTree;
+      }
+      fetchedSchemaTree.mergeSchemaTree(schemaTree);
+      storageGroups.addAll(fetchedSchemaTree.getStorageGroups());
+      fetchedSchemaTree.setStorageGroups(new ArrayList<>(storageGroups));
+      schemaCache.takeReadLock();
+      try {
+        // only cache the schema fetched by full path
+        List<MeasurementPath> measurementPathList;
+        for (PartialPath fullPath : fullPathList) {
+          measurementPathList = fetchedSchemaTree.searchMeasurementPaths(fullPath).left;
+          if (measurementPathList.isEmpty()) {
+            continue;
+          }
+          schemaCache.put(measurementPathList.get(0));
+        }
+      } finally {
+        schemaCache.releaseReadLock();
+      }
+      return fetchedSchemaTree;
+    }
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
@@ -130,50 +204,26 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
-        List<String> storageGroupList = new ArrayList<>();
-        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-          // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock;
-          try {
-            tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-          } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
+        ObjectResultHandler<SchemaFetchObjectEntry> objectResultHandler =
+            new ObjectResultHandler<>(coordinator.getQueryExecution(queryId), objectPool);
+        try {
+          while (objectResultHandler.hasNextResult()) {
+            SchemaFetchObjectEntry objectEntry = objectResultHandler.getNextResult();
+            if (objectEntry.isReadingStorageGroupInfo()) {
+              result.setStorageGroups(objectEntry.getStorageGroupList());
+            } else {
+              result.mergeSchemaTree(objectEntry.getSchemaTree());
+            }
           }
-          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-            break;
-          }
-          Column column = tsBlock.get().getColumn(0);
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, storageGroupList);
-          }
+        } catch (IoTDBException e) {
+          throw new RuntimeException("Fetch Schema failed. ", e);
+        } finally {
+          objectResultHandler.closeAndCleanUp();
         }
-        result.setStorageGroups(storageGroupList);
         return result;
       }
     } finally {
       coordinator.cleanupQueryExecution(queryId);
-    }
-  }
-
-  private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, List<String> storageGroupList) {
-    InputStream inputStream = new ByteArrayInputStream(data.getValues());
-    try {
-      byte type = ReadWriteIOUtils.readByte(inputStream);
-      if (type == 0) {
-        int size = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < size; i++) {
-          storageGroupList.add(ReadWriteIOUtils.readString(inputStream));
-        }
-      } else if (type == 1) {
-        resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
-      } else {
-        throw new RuntimeException(
-            new MetadataException("Failed to fetch schema because of unrecognized data"));
-      }
-    } catch (IOException e) {
-      // Totally memory operation. This case won't happen.
     }
   }
 
