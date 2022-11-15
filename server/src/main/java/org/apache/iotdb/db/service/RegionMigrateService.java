@@ -367,7 +367,8 @@ public class RegionMigrateService implements IService {
       if (isSucceed(runResult)) {
         reportSucceed(tRegionId, "RemovePeer");
       } else {
-        reportFailed(tRegionId, selectedDataNode, TRegionMigrateFailedType.RemovePeerFailed, runResult);
+        reportFailed(
+            tRegionId, selectedDataNode, TRegionMigrateFailedType.RemovePeerFailed, runResult);
       }
     }
 
