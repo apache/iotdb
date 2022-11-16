@@ -1495,7 +1495,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage("stop datanode succeed");
     } catch (Exception e) {
       LOGGER.error("Stop Data Node error", e);
-      status.setCode(TSStatusCode.DATANODE_STOP_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;

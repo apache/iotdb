@@ -963,11 +963,6 @@ public class DataRegion {
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
             (DateTimeUtils.currentTime() - dataTTL));
       }
-
-      //      TODO(Trigger)// fire trigger before insertion
-      //      final int firePosition = loc;
-      //      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertTabletPlan, firePosition);
-
       // before is first start point
       int before = loc;
       // before time partition
@@ -1027,9 +1022,6 @@ public class DataRegion {
       if (!noFailure) {
         throw new BatchProcessException(results);
       }
-
-      //      TODO: trigger // fire trigger after insertion
-      //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
     }

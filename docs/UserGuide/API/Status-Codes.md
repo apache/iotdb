@@ -146,10 +146,10 @@ Here is a list of Status Code and related message:
 |903|DATABASE_ALREADY_EXISTS|Database already exist|
 |904|NO_ENOUGH_DATANODE|The number of DataNode is not enough, cannot remove DataNode or create enough replication|
 |905|ERROR_GLOBAL_CONFIG|Global config in cluster does not consistent|
-|906|ADD_CONFIGNODE_ERROR|Add ConfigNode failed|
-|907|REMOVE_CONFIGNODE_ERROR|Remove ConfigNode failed|
+|906|ADD_CONFIGNODE_ERROR|Add ConfigNode error|
+|907|REMOVE_CONFIGNODE_ERROR|Remove ConfigNode error|
 |912|DATANODE_NOT_EXIST|DataNode not exist error|
-|917|DATANODE_STOP_FAILED|DataNode stop error|
+|917|DATANODE_STOP_ERROR|DataNode stop error|
 |918|REGION_LEADER_CHANGE_ERROR|Region leader migration failed|
 |919|REMOVE_DATANODE_ERROR|Remove datanode failed|
 |920|OVERLAP_WITH_EXISTING_TASK|Current task has some conflict with existing tasks|
