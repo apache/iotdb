@@ -92,6 +92,21 @@ public class IoTDBSyncClient implements ISyncClient {
   }
 
   /**
+   * @param pipe sync task
+   * @param remoteAddress remote ip address
+   * @param port remote port
+   * @param localAddress local ip address
+   */
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
+    RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
+    this.pipe = pipe;
+    this.ipAddress = remoteAddress;
+    this.port = port;
+    this.localIP = localAddress;
+    this.storageGroupName = "heartbeat";
+  }
+
+  /**
    * Create thrift connection to receiver. Check IoTDB version to make sure compatibility
    *
    * @return true if success; false if failed to check IoTDB version.

@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -65,6 +64,8 @@ public class SenderManager {
   protected ExecutorService transportExecutorService;
   protected ScheduledExecutorService heartbeatExecutorService;
 
+  protected int connectErrorTime = 0;
+
   private boolean isRunning;
 
   public SenderManager(Pipe pipe, PipeSink pipeSink) {
@@ -90,9 +91,8 @@ public class SenderManager {
           transportExecutorService.submit(
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
-    heartbeatExecutorService.scheduleWithFixedDelay(
-
-    )
+    heartbeatExecutorService.scheduleAtFixedRate(
+        this::heartbeat, 0, SyncConstant.RETRY_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
     isRunning = true;
   }
 
@@ -122,6 +122,26 @@ public class SenderManager {
       throw new PipeException(
           String.format(
               "Interrupted when waiting for clear SenderManager of Pipe %s.", pipe.getName()));
+    }
+  }
+
+  private void heartbeat() {
+    ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
+    try {
+      client.handshake();
+      connectErrorTime = 0;
+      for (int i = 0; i < blockedClientNum.get(); i++) {
+        blockedClientNum.decrementAndGet();
+        blockingQueue.offer((byte) 0);
+      }
+    } catch (SyncConnectionException e) {
+      connectErrorTime++;
+      logger.warn(
+          "Connection error because {}, lost contact with the receiver for {} ms.",
+          e.getMessage(),
+          connectErrorTime * SyncConstant.RETRY_INTERVAL_MILLISECONDS);
+    } finally {
+      client.close();
     }
   }
 

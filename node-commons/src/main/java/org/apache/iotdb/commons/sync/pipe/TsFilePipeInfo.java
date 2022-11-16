@@ -84,7 +84,7 @@ public class TsFilePipeInfo extends PipeInfo {
     return new TShowPipeInfo(
         createTime,
         pipeName,
-            SyncConstant.ROLE_SENDER,
+        SyncConstant.ROLE_SENDER,
         pipeSinkName,
         status.name(),
         String.format("syncDelOp=%s,dataStartTimestamp=%s", syncDelOp, dataStartTimestamp),
