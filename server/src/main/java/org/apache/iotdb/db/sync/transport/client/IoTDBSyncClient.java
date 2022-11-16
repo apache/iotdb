@@ -75,6 +75,8 @@ public class IoTDBSyncClient implements ISyncClient {
   private final Pipe pipe;
 
   /**
+   * Create IoTDBSyncClient only for data transfer
+   *
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
@@ -92,6 +94,8 @@ public class IoTDBSyncClient implements ISyncClient {
   }
 
   /**
+   * Create IoTDBSyncClient only for heartbeat
+   *
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port

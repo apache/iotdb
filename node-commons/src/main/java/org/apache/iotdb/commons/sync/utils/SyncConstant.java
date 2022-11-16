@@ -57,15 +57,12 @@ public class SyncConstant {
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
   public static final int DEFAULT_PIPE_SINK_PORT = 6667;
 
-  public static final Long HEARTBEAT_DELAY_SECONDS = 30L;
   public static final int CONNECT_TIMEOUT_MILLISECONDS = 1_000;
   public static final int SOCKET_TIMEOUT_MILLISECONDS = 100_000;
 
   public static final Long DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS = 500L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER = 10L;
   public static final Long DEFAULT_WAITING_FOR_STOP_MILLISECONDS = 1000L;
-
-  public static final int MESSAGE_NUMBER_LIMIT = 1; // do not support multi lines now
 
   /** transport */
 
@@ -76,7 +73,7 @@ public class SyncConstant {
   public static final String PATCH_SUFFIX = ".patch";
   public static final String IPV4_PATTERN =
       "^([1-9]|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}$";
-  public static final int RETRY_INTERVAL_MILLISECONDS = 5_000;
+  public static final int HEARTBEAT_INTERVAL_SECONDS = 5;
 
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";

@@ -21,14 +21,12 @@ package org.apache.iotdb.commons.sync.pipesink;
 
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 
 public interface PipeSink {

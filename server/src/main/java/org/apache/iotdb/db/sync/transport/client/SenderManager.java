@@ -41,6 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,10 +56,11 @@ public class SenderManager {
   private final Map<String, ISyncClient> clientMap;
   // <DataRegionId, ISyncClient>
   private final Map<String, Future> transportFutureMap;
+  private ScheduledFuture heartbeatFuture;
   private final Pipe pipe;
   private final PipeSink pipeSink;
   private final BlockingQueue<Byte> blockingQueue = new LinkedBlockingQueue<>();
-  private final AtomicInteger blockedClientNum = new AtomicInteger();
+  private AtomicInteger blockedClientNum = new AtomicInteger(0);
 
   // Thread pool that send PipeData in parallel by DataRegion
   protected ExecutorService transportExecutorService;
@@ -83,6 +85,8 @@ public class SenderManager {
   }
 
   public void start() {
+    blockingQueue.clear();
+    blockedClientNum = new AtomicInteger(0);
     for (Map.Entry<String, ISyncClient> entry : clientMap.entrySet()) {
       String dataRegionId = entry.getKey();
       ISyncClient syncClient = entry.getValue();
@@ -91,12 +95,16 @@ public class SenderManager {
           transportExecutorService.submit(
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
-    heartbeatExecutorService.scheduleAtFixedRate(
-        this::heartbeat, 0, SyncConstant.RETRY_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
+    heartbeatFuture =
+        heartbeatExecutorService.scheduleAtFixedRate(
+            this::heartbeat, 0, SyncConstant.HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
     isRunning = true;
   }
 
   public void stop() {
+    if (heartbeatFuture != null) {
+      heartbeatFuture.cancel(true);
+    }
     for (Future future : transportFutureMap.values()) {
       future.cancel(true);
     }
@@ -109,6 +117,10 @@ public class SenderManager {
       transportExecutorService.shutdownNow();
       isClosed =
           transportExecutorService.awaitTermination(
+              SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
+      heartbeatExecutorService.shutdownNow();
+      isClosed &=
+          heartbeatExecutorService.awaitTermination(
               SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
       if (!isClosed) {
         throw new PipeException(
@@ -129,17 +141,21 @@ public class SenderManager {
     ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
     try {
       client.handshake();
-      connectErrorTime = 0;
+      if (connectErrorTime > 0) {
+        logger.info("Reconnect to {} successfully.", pipeSink);
+      }
       for (int i = 0; i < blockedClientNum.get(); i++) {
         blockedClientNum.decrementAndGet();
         blockingQueue.offer((byte) 0);
       }
+      connectErrorTime = 0;
     } catch (SyncConnectionException e) {
       connectErrorTime++;
       logger.warn(
-          "Connection error because {}, lost contact with the receiver for {} ms.",
+          "Connection error because {}, lost contact with the receiver {} for {} seconds.",
           e.getMessage(),
-          connectErrorTime * SyncConstant.RETRY_INTERVAL_MILLISECONDS);
+          pipeSink,
+          connectErrorTime * SyncConstant.HEARTBEAT_INTERVAL_SECONDS);
     } finally {
       client.close();
     }
