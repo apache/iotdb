@@ -74,6 +74,8 @@ public class SyncConstant {
       Math.min(16 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
   public static final String PATCH_SUFFIX = ".patch";
+  public static final String IPV4_PATTERN =
+      "^([1-9]|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}$";
 
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";

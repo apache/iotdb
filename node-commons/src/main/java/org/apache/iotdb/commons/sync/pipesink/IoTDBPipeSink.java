@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class IoTDBPipeSink implements PipeSink {
   private final PipeSinkType pipeSinkType = PipeSinkType.IoTDB;
@@ -84,6 +85,10 @@ public class IoTDBPipeSink implements PipeSink {
 
       attr = attr.toLowerCase();
       if (attr.equals(ATTRIBUTE_IP_KEY)) {
+        if (!Pattern.matches(SyncConstant.IPV4_PATTERN, value)) {
+          throw new PipeSinkException(
+              String.format("%s is nonstandard IP address, only support IPv4 now.", value));
+        }
         ip = value;
       } else if (attr.equals(ATTRIBUTE_PORT_KEY)) {
         try {
