@@ -79,13 +79,13 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 #### 1.3.3.1. Interface
 
 | Metric                | Tag                      | level     | 说明                | 示例                                         |
-| --------------------- | ------------------------ | --------- | ------------------- | -------------------------------------------- |
+| --------------------- | ------------------------ |-----------| ------------------- | -------------------------------------------- |
 | entry_seconds_count   | name="{{interface}}"     | important | 接口累计访问次数    | entry_seconds_count{name="openSession",} 1.0 |
 | entry_seconds_sum     | name="{{interface}}"     | important | 接口累计耗时(s)     | entry_seconds_sum{name="openSession",} 0.024 |
 | entry_seconds_max     | name="{{interface}}"     | important | 接口最大耗时(s)     | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total        | name="pointsIn"          | important | 系统累计写入点数    | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections    | name="{{thriftService}}" | core      | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
-| thrift_active_threads | name="{{thriftThread}}"  | core      | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
+| thrift_connections    | name="{{thriftService}}" | important | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | important | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 1.3.3.2. Task
 
@@ -136,18 +136,18 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | database 的 schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ##### 1.3.3.6.2. 弱一致性
-| Metric       | Tag                                                                                          | level     | 说明                                                 | 示例                                                                                                             |
-| ------------ | -------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core      | 弱一致性对应region的写入index和同步index             | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
+| Metric       | Tag                                                                                          | level    | 说明                                                 | 示例                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core     | 弱一致性对应region的写入index和同步index             | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | important | 弱一致性对应region的同步线程当前的同步index          | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[7]",type="currentSyncIndex",} 1945.0        |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | important | 弱一致性对应region的同步线程缓存的队列总大小         | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[9]",type="cachedRequestInMemoryQueue",} 0.0 |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | core      | 弱一致性对应region获取状态机锁的耗时                 | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | core      | 弱一致性对应region状态机完成写前检查的耗时           | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | core      | 弱一致性对应region状态机写入请求的耗时               | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | core      | 弱一致性对应region状态机尝试将请求放入同步队列的耗时 | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | core      | 弱一致性对应region状态机处理共识层请求的耗时         | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | core      | 弱一致性对应同步线程完成一个请求构造的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | core      | 弱一致性对应同步线程完成一个请求同步的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | important | 弱一致性对应region获取状态机锁的耗时                 | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | important | 弱一致性对应region状态机完成写前检查的耗时           | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | important | 弱一致性对应region状态机写入请求的耗时               | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | important | 弱一致性对应region状态机尝试将请求放入同步队列的耗时 | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | important | 弱一致性对应region状态机处理共识层请求的耗时         | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | important | 弱一致性对应同步线程完成一个请求构造的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | important | 弱一致性对应同步线程完成一个请求同步的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
 
 
 ### 1.3.4. IoTDB 预定义指标集
