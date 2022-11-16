@@ -143,12 +143,11 @@ Here is a list of Status Code and related message:
 |800|CONFIGURATION_ERROR|Configuration error|
 |901|DATANODE_ALREADY_REGISTERED|DataNode already registered in cluster|
 |903|DATABASE_ALREADY_EXISTS|Database already exist|
-|904|NOT_ENOUGH_DATANODE|The number of DataNode is not enough|
+|904|NO_ENOUGH_DATANODE|The number of DataNode is not enough, cannot remove DataNode or create enough replication|
 |905|ERROR_GLOBAL_CONFIG|Global config in cluster does not consistent|
 |906|ADD_CONFIGNODE_ERROR|Add ConfigNode failed|
 |907|REMOVE_CONFIGNODE_ERROR|Remove ConfigNode failed|
 |912|DATANODE_NOT_EXIST|DataNode not exist error|
-|916|DATANODE_NO_LARGER_THAN_REPLICATION|DataNode no larger than replication factor, cannot remove|
 |917|DATANODE_STOP_FAILED|DataNode stop error|
 |918|REGION_LEADER_CHANGE_ERROR|Region leader migration failed|
 |919|REMOVE_DATANODE_ERROR|Remove datanode failed|

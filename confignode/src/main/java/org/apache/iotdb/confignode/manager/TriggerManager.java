@@ -101,7 +101,7 @@ public class TriggerManager {
       if (targetDataNode.isPresent()) {
         dataNodeLocation = targetDataNode.get();
       } else {
-        return new TSStatus(TSStatusCode.NOT_ENOUGH_DATANODE.getStatusCode());
+        return new TSStatus(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       }
     }
     final String triggerName = req.getTriggerName();

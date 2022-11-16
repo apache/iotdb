@@ -498,7 +498,7 @@ public class DataNodeRemoveHandler {
               dataNodeLocation);
         }
         if (removedDataNodes.size() == 0) {
-          status.setCode(TSStatusCode.DATANODE_NO_LARGER_THAN_REPLICATION.getStatusCode());
+          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
           status.setMessage("Failed to remove all requested data nodes");
           return status;
         }
@@ -507,7 +507,7 @@ public class DataNodeRemoveHandler {
 
     int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
-      status.setCode(TSStatusCode.DATANODE_NO_LARGER_THAN_REPLICATION.getStatusCode());
+      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       status.setMessage(
           String.format(
               "Can't remove datanode due to the limit of replication factor, "
