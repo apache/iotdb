@@ -195,7 +195,7 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  public void UpdateTTLInfo(byte[] allTTLInformation) {
+  public void updateTTLInfo(byte[] allTTLInformation) {
     if (allTTLInformation == null) {
       return;
     }

@@ -211,7 +211,7 @@ public class DataNode implements DataNodeMBean {
         getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
 
         // store ttl information
-        StorageEngineV2.getInstance().UpdateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
+        StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
