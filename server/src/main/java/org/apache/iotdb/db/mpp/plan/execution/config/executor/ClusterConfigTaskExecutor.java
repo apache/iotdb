@@ -297,9 +297,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createFunctionStatement.isUsingURI()) {
         String uriString = createFunctionStatement.getUriString();
+        if (uriString == null || uriString.isEmpty()) {
+          future.setException(
+              new IoTDBException(
+                  "URI is empty, please specify the URI.",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
+        }
         jarFileName = new File(createFunctionStatement.getUriString()).getName();
-        if (!new URI(uriString).getScheme().equals("file")) {
-          try {
+        try {
+          if (!new URI(uriString).getScheme().equals("file")) {
             // download executable
             ExecutableResource resource =
                 UDFExecutableManager.getInstance().request(Collections.singletonList(uriString));
@@ -312,29 +319,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             libRoot = jarFilePathUnderTempDir;
             jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
             jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
-
-          } catch (IOException | URISyntaxException e) {
-            LOGGER.warn(
-                "Failed to download executable for UDF({}) using URI: {}, the cause is: {}",
-                createFunctionStatement.getUdfName(),
-                createFunctionStatement.getUriString(),
-                e);
-            future.setException(
-                new IoTDBException(
-                    "Failed to download executable for UDF '"
-                        + createFunctionStatement.getUdfName()
-                        + "'",
-                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-            return future;
+          } else {
+            // libRoot should be the path of the specified jar
+            libRoot = new File(new URI(uriString)).getAbsolutePath();
+            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+            // ConfigNode.
+            jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+            // set md5 of the jar file
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
           }
-        } else {
-          // libRoot should be the path of the specified jar
-          libRoot = new File(new URI(uriString)).getAbsolutePath();
-          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
-          // ConfigNode.
-          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
-          // set md5 of the jar file
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
+        } catch (IOException | URISyntaxException e) {
+          LOGGER.warn(
+              "Failed to get executable for UDF({}) using URI: {}, the cause is: {}",
+              createFunctionStatement.getUdfName(),
+              createFunctionStatement.getUriString(),
+              e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to get executable for UDF '"
+                      + createFunctionStatement.getUdfName()
+                      + "', please check the URI.",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
         }
         // modify req
         tCreateFunctionReq.setJarFile(jarFile);
@@ -378,7 +384,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException | URISyntaxException e) {
+    } catch (TException | IOException e) {
       future.setException(e);
     }
     return future;
@@ -448,9 +454,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String jarMd5;
       if (createTriggerStatement.isUsingURI()) {
         String uriString = createTriggerStatement.getUriString();
+        if (uriString == null || uriString.isEmpty()) {
+          future.setException(
+              new IoTDBException(
+                  "URI is empty, please specify the URI.",
+                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
+        }
         jarFileName = new File(createTriggerStatement.getUriString()).getName();
-        if (!new URI(uriString).getScheme().equals("file")) {
-          try {
+        try {
+          if (!new URI(uriString).getScheme().equals("file")) {
             // download executable
             ExecutableResource resource =
                 TriggerExecutableManager.getInstance()
@@ -465,28 +478,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
             jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
 
-          } catch (IOException | URISyntaxException e) {
-            LOGGER.warn(
-                "Failed to download executable for Trigger({}) using URI: {}, the cause is: {}",
-                createTriggerStatement.getTriggerName(),
-                createTriggerStatement.getUriString(),
-                e);
-            future.setException(
-                new IoTDBException(
-                    "Failed to download executable for Trigger '"
-                        + createTriggerStatement.getUriString()
-                        + "'",
-                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
-            return future;
+          } else {
+            // libRoot should be the path of the specified jar
+            libRoot = new File(new URI(uriString)).getAbsolutePath();
+            // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+            // ConfigNode.
+            jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+            // set md5 of the jar file
+            jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
           }
-        } else {
-          // libRoot should be the path of the specified jar
-          libRoot = new File(new URI(uriString)).getAbsolutePath();
-          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
-          // ConfigNode.
-          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
-          // set md5 of the jar file
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
+        } catch (IOException | URISyntaxException e) {
+          LOGGER.warn(
+              "Failed to get executable for Trigger({}) using URI: {}, the cause is: {}",
+              createTriggerStatement.getTriggerName(),
+              createTriggerStatement.getUriString(),
+              e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to get executable for Trigger '"
+                      + createTriggerStatement.getUriString()
+                      + "', please check the URI.",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
         }
         // modify req
         tCreateTriggerReq.setJarFile(jarFile);
@@ -537,7 +550,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException | URISyntaxException e) {
+    } catch (TException | IOException e) {
       future.setException(e);
     }
     return future;
