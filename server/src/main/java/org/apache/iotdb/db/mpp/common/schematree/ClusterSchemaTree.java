@@ -295,8 +295,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public String getBelongedDatabase(String pathName) {
     for (String database : databases) {
-      if (PathUtils.isStartWith(pathName, storageGroup)) {
-        return storageGroup;
+      if (PathUtils.isStartWith(pathName, database)) {
+        return database;
       }
     }
     throw new RuntimeException("No matched database. Please check the path " + pathName);
@@ -312,8 +312,8 @@ public class ClusterSchemaTree implements ISchemaTree {
     return databases;
   }
 
-  public void setDatabases(Set<String> storageGroups) {
-    this.databases = storageGroups;
+  public void setDatabases(Set<String> databases) {
+    this.databases = databases;
   }
 
   @TestOnly
