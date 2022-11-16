@@ -102,12 +102,7 @@ public class IoTDBSyncClient implements ISyncClient {
    * @param localAddress local ip address
    */
   public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
-    RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
-    this.pipe = pipe;
-    this.ipAddress = remoteAddress;
-    this.port = port;
-    this.localIP = localAddress;
-    this.storageGroupName = "heartbeat";
+    this(pipe, remoteAddress, port, localAddress, "");
   }
 
   /**
