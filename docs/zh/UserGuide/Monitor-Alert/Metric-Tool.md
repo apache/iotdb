@@ -208,17 +208,17 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | logback_events_total | {level="trace/debug/info/warn/error",} | important | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
 
 #### 1.3.4.4. 进程（Process）
-| Metric                | Tag            | level | 说明                               | 示例                                            |
-| --------------------- | -------------- | ----- | ---------------------------------- | ----------------------------------------------- |
-| process_cpu_load      | name="cpu"     | core  | process当前CPU占用率（%）          | process_cpu_load{name="process",} 5.0           |
-| process_cpu_time      | name="cpu"     | core  | process累计占用CPU时间（ns)        | process_cpu_time{name="process",} 3.265625E9    |
-| process_max_mem       | name="memory"  | core  | JVM最大可用内存                    | process_max_mem{name="process",} 3.545759744E9  |
-| process_used_mem      | name="memory"  | core  | JVM当前使用内存                    | process_used_mem{name="process",} 4.6065456E7   |
-| process_total_mem     | name="memory"  | core  | JVM当前已申请内存                  | process_total_mem{name="process",} 2.39599616E8 |
-| process_free_mem      | name="memory"  | core  | JVM当前剩余可用内存                | process_free_mem{name="process",} 1.94035584E8  |
-| process_mem_ratio     | name="memory"  | core  | 进程的内存占用比例                 | process_mem_ratio{name="process",} 0.0          |
-| process_threads_count | name="process" | core  | 当前线程数                         | process_threads_count{name="process",} 11.0     |
-| process_status        | name="process" | core  | 进程存活状态，1.0为存活，0.0为终止 | process_status{name="process",} 1.0             |
+| Metric                | Tag            | level     | 说明                               | 示例                                            |
+| --------------------- | -------------- |-----------| ---------------------------------- | ----------------------------------------------- |
+| process_cpu_load      | name="cpu"     | core      | process当前CPU占用率（%）          | process_cpu_load{name="process",} 5.0           |
+| process_cpu_time      | name="cpu"     | core      | process累计占用CPU时间（ns)        | process_cpu_time{name="process",} 3.265625E9    |
+| process_max_mem       | name="memory"  | core      | JVM最大可用内存                    | process_max_mem{name="process",} 3.545759744E9  |
+| process_used_mem      | name="memory"  | important | JVM当前使用内存                    | process_used_mem{name="process",} 4.6065456E7   |
+| process_total_mem     | name="memory"  | core      | JVM当前已申请内存                  | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem      | name="memory"  | core      | JVM当前剩余可用内存                | process_free_mem{name="process",} 1.94035584E8  |
+| process_mem_ratio     | name="memory"  | important | 进程的内存占用比例                 | process_mem_ratio{name="process",} 0.0          |
+| process_threads_count | name="process" | important | 当前线程数                         | process_threads_count{name="process",} 11.0     |
+| process_status        | name="process" | important | 进程存活状态，1.0为存活，0.0为终止 | process_status{name="process",} 1.0             |
 
 #### 1.3.4.5. 系统（System）
 | Metric                         | Tag           | level     | 说明                                       | 示例                                                           |

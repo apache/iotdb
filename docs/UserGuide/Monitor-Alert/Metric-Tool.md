@@ -209,17 +209,17 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | logback_events_total | {level="trace/debug/info/warn/error",} | Important | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
 #### 1.3.4.4. Process
-| Metric                | Tag            | level | Description                                                                   | 示例                                            |
-| --------------------- | -------------- | ----- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
-| process_cpu_load      | name="cpu"     | core  | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
-| process_cpu_time      | name="cpu"     | core  | total Process CPU Time Occupied (ns)                                          | process_cpu_time{name="process",} 3.265625E9    |
-| process_max_mem       | name="memory"  | core  | The maximum available memory for the JVM                                      | process_max_mem{name="process",} 3.545759744E9  |
-| process_used_mem      | name="memory"  | core  | The current available memory for the JVM                                      | process_used_mem{name="process",} 4.6065456E7   |
-| process_total_mem     | name="memory"  | core  | The current requested memory for the JVM                                      | process_total_mem{name="process",} 2.39599616E8 |
-| process_free_mem      | name="memory"  | core  | The free available memory for the JVM                                         | process_free_mem{name="process",} 1.94035584E8  |
-| process_mem_ratio     | name="memory"  | core  | Memory footprint ratio of process                                             | process_mem_ratio{name="process",} 0.0          |
-| process_threads_count | name="process" | core  | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
-| process_status        | name="process" | core  | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
+| Metric                | Tag            | level     | Description                                                                   | 示例                                            |
+| --------------------- | -------------- |-----------| ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| process_cpu_load      | name="cpu"     | core      | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
+| process_cpu_time      | name="cpu"     | core      | total Process CPU Time Occupied (ns)                                          | process_cpu_time{name="process",} 3.265625E9    |
+| process_max_mem       | name="memory"  | core      | The maximum available memory for the JVM                                      | process_max_mem{name="process",} 3.545759744E9  |
+| process_used_mem      | name="memory"  | important | The current available memory for the JVM                                      | process_used_mem{name="process",} 4.6065456E7   |
+| process_total_mem     | name="memory"  | core      | The current requested memory for the JVM                                      | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem      | name="memory"  | core      | The free available memory for the JVM                                         | process_free_mem{name="process",} 1.94035584E8  |
+| process_mem_ratio     | name="memory"  | important | Memory footprint ratio of process                                             | process_mem_ratio{name="process",} 0.0          |
+| process_threads_count | name="process" | important | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
+| process_status        | name="process" | important | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
 
 #### 1.3.4.5. System
 | Metric                         | Tag           | level     | Description                                                 | 示例                                                           |
