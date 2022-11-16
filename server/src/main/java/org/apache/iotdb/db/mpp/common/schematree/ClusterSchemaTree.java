@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -50,7 +51,7 @@ import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_M
 
 public class ClusterSchemaTree implements ISchemaTree {
 
-  private List<String> storageGroups;
+  private Set<String> databases;
 
   private final SchemaNode root;
 
@@ -292,8 +293,8 @@ public class ClusterSchemaTree implements ISchemaTree {
    * @return database in the given path
    */
   @Override
-  public String getBelongedStorageGroup(String pathName) {
-    for (String storageGroup : storageGroups) {
+  public String getBelongedDatabase(String pathName) {
+    for (String storageGroup : databases) {
       if (PathUtils.isStartWith(pathName, storageGroup)) {
         return storageGroup;
       }
@@ -302,17 +303,17 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public String getBelongedStorageGroup(PartialPath path) {
-    return getBelongedStorageGroup(path.getFullPath());
+  public String getBelongedDatabase(PartialPath path) {
+    return getBelongedDatabase(path.getFullPath());
   }
 
   @Override
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public Set<String> getDatabases() {
+    return databases;
   }
 
-  public void setStorageGroups(List<String> storageGroups) {
-    this.storageGroups = storageGroups;
+  public void setDatabases(Set<String> storageGroups) {
+    this.databases = storageGroups;
   }
 
   @TestOnly

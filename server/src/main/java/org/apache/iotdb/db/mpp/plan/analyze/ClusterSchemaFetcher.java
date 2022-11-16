@@ -142,11 +142,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             break;
           } else {
             schemaTree.mergeSchemaTree(cachedSchema);
-            storageGroupSet.addAll(cachedSchema.getStorageGroups());
+            storageGroupSet.addAll(cachedSchema.getDatabases());
           }
         }
         if (isAllCached) {
-          schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
+          schemaTree.setDatabases(storageGroupSet);
           return schemaTree;
         }
       }
@@ -162,8 +162,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           continue;
         }
         schemaCache.put(
-            schemaTree.getBelongedStorageGroup(measurementPathList.get(0)),
-            measurementPathList.get(0));
+            schemaTree.getBelongedDatabase(measurementPathList.get(0)), measurementPathList.get(0));
       }
       return schemaTree;
     } finally {
@@ -191,7 +190,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
-        List<String> storageGroupList = new ArrayList<>();
+        Set<String> databaseSet = new HashSet<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
           // So we don't need to clean up it manually
@@ -206,10 +205,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, storageGroupList);
+            parseFetchedData(column.getBinary(i), result, databaseSet);
           }
         }
-        result.setStorageGroups(storageGroupList);
+        result.setDatabases(databaseSet);
         return result;
       }
     } finally {
@@ -218,14 +217,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, List<String> storageGroupList) {
+      Binary data, ClusterSchemaTree resultSchemaTree, Set<String> databaseSet) {
     InputStream inputStream = new ByteArrayInputStream(data.getValues());
     try {
       byte type = ReadWriteIOUtils.readByte(inputStream);
       if (type == 0) {
         int size = ReadWriteIOUtils.readInt(inputStream);
         for (int i = 0; i < size; i++) {
-          storageGroupList.add(ReadWriteIOUtils.readString(inputStream));
+          databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
       } else if (type == 1) {
         resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));

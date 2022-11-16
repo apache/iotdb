@@ -34,9 +34,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -103,7 +103,7 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    List<String> storageGroupList = new ArrayList<>();
+    Set<String> storageGroupSet = new HashSet<>();
     SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
       PartialPath path = devicePath.concatNode(measurement);
@@ -115,10 +115,10 @@ public class DataNodeSchemaCache {
             schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
-        storageGroupList.add(schemaCacheEntry.getStorageGroup());
+        storageGroupSet.add(schemaCacheEntry.getStorageGroup());
       }
     }
-    schemaTree.setStorageGroups(storageGroupList);
+    schemaTree.setDatabases(storageGroupSet);
     return schemaTree;
   }
 
@@ -132,15 +132,14 @@ public class DataNodeSchemaCache {
           schemaCacheEntry.getTagMap(),
           null,
           schemaCacheEntry.isAligned());
-      schemaTree.setStorageGroups(Collections.singletonList(schemaCacheEntry.getStorageGroup()));
+      schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
     }
     return schemaTree;
   }
 
   public void put(ISchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      putSingleMeasurementPath(
-          schemaTree.getBelongedStorageGroup(measurementPath), measurementPath);
+      putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
     }
   }
 

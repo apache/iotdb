@@ -212,7 +212,7 @@ public class DataNodeSchemaCacheTest {
         null,
         null,
         false);
-    schemaTree.setStorageGroups(Collections.singletonList("root.sg1"));
+    schemaTree.setDatabases(Collections.singleton("root.sg1"));
     return schemaTree;
   }
 
@@ -237,7 +237,7 @@ public class DataNodeSchemaCacheTest {
         null,
         null,
         false);
-    schemaTree.setStorageGroups(Collections.singletonList("root.sg1"));
+    schemaTree.setDatabases(Collections.singleton("root.sg1"));
     return schemaTree;
   }
 }
