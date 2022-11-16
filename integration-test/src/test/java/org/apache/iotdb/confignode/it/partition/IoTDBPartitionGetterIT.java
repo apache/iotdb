@@ -20,13 +20,10 @@ package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -37,15 +34,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -107,8 +100,7 @@ public class IoTDBPartitionGetterIT {
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
+    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
     ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
     originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
@@ -359,9 +351,6 @@ public class IoTDBPartitionGetterIT {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    final int seriesPartitionBatchSize = 100;
-    final int timePartitionBatchSize = 10;
-
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -457,15 +446,14 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(102, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(
-          seriesPartitionBatchSize + 2, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
@@ -479,7 +467,7 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionBatchSize, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
     }
   }
 
@@ -499,9 +487,9 @@ public class IoTDBPartitionGetterIT {
       nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
-      Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
+      Assert.assertEquals(5, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
-      Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
+      Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());
     }
   }
 }
