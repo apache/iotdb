@@ -222,6 +222,12 @@ public class ConfigNodeDescriptor {
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
 
+    conf.setEnableDataPartitionInheritPolicy(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_data_partition_inherit_policy",
+                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
+
     conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
             properties

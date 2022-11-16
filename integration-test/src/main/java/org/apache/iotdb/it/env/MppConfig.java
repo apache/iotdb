@@ -243,6 +243,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    confignodeProperties.setProperty(
+        "enable_data_partition_inherit_policy", String.valueOf(enableDataPartitionInheritPolicy));
+    return this;
+  }
+
+  @Override
   public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     confignodeProperties.setProperty(
         "data_replication_factor", String.valueOf(dataReplicationFactor));

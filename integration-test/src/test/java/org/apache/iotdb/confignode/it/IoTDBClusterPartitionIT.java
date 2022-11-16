@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -54,9 +55,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -66,7 +67,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -93,10 +93,12 @@ public class IoTDBClusterPartitionIT {
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
   private static final int seriesPartitionSlotsNum = 10000;
+  private static final int seriesPartitionBatchSize = 100;
   private static final int timePartitionSlotsNum = 10;
+  private static final int timePartitionBatchSize = 10;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
     originalSchemaRegionConsensusProtocolClass =
@@ -117,10 +119,101 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
 
     EnvFactory.getEnv().initBeforeClass();
+    prepareData();
   }
 
-  @After
-  public void tearDown() {
+  private static void prepareData()
+      throws IOException, InterruptedException, TException, IllegalPathException {
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      /* Set StorageGroups */
+      for (int i = 0; i < storageGroupNum; i++) {
+        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+        TSStatus status = client.setStorageGroup(setReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+
+      /* Create SchemaPartitions */
+      final String sg = "root.sg";
+      final String sg0 = "root.sg0";
+      final String sg1 = "root.sg1";
+
+      final String d00 = sg0 + ".d0.s";
+      final String d01 = sg0 + ".d1.s";
+      final String d10 = sg1 + ".d0.s";
+      final String d11 = sg1 + ".d1.s";
+
+      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
+      TSchemaPartitionTableResp schemaPartitionTableResp;
+      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable;
+
+      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      schemaPartitionReq.setPathPatternTree(buffer);
+      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          schemaPartitionTableResp.getStatus().getCode());
+      Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
+      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
+      for (int i = 0; i < 2; i++) {
+        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
+        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
+      }
+
+      /* Create DataPartitions */
+      for (int i = 0; i < storageGroupNum; i++) {
+        String storageGroup = sg + i;
+        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+            Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+                ConfigNodeTestUtils.constructPartitionSlotsMap(
+                    storageGroup,
+                    j,
+                    j + seriesPartitionBatchSize,
+                    k,
+                    k + timePartitionBatchSize,
+                    testTimePartitionInterval);
+
+            // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
+            TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+            TDataPartitionTableResp dataPartitionTableResp = null;
+            for (int retry = 0; retry < 5; retry++) {
+              // Build new Client since it's unstable
+              try (SyncConfigNodeIServiceClient configNodeClient =
+                  (SyncConfigNodeIServiceClient)
+                      EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+                dataPartitionTableResp =
+                    configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+                if (dataPartitionTableResp != null) {
+                  break;
+                }
+              } catch (Exception e) {
+                // Retry sometimes in order to avoid request timeout
+                LOGGER.error(e.getMessage());
+                TimeUnit.SECONDS.sleep(1);
+              }
+            }
+            Assert.assertNotNull(dataPartitionTableResp);
+            Assert.assertEquals(
+                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                dataPartitionTableResp.getStatus().getCode());
+            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+            ConfigNodeTestUtils.checkDataPartitionTable(
+                storageGroup,
+                j,
+                j + seriesPartitionBatchSize,
+                k,
+                k + timePartitionBatchSize,
+                testTimePartitionInterval,
+                dataPartitionTableResp.getDataPartitionTable());
+          }
+        }
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
 
     ConfigFactory.getConfig()
@@ -137,57 +230,34 @@ public class IoTDBClusterPartitionIT {
   }
 
   @Test
-  public void testGetAndCreateSchemaPartition()
+  public void testGetSchemaPartition()
       throws TException, IOException, IllegalPathException, InterruptedException {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
     final String d11 = sg1 + ".d1.s";
 
     final String allPaths = "root.**";
     final String allSg0 = "root.sg0.**";
-    final String allSg1 = "root.sg1.**";
+
+    final String notExistsSg = "root.sg10.**";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSStatus status;
       ByteBuffer buffer;
       TSchemaPartitionReq schemaPartitionReq;
       TSchemaPartitionTableResp schemaPartitionTableResp;
       Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable;
 
-      // Set StorageGroups
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
       // Test getSchemaPartition, the result should be empty
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
+      buffer = generatePatternTreeBuffer(new String[] {notExistsSg});
       schemaPartitionReq = new TSchemaPartitionReq(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(0, schemaPartitionTableResp.getSchemaPartitionTableSize());
-
-      // Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartitions and return
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
-      schemaPartitionReq.setPathPatternTree(buffer);
-      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
-      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
-      }
 
       // Test getSchemaPartition, when a device path doesn't match any StorageGroup and including
       // "**", ConfigNode will return all the SchemaPartitions
@@ -223,86 +293,20 @@ public class IoTDBClusterPartitionIT {
     }
   }
 
-  private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      constructPartitionSlotsMap(
-          String storageGroup,
-          int seriesSlotStart,
-          int seriesSlotEnd,
-          long timeSlotStart,
-          long timeSlotEnd) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result = new HashMap<>();
-    result.put(storageGroup, new HashMap<>());
-
-    for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
-      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
-      result.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-      for (long j = timeSlotStart; j < timeSlotEnd; j++) {
-        TTimePartitionSlot timePartitionSlot =
-            new TTimePartitionSlot(j * testTimePartitionInterval);
-        result.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
-      }
-    }
-
-    return result;
-  }
-
-  private void checkDataPartitionMap(
-      String storageGroup,
-      int seriesSlotStart,
-      int seriesSlotEnd,
-      long timeSlotStart,
-      long timeSlotEnd,
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-          dataPartitionTable) {
-
-    Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-        seriesPartitionTable = dataPartitionTable.get(storageGroup);
-    Assert.assertEquals(seriesSlotEnd - seriesSlotStart, seriesPartitionTable.size());
-
-    for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
-      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
-      Assert.assertTrue(seriesPartitionTable.containsKey(seriesPartitionSlot));
-      Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionTable =
-          seriesPartitionTable.get(seriesPartitionSlot);
-      Assert.assertEquals(timeSlotEnd - timeSlotStart, timePartitionTable.size());
-
-      for (long j = timeSlotStart; j < timeSlotEnd; j++) {
-        TTimePartitionSlot timePartitionSlot =
-            new TTimePartitionSlot(j * testTimePartitionInterval);
-        Assert.assertTrue(timePartitionTable.containsKey(timePartitionSlot));
-        if (j > timeSlotStart) {
-          // Check consistency
-          Assert.assertEquals(
-              timePartitionTable.get(
-                  new TTimePartitionSlot(timeSlotStart * testTimePartitionInterval)),
-              timePartitionTable.get(timePartitionSlot));
-        }
-      }
-    }
-  }
-
   @Test
-  public void testGetAndCreateDataPartition() throws TException, IOException, InterruptedException {
+  public void testGetDataPartition() throws TException, IOException, InterruptedException {
     final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSStatus status;
       TDataPartitionReq dataPartitionReq;
       TDataPartitionTableResp dataPartitionTableResp;
 
       // Prepare partitionSlotsMap
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-          constructPartitionSlotsMap(sg + 0, 0, 10, 0, 10);
-
-      // Set StorageGroups
-      for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      }
+          ConfigNodeTestUtils.constructPartitionSlotsMap(
+              sg + 10, 0, 10, 0, 10, testTimePartitionInterval);
 
       // Test getDataPartitionTable, the result should be empty
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
@@ -318,39 +322,13 @@ public class IoTDBClusterPartitionIT {
         for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
-                constructPartitionSlotsMap(
-                    storageGroup, j, j + seriesPartitionBatchSize, k, k + timePartitionBatchSize);
-
-            // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
-            dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-            for (int retry = 0; retry < 5; retry++) {
-              // Build new Client since it's unstable
-              try (SyncConfigNodeIServiceClient configNodeClient =
-                  (SyncConfigNodeIServiceClient)
-                      EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-                dataPartitionTableResp =
-                    configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-                if (dataPartitionTableResp != null) {
-                  break;
-                }
-              } catch (Exception e) {
-                // Retry sometimes in order to avoid request timeout
-                LOGGER.error(e.getMessage());
-                TimeUnit.SECONDS.sleep(1);
-              }
-            }
-            Assert.assertNotNull(dataPartitionTableResp);
-            Assert.assertEquals(
-                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-                dataPartitionTableResp.getStatus().getCode());
-            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-            checkDataPartitionMap(
-                storageGroup,
-                j,
-                j + seriesPartitionBatchSize,
-                k,
-                k + timePartitionBatchSize,
-                dataPartitionTableResp.getDataPartitionTable());
+                ConfigNodeTestUtils.constructPartitionSlotsMap(
+                    storageGroup,
+                    j,
+                    j + seriesPartitionBatchSize,
+                    k,
+                    k + timePartitionBatchSize,
+                    testTimePartitionInterval);
 
             // Test getDataPartition, the result should only contain DataPartition created before
             dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
@@ -359,32 +337,21 @@ public class IoTDBClusterPartitionIT {
                 TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-            checkDataPartitionMap(
+            ConfigNodeTestUtils.checkDataPartitionTable(
                 storageGroup,
                 j,
                 j + seriesPartitionBatchSize,
                 k,
                 k + timePartitionBatchSize,
+                testTimePartitionInterval,
                 dataPartitionTableResp.getDataPartitionTable());
           }
         }
       }
-
-      // Test DataPartition inherit policy
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                // Normally, all Timeslots belonging to the same SeriesSlot are allocated to the
-                // same DataRegionGroup
-                Assert.assertEquals(
-                    regionInfo.getSeriesSlots() * timePartitionSlotsNum, regionInfo.getTimeSlots());
-              });
     }
   }
 
-  // TODO: Optimize in IOTDB-4334
+  // TODO: Optimize this in IOTDB-4334
   @Test
   public void testPartitionDurable() throws IOException, TException, InterruptedException {
     final int testDataNodeId = 0;
@@ -399,18 +366,15 @@ public class IoTDBClusterPartitionIT {
       final String sg0 = sg + 0;
       final String sg1 = sg + 1;
 
-      // Set StorageGroup, the result should be success
-      TSetStorageGroupReq setStorageGroupReq =
-          new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-      TSStatus status = client.setStorageGroup(setStorageGroupReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
-      status = client.setStorageGroup(setStorageGroupReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-          constructPartitionSlotsMap(sg0, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
+          ConfigNodeTestUtils.constructPartitionSlotsMap(
+              sg0,
+              0,
+              seriesPartitionBatchSize,
+              0,
+              timePartitionBatchSize,
+              testTimePartitionInterval);
       TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       TDataPartitionTableResp dataPartitionTableResp = null;
       for (int retry = 0; retry < 5; retry++) {
@@ -432,12 +396,13 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      checkDataPartitionMap(
+      ConfigNodeTestUtils.checkDataPartitionTable(
           sg0,
           0,
           seriesPartitionBatchSize,
           0,
           timePartitionBatchSize,
+          testTimePartitionInterval,
           dataPartitionTableResp.getDataPartitionTable());
 
       // Check Region count
@@ -490,7 +455,13 @@ public class IoTDBClusterPartitionIT {
 
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       partitionSlotsMap =
-          constructPartitionSlotsMap(sg1, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
+          ConfigNodeTestUtils.constructPartitionSlotsMap(
+              sg1,
+              0,
+              seriesPartitionBatchSize,
+              0,
+              timePartitionBatchSize,
+              testTimePartitionInterval);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       for (int retry = 0; retry < 5; retry++) {
         // Build new Client since it's unstable in Win8 environment
@@ -511,12 +482,13 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      checkDataPartitionMap(
+      ConfigNodeTestUtils.checkDataPartitionTable(
           sg1,
           0,
           seriesPartitionBatchSize,
           0,
           timePartitionBatchSize,
+          testTimePartitionInterval,
           dataPartitionTableResp.getDataPartitionTable());
 
       // Check Region count and status
@@ -577,70 +549,16 @@ public class IoTDBClusterPartitionIT {
   @Test
   public void testGetSlots()
       throws TException, IOException, IllegalPathException, InterruptedException {
-    final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
-
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
 
     final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      ByteBuffer buffer;
-      TSchemaPartitionReq schemaPartitionReq;
 
-      // We assert the correctness of setting storageGroups, dataPartitions, schemaPartitions
-
-      // Set StorageGroups
-      client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
-      client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
-
-      // Create SchemaPartitions
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
-      schemaPartitionReq = new TSchemaPartitionReq(buffer);
-      TSchemaPartitionTableResp schemaPartitionTableResp =
-          client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      TSeriesPartitionSlot schemaSlot =
-          new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
-              .get(0);
-
-      TDataPartitionReq dataPartitionReq;
-      TDataPartitionTableResp dataPartitionTableResp;
-
-      // Prepare partitionSlotsMap
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
-
-      // Create DataPartitions
-      for (int i = 0; i < 2; i++) {
-        String storageGroup = sg + i;
-        partitionSlotsMap =
-            constructPartitionSlotsMap(
-                storageGroup, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
-
-        dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-        for (int retry = 0; retry < 5; retry++) {
-          // Build new Client since it's unstable
-          try (SyncConfigNodeIServiceClient configNodeClient =
-              (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-            dataPartitionTableResp =
-                configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-            if (dataPartitionTableResp != null) {
-              break;
-            }
-          } catch (Exception e) {
-            // Retry sometimes in order to avoid request timeout
-            LOGGER.error(e.getMessage());
-            TimeUnit.SECONDS.sleep(1);
-          }
-        }
-      }
-
-      // Test getRouting api
+      // Test getSlots api
       TGetRegionIdReq getRegionIdReq;
       TGetRegionIdResp getRegionIdResp;
 
@@ -672,7 +590,17 @@ public class IoTDBClusterPartitionIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
-      getRegionIdReq.setSeriesSlotId(schemaSlot);
+      final String d00 = sg0 + ".d0.s";
+      final String d01 = sg0 + ".d1.s";
+      final String d10 = sg1 + ".d0.s";
+      final String d11 = sg1 + ".d1.s";
+      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
+      TSchemaPartitionTableResp schemaPartitionTableResp =
+          client.getSchemaPartitionTable(schemaPartitionReq);
+      getRegionIdReq.setSeriesSlotId(
+          new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
+              .get(0));
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
@@ -751,21 +679,12 @@ public class IoTDBClusterPartitionIT {
   @Test
   public void testGetSchemaNodeManagementPartition()
       throws IOException, TException, IllegalPathException, InterruptedException {
-    final String sg = "root.sg";
-    final int storageGroupNum = 2;
 
-    TSStatus status;
     TSchemaNodeManagementReq nodeManagementReq;
     TSchemaNodeManagementResp nodeManagementResp;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // set StorageGroups
-      for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      }
 
       ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
       nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);

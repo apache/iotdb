@@ -235,6 +235,14 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
