@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -29,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
+
+import static org.apache.iotdb.rpc.TSStatusCode.STORAGE_GROUP_NOT_READY;
 
 public class OperationSyncConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
@@ -68,10 +72,34 @@ public class OperationSyncConsumer implements Runnable {
         } catch (IoTDBConnectionException connectionException) {
           // warn IoTDBConnectionException and do serialization
           LOGGER.warn(
-              "OperationSyncConsumer can't transmit because network failure", connectionException);
+              "OperationSyncConsumer can't transmit for connection error", connectionException);
+        } catch (BatchExecutionException batchExecutionException) {
+          if (batchExecutionException.getStatusList().stream()
+              .anyMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for STORAGE_GROUP_NOT_READY",
+                batchExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for batchExecutionException, discard it",
+                batchExecutionException);
+            continue;
+          }
+        } catch (StatementExecutionException statementExecutionException) {
+          if (statementExecutionException.getStatusCode()
+              == STORAGE_GROUP_NOT_READY.getStatusCode()) {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for STORAGE_GROUP_NOT_READY",
+                statementExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncConsumer can't transmit for statementExecutionException, discard it",
+                statementExecutionException);
+            continue;
+          }
         } catch (Exception e) {
           // The PhysicalPlan has internal error, reject transmit
-          LOGGER.error("OperationSyncConsumer can't transmit", e);
+          LOGGER.error("OperationSyncConsumer can't transmit, discard it", e);
           continue;
         }
       }

@@ -1081,7 +1081,9 @@ public class MTree implements Serializable {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema measurementSchema = node.getSchema();
-            String[] tsRow = new String[7];
+            Pair<String, String> deadbandInfo =
+                MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
+            String[] tsRow = new String[9];
             tsRow[0] = node.getAlias();
             tsRow[1] = getStorageGroupNodeInTraversePath().getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
@@ -1089,6 +1091,8 @@ public class MTree implements Serializable {
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            tsRow[7] = deadbandInfo.left;
+            tsRow[8] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             result.add(temp);
           }
