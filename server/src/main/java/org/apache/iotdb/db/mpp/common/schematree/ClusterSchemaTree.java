@@ -294,7 +294,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    */
   @Override
   public String getBelongedDatabase(String pathName) {
-    for (String storageGroup : databases) {
+    for (String database : databases) {
       if (PathUtils.isStartWith(pathName, storageGroup)) {
         return storageGroup;
       }
