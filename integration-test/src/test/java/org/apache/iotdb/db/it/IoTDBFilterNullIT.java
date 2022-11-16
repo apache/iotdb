@@ -65,10 +65,9 @@ public class IoTDBFilterNullIT {
       }
 
       for (String insertSql : insertSqls) {
-        // TODO statement.addBatch(insertSql);
-        statement.execute(insertSql);
+        statement.addBatch(insertSql);
       }
-      // TODO statement.executeBatch();
+      statement.executeBatch();
 
     } catch (Exception e) {
       e.printStackTrace();

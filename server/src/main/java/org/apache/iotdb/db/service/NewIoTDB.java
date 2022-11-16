@@ -83,10 +83,10 @@ public class NewIoTDB implements NewIoTDBMBean {
     // In standalone mode, Consensus memory should be reclaimed
     IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
-    daemon.active();
+    daemon.active(false);
   }
 
-  public void active() {
+  public void active(boolean isTesting) {
     processPid();
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
@@ -102,7 +102,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     config.setDataNodeId(0);
 
     try {
-      setUp();
+      setUp(isTesting);
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
@@ -120,7 +120,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
   }
 
-  private void setUp() throws StartupException, QueryProcessException {
+  private void setUp(boolean isTesting) throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
@@ -140,7 +140,9 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DriverScheduler.getInstance());
+    if (!isTesting) {
+      registerManager.register(DriverScheduler.getInstance());
+    }
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
@@ -199,7 +201,7 @@ public class NewIoTDB implements NewIoTDBMBean {
 
   private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.configManager.init();
+    configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
   }

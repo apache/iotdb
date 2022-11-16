@@ -402,4 +402,92 @@ public class IoTDBEncodingIT {
       return 10 * Math.log10(signal_power / noise_power);
     }
   }
+
+  @Test
+  public void testDoublePrecision1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.turbine1");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
+
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
+
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
+
+      String str = "1.2345678";
+      while (resultSet.next()) {
+        assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testDoublePrecision2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.turbine1");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
+
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
+
+      String str = "1.23";
+      while (resultSet.next()) {
+        assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testFloatPrecision1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.turbine1");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
+
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
+
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
+
+      String str = "1.2345678";
+      while (resultSet.next()) {
+        assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testFloatPrecision2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.turbine1");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
+
+      ResultSet resultSet = statement.executeQuery("select * from root.turbine1.**");
+
+      String str = "1.23";
+      while (resultSet.next()) {
+        assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }
