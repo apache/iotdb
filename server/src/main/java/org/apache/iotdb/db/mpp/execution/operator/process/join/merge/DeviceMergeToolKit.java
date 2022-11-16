@@ -62,6 +62,11 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
       tsBlocksEmpty[index] = true;
     } else {
       tsBlocks[index] = tsBlocks[index].subTsBlock(rowIndex);
+      if (tsBlocks[index].getPositionCount() == 0) {
+        tsBlocks[index] = null;
+        tsBlocksEmpty[index] = true;
+        return;
+      }
       startKey[index] = tsBlocks[index].getColumn(0).getBinary(0).toString();
     }
   }
@@ -79,7 +84,7 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     // (2) the biggest endKey when ordering is desc
     // which is controlled by greater method
     String minEndKey = "";
-    int index = 0;
+    int index = Integer.MAX_VALUE;
     for (int i = 0; i < tsBlockCount; i++) {
       if (!tsBlocksEmpty[i]) {
         minEndKey = endKey[i];
@@ -88,15 +93,13 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
       }
     }
     for (int i = index + 1; i < tsBlockCount; i++) {
-      if (tsBlocksEmpty[i]) continue;
-      if (greater(minEndKey, endKey[i])) {
+      if (!tsBlocksEmpty[i] && greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
       }
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (tsBlocksEmpty[i]) continue;
-      if (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i])) {
+      if (!tsBlocksEmpty[i] && greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i])) {
         targetTsBlockIndex.add(i);
       }
     }

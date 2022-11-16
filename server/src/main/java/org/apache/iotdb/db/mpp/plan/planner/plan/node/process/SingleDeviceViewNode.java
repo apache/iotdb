@@ -48,18 +48,6 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
   }
 
-  public SingleDeviceViewNode(
-      PlanNodeId id, List<String> outputColumnNames, List<Integer> deviceToMeasurementIndexesMap) {
-    super(id);
-    this.outputColumnNames = outputColumnNames;
-    this.deviceToMeasurementIndexes = deviceToMeasurementIndexesMap;
-  }
-
-  public void setChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.device = deviceName;
-    setChild(childNode);
-  }
-
   @Override
   public PlanNode clone() {
     return new SingleDeviceViewNode(

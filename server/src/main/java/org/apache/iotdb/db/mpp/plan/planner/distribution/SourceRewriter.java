@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -80,6 +81,42 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   public SourceRewriter(Analysis analysis) {
     this.analysis = analysis;
+  }
+
+  @Override
+  public PlanNode visitMergeSort(MergeSortNode node, DistributionPlanContext context) {
+    Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
+    List<String> devices = node.getDevices();
+    List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
+    for (int i = 0; i < devices.size(); i++) {
+      String device = devices.get(i);
+      PlanNode child = node.getChildren().get(i);
+      List<TRegionReplicaSet> regionReplicaSets =
+          analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
+      deviceViewSplits.add(new DeviceViewSplit(device, child, regionReplicaSets));
+      relatedDataRegions.addAll(regionReplicaSets);
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
+
+    for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
+      List<PlanNode> childrenInRegion = new ArrayList<>();
+      for (DeviceViewSplit split : deviceViewSplits) {
+        if (split.needDistributeTo(regionReplicaSet)) {
+          childrenInRegion.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
+        }
+      }
+      MergeSortNode regionMergeSortNode =
+          new MergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
+      for (PlanNode planNode : childrenInRegion) {
+        regionMergeSortNode.addChild(planNode);
+      }
+      mergeSortNode.addChild(regionMergeSortNode);
+    }
+    return mergeSortNode;
   }
 
   @Override

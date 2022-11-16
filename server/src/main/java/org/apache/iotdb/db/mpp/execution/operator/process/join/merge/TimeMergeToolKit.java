@@ -61,7 +61,12 @@ public class TimeMergeToolKit implements MergeSortToolKit {
       tsBlocksEmpty[index] = true;
     } else {
       tsBlocks[index] = tsBlocks[index].subTsBlock(rowIndex);
-      startKey[index] = tsBlocks[index].getTimeByIndex(rowIndex);
+      if (tsBlocks[index].getPositionCount() == 0) {
+        tsBlocks[index] = null;
+        tsBlocksEmpty[index] = true;
+        return;
+      }
+      startKey[index] = tsBlocks[index].getTimeByIndex(0);
     }
   }
 
@@ -93,7 +98,7 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (greater(minEndKey, startKey[i]) || minEndKey == startKey[i]) {
+      if (!tsBlocksEmpty[i] && greater(minEndKey, startKey[i]) || minEndKey == startKey[i]) {
         targetTsBlockIndex.add(i);
       }
     }

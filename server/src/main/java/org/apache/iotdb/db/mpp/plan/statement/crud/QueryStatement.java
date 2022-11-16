@@ -299,6 +299,13 @@ public class QueryStatement extends Statement {
     return orderByComponent.getTimeOrder();
   }
 
+  public Ordering getResultDeviceOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByDevice()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getDeviceOrder();
+  }
+
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();

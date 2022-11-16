@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -44,9 +45,17 @@ public class MergeSortNode extends MultiChildProcessNode {
     return mergeOrderParameter;
   }
 
+  public List<String> getDevices() {
+    List<String> devices = new ArrayList<>();
+    for (PlanNode child : children) {
+      devices.add(((SingleDeviceViewNode) child).getDevice());
+    }
+    return devices;
+  }
+
   @Override
   public PlanNode clone() {
-    return null;
+    return new MergeSortNode(getPlanNodeId(), getMergeOrderParameter());
   }
 
   @Override
