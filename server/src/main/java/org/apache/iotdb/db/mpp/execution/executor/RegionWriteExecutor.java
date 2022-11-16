@@ -469,9 +469,9 @@ public class RegionWriteExecutor {
 
           TSStatus status;
           if (failingStatus.isEmpty()) {
-            status = RpcUtils.getStatus(failingStatus);
-          } else {
             status = RpcUtils.getStatus(alreadyExistingStatus);
+          } else {
+            status = RpcUtils.getStatus(failingStatus);
           }
 
           RegionExecutionResult result = new RegionExecutionResult();
