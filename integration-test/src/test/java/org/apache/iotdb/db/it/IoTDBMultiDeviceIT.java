@@ -167,7 +167,7 @@ public class IoTDBMultiDeviceIT {
       }
 
       statement.addBatch("flush");
-      //      statement.execute("merge");
+      statement.addBatch("merge");
 
       // unsequential data, memory data
       for (int time = 1000; time < 1100; time++) {

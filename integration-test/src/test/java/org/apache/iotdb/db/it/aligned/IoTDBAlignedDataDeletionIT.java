@@ -188,7 +188,7 @@ public class IoTDBAlignedDataDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      //      statement.execute("merge");
+      statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
