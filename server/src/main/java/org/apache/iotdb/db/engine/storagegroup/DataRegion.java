@@ -911,12 +911,8 @@ public class DataRegion {
         return;
       }
 
-      // fire trigger before insertion
-      // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowNode);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
-      // fire trigger after insertion
-      // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowNode);
     } finally {
       writeUnlock();
     }
@@ -950,7 +946,11 @@ public class DataRegion {
           results[loc] =
               RpcUtils.getStatus(
                   TSStatusCode.OUT_OF_TTL_ERROR,
-                  "time " + currTime + " in current line is out of TTL: " + dataTTL);
+                  String.format(
+                      "Insertion time [%s] is less than ttl time bound [%s]",
+                      DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
+                      DateTimeUtils.convertMillsecondToZonedDateTime(
+                          DateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -3108,8 +3108,6 @@ public class DataRegion {
           return;
         }
 
-        // fire trigger before insertion
-        // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
         // insert to sequence or unSequence file
         try {
           insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
@@ -3118,8 +3116,6 @@ public class DataRegion {
               .getResults()
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
-        // fire trigger before insertion
-        // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
       }
     } finally {
       writeUnlock();
