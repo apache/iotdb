@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -62,6 +63,7 @@ public class Aggregator {
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
   public int processTsBlock(TsBlock tsBlock) {
+    long startTime = System.nanoTime();
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
@@ -77,6 +79,8 @@ public class Aggregator {
       lastReadReadIndex =
           Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
     }
+    QueryStatistics.getInstance()
+        .addCost("AggregationScan: calcFromRawData", System.nanoTime() - startTime);
     return lastReadReadIndex;
   }
 
@@ -112,10 +116,13 @@ public class Aggregator {
 
   /** Used for SeriesAggregateScanOperator. */
   public void processStatistics(Statistics[] statistics) {
+    long startTime = System.nanoTime();
     for (InputLocation[] inputLocations : inputLocationList) {
       int valueIndex = inputLocations[0].getValueColumnIndex();
       accumulator.addStatistics(statistics[valueIndex]);
     }
+    QueryStatistics.getInstance()
+        .addCost("AggregationScan: calcFromStatistics", System.nanoTime() - startTime);
   }
 
   public TSDataType[] getOutputType() {
