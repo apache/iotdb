@@ -19,22 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.LOG_DISPATCHER_LOG_ENQUEUE_SINGLE;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -57,10 +41,29 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.DISPATCHER_QUEUE_LENGTH;
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.LOG_DISPATCHER_LOG_ENQUEUE_SINGLE;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -78,6 +81,8 @@ public class LogDispatcher {
   protected List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
   protected Map<Node, Boolean> nodesEnabled;
   protected Map<Node, ExecutorService> executorServices = new HashMap<>();
+  protected ExecutorService resultHandlerThread =
+      IoTDBThreadPoolFactory.newFixedThreadPool(2, "AppendResultHandler");
   protected boolean queueOrdered =
       !(clusterConfig.isUseFollowerSlidingWindow() && clusterConfig.isEnableWeakAcceptance());
 
@@ -124,6 +129,7 @@ public class LogDispatcher {
         logger.warn("Cannot shut down dispatcher pool of {}-{}", member.getName(), entry.getKey());
       }
     }
+    resultHandlerThread.shutdownNow();
   }
 
   protected SendLogRequest transformRequest(Node node, SendLogRequest request) {
@@ -284,6 +290,7 @@ public class LogDispatcher {
         while (!Thread.interrupted()) {
           synchronized (logBlockingDeque) {
             SendLogRequest poll = logBlockingDeque.take();
+            DISPATCHER_QUEUE_LENGTH.add(logBlockingDeque.size() + 1);
             currBatch.add(poll);
             if (maxBatchSize > 1 && useBatchInLogCatchUp) {
               while (!logBlockingDeque.isEmpty() && currBatch.size() < maxBatchSize) {
@@ -436,6 +443,12 @@ public class LogDispatcher {
       }
     }
 
+    protected void handleAppendResult(AppendNodeEntryHandler handler, AppendEntryResult result) {
+      long handleStart = Statistic.RAFT_SENDER_HANDLE_SEND_RESULT.getOperationStartTime();
+      handler.onComplete(result);
+      Statistic.RAFT_SENDER_HANDLE_SEND_RESULT.calOperationCostTimeFromStart(handleStart);
+    }
+
     void sendLogSync(SendLogRequest logRequest) {
       AppendNodeEntryHandler handler =
           member.getAppendNodeEntryHandler(
@@ -446,15 +459,18 @@ public class LogDispatcher {
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {
-          int concurrentSender = concurrentSenderNum.incrementAndGet();
-          Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
           Client client = getSyncClient();
           if (client == null) {
             continue;
           }
           AppendEntryResult result;
+          int concurrentSender = concurrentSenderNum.incrementAndGet();
+          Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
           result = client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier);
+          Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
+              logRequest.getVotingLog().getLog().getCreateTime());
           concurrentSenderNum.decrementAndGet();
+
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);
             Statistic.RAFT_SENDER_OOW.add(1);
@@ -466,9 +482,7 @@ public class LogDispatcher {
             nodeStatus.getSendEntryNum().incrementAndGet();
             nodeStatus.getSendEntryLatencyStatistic().add(sendLogTime);
 
-            long handleStart = Statistic.RAFT_SENDER_HANDLE_SEND_RESULT.getOperationStartTime();
-            handler.onComplete(result);
-            Statistic.RAFT_SENDER_HANDLE_SEND_RESULT.calOperationCostTimeFromStart(handleStart);
+            resultHandlerThread.submit(() -> handleAppendResult(handler, result));
             break;
           }
         }
@@ -510,8 +524,6 @@ public class LogDispatcher {
       } else {
         sendLogSync(logRequest);
       }
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
-          logRequest.getVotingLog().getLog().getCreateTime());
     }
 
     public Client getSyncClient() {

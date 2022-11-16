@@ -51,20 +51,20 @@ public class VotingLogList {
   public VotingLogList(int quorumSize, RaftMember member) {
     this.quorumSize = quorumSize;
     this.member = member;
-    service.submit(
-        () -> {
-          try {
-            while (true) {
-              if (!tryCommit()) {
-                synchronized (newCommitIndex) {
-                  newCommitIndex.wait(1);
-                }
-              }
-            }
-          } catch (Exception e) {
-            logger.error("Unexpected exception when updating commit index", e);
-          }
-        });
+    //    service.submit(
+    //        () -> {
+    //          try {
+    //            while (true) {
+    //              if (!tryCommit()) {
+    //                synchronized (newCommitIndex) {
+    //                  newCommitIndex.wait(1);
+    //                }
+    //              }
+    //            }
+    //          } catch (Exception e) {
+    //            logger.error("Unexpected exception when updating commit index", e);
+    //          }
+    //        });
   }
 
   private boolean tryCommit() {
@@ -123,9 +123,7 @@ public class VotingLogList {
               }
             });
     if (newIndex == index) {
-      synchronized (newCommitIndex) {
-        newCommitIndex.notifyAll();
-      }
+      tryCommit();
     }
   }
 

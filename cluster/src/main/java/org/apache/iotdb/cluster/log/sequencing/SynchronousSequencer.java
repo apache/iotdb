@@ -34,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller
@@ -59,26 +60,30 @@ public class SynchronousSequencer implements LogSequencer {
     return sendLogRequest;
   }
 
+  private static AtomicLong indexBlockCounter = new AtomicLong();
+
   @Override
   public SendLogRequest sequence(Log log) {
     SendLogRequest sendLogRequest = null;
 
-    long startTime =
-        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
     long startWaitingTime = System.currentTimeMillis();
 
     while (true) {
+      Statistic.RAFT_INDEX_BLOCKER.add(indexBlockCounter.incrementAndGet());
+      long startTime =
+          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
       synchronized (logManager) {
+        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+            startTime);
         long occupyStart =
             Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.getOperationStartTime();
+        indexBlockCounter.decrementAndGet();
+
         if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
             || (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
                 <= ClusterDescriptor.getInstance()
                     .getConfig()
                     .getUnCommittedRaftLogNumForRejectThreshold())) {
-          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
-              startTime);
-
           // if the log contains a physical plan which is not a LogPlan, assign the same index to
           // the plan so the state machine can be bridged with the consensus
           if (log instanceof RequestLog
@@ -97,6 +102,8 @@ public class SynchronousSequencer implements LogSequencer {
 
           startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
           sendLogRequest = buildSendLogRequest(log);
+          Statistic.LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE.calOperationCostTimeFromStart(
+              log.getReceiveTime());
           log.setCreateTime(System.nanoTime());
           Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
 

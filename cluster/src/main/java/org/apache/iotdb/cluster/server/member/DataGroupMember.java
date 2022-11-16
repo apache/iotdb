@@ -26,17 +26,18 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.expr.nbraft.SlidingWindowLogAppender;
 import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.appender.BlockingLogAppender;
-import org.apache.iotdb.cluster.expr.nbraft.SlidingWindowLogAppender;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
@@ -1036,7 +1037,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   }
 
   @TestOnly
-  void setLogManager(PartitionedSnapshotLogManager<Snapshot> logManager) {
+  public void setLogManager(RaftLogManager logManager) {
     if (this.logManager != null) {
       this.logManager.close();
     }

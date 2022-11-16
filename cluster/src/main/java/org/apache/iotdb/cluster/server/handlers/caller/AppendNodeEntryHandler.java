@@ -86,13 +86,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     long resp = response.status;
 
     if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
-      member
-          .getVotingLogList()
-          .onStronglyAccept(
-              log.getLog().getCurrLogIndex(),
-              log.getLog().getCurrLogTerm(),
-              trueReceiver,
-              response.signature);
       Integer count =
           entryAcceptedTimes.compute(
               log.getLog().getCurrLogIndex(),
@@ -108,6 +101,13 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
             log.getLog().getCreateTime());
       }
+      member
+          .getVotingLogList()
+          .onStronglyAccept(
+              log.getLog().getCurrLogIndex(),
+              log.getLog().getCurrLogTerm(),
+              trueReceiver,
+              response.signature);
 
       member.getPeer(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {

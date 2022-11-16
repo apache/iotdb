@@ -20,10 +20,10 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -60,6 +62,7 @@ public class AsyncDataLogApplier implements LogApplier {
   private Map<PartialPath, DataLogConsumer> consumerMap;
   private ExecutorService consumerPool;
   private String name;
+  private Random random = new Random();
 
   // a plan that affects multiple sgs should wait until all consumers become empty to assure all
   // previous logs are applied, such a plan will wait on this condition if it finds any
@@ -168,6 +171,8 @@ public class AsyncDataLogApplier implements LogApplier {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
       sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
+    } else if (plan instanceof DummyPlan) {
+      sgPath = new PartialPath(Integer.toString(random.nextInt(CONCURRENT_CONSUMER_NUM)), false);
     }
     return sgPath;
   }

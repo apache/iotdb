@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 
 public class VotingLog {
   protected Log log;
@@ -60,7 +61,7 @@ public class VotingLog {
   }
 
   public Set<Integer> getWeaklyAcceptedNodeIds() {
-    return weaklyAcceptedNodeIds;
+    return weaklyAcceptedNodeIds != null ? weaklyAcceptedNodeIds : Collections.emptySet();
   }
 
   @Override

@@ -120,8 +120,7 @@ public class BlockingLogAppender implements LogAppender {
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
     long lastLogIndex = logManager.getLastLogIndex();
-    Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
-    long waitTime = 10;
+    long waitTime = 1;
     while (lastLogIndex < prevLogIndex
         && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
       try {
@@ -147,6 +146,7 @@ public class BlockingLogAppender implements LogAppender {
   protected long checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
     long startTime = Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
+    Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs
       // did not come within a timeout, report a mismatch to the sender and it shall fix this

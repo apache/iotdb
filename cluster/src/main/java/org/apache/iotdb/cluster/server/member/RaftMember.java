@@ -31,11 +31,12 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
+import org.apache.iotdb.cluster.expr.craft.FragmentedLogDispatcher;
 import org.apache.iotdb.cluster.expr.vgraft.KeyManager;
 import org.apache.iotdb.cluster.expr.vgraft.TrustValueHolder;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
 import org.apache.iotdb.cluster.log.CommitLogTask;
-import org.apache.iotdb.cluster.expr.craft.FragmentedLogDispatcher;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
@@ -50,7 +51,6 @@ import org.apache.iotdb.cluster.log.appender.BlockingLogAppender;
 import org.apache.iotdb.cluster.log.appender.LogAppender;
 import org.apache.iotdb.cluster.log.appender.LogAppenderFactory;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
-import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.sequencing.AsynchronousSequencer.Factory;
@@ -1200,21 +1200,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
   }
 
-  protected TSStatus processPlanLocallyV2(IConsensusRequest plan) {
-    long totalStartTime = System.nanoTime();
-    logger.debug("{}: Processing plan {}", name, plan);
-    if (readOnly) {
-      return StatusUtils.NODE_READ_ONLY;
-    }
-
+  protected Log parseLog(IConsensusRequest plan) throws UnknownLogTypeException {
     Log log;
     if (plan instanceof LogPlan) {
-      try {
-        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-      } catch (UnknownLogTypeException e) {
-        logger.error("Can not parse LogPlan {}", plan, e);
-        return StatusUtils.PARSE_LOG_ERROR;
-      }
+      log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
     } else {
       log = new RequestLog();
       ((RequestLog) log).setRequest(plan);
@@ -1224,11 +1213,33 @@ public abstract class RaftMember implements RaftMemberMBean {
       log = new FragmentedLog(log, allNodes.size());
     }
     log.setReceiveTime(System.nanoTime());
+    return log;
+  }
+
+  private boolean checkLogSize(Log log) {
+    return !ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        || log.serialize().capacity() + Integer.BYTES
+            < ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
+  }
+
+  protected TSStatus processPlanLocallyV2(IConsensusRequest plan) {
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
+
+    long totalStartTime = System.nanoTime();
+    logger.debug("{}: Processing plan {}", name, plan);
+
+    Log log;
+    try {
+      log = parseLog(plan);
+    } catch (UnknownLogTypeException e) {
+      logger.error("Can not parse LogPlan {}", plan, e);
+      return StatusUtils.PARSE_LOG_ERROR;
+    }
 
     // just like processPlanLocally,we need to check the size of log
-    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        && log.serialize().capacity() + Integer.BYTES
-            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    if (!checkLogSize(log)) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1777,6 +1788,8 @@ public abstract class RaftMember implements RaftMemberMBean {
    * wait until "voteCounter" counts down to zero, which means the quorum has received the log, or
    * one follower tells the node that it is no longer a valid leader, or a timeout is triggered.
    */
+  private AtomicLong appendBlockerCounter = new AtomicLong();
+
   protected AppendLogResult waitAppendResult(VotingLog log, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
@@ -1784,6 +1797,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     int weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
     int stronglyAccepted = totalAccepted - weaklyAccepted;
 
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.RAFT_APPEND_BLOCKER.add(appendBlockerCounter.incrementAndGet());
+    }
     if (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
         || ((!ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
                     && stronglyAccepted < quorumSize
@@ -1794,6 +1810,9 @@ public abstract class RaftMember implements RaftMemberMBean {
             && !log.isHasFailed())) {
 
       waitAppendResultLoop(log, quorumSize);
+    }
+    if (Timer.ENABLE_INSTRUMENTING) {
+      appendBlockerCounter.decrementAndGet();
     }
     totalAccepted = votingLogList.totalAcceptedNodeNum(log);
     weaklyAccepted = log.getWeaklyAcceptedNodeIds().size();
@@ -1823,12 +1842,17 @@ public abstract class RaftMember implements RaftMemberMBean {
     return AppendLogResult.OK;
   }
 
+  private AtomicLong applyBlockerCounter = new AtomicLong();
+
   @SuppressWarnings("java:S2445")
   protected void waitApply(Log log) throws LogExecutionException {
     long startTime;
 
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.RAFT_APPLY_BLOCKER.add(applyBlockerCounter.incrementAndGet());
+    }
     startTime = Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY.getOperationStartTime();
     synchronized (log) {
       while (!log.isApplied()) {
@@ -1841,6 +1865,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         }
       }
     }
+    applyBlockerCounter.decrementAndGet();
     Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY.calOperationCostTimeFromStart(startTime);
     if (log.getException() != null) {
       throw new LogExecutionException(log.getException());

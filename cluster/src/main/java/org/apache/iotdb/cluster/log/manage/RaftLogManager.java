@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_COMMIT_LOG_IN_MANAGER;
-
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
@@ -38,8 +36,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
-
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +51,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_COMMIT_LOG_IN_MANAGER;
 
 public abstract class RaftLogManager {
 
@@ -676,8 +676,7 @@ public abstract class RaftLogManager {
       logger.error("{}: persistent raft log error:", name, e);
       throw new LogExecutionException(e);
     } finally {
-      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(
-          startTime);
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(startTime);
     }
   }
 
@@ -693,8 +692,7 @@ public abstract class RaftLogManager {
     }
 
     synchronized (this) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
-          start);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(start);
       long operationStartTime = RAFT_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
 
       long startTime = Statistic.RAFT_SENDER_COMMIT_GET_LOGS.getOperationStartTime();
@@ -755,8 +753,8 @@ public abstract class RaftLogManager {
           changeApplyCommitIndexCond.wait(
               Math.min(
                   (unappliedLogSize
-                      - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem())
-                      / 10
+                              - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem())
+                          / 10
                       + 1,
                   1000));
         }
@@ -791,9 +789,10 @@ public abstract class RaftLogManager {
    *
    * @param low request index low bound
    * @param high request index upper bound
-   * @throws EntryCompactedException
-   * @throws GetEntriesWrongParametersException
+   * @throws EntryCompactedException if the entry has been compacted
+   * @throws GetEntriesWrongParametersException if low > high
    */
+  @TestOnly
   void checkBound(long low, long high)
       throws EntryCompactedException, GetEntriesWrongParametersException {
     if (low > high) {
