@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -96,8 +97,12 @@ public class SenderManager {
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
     heartbeatFuture =
-        heartbeatExecutorService.scheduleAtFixedRate(
-            this::heartbeat, 0, SyncConstant.HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            heartbeatExecutorService,
+            this::heartbeat,
+            0,
+            SyncConstant.HEARTBEAT_INTERVAL_SECONDS,
+            TimeUnit.SECONDS);
     isRunning = true;
   }
 
