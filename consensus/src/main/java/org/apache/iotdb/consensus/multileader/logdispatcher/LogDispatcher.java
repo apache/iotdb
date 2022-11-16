@@ -389,11 +389,14 @@ public class LogDispatcher {
 
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
-        constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
-        if (!batches.canAccumulate()) {
-          batches.buildIndex();
-          logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batches);
-          return batches;
+        if (startIndex != prev.getSearchIndex()) {
+          constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
+          if (!batches.canAccumulate()) {
+            batches.buildIndex();
+            logger.debug(
+                "{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batches);
+            return batches;
+          }
         }
 
         constructBatchIndexedFromConsensusRequest(prev, batches);
@@ -411,7 +414,7 @@ public class LogDispatcher {
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), batches);
+            constructBatchFromWAL(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
             if (!batches.canAccumulate()) {
               batches.buildIndex();
               logger.debug(
