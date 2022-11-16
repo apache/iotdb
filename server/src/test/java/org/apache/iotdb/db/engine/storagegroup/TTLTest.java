@@ -87,8 +87,8 @@ public class TTLTest {
   @Before
   public void setUp() throws MetadataException, DataRegionException {
     prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(86400000);
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForRouting(86400000);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -99,7 +99,7 @@ public class TTLTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setTimePartitionIntervalForStorage(prevPartitionInterval);
+        .setTimePartitionIntervalForRouting(prevPartitionInterval);
   }
 
   private void createSchemas() throws MetadataException, DataRegionException {

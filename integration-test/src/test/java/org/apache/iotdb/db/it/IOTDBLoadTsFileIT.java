@@ -57,7 +57,6 @@ public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
 
-  private boolean originEnablePartition;
   private long originPartitionInterval;
   private long originConfigNodePartitionInterval;
 
@@ -66,10 +65,8 @@ public class IOTDBLoadTsFileIT {
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
-    originEnablePartition = ConfigFactory.getConfig().isEnablePartition();
     originPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     originConfigNodePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setEnablePartition(true);
     ConfigFactory.getConfig().setTimePartitionIntervalForStorage(PARTITION_INTERVAL);
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(PARTITION_INTERVAL);
     EnvFactory.getEnv().initBeforeTest();
@@ -80,7 +77,6 @@ public class IOTDBLoadTsFileIT {
     deleteSG();
 
     EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setEnablePartition(originEnablePartition);
     ConfigFactory.getConfig().setTimePartitionIntervalForStorage(originPartitionInterval);
     ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originConfigNodePartitionInterval);
 

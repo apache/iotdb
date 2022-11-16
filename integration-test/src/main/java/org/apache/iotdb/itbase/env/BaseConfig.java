@@ -70,10 +70,6 @@ public interface BaseConfig {
     return this;
   }
 
-  default boolean isEnablePartition() {
-    return false;
-  }
-
   default BaseConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -99,10 +95,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 

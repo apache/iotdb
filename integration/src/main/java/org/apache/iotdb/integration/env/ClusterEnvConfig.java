@@ -99,11 +99,6 @@ public class ClusterEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
-    return this;
-  }
-
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion

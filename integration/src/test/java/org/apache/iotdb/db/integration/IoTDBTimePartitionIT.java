@@ -43,9 +43,8 @@ public class IoTDBTimePartitionIT {
 
   @Before
   public void setUp() throws Exception {
-    ConfigFactory.getConfig().setEnablePartition(true);
     prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
     ConfigFactory.getConfig().setPartitionInterval(2592000);
     EnvFactory.getEnv().initBeforeTest();
   }
@@ -54,7 +53,6 @@ public class IoTDBTimePartitionIT {
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
-    ConfigFactory.getConfig().setEnablePartition(false);
   }
 
   @Test

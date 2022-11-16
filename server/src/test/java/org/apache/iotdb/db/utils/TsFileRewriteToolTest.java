@@ -78,7 +78,7 @@ public class TsFileRewriteToolTest {
   private final Planner processor = new Planner();
   private String path = null;
   private IoTDBConfig config;
-  private boolean originEnablePartition;
+
   private long originPartitionInterval;
 
   public TsFileRewriteToolTest() throws QueryProcessException {}
@@ -86,11 +86,8 @@ public class TsFileRewriteToolTest {
   @Before
   public void setUp() {
     config = IoTDBDescriptor.getInstance().getConfig();
-    originEnablePartition = config.isEnablePartition();
-    originPartitionInterval = config.getTimePartitionIntervalForStorage();
-    boolean newEnablePartition = true;
-    config.setEnablePartition(newEnablePartition);
-    config.setTimePartitionIntervalForStorage(newPartitionInterval);
+    originPartitionInterval = config.getTimePartitionIntervalForRouting();
+    config.setTimePartitionIntervalForRouting(newPartitionInterval);
     EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
@@ -108,8 +105,7 @@ public class TsFileRewriteToolTest {
       boolean deleteSuccess = f.delete();
       Assert.assertTrue(deleteSuccess);
     }
-    config.setEnablePartition(originEnablePartition);
-    config.setTimePartitionIntervalForStorage(originPartitionInterval);
+    config.setTimePartitionIntervalForRouting(originPartitionInterval);
 
     File directory = new File(folder);
     try {

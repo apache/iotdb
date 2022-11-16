@@ -137,7 +137,7 @@ public class IoTDBUDFNestAggregationIT {
   @BeforeClass
   public static void setUp() throws Exception {
     prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeClass();
     prepareData();

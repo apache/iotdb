@@ -120,12 +120,6 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
-    return this;
-  }
-
-  @Override
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion

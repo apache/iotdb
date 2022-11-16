@@ -72,7 +72,7 @@ public class IoTDBMultiSeriesIT {
     ConfigFactory.getConfig().setGroupSizeInByte(1024 * 1000);
     ConfigFactory.getConfig().setMemtableSizeThreshold(1024 * 1000);
     prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
     ConfigFactory.getConfig().setPartitionInterval(100);
     ConfigFactory.getConfig().setCompressor("LZ4");
 

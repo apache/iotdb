@@ -89,8 +89,8 @@ public class IoTDBSeriesReaderIT {
 
     // test result of IBatchReader should not cross partition
     prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(2000);
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForRouting(2000);
 
     EnvironmentUtils.envSetUp();
 
@@ -111,7 +111,7 @@ public class IoTDBSeriesReaderIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setTimePartitionIntervalForStorage(prevPartitionInterval);
+        .setTimePartitionIntervalForRouting(prevPartitionInterval);
   }
 
   private static void insertData() throws ClassNotFoundException {

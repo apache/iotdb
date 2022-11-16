@@ -886,16 +886,6 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
-    conf.setEnablePartition(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
-
-    conf.setTimePartitionIntervalForStorage(
-        Long.parseLong(
-            properties.getProperty(
-                "time_partition_interval_for_storage",
-                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
-
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
             properties.getProperty(
@@ -1011,12 +1001,12 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    conf.setTimePartitionIntervalForStorage(
+    conf.setTimePartitionIntervalForRouting(
         DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
+            conf.getTimePartitionIntervalForRouting(), conf.getTimestampPrecision()));
 
     if (!conf.isClusterMode()) {
-      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
+      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForRouting());
     }
   }
 
