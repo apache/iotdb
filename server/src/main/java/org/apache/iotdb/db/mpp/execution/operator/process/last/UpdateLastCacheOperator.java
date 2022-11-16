@@ -75,10 +75,14 @@ public class UpdateLastCacheOperator implements ProcessOperator {
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
-    database =
-        ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
-            .getDataRegion()
-            .getStorageGroupName();
+    if (needUpdateCache) {
+      database =
+          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getDataRegion()
+              .getStorageGroupName();
+    } else {
+      database = null;
+    }
   }
 
   @Override
