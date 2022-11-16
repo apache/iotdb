@@ -345,7 +345,7 @@ public class PartitionManager {
             (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(storageGroup)
                 + unassignedPartitionSlotsCount;
         float maxRegionGroupCount =
-            getClusterSchemaManager().getMaxRegionGroupCount(storageGroup, consensusGroupType);
+            getClusterSchemaManager().getMaxRegionGroupNum(storageGroup, consensusGroupType);
         float maxSlotCount = CONF.getSeriesPartitionSlotNum();
 
         /* Region extension is required in the following cases */

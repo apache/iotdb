@@ -30,34 +30,34 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class AdjustMaxRegionGroupCountPlan extends ConfigPhysicalPlan {
+public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
 
-  // Map<StorageGroupName, Pair<maxSchemaRegionGroupCount, maxDataRegionGroupCount>>
-  public final Map<String, Pair<Integer, Integer>> maxRegionGroupCountMap;
+  // Map<StorageGroupName, Pair<maxSchemaRegionGroupNum, maxDataRegionGroupNum>>
+  public final Map<String, Pair<Integer, Integer>> maxRegionGroupNumMap;
 
-  public AdjustMaxRegionGroupCountPlan() {
-    super(ConfigPhysicalPlanType.AdjustMaxRegionGroupCount);
-    this.maxRegionGroupCountMap = new HashMap<>();
+  public AdjustMaxRegionGroupNumPlan() {
+    super(ConfigPhysicalPlanType.AdjustMaxRegionGroupNum);
+    this.maxRegionGroupNumMap = new HashMap<>();
   }
 
-  public void putEntry(String storageGroup, Pair<Integer, Integer> maxRegionGroupCount) {
-    maxRegionGroupCountMap.put(storageGroup, maxRegionGroupCount);
+  public void putEntry(String storageGroup, Pair<Integer, Integer> maxRegionGroupNum) {
+    maxRegionGroupNumMap.put(storageGroup, maxRegionGroupNum);
   }
 
-  public Map<String, Pair<Integer, Integer>> getMaxRegionGroupCountMap() {
-    return maxRegionGroupCountMap;
+  public Map<String, Pair<Integer, Integer>> getMaxRegionGroupNumMap() {
+    return maxRegionGroupNumMap;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
 
-    ReadWriteIOUtils.write(maxRegionGroupCountMap.size(), stream);
-    for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupCountEntry :
-        maxRegionGroupCountMap.entrySet()) {
-      ReadWriteIOUtils.write(maxRegionGroupCountEntry.getKey(), stream);
-      ReadWriteIOUtils.write(maxRegionGroupCountEntry.getValue().getLeft(), stream);
-      ReadWriteIOUtils.write(maxRegionGroupCountEntry.getValue().getRight(), stream);
+    ReadWriteIOUtils.write(maxRegionGroupNumMap.size(), stream);
+    for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupNumEntry :
+        maxRegionGroupNumMap.entrySet()) {
+      ReadWriteIOUtils.write(maxRegionGroupNumEntry.getKey(), stream);
+      ReadWriteIOUtils.write(maxRegionGroupNumEntry.getValue().getLeft(), stream);
+      ReadWriteIOUtils.write(maxRegionGroupNumEntry.getValue().getRight(), stream);
     }
   }
 
@@ -67,10 +67,10 @@ public class AdjustMaxRegionGroupCountPlan extends ConfigPhysicalPlan {
 
     for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = ReadWriteIOUtils.readString(buffer);
-      int maxSchemaRegionGroupCount = buffer.getInt();
-      int maxDataRegionGroupCount = buffer.getInt();
-      maxRegionGroupCountMap.put(
-          storageGroup, new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
+      int maxSchemaRegionGroupNum = buffer.getInt();
+      int maxDataRegionGroupNum = buffer.getInt();
+      maxRegionGroupNumMap.put(
+          storageGroup, new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
     }
   }
 
@@ -78,12 +78,12 @@ public class AdjustMaxRegionGroupCountPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    AdjustMaxRegionGroupCountPlan that = (AdjustMaxRegionGroupCountPlan) o;
-    return maxRegionGroupCountMap.equals(that.maxRegionGroupCountMap);
+    AdjustMaxRegionGroupNumPlan that = (AdjustMaxRegionGroupNumPlan) o;
+    return maxRegionGroupNumMap.equals(that.maxRegionGroupNumMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(maxRegionGroupCountMap);
+    return Objects.hash(maxRegionGroupNumMap);
   }
 }

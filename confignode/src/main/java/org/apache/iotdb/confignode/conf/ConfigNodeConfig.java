@@ -64,6 +64,9 @@ public class ConfigNodeConfig {
   /** The maximum number of DataRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
 
+  /** The least number of SchemaRegionGroup for each StorageGroup. */
+  private int leastSchemaRegionGroupNum = 1;
+
   /** The least number of DataRegionGroup for each StorageGroup. */
   private int leastDataRegionGroupNum = 5;
 
@@ -412,6 +415,14 @@ public class ConfigNodeConfig {
 
   public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
+  }
+
+  public int getLeastSchemaRegionGroupNum() {
+    return leastSchemaRegionGroupNum;
+  }
+
+  public void setLeastSchemaRegionGroupNum(int leastSchemaRegionGroupNum) {
+    this.leastSchemaRegionGroupNum = leastSchemaRegionGroupNum;
   }
 
   public int getLeastDataRegionGroupNum() {
