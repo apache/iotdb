@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.mpp.rpc.thrift.TAddPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -136,7 +137,7 @@ public class SyncDataNodeClientPool {
       case CREATE_NEW_REGION_PEER:
         return client.createNewRegionPeer((TCreatePeerReq) req);
       case ADD_REGION_PEER:
-        return client.addRegionPeer((TMaintainPeerReq) req);
+        return client.addRegionPeer((TAddPeerReq) req);
       case REMOVE_REGION_PEER:
         return client.removeRegionPeer((TMaintainPeerReq) req);
       case DELETE_OLD_REGION_PEER:

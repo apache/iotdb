@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
+import org.apache.iotdb.mpp.rpc.thrift.TAddPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.MULTI_LEADER_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class DataNodeRemoveHandler {
@@ -241,13 +243,21 @@ public class DataNodeRemoveHandler {
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode);
+    TAddPeerReq addPeerReq = new TAddPeerReq(regionId, destDataNode);
+    if ((regionId.getType() == TConsensusGroupType.SchemaRegion
+            && CONF.getSchemaRegionConsensusProtocolClass().equals(RATIS_CONSENSUS))
+        || (regionId.getType() == TConsensusGroupType.DataRegion
+            && CONF.getDataRegionConsensusProtocolClass().equals(RATIS_CONSENSUS))) {
+      // For Ratis region group, we need the originalRegionLocations field
+      addPeerReq.setRegionLocations(findRegionLocations(regionId));
+    }
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
                 selectedDataNode.get().getInternalEndPoint(),
-                maintainPeerReq,
+                addPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
+
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
         REMOVE_DATANODE_PROCESS,

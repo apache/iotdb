@@ -47,6 +47,12 @@ struct TCreatePeerReq {
   4: optional i64 ttl
 }
 
+struct TAddPeerReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TDataNodeLocation destNode
+  3: optional list<common.TDataNodeLocation> regionLocations
+}
+
 struct TMaintainPeerReq {
   1: required common.TConsensusGroupId regionId
   2: required common.TDataNodeLocation destNode
@@ -430,10 +436,11 @@ service IDataNodeRPCService {
 
   /**
    * Add a Region peer to the specified RegionGroup
+   * Notice that: Ratis Consensuse need regionLocations field, Multileader Consensuse donot need
    *
-   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
+   * @param TAddPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
    */
-  common.TSStatus addRegionPeer(TMaintainPeerReq req);
+  common.TSStatus addRegionPeer(TAddPeerReq req);
 
   /**
    * Remove a Region peer from the specified RegionGroup

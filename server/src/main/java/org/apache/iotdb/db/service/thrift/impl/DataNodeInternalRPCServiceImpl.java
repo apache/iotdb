@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -121,6 +122,7 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAddPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -202,6 +204,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.consensus.ConsensusFactory.MULTI_LEADER_CONSENSUS;
+import static org.apache.iotdb.db.service.RegionMigrateService.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
@@ -1217,24 +1221,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createNewRegionPeer(TCreatePeerReq req) throws TException {
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
-    List<Peer> peers =
-        req.getRegionLocations().stream()
-            .map(
-                location ->
-                    new Peer(
-                        regionId,
-                        location.getDataNodeId(),
-                        getConsensusEndPoint(location, regionId)))
-            .collect(Collectors.toList());
     TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
     if (!isSucceed(status)) {
       return status;
     }
-    return createNewRegionPeer(regionId, peers);
+
+    // Only execute createNewRegionPeer method when DataRegion adopts MULTI_LEADER_CONSENSUS
+    if (TConsensusGroupType.DataRegion.equals(req.getRegionId().getType())
+        && MULTI_LEADER_CONSENSUS.equals(config.getDataRegionConsensusProtocolClass())) {
+      LOGGER.info(
+          "{}, execute createNewRegionPeer for MULTI_LEADER_CONSENSUS DataRegion: {}",
+          REMOVE_DATANODE_PROCESS,
+          regionId);
+      List<Peer> peers =
+          req.getRegionLocations().stream()
+              .map(
+                  location ->
+                      new Peer(
+                          regionId,
+                          location.getDataNodeId(),
+                          getConsensusEndPoint(location, regionId)))
+              .collect(Collectors.toList());
+      return createNewRegionPeer(regionId, peers);
+    }
+
+    return status;
   }
 
   @Override
-  public TSStatus addRegionPeer(TMaintainPeerReq req) throws TException {
+  public TSStatus addRegionPeer(TAddPeerReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
