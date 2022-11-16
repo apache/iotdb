@@ -25,6 +25,15 @@
 
 Time partition divides data according to time, and a time partition is used to save all data within a certain time range. The time partition number is represented by a natural number. Number 0 means January 1, 1970, it will increase by one every partition_interval milliseconds. Time partition number's calculation formula is timestamp / partition_interval. The main configuration items are as follows:
 
+* time\_partition\_interval
+
+|Name| time\_partition\_interval                                                              |
+ |:---:|:-------------------------------------------------------------------------------------------------------|
+|Description| Time range for dividing database, time series data will be divided into groups by this time range |
+|Type| Int64                                                                                                  |
+|Default| 604800000                                                                                               |
+|Effective| Only allowed to be modified in first start up                                                          |
+
 ## Configuration example
 
 Enable time partition and set partition_interval to 86400000 (one day), then the data distribution is shown as the following figure:
