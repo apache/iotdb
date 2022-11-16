@@ -118,7 +118,7 @@ class SimpleConsensus implements IConsensus {
 
     TSStatus status;
     if (impl.isReadOnly()) {
-      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
       status = impl.write(request);

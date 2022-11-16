@@ -88,7 +88,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
             if (!user.checkPrivilege(path, permission)) {
               if (user.getRoleList().isEmpty()) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
               }
               boolean status = false;
               for (String roleName : user.getRoleList()) {
@@ -106,7 +106,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                 }
               }
               if (!status) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
               }
             }
           }
@@ -204,8 +204,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } else {
       TLoginReq req = new TLoginReq(username, password);

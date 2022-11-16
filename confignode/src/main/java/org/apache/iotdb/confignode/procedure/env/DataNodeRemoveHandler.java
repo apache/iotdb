@@ -77,15 +77,15 @@ public class DataNodeRemoveHandler {
   /**
    * Get all consensus group id in this node
    *
-   * @param dataNodeLocation data node location
-   * @return group id list
+   * @param removedDataNode the DataNode to be removed
+   * @return group id list to be migrated
    */
-  public List<TConsensusGroupId> getDataNodeRegionIds(TDataNodeLocation dataNodeLocation) {
+  public List<TConsensusGroupId> getMigratedDataNodeRegions(TDataNodeLocation removedDataNode) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
         .filter(
-            rg ->
-                rg.getDataNodeLocations().contains(dataNodeLocation)
-                    && rg.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
+            replicaSet ->
+                replicaSet.getDataNodeLocations().contains(removedDataNode)
+                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
@@ -292,10 +292,10 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
-        "{}, Send action removeRegionPeer finished, regionId: {}, dataNode: {}",
+        "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REMOVE_DATANODE_PROCESS,
         regionId,
-        rpcClientDataNode.getInternalEndPoint());
+        getIdWithRpcEndpoint(rpcClientDataNode));
     return status;
   }
 
@@ -498,7 +498,7 @@ public class DataNodeRemoveHandler {
               dataNodeLocation);
         }
         if (removedDataNodes.size() == 0) {
-          status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
           status.setMessage("Failed to remove all requested data nodes");
           return status;
         }
@@ -507,7 +507,7 @@ public class DataNodeRemoveHandler {
 
     int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
-      status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       status.setMessage(
           String.format(
               "Can't remove datanode due to the limit of replication factor, "
@@ -638,7 +638,7 @@ public class DataNodeRemoveHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
-      status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }
     return status;

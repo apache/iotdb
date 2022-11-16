@@ -1742,7 +1742,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 schemaFetcher,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && result.status.code != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
+        && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       logger.error(String.format("Create Database error, statement: %s.", statement));
       logger.error(String.format("Create database result status : %s.", result.status));
       throw new LoadFileException(

@@ -100,7 +100,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     if (!status) {
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
       result.setStatus(tsStatus);
     }
     return result;
@@ -126,12 +126,11 @@ public class AuthorInfo implements SnapshotProcessor {
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
-        result.setStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage()));
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_ERROR, e.getMessage()));
       }
     } else {
       result = AuthUtils.generateEmptyPermissionInfoResp();
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR));
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
     }
     return result;
   }
@@ -211,7 +210,7 @@ public class AuthorInfo implements SnapshotProcessor {
           throw new AuthException("unknown type: " + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -227,7 +226,7 @@ public class AuthorInfo implements SnapshotProcessor {
         if (role == null) {
           result.setStatus(
               RpcUtils.getStatus(
-                  TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+                  TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
           result.setPermissionInfo(permissionInfo);
           return result;
         }
@@ -262,7 +261,7 @@ public class AuthorInfo implements SnapshotProcessor {
         if (user == null) {
           result.setStatus(
               RpcUtils.getStatus(
-                  TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+                  TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
           result.setPermissionInfo(permissionInfo);
           return result;
         }
@@ -289,7 +288,7 @@ public class AuthorInfo implements SnapshotProcessor {
       if (role == null) {
         result.setStatus(
             RpcUtils.getStatus(
-                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+                TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
         result.setPermissionInfo(permissionInfo);
         return result;
       }
@@ -324,7 +323,7 @@ public class AuthorInfo implements SnapshotProcessor {
       if (user == null) {
         result.setStatus(
             RpcUtils.getStatus(
-                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+                TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
         result.setPermissionInfo(permissionInfo);
         return result;
       }

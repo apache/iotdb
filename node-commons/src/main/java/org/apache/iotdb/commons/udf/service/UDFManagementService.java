@@ -202,7 +202,8 @@ public class UDFManagementService {
       updateAllRegisteredClasses(currentActiveClassLoader);
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
-      functionClass.getDeclaredConstructor().newInstance();
+      // ensure that it is a UDF class
+      UDTF udtf = (UDTF) functionClass.getDeclaredConstructor().newInstance();
       udfTable.addUDFInformation(functionName, udfInformation);
       udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException

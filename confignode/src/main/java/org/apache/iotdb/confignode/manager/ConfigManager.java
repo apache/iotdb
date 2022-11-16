@@ -264,6 +264,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
@@ -441,7 +442,7 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
