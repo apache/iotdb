@@ -77,8 +77,8 @@ public class IoTDBStartCheck {
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
   private static String timestampPrecision = config.getTimestampPrecision();
 
-  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval_for_storage";
-  private static long timePartitionIntervalForStorage = config.getTimePartitionIntervalForRouting();
+  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
+  private static long timePartitionInterval = config.getTimePartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
@@ -177,16 +177,9 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
-    // check partition interval
-    if (timePartitionIntervalForStorage <= 0) {
-      logger.error("Partition interval must larger than 0!");
-      System.exit(-1);
-    }
-
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    systemProperties.put(
-        PARTITION_INTERVAL_STRING, String.valueOf(timePartitionIntervalForStorage));
+    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(timePartitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
@@ -397,11 +390,6 @@ public class IoTDBStartCheck {
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
       throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    }
-
-    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
-        != timePartitionIntervalForStorage) {
-      throwException(PARTITION_INTERVAL_STRING, timePartitionIntervalForStorage);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {

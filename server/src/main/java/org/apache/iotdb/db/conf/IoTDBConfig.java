@@ -743,8 +743,8 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
-  /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 604_800_000;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -1116,12 +1116,12 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public long getTimePartitionIntervalForRouting() {
-    return timePartitionIntervalForRouting;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
-  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {

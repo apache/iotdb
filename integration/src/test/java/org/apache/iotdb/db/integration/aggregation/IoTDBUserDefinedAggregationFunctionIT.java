@@ -91,11 +91,11 @@ public class IoTDBUserDefinedAggregationFunctionIT {
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
   private static long prevPartitionInterval =
-      IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForRouting(1000000);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(1000000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -104,9 +104,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setTimePartitionIntervalForRouting(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
   }
 
   // add test for part of points in page don't satisfy filter

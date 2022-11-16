@@ -427,9 +427,9 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionIntervalForRouting();
+    long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionIntervalForRouting(100000);
+    config.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -509,7 +509,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionIntervalForRouting(defaultTimePartition);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
@@ -517,9 +517,9 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionIntervalForRouting();
+    long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionIntervalForRouting(1200000);
+    config.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -599,7 +599,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionIntervalForRouting(defaultTimePartition);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
@@ -607,9 +607,9 @@ public class DataRegionTest {
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
           WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionIntervalForRouting();
+    long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionIntervalForRouting(1000000);
+    config.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -689,7 +689,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionIntervalForRouting(defaultTimePartition);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test

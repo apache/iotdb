@@ -34,8 +34,8 @@ public class SizeTieredCompactionSelectorTest {
   @Test
   public void testSubmitWhenNextTimePartitionExists() {
     long originPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForRouting(1000000);
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(1000000);
     List<TsFileResource> resources = new ArrayList<>();
 
     for (int i = 0; i < 100; ++i) {

@@ -86,8 +86,8 @@ public class TsFileRewriteToolTest {
   @Before
   public void setUp() {
     config = IoTDBDescriptor.getInstance().getConfig();
-    originPartitionInterval = config.getTimePartitionIntervalForRouting();
-    config.setTimePartitionIntervalForRouting(newPartitionInterval);
+    originPartitionInterval = config.getTimePartitionInterval();
+    config.setTimePartitionInterval(newPartitionInterval);
     EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
@@ -105,7 +105,7 @@ public class TsFileRewriteToolTest {
       boolean deleteSuccess = f.delete();
       Assert.assertTrue(deleteSuccess);
     }
-    config.setTimePartitionIntervalForRouting(originPartitionInterval);
+    config.setTimePartitionInterval(originPartitionInterval);
 
     File directory = new File(folder);
     try {

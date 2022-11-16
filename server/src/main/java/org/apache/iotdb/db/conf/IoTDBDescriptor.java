@@ -1001,13 +1001,9 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    conf.setTimePartitionIntervalForRouting(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionIntervalForRouting(), conf.getTimestampPrecision()));
-
-    if (!conf.isClusterMode()) {
-      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForRouting());
-    }
+            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1931,7 +1927,7 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());

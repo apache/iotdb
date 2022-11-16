@@ -96,7 +96,7 @@ public class StorageEngineV2 implements IService {
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
-  private static long timePartitionIntervalForStorage = -1;
+  private static long timePartitionInterval = -1;
 
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
@@ -139,22 +139,21 @@ public class StorageEngineV2 implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionIntervalForStorage =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
-  public static long getTimePartitionIntervalForStorage() {
-    if (timePartitionIntervalForStorage == -1) {
+  public static long getTimePartitionInterval() {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return timePartitionIntervalForStorage;
+    return timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
-    if (timePartitionIntervalForStorage == -1) {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return time / timePartitionIntervalForStorage;
+    return time / timePartitionInterval;
   }
 
   /** block insertion if the insertion is rejected by memory control */

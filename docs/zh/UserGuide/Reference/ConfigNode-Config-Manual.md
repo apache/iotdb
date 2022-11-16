@@ -239,9 +239,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |默认值| 无限 |
 |改后生效方式|重启服务生效|
 
-* time\_partition\_interval\_for\_routing
+* time\_partition\_interval
 
-|名字| time\_partition\_interval\_for\_routing |
+|名字| time\_partition\_interval |
 |:--:|:----------------------------------------|
 |描述| Database 默认的数据时间分区间隔                          |
 |类型| Long                                    |
