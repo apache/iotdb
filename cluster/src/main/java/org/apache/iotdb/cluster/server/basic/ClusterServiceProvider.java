@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -90,10 +89,6 @@ public class ClusterServiceProvider extends ServiceProvider {
 
   @Override
   public boolean executeNonQuery(PhysicalPlan plan) {
-    AuditLogUtils.writeAuditLog(
-        plan.getOperatorName(),
-        String.format(
-            "measurements size:%s", plan.getPaths() == null ? 0 : plan.getPaths().size()));
     TSStatus tsStatus = executeNonQueryPlan(plan);
     return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }

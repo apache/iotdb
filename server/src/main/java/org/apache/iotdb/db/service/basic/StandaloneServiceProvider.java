@@ -51,10 +51,6 @@ public class StandaloneServiceProvider extends ServiceProvider {
         && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineReadonlyException();
     }
-    AuditLogUtils.writeAuditLog(
-        plan.getOperatorName(),
-        String.format(
-            "measurements size:%s", plan.getPaths() == null ? 0 : plan.getPaths().size()));
     return executor.processNonQuery(plan);
   }
 }

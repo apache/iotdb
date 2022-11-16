@@ -151,6 +151,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -178,7 +179,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -247,8 +247,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
-  private static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;
@@ -520,7 +519,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       // delete related data
-      AUDIT_LOGGER.info("delete timeseries {}", pathToDelete);
+      AuditLogUtils.writeAuditLog(String.format("delete timeseries %s",pathToDelete));
       DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
       for (PartialPath path : pathToDelete) {
         StorageEngine.getInstance()
@@ -1377,11 +1376,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    AUDIT_LOGGER.info(
-        "delete data from {} in [{},{}]",
-        deletePlan.getPaths(),
-        deletePlan.getDeleteStartTime(),
-        deletePlan.getDeleteEndTime());
+    AuditLogUtils.writeAuditLog(String.format("delete data from %s in [%s,%s]",deletePlan.getPaths(),
+            deletePlan.getDeleteStartTime(),
+            deletePlan.getDeleteEndTime()));
+
     for (PartialPath path : deletePlan.getPaths()) {
       delete(
           path,
@@ -2149,7 +2147,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
-    AUDIT_LOGGER.info("delete timeseries {}", deleteTimeSeriesPlan.getPaths());
+    AuditLogUtils.writeAuditLog(String.format("delete timeseries %s",deleteTimeSeriesPlan.getPaths()));
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
@@ -2228,7 +2226,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
+    AuditLogUtils.writeAuditLog(String.format("set storage group to %s",setStorageGroupPlan.getPaths()));
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
@@ -2240,7 +2238,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    AUDIT_LOGGER.info("delete storage group {}", deleteStorageGroupPlan.getPaths());
+    AuditLogUtils.writeAuditLog(String.format("set storage group to %s",deleteStorageGroupPlan.getPaths()));
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {

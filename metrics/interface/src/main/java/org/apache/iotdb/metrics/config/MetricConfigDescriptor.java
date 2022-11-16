@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
@@ -120,6 +121,13 @@ public class MetricConfigDescriptor {
         if (url != null) {
           url += File.separator + "conf";
         }
+      }
+    }
+    if (url == null) {
+      URL uri = MetricConfig.class.getResource("/" + MetricConstant.CONFIG_NAME);
+      logger.info("MetricConfig.class.getResource,{}", uri);
+      if (uri != null) {
+        return uri.getPath();
       }
     }
     // finally, return null when not find
