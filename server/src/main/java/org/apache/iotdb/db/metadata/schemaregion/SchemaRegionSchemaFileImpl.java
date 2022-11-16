@@ -232,7 +232,23 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGCachedImpl(
-              storageGroupMNode, tagManager::readTags, this::flushCallback, schemaRegionId.getId());
+              storageGroupMNode,
+              tagManager::readTags,
+              this::flushCallback,
+              measurementMNode -> {
+                if (measurementMNode.getOffset() == -1) {
+                  return;
+                }
+                try {
+                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+                } catch (IOException e) {
+                  logger.error(
+                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      schemaRegionId);
+                }
+              },
+              schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -412,40 +428,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     isClearing = false;
   }
 
-  // endregion
-
-  // region Interfaces for schema region Info query and operation
-
-  @Override
-  public String getStorageGroupFullPath() {
-    return storageGroupFullPath;
-  }
-
-  @Override
-  public SchemaRegionId getSchemaRegionId() {
-    return schemaRegionId;
-  }
-
-  @Override
-  public synchronized void deleteSchemaRegion() throws MetadataException {
-    // collect all the LeafMNode in this schema region
-    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
-
-    int seriesCount = leafMNodes.size();
-    schemaStatisticsManager.deleteTimeseries(seriesCount);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(seriesCount);
-    }
-    // drop triggers with no exceptions
-    TriggerEngine.drop(leafMNodes);
-
-    // clear all the components and release all the file handlers
-    clear();
-
-    // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
-  }
-
   @Override
   public boolean createSnapshot(File snapshotDir) {
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
@@ -546,6 +528,40 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             metadataException);
       }
     }
+  }
+
+  // endregion
+
+  // region Interfaces for schema region Info query and operation
+
+  @Override
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
+  }
+
+  @Override
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
+  @Override
+  public synchronized void deleteSchemaRegion() throws MetadataException {
+    // collect all the LeafMNode in this schema region
+    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
+
+    int seriesCount = leafMNodes.size();
+    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(seriesCount);
+    }
+    // drop triggers with no exceptions
+    TriggerEngine.drop(leafMNodes);
+
+    // clear all the components and release all the file handlers
+    clear();
+
+    // delete all the schema region files
+    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
   // endregion

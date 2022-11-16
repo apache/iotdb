@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   public synchronized void reset() throws IOException {
     fileOutputStream.close();
+    // rename file
+    logFile.renameTo(new File(MetadataConstant.METADATA_LOG+"-"+System.currentTimeMillis()));
     fileOutputStream = new FileOutputStream(logFile, false);
   }
 

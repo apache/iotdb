@@ -99,6 +99,9 @@ public abstract class MTreeBelowSGTest {
                 () -> {
                   // do nothing
                 },
+                node -> {
+                  // do nothing
+                },
                 0);
       } else {
         mtree =

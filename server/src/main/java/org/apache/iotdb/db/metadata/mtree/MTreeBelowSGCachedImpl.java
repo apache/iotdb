@@ -130,6 +130,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       IStorageGroupMNode storageGroupMNode,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback,
+      Consumer<IMeasurementMNode> measurementProcess,
       int schemaRegionId)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
@@ -145,6 +146,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
+            measurementProcess.accept(node);
             SchemaStatisticsManager.getInstance().addTimeseries(1);
           }
         };
