@@ -150,7 +150,7 @@ public class PlannerTest {
 
   @Test
   public void parseSQLToPhysicalPlan() throws Exception {
-    String createSGStatement = "set storage group to root.vehicle";
+    String createSGStatement = "CREATE DATABASE root.vehicle";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(createSGStatement);
     assertEquals(OperatorType.SET_STORAGE_GROUP, plan1.getOperatorType());
 

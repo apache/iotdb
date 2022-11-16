@@ -116,7 +116,7 @@ public class ConfigNodeProcedureEnv {
   /**
    * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo
    *
-   * @param name storage group name
+   * @param name database name
    * @return tsStatus
    */
   public TSStatus deleteConfig(String name) {
@@ -125,10 +125,10 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Pre delete a storage group
+   * Pre delete a database
    *
    * @param preDeleteType execute/rollback
-   * @param deleteSgName storage group name
+   * @param deleteSgName database name
    */
   public void preDelete(
       PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
@@ -136,7 +136,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * @param storageGroupName Storage group name
+   * @param storageGroupName database name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
    * @throws TException Thrift IOE

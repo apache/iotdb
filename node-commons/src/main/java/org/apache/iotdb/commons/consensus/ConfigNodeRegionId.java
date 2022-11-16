@@ -15,31 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+package org.apache.iotdb.commons.consensus;
 
-import java.util.Collections;
-import java.util.List;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public class DropPipeSinkPlan extends PhysicalPlan {
-  private String pipeSinkName;
+public class ConfigNodeRegionId extends ConsensusGroupId {
 
-  public DropPipeSinkPlan(String pipeSinkName) {
-    super(Operator.OperatorType.DROP_PIPESINK);
-    this.pipeSinkName = pipeSinkName;
-  }
-
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public ConfigNodeRegionId(int id) {
+    this.id = id;
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.ConfigNodeRegion;
   }
 }

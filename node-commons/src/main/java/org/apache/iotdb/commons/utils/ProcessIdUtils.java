@@ -15,19 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.commons.utils;
 
-public class ShowPipeSinkPlan extends ShowPlan {
-  private String pipeSinkName;
+import java.lang.management.ManagementFactory;
 
-  public ShowPipeSinkPlan(String pipeSinkName) {
-    super(ShowContentType.PIPESINK);
-    this.pipeSinkName = pipeSinkName;
-  }
-
-  public String getPipeSinkName() {
-    return pipeSinkName;
+public class ProcessIdUtils {
+  /**
+   * There exists no platform-independent way that can be guaranteed to work in all jvm
+   * implementations. ManagementFactory.getRuntimeMXBean().getName() looks like the best solution,
+   * and typically includes the PID. On linux+windows, it returns a value like "12345@hostname"
+   * (12345 being the process id).
+   *
+   * @return process id of running Java virtual machine
+   */
+  public static String getProcessId() {
+    return ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
   }
 }

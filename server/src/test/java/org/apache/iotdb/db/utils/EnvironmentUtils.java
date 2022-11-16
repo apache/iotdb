@@ -148,9 +148,9 @@ public class EnvironmentUtils {
     WALRecoverManager.getInstance().clear();
 
     StorageEngineV2.getInstance().stop();
-    // clean storage group manager
+    // clean database manager
     //    if (!StorageEngine.getInstance().deleteAll()) {
-    //      logger.error("Can't close the storage group manager in EnvironmentUtils");
+    //      logger.error("Can't close the database manager in EnvironmentUtils");
     //      fail();
     //    }
 
@@ -363,10 +363,10 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
-    // create storage group
+    // create database
     createDir(config.getSystemDir());
     // create sg dir
-    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
     createDir(commonConfig.getSyncFolder());

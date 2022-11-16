@@ -121,7 +121,7 @@ public class TTLTest {
 
   @Test
   public void testSetMetaTTL() throws IOException, MetadataException {
-    // exception is expected when setting ttl to a non-exist storage group
+    // exception is expected when setting ttl to a non-exist database
     boolean caught = false;
 
     try {

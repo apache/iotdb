@@ -229,7 +229,7 @@ public class ReceiverManager {
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
         TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
-        tsFilePipeData.setStorageGroupName(identityInfo.getStorageGroup());
+        tsFilePipeData.setDatabase(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
@@ -242,7 +242,7 @@ public class ReceiverManager {
     logger.info(
         "Start load pipeData with serialize number {} and type {},value={}",
         pipeData.getSerialNumber(),
-        pipeData.getType(),
+        pipeData.getPipeDataType(),
         pipeData);
     try {
       pipeData.createLoader().load();

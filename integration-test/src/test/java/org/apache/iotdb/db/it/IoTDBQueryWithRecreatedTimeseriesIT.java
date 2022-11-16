@@ -53,7 +53,7 @@ public class IoTDBQueryWithRecreatedTimeseriesIT {
   public void testQueryDiffTypeTimeseries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       Thread.sleep(100);
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=FLOAT,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");

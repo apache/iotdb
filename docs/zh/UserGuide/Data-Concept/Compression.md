@@ -122,7 +122,7 @@ SDT 在刷新到磁盘时进行压缩。 SDT 算法始终存储第一个点，�
 
 ## 压缩比统计信息
 
-压缩比统计信息文件：data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
+压缩比统计信息文件：data/system/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
 
 * ratio_sum: memtable压缩比的总和
 * memtable_flush_time: memtable刷盘的总次数

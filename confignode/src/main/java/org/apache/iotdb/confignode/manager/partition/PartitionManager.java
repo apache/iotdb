@@ -179,7 +179,7 @@ public class PartitionManager {
 
     // We serialize the creation process of SchemaPartitions to
     // ensure that each SchemaPartition is created by a unique CreateSchemaPartitionReq.
-    // Because the number of SchemaPartitions per storage group is limited
+    // Because the number of SchemaPartitions per database is limited
     // by the number of SeriesPartitionSlots,
     // the number of serialized CreateSchemaPartitionReqs is acceptable.
     synchronized (this) {
@@ -255,7 +255,7 @@ public class PartitionManager {
 
     // We serialize the creation process of DataPartitions to
     // ensure that each DataPartition is created by a unique CreateDataPartitionReq.
-    // Because the number of DataPartitions per storage group is limited
+    // Because the number of DataPartitions per database is limited
     // by the number of SeriesPartitionSlots,
     // the number of serialized CreateDataPartitionReqs is acceptable.
     synchronized (this) {
@@ -636,10 +636,10 @@ public class PartitionManager {
     return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
   }
   /**
-   * get storage group for region
+   * get database for region
    *
    * @param regionId regionId
-   * @return storage group name
+   * @return database name
    */
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
     return partitionInfo.getRegionStorageGroup(regionId);

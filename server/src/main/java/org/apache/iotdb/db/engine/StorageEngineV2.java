@@ -96,20 +96,17 @@ public class StorageEngineV2 implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
-  /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's
-   * TimestampPrecision
-   */
+  /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionIntervalForStorage = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
   /**
-   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
-   * will have a subfolder under the systemDir.
+   * a folder (system/databases/ by default) that persist system info. Each database will have a
+   * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -219,7 +216,7 @@ public class StorageEngineV2 implements IService {
       }
     }
 
-    // operations after all virtual storage groups are recovered
+    // operations after all data regions are recovered
     Thread recoverEndTrigger =
         new Thread(
             () -> {
@@ -434,14 +431,14 @@ public class StorageEngineV2 implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param logicalStorageGroupName logical storage group name e.g. root.sg1
+   * @param logicalStorageGroupName database name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
       String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
       throws DataRegionException {
     DataRegion dataRegion;
     logger.info(
-        "construct a data region instance, the storage group is {}, Thread is {}",
+        "construct a data region instance, the database is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     dataRegion =
@@ -469,7 +466,7 @@ public class StorageEngineV2 implements IService {
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -485,7 +482,7 @@ public class StorageEngineV2 implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start force closing all storage group processor");
+    logger.info("Start force closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -525,7 +522,7 @@ public class StorageEngineV2 implements IService {
         }
       }
     }
-    checkResults(tasks, "Failed to close storage group processor.");
+    checkResults(tasks, "Failed to close database processor.");
   }
 
   private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
@@ -542,7 +539,7 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * merge all storage groups.
+   * merge all databases.
    *
    * @throws StorageEngineException StorageEngineException
    */

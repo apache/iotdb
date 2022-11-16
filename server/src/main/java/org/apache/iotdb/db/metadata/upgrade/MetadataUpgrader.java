@@ -101,13 +101,13 @@ public class MetadataUpgrader {
    * </ol>
    *
    * <p>The purpose of upgrader is to recover metadata from the existing files and split and store
-   * them into files in certain storage group dirs. The upgrader will execute the following steps in
+   * them into files in certain database dirs. The upgrader will execute the following steps in
    * order:
    *
    * <ol>
    *   <li>Deserialize the snapshot and recover the MRTree into memory
-   *   <li>Try set storage group based on the recovered StorageGroupMNodes and create timeseries
-   *       based on the recovered MeasurementMNode
+   *   <li>Try create database based on the recovered StorageGroupMNodes and create timeseries based
+   *       on the recovered MeasurementMNode
    *   <li>Redo the mlog
    *   <li>rename and backup the files in the same directory, the order is:
    *       <ol>

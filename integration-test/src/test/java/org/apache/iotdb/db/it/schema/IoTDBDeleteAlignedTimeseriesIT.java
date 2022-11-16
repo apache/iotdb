@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -165,7 +166,7 @@ public class IoTDBDeleteAlignedTimeseriesIT {
     statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
-        Assert.assertEquals("true", resultSet.getString("isAligned"));
+        Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
       }
     }
     cnt = 0;
@@ -174,7 +175,7 @@ public class IoTDBDeleteAlignedTimeseriesIT {
     statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
-        Assert.assertEquals("false", resultSet.getString("isAligned"));
+        Assert.assertEquals("false", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
       }
     }
 
@@ -195,7 +196,7 @@ public class IoTDBDeleteAlignedTimeseriesIT {
     statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
-        Assert.assertEquals("true", resultSet.getString("isAligned"));
+        Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
       }
     }
 

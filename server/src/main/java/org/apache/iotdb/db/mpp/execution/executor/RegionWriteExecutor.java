@@ -69,7 +69,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class RegionWriteExecutor {
 
@@ -309,7 +308,7 @@ public class RegionWriteExecutor {
           if (failingMeasurementMap.isEmpty()) {
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
-            MetadataException metadataException = failingMeasurementMap.get(0);
+            MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.error("Metadata error: ", metadataException);
             RegionExecutionResult result = new RegionExecutionResult();
             result.setAccepted(false);
@@ -348,19 +347,15 @@ public class RegionWriteExecutor {
               continue;
             }
 
-            // filter failed measurement and keep the rest for execution
-            List<Integer> failingMeasurementIndexList =
-                failingMeasurementMap.keySet().stream().sorted().collect(Collectors.toList());
-            int removedNum = 0;
-            for (Integer index : failingMeasurementIndexList) {
-              entry.getValue().removeMeasurement(index - removedNum);
-              removedNum++;
-              LOGGER.error("Metadata error: ", failingMeasurementMap.get(index));
+            for (Map.Entry<Integer, MetadataException> failingMeasurement :
+                failingMeasurementMap.entrySet()) {
+              LOGGER.error("Metadata error: ", failingMeasurement.getValue());
               failingStatus.add(
                   RpcUtils.getStatus(
-                      failingMeasurementMap.get(index).getErrorCode(),
-                      failingMeasurementMap.get(index).getMessage()));
+                      failingMeasurement.getValue().getErrorCode(),
+                      failingMeasurement.getValue().getMessage()));
             }
+            entry.getValue().removeMeasurements(failingMeasurementMap.keySet());
 
             if (entry.getValue().isEmpty()) {
               emptyDeviceList.add(entry.getKey());
@@ -435,8 +430,8 @@ public class RegionWriteExecutor {
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));
             }
-            measurementGroup.removeMeasurement(failingMeasurement.getKey());
           }
+          measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
           RegionExecutionResult executionResult =
               super.visitInternalCreateTimeSeries(node, context);

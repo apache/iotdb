@@ -88,7 +88,7 @@ public class IoTDBDataDirViewer {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be storage group directories under "
+          "Irregular data dir structure.There should be database directories under "
               + "the sequence/unsequence directory "
               + seqOrUnseqDir.getName());
     }
@@ -106,7 +106,7 @@ public class IoTDBDataDirViewer {
     if (files == null) {
       throw new IOException(
           "Irregular data dir structure.There should be timeInterval directories under "
-              + "the storage group directory "
+              + "the database directory "
               + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);

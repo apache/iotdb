@@ -138,8 +138,8 @@ public class IoTDBQueryTimeoutIT {
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.addBatch("SET STORAGE GROUP TO root.sg1;");
-      statement.addBatch("SET STORAGE GROUP TO root.sg2;");
+      statement.addBatch("CREATE DATABASE root.sg1;");
+      statement.addBatch("CREATE DATABASE root.sg2;");
       statement.addBatch("CREATE TIMESERIES root.sg1.d1.s1 with datatype=INT32,encoding=RLE;");
       statement.addBatch("CREATE TIMESERIES root.sg2.d2.s2 with datatype=INT32,encoding=RLE;");
       for (int i = 0; i <= 80000; i++) {

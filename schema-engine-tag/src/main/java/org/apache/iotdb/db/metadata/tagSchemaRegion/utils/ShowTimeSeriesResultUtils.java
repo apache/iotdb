@@ -29,7 +29,7 @@ public class ShowTimeSeriesResultUtils {
   /**
    * generate show timeSeries result
    *
-   * @param sgName storage group name
+   * @param sgName database name
    * @param devicePath device path
    * @param measurement measurement
    * @param schemaEntry schema entry
@@ -52,7 +52,7 @@ public class ShowTimeSeriesResultUtils {
   /**
    * generate show timeSeries result
    *
-   * @param sgName storage group name
+   * @param sgName database name
    * @param timeSeriesPath timeSeries path
    * @param schemaEntry schema entry
    * @return ShowTimeSeriesResult

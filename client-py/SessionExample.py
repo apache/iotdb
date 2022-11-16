@@ -35,7 +35,7 @@ password_ = "root"
 session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
 session.open(False)
 
-# set and delete storage groups
+# create and delete databases
 session.set_storage_group("root.sg_test_01")
 session.set_storage_group("root.sg_test_02")
 session.set_storage_group("root.sg_test_03")
@@ -324,7 +324,7 @@ with session.execute_last_data_query(
     while session_data_set.has_next():
         print(session_data_set.next())
 
-# delete storage group
+# delete database
 session.delete_storage_group("root.sg_test_01")
 
 # create measurement node template

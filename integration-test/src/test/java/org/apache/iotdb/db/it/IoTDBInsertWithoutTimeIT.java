@@ -46,7 +46,7 @@ public class IoTDBInsertWithoutTimeIT {
 
   private static final List<String> sqls =
       Arrays.asList(
-          "SET STORAGE GROUP TO root.sg1",
+          "CREATE DATABASE root.sg1",
           "CREATE TIMESERIES root.sg1.d1.s1 INT64",
           "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
           "CREATE TIMESERIES root.sg1.d1.s3 TEXT");

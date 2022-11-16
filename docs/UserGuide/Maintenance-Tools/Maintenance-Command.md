@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file. In cluster mode, we provide commands to persist the specified storage group cache of local node and persist the specified storage group cache of the cluster.
+Persist all the data points in the memory table of the database to the disk, and seal the data file. In cluster mode, we provide commands to persist the specified database cache of local node and persist the specified database cache of the cluster.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
@@ -149,7 +149,7 @@ IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|     Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
@@ -171,7 +171,7 @@ IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
 Msg: The statement is executed successfully.
 IoTDB> show regions
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
+|RegionId|        Type|Status|     Database|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
 +--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 |       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
 |       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
@@ -305,13 +305,13 @@ Currently, IoTDB supports Region query using the following SQL：
 - `SHOW REGIONS`: Show distribution of all Regions
 - `SHOW SCHEMA REGIONS`: Show distribution of all SchemaRegions
 - `SHOW DATA REGIONS`: Show distribution of all DataRegions
-- `SHOW (DATA|SCHEMA)? REGIONS OF STORAGE GROUP <sg1,sg2,...>`: Show Region distribution of specified StorageGroups
+- `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: Show Region distribution of specified StorageGroups
 
 Show distribution of all Regions:
 ```
 IoTDB> show regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -334,7 +334,7 @@ Show the distribution of SchemaRegions or DataRegions:
 ```
 IoTDB> show data regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -348,7 +348,7 @@ It costs 0.011s
 
 IoTDB> show schema regions
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         1|0.0.0.0|   6667|Follower|
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         2|0.0.0.0|   6668|Follower|
@@ -364,9 +364,9 @@ It costs 0.012s
 Show Region distribution of specified StorageGroups:
 
 ```
-IoTDB> show regions of storage group root.sg1
+IoTDB> show regions of database root.sg1
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -378,9 +378,9 @@ IoTDB> show regions of storage group root.sg1
 Total line number = 6
 It costs 0.007s
 
-IoTDB> show regions of storage group root.sg1, root.sg2
+IoTDB> show regions of database root.sg1, root.sg2
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|  DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -398,9 +398,9 @@ IoTDB> show regions of storage group root.sg1, root.sg2
 Total line number = 12
 It costs 0.009s
 
-IoTDB> show data regions of storage group root.sg1, root.sg2
+IoTDB> show data regions of database root.sg1, root.sg2
 +--------+----------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|      Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|      Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+----------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       0|DataRegion|Running|     root.sg1|          1|        1|         1|0.0.0.0|   6667|Follower|
 |       0|DataRegion|Running|     root.sg1|          1|        1|         2|0.0.0.0|   6668|  Leader|
@@ -412,9 +412,9 @@ IoTDB> show data regions of storage group root.sg1, root.sg2
 Total line number = 6
 It costs 0.007s
 
-IoTDB> show schema regions of storage group root.sg1, root.sg2
+IoTDB> show schema regions of database root.sg1, root.sg2
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
-|RegionId|        Type| Status|Storage Group|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|   Host|RpcPort|    Role|
 +--------+------------+-------+-------------+-----------+---------+----------+-------+-------+--------+
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         1|0.0.0.0|   6667|Follower|
 |       1|SchemaRegion|Running|     root.sg1|          1|        0|         2|0.0.0.0|   6668|Follower|
@@ -436,7 +436,7 @@ The Region statuses are defined as follows:
 
 ## Monitoring tool for cluster slots routing
 
-A cluster uses partitions for data and metadata arrangement, with a storage group's metadata partitions defined as series slot, and data partitions as <series slot, time slot> pair. To acquire this part of information, you can use the following SQLs for query:
+A cluster uses partitions for data and metadata arrangement, with a database's metadata partitions defined as series slot, and data partitions as <series slot, time slot> pair. To acquire this part of information, you can use the following SQLs for query:
 
 ### Trace regionid of data partitions
 
@@ -481,7 +481,7 @@ Total line number = 1
 It costs 0.007s
 ```
 ### Trace time slots of a series slot
-Show the time slots under particular series slot in a storage group.
+Show the time slots under particular series slot in a database.
 - `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
 
 SQL Examples:
@@ -496,8 +496,8 @@ IoTDB> show timeslotid of root.sg where seriesslotid=5286
 Total line number = 1
 It costs 0.007s
 ```
-### Trace storage group's series slots
-Show the data/schema/whole series slots related to a storage group:
+### Trace database's series slots
+Show the data/schema/whole series slots related to a database:
 - `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
 
 SQL Examples:
@@ -530,4 +530,4 @@ Total line number = 1
 It costs 0.006s
 ```
 #### Note:
-Normally, the data and schema series slots are the same in the storage group. Yet we still provide different sqls in case they're not.
+Normally, the data and schema series slots are the same in the database. Yet we still provide different sqls in case they're not.

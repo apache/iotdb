@@ -109,7 +109,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   }
 
   /**
-   * set storage group
+   * create database
    *
    * @param database database of influxdb
    * @param sessionID session id

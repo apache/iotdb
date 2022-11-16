@@ -267,7 +267,7 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
     return 4000;
   }
 
