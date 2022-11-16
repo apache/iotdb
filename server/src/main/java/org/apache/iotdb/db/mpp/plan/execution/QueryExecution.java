@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
@@ -54,9 +53,6 @@ import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -70,7 +66,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -536,34 +531,36 @@ public class QueryExecution implements IQueryExecution {
     }
 
     // collect redirect info to client for writing
-    if (analysis.getStatement() instanceof InsertBaseStatement
-        && !analysis.isFinishQueryAfterAnalyze()) {
-      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList;
-      if (config.isClusterMode()) {
-        redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
-      } else {
-        redirectNodeList = Collections.emptyList();
-      }
-      if (insertStatement instanceof InsertRowsStatement
-          || insertStatement instanceof InsertMultiTabletsStatement) {
-        // multiple devices
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
-          List<TSStatus> subStatus = new ArrayList<>();
-          tsstatus.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-          for (TEndPoint endPoint : redirectNodeList) {
-            subStatus.add(
-                StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION).setRedirectNode(endPoint));
-          }
-          tsstatus.setSubStatus(subStatus);
-        }
-      } else {
-        // single device
-        if (config.isClusterMode()) {
-          tsstatus.setRedirectNode(redirectNodeList.get(0));
-        }
-      }
-    }
+    //    if (analysis.getStatement() instanceof InsertBaseStatement
+    //        && !analysis.isFinishQueryAfterAnalyze()) {
+    //      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
+    //      List<TEndPoint> redirectNodeList;
+    //      if (config.isClusterMode()) {
+    //        redirectNodeList =
+    // insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+    //      } else {
+    //        redirectNodeList = Collections.emptyList();
+    //      }
+    //      if (insertStatement instanceof InsertRowsStatement
+    //          || insertStatement instanceof InsertMultiTabletsStatement) {
+    //        // multiple devices
+    //        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+    //          List<TSStatus> subStatus = new ArrayList<>();
+    //          tsstatus.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    //          for (TEndPoint endPoint : redirectNodeList) {
+    //            subStatus.add(
+    //
+    // StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION).setRedirectNode(endPoint));
+    //          }
+    //          tsstatus.setSubStatus(subStatus);
+    //        }
+    //      } else {
+    //        // single device
+    //        if (config.isClusterMode()) {
+    //          tsstatus.setRedirectNode(redirectNodeList.get(0));
+    //        }
+    //      }
+    //    }
 
     return new ExecutionResult(context.getQueryId(), tsstatus);
   }

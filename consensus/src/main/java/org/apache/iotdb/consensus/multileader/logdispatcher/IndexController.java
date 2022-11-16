@@ -37,7 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class IndexController {
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
-
+  private static final String FILE_NAME_INDEX_SPLITTER = "-";
   private long lastFlushedIndex;
   private long currentIndex;
 
@@ -51,7 +51,7 @@ public class IndexController {
 
   public IndexController(String storageDir, String prefix, long initialIndex, long checkpointGap) {
     this.storageDir = storageDir;
-    this.prefix = prefix + '-';
+    this.prefix = prefix + FILE_NAME_INDEX_SPLITTER;
     this.checkpointGap = checkpointGap;
     this.initialIndex = initialIndex;
     restore();
@@ -127,7 +127,8 @@ public class IndexController {
       long maxVersion = 0;
       int maxVersionIndex = 0;
       for (int i = 0; i < versionFiles.length; i++) {
-        long fileVersion = Long.parseLong(versionFiles[i].getName().split("-")[1]);
+        String[] splits = versionFiles[i].getName().split(FILE_NAME_INDEX_SPLITTER);
+        long fileVersion = Long.parseLong(splits[splits.length - 1]);
         if (fileVersion > maxVersion) {
           maxVersion = fileVersion;
           maxVersionIndex = i;
