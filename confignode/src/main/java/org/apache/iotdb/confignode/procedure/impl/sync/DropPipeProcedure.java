@@ -60,12 +60,9 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to drop PIPE [{}]", pipeName);
-    try {
-      PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
-      return false;
-    } catch (PipeNotExistException e) {
-      return true;
-    }
+    // throw PipeNotExistException if pipe not exist
+    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+    return false;
   }
 
   @Override
