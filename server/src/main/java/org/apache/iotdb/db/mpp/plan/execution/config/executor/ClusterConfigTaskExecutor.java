@@ -138,6 +138,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.udf.api.UDTF;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -356,9 +357,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
-        // Ensure that jar file contains the class
-        Class.forName(createFunctionStatement.getClassName(), true, classLoader);
-      } catch (ClassNotFoundException e) {
+        // ensure that jar file contains the class and the class is a UDF
+        Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
+        UDTF udtf = (UDTF) clazz.getDeclaredConstructor().newInstance();
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException e) {
         LOGGER.warn(
             "Failed to create function when try to create UDF({}) instance first, the cause is: {}",
             createFunctionStatement.getUdfName(),
@@ -534,7 +540,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
                     + createTriggerStatement.getUriString(),
-                TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
+                TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
 

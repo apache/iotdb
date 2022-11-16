@@ -80,7 +80,7 @@ public class ErrorHandlingUtils {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.DATABASE_NOT_READY.getStatusCode()) {
         String message =
             String.format(
                 "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
@@ -108,7 +108,7 @@ public class ErrorHandlingUtils {
     Throwable rootCause = getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
-      return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.DATABASE_NOT_READY, rootCause.getMessage());
     }
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
@@ -159,7 +159,7 @@ public class ErrorHandlingUtils {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
       for (TSStatus status : batchException.getFailingStatus()) {
-        if (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.DATABASE_NOT_READY.getStatusCode()) {
           return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
         }
       }

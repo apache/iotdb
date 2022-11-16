@@ -493,7 +493,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<String> failedCreationList = new ArrayList<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
-      if (subStatus.code == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+      if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
             MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {

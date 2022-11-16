@@ -945,7 +945,7 @@ public class DataRegion {
         if (!isAlive(currTime)) {
           results[loc] =
               RpcUtils.getStatus(
-                  TSStatusCode.OUT_OF_TTL_ERROR,
+                  TSStatusCode.OUT_OF_TTL,
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
                       DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
@@ -3070,7 +3070,7 @@ public class DataRegion {
               .put(
                   i,
                   RpcUtils.getStatus(
-                      TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+                      TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),

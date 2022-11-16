@@ -126,8 +126,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
                     new ExecutionStatus()
-                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode())
-                        .message(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.name()))
+                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode())
+                        .message(TSStatusCode.WRONG_LOGIN_PASSWORD.name()))
                 .build();
         containerRequestContext.abortWith(resp);
         return null;

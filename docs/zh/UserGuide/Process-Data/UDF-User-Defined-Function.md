@@ -196,7 +196,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 3. 针对数值型数据，可以只提供单个窗口内部允许变化的阈值delta，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
 4. 针对文本数据以及布尔数据，可以不提供任何参数，开始与结束时间戳见3中解释。
 
-策略的构造方法详见 Javadoc。
+StateWindowAccessStrategy 目前只能接收一列输入。策略的构造方法详见 Javadoc。
 
  * setOutputDataType
 
