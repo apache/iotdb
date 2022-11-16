@@ -264,6 +264,7 @@ struct TUserResp {
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
+  5: required bool isOpenIdUser
 }
 
 struct TRoleResp {
