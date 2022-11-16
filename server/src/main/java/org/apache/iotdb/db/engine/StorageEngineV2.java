@@ -63,6 +63,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -70,12 +71,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -115,6 +118,9 @@ public class StorageEngineV2 implements IService {
   /** DataRegionId -> DataRegion which is being deleted */
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
+
+  /** Database name -> ttl, for region recovery only */
+  private final Map<String, Long> ttlMapForRecover = new ConcurrentHashMap<>();
 
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
@@ -189,6 +195,19 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+  public void updateTTLInfo(byte[] allTTLInformation) {
+    if (allTTLInformation == null) {
+      return;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
+    int mapSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < mapSize; i++) {
+      ttlMapForRecover.put(
+          Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
+          ReadWriteIOUtils.readLong(buffer));
+    }
+  }
+
   public boolean isAllSgReady() {
     return isAllSgReady.get();
   }
@@ -222,6 +241,7 @@ public class StorageEngineV2 implements IService {
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
+              ttlMapForRecover.clear();
             });
     recoverEndTrigger.start();
   }
@@ -240,7 +260,11 @@ public class StorageEngineV2 implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
+                dataRegion =
+                    buildNewDataRegion(
+                        sgName,
+                        dataRegionId,
+                        ttlMapForRecover.getOrDefault(sgName, Long.MAX_VALUE));
               } catch (DataRegionException e) {
                 logger.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);

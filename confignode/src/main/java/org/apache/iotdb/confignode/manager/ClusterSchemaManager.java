@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -204,6 +205,22 @@ public class ClusterSchemaManager {
     }
 
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+  }
+
+  public Map<String, Long> getAllTTLInfo() {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp)
+            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return infoMap;
+    }
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
+    }
+    return infoMap;
   }
 
   /**

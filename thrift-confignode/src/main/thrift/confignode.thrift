@@ -39,6 +39,7 @@ struct TDataNodeRegisterResp {
   7: optional list<binary> allTriggerInformation
   8: optional TCQConfig cqConfig
   9: optional list<binary> allUDFInformation
+  10: optional binary allTTLInformation
 }
 
 struct TGlobalConfig {
