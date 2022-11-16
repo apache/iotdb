@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -206,42 +207,20 @@ public class ClusterSchemaManager {
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
-  public TShowStorageGroupResp showAllTTL() {
+  public Map<String, Long> getAllTTLInfo() {
     StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+        (StorageGroupSchemaResp)
+            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
     if (storageGroupSchemaResp.getStatus().getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
-      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+      return infoMap;
     }
-
-    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
-      String name = storageGroupSchema.getName();
-      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
-      storageGroupInfo.setName(name);
-      storageGroupInfo.setTTL(storageGroupSchema.getTTL());
-      storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
-      storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
-      storageGroupInfo.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
-
-      try {
-        storageGroupInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionCount(name, TConsensusGroupType.SchemaRegion));
-        storageGroupInfo.setDataRegionNum(
-            getPartitionManager().getRegionCount(name, TConsensusGroupType.DataRegion));
-      } catch (StorageGroupNotExistsException e) {
-        // Return immediately if some StorageGroups doesn't exist
-        return new TShowStorageGroupResp()
-            .setStatus(
-                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-                    .setMessage(e.getMessage()));
-      }
-
-      infoMap.put(name, storageGroupInfo);
+      infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
     }
-
-    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+    return infoMap;
   }
 
   /**
