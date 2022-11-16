@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,28 +47,38 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    long startTime = System.nanoTime();
     long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(maxTimestamp);
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromStatistics", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    long startTime = System.nanoTime();
     updateResultFromPageData(batchIterator, time -> false);
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromPageData", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+    long startTime = System.nanoTime();
     while (batchIterator.hasNext(boundPredicate)
         && !boundPredicate.test(batchIterator.currentTime())) {
       updateMaxTimeResult(batchIterator.currentTime());
       batchIterator.next();
     }
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromPageData", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    long startTime = System.nanoTime();
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = length - 1; i >= 0; i--) {
       if (values[i] != null) {
@@ -75,16 +86,21 @@ public class MaxTimeAggrResult extends AggregateResult {
         return;
       }
     }
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultUsingTimestamps", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
+    long startTime = System.nanoTime();
     for (int i = length - 1; i >= 0; i--) {
       if (valueIterator.get(i) != null) {
         updateMaxTimeResult(timestamps[i]);
         return;
       }
     }
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultUsingValues", System.nanoTime() - startTime);
   }
 
   @Override

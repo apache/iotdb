@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.control.QueryStatistics;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -47,17 +48,24 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    long startTime = System.nanoTime();
     setLongValue(getLongValue() + statistics.getCount());
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromStatistics", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
+    long startTime = System.nanoTime();
     setLongValue(getLongValue() + batchIterator.totalLength());
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromPageData", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+    long startTime = System.nanoTime();
     int cnt = 0;
     while (batchIterator.hasNext(boundPredicate)
         && !boundPredicate.test(batchIterator.currentTime())) {
@@ -65,11 +73,14 @@ public class CountAggrResult extends AggregateResult {
       batchIterator.next();
     }
     setLongValue(getLongValue() + cnt);
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultFromPageData", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    long startTime = System.nanoTime();
     int cnt = 0;
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
@@ -78,16 +89,21 @@ public class CountAggrResult extends AggregateResult {
       }
     }
     setLongValue(getLongValue() + cnt);
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultUsingTimestamps", System.nanoTime() - startTime);
   }
 
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
+    long startTime = System.nanoTime();
     int cnt = 0;
     while (valueIterator.hasNext()) {
       valueIterator.next();
       cnt++;
     }
     setLongValue(getLongValue() + cnt);
+    QueryStatistics.getInstance()
+        .addCost("Aggregation: updateResultUsingValues", System.nanoTime() - startTime);
   }
 
   @Override
