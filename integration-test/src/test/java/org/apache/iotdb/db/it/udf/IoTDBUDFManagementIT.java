@@ -209,6 +209,34 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
+  public void testCreateFunctionWithInvalidURI() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                "a", "org.apache.iotdb.test", "", "test"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                "a", "org.apache.iotdb.test", "file:///data/udf/upload-test.jar", "test"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+    } catch (SQLException throwable) {
+      fail();
+    }
+  }
+
+  @Test
   public void testDropFunction1() throws SQLException { // create + drop twice
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
