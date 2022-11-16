@@ -57,7 +57,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insert(node);
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
-      LOGGER.warn("Error in executing plan node: {}", node, e.getMessage());
+      LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (WriteProcessException | TriggerExecutionException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
@@ -71,7 +71,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablet(node);
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
-      LOGGER.warn("Error in executing plan node: {}", node, e.getMessage());
+      LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (TriggerExecutionException | WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
