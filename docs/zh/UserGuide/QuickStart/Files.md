@@ -34,7 +34,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 
 ### TsFile
 > 在 basedir/data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/目录下
-1. {time}-{version}-{mergeCnt}.tsfile
+1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + 数据文件
 2. {TsFileName}.tsfile.mod
     + 更新文件，主要记录删除操作
@@ -42,10 +42,6 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 ### TsFileResource
 1. {TsFileName}.tsfile.resource
     + TsFile 的概要与索引文件
-2. {TsFileName}.tsfile.resource.temp
-    + 临时文件，用于避免更新 tsfile.resource 时损坏 tsfile.resource
-3. {TsFileName}.tsfile.resource.closing
-    + 关闭标记文件，用于标记 TsFile 处于关闭状态，重启后可以据此选择是关闭或继续写入该文件
 
 
 ## 系统文件

@@ -35,7 +35,7 @@ In order to support users' storage requirements such as disk space expansion bet
 ### TsFile
 > under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
 
-1. {time}-{version}-{mergeCnt}.tsfile
+1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + normal data file
 2. {TsFileName}.tsfile.mod
     + modification file
@@ -44,11 +44,6 @@ In order to support users' storage requirements such as disk space expansion bet
 ### TsFileResource
 1. {TsFileName}.tsfile.resource
     + descriptor and statistic file of a TsFile
-2. {TsFileName}.tsfile.resource.temp
-    + temp file
-    + avoid damaging the tsfile.resource when updating it
-3. {TsFileName}.tsfile.resource.closing
-    + close flag file, to mark a tsfile closing so during restarts we can continue to close it or reopen it
   
 
 ## System files
