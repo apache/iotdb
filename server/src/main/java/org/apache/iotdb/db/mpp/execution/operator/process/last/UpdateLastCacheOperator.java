@@ -59,7 +59,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
 
   private final TsBlockBuilder tsBlockBuilder;
 
-  private final String database;
+  private String databaseName;
 
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
@@ -75,14 +75,6 @@ public class UpdateLastCacheOperator implements ProcessOperator {
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
-    if (needUpdateCache) {
-      database =
-          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getDataRegion()
-              .getStorageGroupName();
-    } else {
-      database = null;
-    }
   }
 
   @Override
@@ -117,7 +109,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
 
     if (needUpdateCache) {
       TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
-      lastCache.updateLastCache(database, fullPath, timeValuePair, false, Long.MIN_VALUE);
+      lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
     }
 
     tsBlockBuilder.reset();
@@ -126,6 +118,16 @@ public class UpdateLastCacheOperator implements ProcessOperator {
         tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
 
     return tsBlockBuilder.build();
+  }
+
+  private String getDatabaseName() {
+    if (databaseName == null) {
+      databaseName =
+          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getDataRegion()
+              .getStorageGroupName();
+    }
+    return databaseName;
   }
 
   @Override
