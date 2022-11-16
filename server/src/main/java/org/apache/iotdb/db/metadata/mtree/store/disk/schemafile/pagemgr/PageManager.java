@@ -627,17 +627,21 @@ public abstract class PageManager implements IPageManager {
    * @throws MetadataException
    */
   private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
-    if (batchSize < SEG_SIZE_METRIC[0]) {
-      return reEstimateSegSize(expSize);
+    int base_tier = 0;
+    for (int i = 0; i < SEG_SIZE_LST.length; i++) {
+      if (SEG_SIZE_LST[i] >= expSize) {
+        base_tier = i;
+        break;
+      }
     }
     int tier = SEG_SIZE_LST.length - 1;
-    while (tier > 0) {
+    while (tier >= base_tier) {
       if (batchSize > SEG_SIZE_METRIC[tier]) {
         return SEG_SIZE_LST[tier];
       }
       tier--;
     }
-    return SEG_SIZE_LST[0];
+    return SEG_SIZE_LST[base_tier];
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {
