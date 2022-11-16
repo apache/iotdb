@@ -88,6 +88,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         node.getDevices().size() == node.getChildren().size(),
         "size of devices and its children in DeviceViewNode should be same");
 
+    // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
+    // special logic.
+    if (isAggregationQuery(node)) {}
+
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
 
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
@@ -541,10 +545,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return root;
   }
 
-  private boolean isAggregationQuery(TimeJoinNode node) {
+  private boolean isAggregationQuery(PlanNode node) {
+    if (node instanceof SeriesAggregationScanNode
+        || node instanceof AlignedSeriesAggregationScanNode) {
+      return true;
+    }
     for (PlanNode child : node.getChildren()) {
-      if (child instanceof SeriesAggregationScanNode
-          || child instanceof AlignedSeriesAggregationScanNode) {
+      if (isAggregationQuery(child)) {
         return true;
       }
     }
