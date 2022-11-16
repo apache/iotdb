@@ -76,6 +76,7 @@ public class SyncConstant {
   public static final String PATCH_SUFFIX = ".patch";
   public static final String IPV4_PATTERN =
       "^([1-9]|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}$";
+  public static final int RETRY_INTERVAL_MILLISECONDS = 5_000;
 
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";

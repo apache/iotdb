@@ -36,9 +36,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SenderManager handles rpc send logic in sender-side. Each SenderManager and Pipe have a
@@ -53,9 +58,12 @@ public class SenderManager {
   private final Map<String, Future> transportFutureMap;
   private final Pipe pipe;
   private final PipeSink pipeSink;
+  private final BlockingQueue<Byte> blockingQueue = new LinkedBlockingQueue<>();
+  private final AtomicInteger blockedClientNum = new AtomicInteger();
 
   // Thread pool that send PipeData in parallel by DataRegion
   protected ExecutorService transportExecutorService;
+  protected ScheduledExecutorService heartbeatExecutorService;
 
   private boolean isRunning;
 
@@ -65,6 +73,9 @@ public class SenderManager {
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
+    this.heartbeatExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipe.getName());
     this.clientMap = new HashMap<>();
     this.transportFutureMap = new HashMap<>();
     this.isRunning = false;
@@ -79,6 +90,9 @@ public class SenderManager {
           transportExecutorService.submit(
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
+    heartbeatExecutorService.scheduleWithFixedDelay(
+
+    )
     isRunning = true;
   }
 
@@ -140,7 +154,8 @@ public class SenderManager {
           }
         } catch (SyncConnectionException e) {
           logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
-          // TODO: wait and retry
+          blockedClientNum.incrementAndGet();
+          blockingQueue.take();
         }
       }
     } catch (InterruptedException e) {
