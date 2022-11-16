@@ -391,14 +391,12 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DROP_FUNCTION|deregister UDFs; path independent|Eg: `drop function example`|
 |CREATE_TRIGGER|create triggers; path dependent|Eg1: `CREATE TRIGGER <TRIGGER-NAME> BEFORE INSERT ON <FULL-PATH> AS <CLASSNAME>`<br />Eg2: `CREATE TRIGGER <TRIGGER-NAME> AFTER INSERT ON <FULL-PATH> AS <CLASSNAME>`|
 |DROP_TRIGGER|drop triggers; path dependent|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
-|START_TRIGGER|start triggers; path dependent|Eg: `start trigger lert-listener-sg1d1s1'`|
-|STOP_TRIGGER|stop triggers; path dependent|Eg: `stop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
-|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|Eg1: `create schema template t1(s1 int32)`
-|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
-|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
-|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|Eg1: `create schema template t1(s1 int32)`<br />Eg2: `drop schema template t1`|
+|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`| 
+|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `unset schema template t1 from root.sg.d`<br/>Eg3: `create timeseries of schema template on root.sg.d`<br/>Eg4: `delete timeseries of schema template on root.sg.d`|
+|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`|
 
 Note that path dependent privileges can only be granted or revoked on root.**;
 

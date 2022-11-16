@@ -28,7 +28,7 @@ public class SchemaFileLogCorruptedException extends MetadataException {
   public SchemaFileLogCorruptedException(String fileName, String reason) {
     super(
         String.format("SchemaFileLog [%s] corrupted for [%s].", fileName, reason),
-        TSStatusCode.SCHEMA_FILE_LOG_CORR.getStatusCode(),
+        TSStatusCode.SCHEMA_FILE_REDO_LOG_BROKEN.getStatusCode(),
         true);
   }
 }

@@ -262,7 +262,7 @@ public class ConfigNodeProcedureEnv {
             getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
       } else {
         tsStatus =
-            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }

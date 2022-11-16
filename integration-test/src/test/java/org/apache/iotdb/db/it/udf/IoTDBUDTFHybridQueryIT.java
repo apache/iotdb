@@ -157,7 +157,6 @@ public class IoTDBUDTFHybridQueryIT {
   }
 
   @Test
-  @Ignore // TODO fill function incompatible
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String[] retArray =
         new String[] {

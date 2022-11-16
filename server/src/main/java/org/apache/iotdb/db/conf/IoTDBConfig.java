@@ -32,8 +32,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
-import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -554,10 +554,7 @@ public class IoTDBConfig {
   private int sessionTimeoutThreshold = 0;
 
   /** Replace implementation class of JDBC service */
-  private String rpcImplClassName = TSServiceImpl.class.getName();
-
-  /** indicate whether current mode is mpp */
-  private boolean mppMode = false;
+  private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
@@ -3088,14 +3085,6 @@ public class IoTDBConfig {
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
-  public boolean isMppMode() {
-    return mppMode;
-  }
-
-  public void setMppMode(boolean mppMode) {
-    this.mppMode = mppMode;
   }
 
   public boolean isClusterMode() {

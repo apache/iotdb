@@ -249,7 +249,7 @@ public class NodeManager {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REJECT_REMOVED_DATANODE.getStatusCode());
+      status.setCode(TSStatusCode.REGISTER_REMOVED_DATANODE.getStatusCode());
       status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
     }
 
@@ -279,22 +279,23 @@ public class NodeManager {
         dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
-          "The remove DataNode request check failed.  req: {}, check result: {}",
+          "The remove DataNode request check failed. req: {}, check result: {}",
           removeDataNodePlan,
           preCheckStatus.getStatus());
       return preCheckStatus;
     }
 
+    // Do transfer of the DataNodes before remove
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    // do transfer of the DataNodes before remove
     if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataSet.setStatus(
-          new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.NODE_DELETE_ERROR.getStatusCode())
               .setMessage("Fail to do transfer of the DataNodes"));
       return dataSet;
     }
-    // if add request to queue, then return to client
+
+    // Add request to queue, then return to client
     boolean registerSucceed =
         configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
@@ -302,12 +303,14 @@ public class NodeManager {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("Server accepted the request");
     } else {
-      status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.NODE_DELETE_ERROR.getStatusCode());
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);
 
-    LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info(
+        "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+        removeDataNodePlan);
     return dataSet;
   }
 
@@ -356,6 +359,16 @@ public class NodeManager {
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    if (configManager.getConsensusManager() == null) {
+      TSStatus errorStatus = new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+      errorStatus.setMessage(
+          "ConsensusManager of target-ConfigNode is not initialized, "
+              + "please make sure the target-ConfigNode has been started successfully.");
+      return new TConfigNodeRegisterResp()
+          .setStatus(errorStatus)
+          .setConfigNodeId(ERROR_STATUS_NODE_ID);
+    }
+
     // Check global configuration
     TSStatus status = configManager.getConsensusManager().confirmLeader();
 
@@ -548,21 +561,21 @@ public class NodeManager {
     try {
       // Check OnlineConfigNodes number
       if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
       if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
       }
 
       // Check whether the remove ConfigNode is leader
       TConfigNodeLocation leader = getConsensusManager().getLeader();
       if (leader == null) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
       }
@@ -596,7 +609,7 @@ public class NodeManager {
                 groupId,
                 new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
     if (!resp.isSuccess()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
     }
     return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())

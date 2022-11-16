@@ -130,7 +130,7 @@ point and updates the upper and lower boundaries. The last point at time 2017-11
 
 ## Compression Ratio Statistics
 
-Compression ratio statistics file: data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
+Compression ratio statistics file: data/system/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
 
 * ratio_sum: sum of memtable compression ratios
 * memtable_flush_time: memtable flush times

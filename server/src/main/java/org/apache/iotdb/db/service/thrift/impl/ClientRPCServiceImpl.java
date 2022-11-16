@@ -470,7 +470,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return new TSStatus(
         !SESSION_MANAGER.closeSession(
                 SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
@@ -1774,7 +1774,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

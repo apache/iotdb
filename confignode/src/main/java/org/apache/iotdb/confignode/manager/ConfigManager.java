@@ -240,9 +240,15 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    consensusManager.close();
-    partitionManager.getRegionMaintainer().shutdown();
-    procedureManager.shiftExecutor(false);
+    if (consensusManager != null) {
+      consensusManager.close();
+    }
+    if (partitionManager != null) {
+      partitionManager.getRegionMaintainer().shutdown();
+    }
+    if (procedureManager != null) {
+      procedureManager.shiftExecutor(false);
+    }
   }
 
   @Override
@@ -435,7 +441,7 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =

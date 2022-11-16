@@ -29,7 +29,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -604,8 +603,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // ------------------------------Raw Query With Value Filter-------------------------------------
-  // TODO add these back when value filter is done in new cluster
-
   @Test
   public void selectAllAlignedWithValueFilterTest1() {
 
@@ -3071,90 +3068,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // TODO we may never support this in mpp
-  @Ignore
-  @Test
-  public void maxMinValueTimePreviousUntilLastFillAlignByDeviceTest() throws SQLException {
-    String[] retArray =
-        new String[] {
-          "1,root.sg1.d1,30000,6.0,9,3",
-          "11,root.sg1.d1,130000,11.0,20,11",
-          "21,root.sg1.d1,230000,230000.0,null,23",
-          "31,root.sg1.d1,null,null,null,null"
-        };
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      int cnt;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + "where s1 > 5 and time < 35 GROUP BY ([1, 41), 10ms) FILL(previousUntilLast) align by device")) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
-                  + ","
-                  + resultSet.getString(maxValue("s3"))
-                  + ","
-                  + resultSet.getString(minValue("s1"))
-                  + ","
-                  + resultSet.getString(maxTime("s2"))
-                  + ","
-                  + resultSet.getString(minTime("s3"));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray.length, cnt);
-      }
-    }
-  }
-
-  // TODO need to discuss fill function
-  @Ignore
-  @Test
-  public void maxMinValueTimeValueFillAlignByDeviceTest() throws SQLException {
-    String[] retArray =
-        new String[] {
-          "1,root.sg1.d1,30000,30000.0,null,3",
-          "6,root.sg1.d1,10,6.0,10,6",
-          "11,root.sg1.d1,130000,11.0,15,11",
-          "16,root.sg1.d1,20,16.0,20,16",
-          "21,root.sg1.d1,230000,230000.0,null,21",
-          "26,root.sg1.d1,29,null,null,26"
-        };
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      int cnt;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 31), 5ms) FILL ('fill string') align by device")) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(ColumnHeaderConstant.DEVICE)
-                  + ","
-                  + resultSet.getString(maxValue("s3"))
-                  + ","
-                  + resultSet.getString(minValue("s1"))
-                  + ","
-                  + resultSet.getString(maxTime("s2"))
-                  + ","
-                  + resultSet.getString(minTime("s3"));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray.length, cnt);
-      }
-    }
-  }
-
   // --------------------------GroupByWithoutValueFilter--------------------------
   @Test
   public void countSumAvgGroupByTest1() throws SQLException {
@@ -4082,7 +3995,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // TODO Semantic error
   @Test
   public void groupByWithoutAggregationFuncTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -4100,7 +4012,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // TODO Semantic error
   @Test
   public void negativeOrZeroTimeIntervalTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

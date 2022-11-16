@@ -102,11 +102,11 @@ public class StorageEngineV2 implements IService {
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
   /**
-   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
-   * will have a subfolder under the systemDir.
+   * a folder (system/databases/ by default) that persist system info. Each database will have a
+   * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -715,7 +715,7 @@ public class StorageEngineV2 implements IService {
               "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.TSFILE_RUNTIME_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     } catch (IOException e) {
@@ -724,7 +724,7 @@ public class StorageEngineV2 implements IService {
               "IO error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -765,7 +765,7 @@ public class StorageEngineV2 implements IService {
       }
     } catch (IOException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (LoadFileException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);

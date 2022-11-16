@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.query;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,7 +35,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class}) // TODO add LocalStandaloneIT
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBNullValueFillIT {
 
   /**

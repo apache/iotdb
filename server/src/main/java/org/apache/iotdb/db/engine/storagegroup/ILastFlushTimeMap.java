@@ -52,7 +52,7 @@ public interface ILastFlushTimeMap {
   // region support upgrade methods
   void applyNewlyFlushedTimeToFlushedTime();
 
-  boolean updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
+  void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
   // endregion
 
   // region query

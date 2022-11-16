@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.exception.sync.PipeNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -60,12 +59,9 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
   @Override
   boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to drop PIPE [{}]", pipeName);
-    try {
-      PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
-      return false;
-    } catch (PipeNotExistException e) {
-      return true;
-    }
+    // throw PipeNotExistException if pipe not exist
+    PipeInfo pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
+    return false;
   }
 
   @Override

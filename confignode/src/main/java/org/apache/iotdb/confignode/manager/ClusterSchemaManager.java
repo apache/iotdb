@@ -125,7 +125,7 @@ public class ClusterSchemaManager {
       if (metadataException instanceof IllegalPathException) {
         result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
       return result;
@@ -141,9 +141,12 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
-    // Adjust the maximum RegionGroup number of each StorageGroup
-    adjustMaxRegionGroupCount();
-    return getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+    TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+    // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      adjustMaxRegionGroupCount();
+    }
+    return result;
   }
 
   /**
@@ -193,7 +196,7 @@ public class ClusterSchemaManager {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
             .setStatus(
-                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
       }
 
@@ -218,7 +221,7 @@ public class ClusterSchemaManager {
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          TSStatusCode.DATABASE_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
 

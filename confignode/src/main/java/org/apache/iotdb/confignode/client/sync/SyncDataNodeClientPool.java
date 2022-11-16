@@ -63,7 +63,7 @@ public class SyncDataNodeClientPool {
 
   public TSStatus sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
-    Throwable lastException = null;
+    Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
@@ -74,12 +74,14 @@ public class SyncDataNodeClientPool {
             requestType,
             endPoint,
             e.getMessage(),
-            retry);
-        doRetryWait(retry);
+            retry + 1);
+        if (retry != DEFAULT_RETRY_NUM - 1) {
+          doRetryWait(retry);
+        }
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+    return new TSStatus(TSStatusCode.ALL_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
@@ -96,12 +98,14 @@ public class SyncDataNodeClientPool {
             requestType,
             endPoint,
             e.getMessage(),
-            retry);
-        doRetryWait(retry);
+            retry + 1);
+        if (retry != retryNum - 1) {
+          doRetryWait(retry);
+        }
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+    return new TSStatus(TSStatusCode.ALL_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
@@ -145,7 +149,13 @@ public class SyncDataNodeClientPool {
 
   private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      if (retryNum < 3) {
+        TimeUnit.MILLISECONDS.sleep(800L);
+      } else if (retryNum < 5) {
+        TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      } else {
+        TimeUnit.MILLISECONDS.sleep(3200L);
+      }
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }
@@ -173,7 +183,7 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
-      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;
