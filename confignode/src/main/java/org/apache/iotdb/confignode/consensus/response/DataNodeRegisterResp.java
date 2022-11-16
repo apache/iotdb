@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,6 +43,8 @@ public class DataNodeRegisterResp implements DataSet {
   private byte[] templateInfo;
   private List<ByteBuffer> allTriggerInformation;
   private List<ByteBuffer> allUDFInformation;
+
+  private List<TStorageGroupInfo> allDatabasesInformation;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -92,6 +95,10 @@ public class DataNodeRegisterResp implements DataSet {
     this.allUDFInformation = allUDFInformation;
   }
 
+  public void setAllDatabasesInformation(List<TStorageGroupInfo> allDatabasesInformation) {
+    this.allDatabasesInformation = allDatabasesInformation;
+  }
+
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
@@ -107,6 +114,7 @@ public class DataNodeRegisterResp implements DataSet {
       resp.setCqConfig(cqConfig);
       resp.setAllTriggerInformation(allTriggerInformation);
       resp.setAllUDFInformation(allUDFInformation);
+      resp.setAllDatabaseInformation(allDatabasesInformation);
     }
 
     return resp;

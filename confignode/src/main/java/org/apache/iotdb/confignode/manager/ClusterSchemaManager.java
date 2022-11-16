@@ -206,6 +206,44 @@ public class ClusterSchemaManager {
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
+  public TShowStorageGroupResp showAllTTL() {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+    }
+
+    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      String name = storageGroupSchema.getName();
+      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
+      storageGroupInfo.setName(name);
+      storageGroupInfo.setTTL(storageGroupSchema.getTTL());
+      storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
+      storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
+      storageGroupInfo.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
+
+      try {
+        storageGroupInfo.setSchemaRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setDataRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.DataRegion));
+      } catch (StorageGroupNotExistsException e) {
+        // Return immediately if some StorageGroups doesn't exist
+        return new TShowStorageGroupResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                    .setMessage(e.getMessage()));
+      }
+
+      infoMap.put(name, storageGroupInfo);
+    }
+
+    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+  }
+
   /**
    * Update TTL for the specific StorageGroup or all databases in a path
    *

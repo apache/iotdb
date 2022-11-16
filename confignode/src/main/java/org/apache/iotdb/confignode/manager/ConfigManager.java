@@ -264,6 +264,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllDatabasesInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
