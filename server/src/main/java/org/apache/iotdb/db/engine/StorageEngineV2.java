@@ -241,6 +241,7 @@ public class StorageEngineV2 implements IService {
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
+              ttlMapForRecover.clear();
             });
     recoverEndTrigger.start();
   }
