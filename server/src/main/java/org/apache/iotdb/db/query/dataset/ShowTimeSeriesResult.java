@@ -42,6 +42,9 @@ public class ShowTimeSeriesResult extends ShowResult {
   private Map<String, String> attributes;
   private long lastTime;
 
+  private String deadband;
+  private String deadbandParameters;
+
   public ShowTimeSeriesResult(
       String name,
       String alias,
@@ -51,7 +54,9 @@ public class ShowTimeSeriesResult extends ShowResult {
       CompressionType compressor,
       long lastTime,
       Map<String, String> tags,
-      Map<String, String> attributes) {
+      Map<String, String> attributes,
+      String deadband,
+      String deadbandParameter) {
     super(name, sgName);
     this.alias = alias;
     this.dataType = dataType;
@@ -60,6 +65,8 @@ public class ShowTimeSeriesResult extends ShowResult {
     this.tags = tags;
     this.attributes = attributes;
     this.lastTime = lastTime;
+    this.deadband = deadband;
+    this.deadbandParameters = deadbandParameter;
   }
 
   public ShowTimeSeriesResult() {
@@ -88,6 +95,14 @@ public class ShowTimeSeriesResult extends ShowResult {
 
   public Map<String, String> getAttribute() {
     return attributes;
+  }
+
+  public String getDeadband() {
+    return deadband;
+  }
+
+  public String getDeadbandParameters() {
+    return deadbandParameters;
   }
 
   @TestOnly
