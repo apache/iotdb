@@ -33,9 +33,6 @@ import java.util.Map;
 
 public interface PipeSink {
 
-  // TODO: delete this in new-standalone version
-  void setAttribute(List<Pair<String, String>> params) throws PipeSinkException;
-
   void setAttribute(Map<String, String> params) throws PipeSinkException;
 
   String getPipeSinkName();
