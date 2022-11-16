@@ -326,7 +326,7 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
@@ -354,7 +354,7 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
           "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {

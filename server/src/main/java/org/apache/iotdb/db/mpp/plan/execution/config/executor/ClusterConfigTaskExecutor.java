@@ -540,7 +540,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
                     + createTriggerStatement.getUriString(),
-                TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
+                TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
 

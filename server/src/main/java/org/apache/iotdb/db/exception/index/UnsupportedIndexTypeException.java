@@ -27,6 +27,6 @@ public class UnsupportedIndexTypeException extends QueryProcessException {
   public UnsupportedIndexTypeException(String indexType) {
     super(
         "Unsupported index type: " + indexType,
-        TSStatusCode.UNSUPPORTED_INDEX_TYPE_ERROR.getStatusCode());
+        TSStatusCode.UNSUPPORTED_INDEX_TYPE.getStatusCode());
   }
 }

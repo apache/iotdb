@@ -209,7 +209,7 @@ public class IoTDBSyncClient implements ISyncClient {
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
           position += dataLength;
-        } else if (status.code == TSStatusCode.SYNC_FILE_REBASE.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           logger.error(
