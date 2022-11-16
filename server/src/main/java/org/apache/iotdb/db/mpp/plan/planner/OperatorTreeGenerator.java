@@ -199,6 +199,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -1618,7 +1619,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
     } else if (!LastQueryUtil.satisfyFilter(
-        context.getLastQueryTimeFilter(), timeValuePair)) { // cached last value is not satisfied
+        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+        timeValuePair)) { // cached last value is not satisfied
 
       boolean isFilterGtOrGe =
           (context.getLastQueryTimeFilter() instanceof Gt
@@ -1701,7 +1703,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       return createUpdateLastCacheOperator(
           node, context, node.getSeriesPath().getMeasurementPath());
     } else if (!LastQueryUtil.satisfyFilter(
-        context.getLastQueryTimeFilter(), timeValuePair)) { // cached last value is not satisfied
+        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+        timeValuePair)) { // cached last value is not satisfied
 
       boolean isFilterGtOrGe =
           (context.getLastQueryTimeFilter() instanceof Gt

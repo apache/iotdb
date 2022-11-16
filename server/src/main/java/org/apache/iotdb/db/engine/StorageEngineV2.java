@@ -102,11 +102,11 @@ public class StorageEngineV2 implements IService {
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
   /**
-   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
-   * will have a subfolder under the systemDir.
+   * a folder (system/databases/ by default) that persist system info. Each database will have a
+   * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =

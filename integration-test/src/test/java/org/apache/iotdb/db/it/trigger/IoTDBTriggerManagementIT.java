@@ -425,6 +425,43 @@ public class IoTDBTriggerManagementIT {
   }
 
   @Test
+  public void testCreateTriggerWithInvalidURI() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
+                TRIGGER_FILE_TIMES_COUNTER,
+                "",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
+                TRIGGER_FILE_TIMES_COUNTER,
+                "file:///data/trigger/upload-test.jar",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      ResultSet resultSet = statement.executeQuery("show triggers");
+      assertFalse(resultSet.next());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testDropTriggersAfterCreationNormally() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
