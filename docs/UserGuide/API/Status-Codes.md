@@ -97,6 +97,7 @@ Here is a list of Status Code and related message:
 |364|DROP_TRIGGER_INSTANCE_ERROR|Error when drop trigger instance|
 |365|UPDATE_TRIGGER_LOCATION_ERROR|Error when move stateful trigger to new datanode|
 |370|UDF_LOAD_CLASS_ERROR|Error when loading UDF class|
+|371|UDF_DOWNLOAD_ERROR|DataNode cannot download UDF from ConfigNode|
 |372|CREATE_FUNCTION_ON_DATANODE_ERROR|Error when create UDF on DataNode|
 |373|DROP_FUNCTION_ON_DATANODE_ERROR|Error when drop a UDF on DataNode|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
