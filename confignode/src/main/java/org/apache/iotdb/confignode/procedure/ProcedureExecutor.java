@@ -854,6 +854,7 @@ public class ProcedureExecutor<Env> {
     LOG.info("Stopping");
     scheduler.stop();
     timeoutExecutor.sendStopSignal();
+    workerMonitorExecutor.sendStopSignal();
   }
 
   public void join() {
@@ -862,6 +863,14 @@ public class ProcedureExecutor<Env> {
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
     }
+    //
+    //    Thread.getAllStackTraces().keySet().stream()
+    //        .filter(
+    //            thread ->
+    // thread.getName().contains("AsyncDataNodeInternalServiceClientPool-selector"))
+    //        .collect(Collectors.toList())
+    //        .forEach(Thread::interrupt);
+
     try {
       threadGroup.destroy();
     } catch (IllegalThreadStateException e) {
@@ -869,6 +878,13 @@ public class ProcedureExecutor<Env> {
           "ThreadGroup {} contains running threads; {}: See STDOUT",
           this.threadGroup,
           e.getMessage());
+      LOG.error("threadGroup={}", this.threadGroup);
+      LOG.error("activeCount: {}", this.threadGroup.activeCount());
+      Thread[] tarray = new Thread[this.threadGroup.activeCount()];
+      int count = this.threadGroup.enumerate(tarray);
+      for (int i = 0; i < count; i++) {
+        LOG.error("线程名称:{} 线程状态:{}", tarray[i].getName(), tarray[i].getState());
+      }
       this.threadGroup.list();
     }
   }

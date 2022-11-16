@@ -214,8 +214,8 @@ public class ConfigNodeRegionStateMachine
           newLeaderId);
 
       // Stop leader scheduling services
-      configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadStatisticsService();
+      configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getNodeManager().stopUnknownDataNodeDetector();

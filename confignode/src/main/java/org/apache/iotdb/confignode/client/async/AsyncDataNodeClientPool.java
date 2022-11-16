@@ -358,4 +358,8 @@ public class AsyncDataNodeClientPool {
   public static AsyncDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
+
+  public void close() {
+    clientManager.close();
+  }
 }
