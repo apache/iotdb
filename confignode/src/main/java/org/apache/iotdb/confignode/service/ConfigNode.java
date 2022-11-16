@@ -266,6 +266,11 @@ public class ConfigNode implements ConfigNodeMBean {
       } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
         LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
+      } else if (status.getCode() == TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new StartupException(
+            "The target ConfigNode is not started successfully, "
+                + "please check the cn_target_config_node_list config!");
       }
 
       try {

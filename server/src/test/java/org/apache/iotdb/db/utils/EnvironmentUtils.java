@@ -366,7 +366,7 @@ public class EnvironmentUtils {
     // create database
     createDir(config.getSystemDir());
     // create sg dir
-    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
     createDir(commonConfig.getSyncFolder());

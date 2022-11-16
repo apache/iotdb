@@ -89,6 +89,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.service.DataNodeServerCommandLine.MODE_START;
+
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -128,12 +130,13 @@ public class DataNode implements DataNodeMBean {
     new DataNodeServerCommandLine().doMain(args);
   }
 
-  protected void serverCheckAndInit() throws ConfigurationException, IOException {
-    // set the mpp mode to true
-    config.setMppMode(true);
+  protected void serverCheckAndInit(String mode) throws ConfigurationException, IOException {
     config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
-    IoTDBStartCheck.getInstance().checkDirectory();
+    if (MODE_START.equals(mode)) {
+      // Only checkDirectory when start DataNode
+      IoTDBStartCheck.getInstance().checkDirectory();
+    }
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {

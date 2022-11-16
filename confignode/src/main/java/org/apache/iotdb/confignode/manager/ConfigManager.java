@@ -240,9 +240,15 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    consensusManager.close();
-    partitionManager.getRegionMaintainer().shutdown();
-    procedureManager.shiftExecutor(false);
+    if (consensusManager != null) {
+      consensusManager.close();
+    }
+    if (partitionManager != null) {
+      partitionManager.getRegionMaintainer().shutdown();
+    }
+    if (procedureManager != null) {
+      procedureManager.shiftExecutor(false);
+    }
   }
 
   @Override

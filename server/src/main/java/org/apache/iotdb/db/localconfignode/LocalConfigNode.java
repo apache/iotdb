@@ -210,7 +210,7 @@ public class LocalConfigNode {
       }
 
       // TODO: the judgment should be removed after old standalone removed
-      if (config.isMppMode() && !config.isClusterMode()) {
+      if (!config.isClusterMode()) {
         Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
             storageEngine.getLocalDataRegionInfo();
         dataPartitionInfo.init(recoveredLocalDataRegionInfo);
@@ -282,7 +282,7 @@ public class LocalConfigNode {
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
 
-    if (config.isMppMode() && !config.isClusterMode()) {
+    if (!config.isClusterMode()) {
       deleteDataRegionsInStorageGroup(
           dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup));
       dataPartitionInfo.deleteStorageGroup(storageGroup);
@@ -367,7 +367,7 @@ public class LocalConfigNode {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    if (config.isMppMode() && !config.isClusterMode()) {
+    if (!config.isClusterMode()) {
       storageEngine.setTTL(dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
     }
     storageGroupSchemaManager.setTTL(storageGroup, dataTTL);

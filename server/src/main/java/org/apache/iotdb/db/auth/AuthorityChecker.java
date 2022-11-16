@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,8 +47,7 @@ public class AuthorityChecker {
       CommonDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
-  private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
-  private static SessionManager sessionManager = SessionManager.getInstance();
+  private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   private AuthorityChecker() {}
 
@@ -128,11 +126,7 @@ public class AuthorityChecker {
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return true;
-    } else {
-      return false;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)
@@ -348,18 +342,17 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_TRIGGER.ordinal();
       case DROP_TRIGGER:
         return PrivilegeType.DROP_TRIGGER.ordinal();
-      case START_TRIGGER:
-        return PrivilegeType.START_TRIGGER.ordinal();
-      case STOP_TRIGGER:
-        return PrivilegeType.STOP_TRIGGER.ordinal();
       case CREATE_CONTINUOUS_QUERY:
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
       case CREATE_TEMPLATE:
+      case DROP_TEMPLATE:
         return PrivilegeType.UPDATE_TEMPLATE.ordinal();
       case SET_TEMPLATE:
       case ACTIVATE_TEMPLATE:
+      case DEACTIVATE_TEMPLATE:
+      case UNSET_TEMPLATE:
         return PrivilegeType.APPLY_TEMPLATE.ordinal();
       case SHOW_SCHEMA_TEMPLATE:
       case SHOW_NODES_IN_SCHEMA_TEMPLATE:

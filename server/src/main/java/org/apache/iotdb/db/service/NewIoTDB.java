@@ -80,7 +80,6 @@ public class NewIoTDB implements NewIoTDBMBean {
       System.exit(1);
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
-    config.setMppMode(true);
     // In standalone mode, Consensus memory should be reclaimed
     IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
@@ -169,11 +168,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(SettleService.getINSTANCE());
-    }
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());

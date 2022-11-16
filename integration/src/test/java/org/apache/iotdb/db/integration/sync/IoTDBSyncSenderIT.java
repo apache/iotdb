@@ -268,7 +268,7 @@ public class IoTDBSyncSenderIT {
     int cnt = 0;
     for (String string : resultString) {
       for (PipeData pipeData : resultMap.get(string)) {
-        Assert.assertEquals(pipeData.getType(), list.get(cnt++).getType());
+        Assert.assertEquals(pipeData.getPipeDataType(), list.get(cnt++).getPipeDataType());
       }
     }
   }

@@ -485,6 +485,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return Collections.emptyList();
     }
 
+    if (statusCode != TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      throw new RuntimeException(
+          new IoTDBException(executionResult.status.getMessage(), statusCode));
+    }
+
     List<String> failedCreationList = new ArrayList<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
@@ -501,7 +506,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       for (String message : failedCreationList) {
         stringBuilder.append(message).append("\n");
       }
-      throw new RuntimeException(String.format("Failed to auto create schema\n %s", stringBuilder));
+      throw new RuntimeException(
+          new MetadataException(String.format("Failed to auto create schema\n %s", stringBuilder)));
     }
 
     return alreadyExistingMeasurements;
