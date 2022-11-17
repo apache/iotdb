@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -100,9 +99,7 @@ public class StorageEngineV2 implements IService {
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
-  private static long timePartitionIntervalForStorage = -1;
-  /** whether enable data partition if disabled, all data belongs to partition 0 */
-  @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
+  private static long timePartitionInterval = -1;
 
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
@@ -148,31 +145,21 @@ public class StorageEngineV2 implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionIntervalForStorage =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
-  public static long getTimePartitionIntervalForStorage() {
-    if (timePartitionIntervalForStorage == -1) {
+  public static long getTimePartitionInterval() {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return timePartitionIntervalForStorage;
+    return timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
-    if (timePartitionIntervalForStorage == -1) {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return enablePartition ? time / timePartitionIntervalForStorage : 0;
-  }
-
-  public static boolean isEnablePartition() {
-    return enablePartition;
-  }
-
-  @TestOnly
-  public static void setEnablePartition(boolean enablePartition) {
-    StorageEngineV2.enablePartition = enablePartition;
+    return time / timePartitionInterval;
   }
 
   /** block insertion if the insertion is rejected by memory control */
@@ -309,12 +296,7 @@ public class StorageEngineV2 implements IService {
   @Override
   public void start() {
     // build time Interval to divide time partition
-    if (!enablePartition) {
-      timePartitionIntervalForStorage = Long.MAX_VALUE;
-    } else {
-      initTimePartition();
-    }
-
+    initTimePartition();
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
