@@ -33,7 +33,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB 为 TsFile 的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见 [data_dirs 配置项](../Reference/DataNode-Config-Manual.md)），并可以指定或自定义目录选择策略（详情见 [multi_dir_strategy 配置项](../Reference/DataNode-Config-Manual.md)）。
 
 ### TsFile
-> 在 basedir/data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/目录下
+> 在 basedir/data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/目录下
 1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + 数据文件
 2. {TsFileName}.tsfile.mod
@@ -95,7 +95,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 ## 写前日志文件
 写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见 [wal_dir 配置项](../Reference/DataNode-Config-Manual.md)）。
 > 在 basedir/wal 目录下
-1. {StroageName}-{TsFileName}/wal1
+1. {DatabaseName}-{TsFileName}/wal1
     + 每个 memtable 会对应一个 wal 文件
 
 

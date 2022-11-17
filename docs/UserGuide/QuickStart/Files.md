@@ -33,7 +33,7 @@ Data files store all the data that the user wrote to IoTDB, which contains TsFil
 In order to support users' storage requirements such as disk space expansion better, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](../Reference/DataNode-Config-Manual.md) configuration item), and you can specify or customize the directory selection strategy (see [multi_dir_strategy](../Reference/DataNode-Config-Manual.md) configuration item for details).
 
 ### TsFile
-> under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
+> under directory data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/
 
 1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + normal data file
@@ -103,7 +103,7 @@ Pre-write log files store WAL files. It can be configured through the `wal_dir` 
 
 > under directory basedir/wal
 
-1. {StorageGroupName}-{TsFileName}/wal1
+1. {DatabaseName}-{TsFileName}/wal1
     + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 ## Example of Setting Data storage Directory
 
