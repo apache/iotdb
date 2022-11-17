@@ -69,11 +69,4 @@ public interface ITaskScheduler {
    * @param task the task to be switched.
    */
   void toAborted(DriverTask task);
-
-  /**
-   * Switch a task to {@link DriverTaskStatus#ABORTED}.
-   *
-   * @param task the task to be switched.
-   */
-  void toAborted(DriverTask task, Throwable t);
 }
