@@ -42,7 +42,8 @@ public interface RowWindow {
    * will not generate a new Row instance.
    *
    * @param rowIndex index of the row to return
-   * @return the row at the specified position in this window
+   * @return the row at the specified position in this window, null if rowIndex is not in the
+   *     window.
    * @throws IOException if any I/O errors occur
    */
   Row getRow(int rowIndex) throws IOException;
@@ -56,7 +57,8 @@ public interface RowWindow {
   Type getDataType(int columnIndex);
 
   /**
-   * Returns an iterator used to access this window.
+   * Returns an iterator used to access this window. Result could be null if current window is
+   * empty.
    *
    * @return an iterator used to access this window
    */
