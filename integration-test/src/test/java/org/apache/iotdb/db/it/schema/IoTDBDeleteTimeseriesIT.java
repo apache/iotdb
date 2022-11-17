@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -395,7 +396,10 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.**");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.**] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode() + ": Path [root.**] does not exist"));
     }
 
     String[] retArray1 = new String[] {"0,4,4,4,4"};
@@ -423,7 +427,11 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.*.d1.s3");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                      + ": Path [root.*.d1.s3] does not exist"));
     }
   }
 

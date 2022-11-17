@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.cq;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -70,7 +71,8 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            "500: CQ: Specifying time range in GROUP BY TIME clause is prohibited.",
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+                + ": CQ: Specifying time range in GROUP BY TIME clause is prohibited.",
             e.getMessage());
       }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -544,7 +545,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
 
@@ -573,7 +575,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
       }

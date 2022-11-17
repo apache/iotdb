@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -73,7 +74,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (SQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template
@@ -142,7 +145,9 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (SQLException e) {
-      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
     }
   }
 
@@ -153,7 +158,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (SQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template

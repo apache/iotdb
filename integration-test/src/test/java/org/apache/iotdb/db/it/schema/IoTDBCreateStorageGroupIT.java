@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -118,7 +119,9 @@ public class IoTDBCreateStorageGroupIT {
       statement.execute(String.format("create database %s", storageGroup));
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals("903: root.sg has already been created as database", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.DATABASE_ALREADY_EXISTS + ": root.sg has already been created as database",
+          e.getMessage());
     }
   }
 
@@ -132,7 +135,9 @@ public class IoTDBCreateStorageGroupIT {
       statement.execute("create database root.sg.`device`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals("903: root.sg has already been created as database", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.DATABASE_ALREADY_EXISTS + ": root.sg has already been created as database",
+          e.getMessage());
     }
   }
 }
