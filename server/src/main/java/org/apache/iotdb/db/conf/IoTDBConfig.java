@@ -534,7 +534,7 @@ public class IoTDBConfig {
   private int externalSortThreshold = 1000;
 
   /** White list for sync */
-  private String ipWhiteList = "0.0.0.0/0";
+  private String ipWhiteList = "0.0.0.0/32";
 
   /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
   private int maxNumberOfSyncFileRetry = 5;

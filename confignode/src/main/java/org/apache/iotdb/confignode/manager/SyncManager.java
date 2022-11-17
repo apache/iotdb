@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
@@ -145,6 +147,18 @@ public class SyncManager {
 
   public TSStatus dropPipe(String pipeName) {
     return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
+  }
+
+  public TSStatus recordPipeMessage(String pipeName, PipeMessage pipeMessage) {
+    TSStatus tsStatus =
+        getConsensusManager().write(new RecordPipeMessagePlan(pipeName, pipeMessage)).getStatus();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && pipeMessage.getType().equals(PipeMessage.PipeMessageType.ERROR)) {
+      // stop pipe
+      LOGGER.warn("Try to stop PIPE [{}] because {}", pipeMessage, pipeMessage.getMessage());
+      return getProcedureManager().stopPipe(pipeName);
+    }
+    return tsStatus;
   }
 
   public TShowPipeResp showPipe(String pipeName) {
@@ -280,5 +294,9 @@ public class SyncManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ProcedureManager getProcedureManager() {
+    return configManager.getProcedureManager();
   }
 }

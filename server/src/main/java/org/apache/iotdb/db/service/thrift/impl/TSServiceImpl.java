@@ -1478,7 +1478,8 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return SyncService.getInstance().handshake(info);
+    return SyncService.getInstance()
+        .handshake(info, SESSION_MANAGER.getCurrSession().getClientAddress());
   }
 
   @Override

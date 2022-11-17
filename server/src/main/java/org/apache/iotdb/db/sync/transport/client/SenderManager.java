@@ -126,7 +126,7 @@ public class SenderManager {
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take(dataRegionId);
             if (!syncClient.send(pipeData)) {
-              logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
+              logger.error(String.format("Can not transfer PipeData %s, skip it.", pipeData));
               // can do something.
               SyncService.getInstance()
                   .recordMessage(

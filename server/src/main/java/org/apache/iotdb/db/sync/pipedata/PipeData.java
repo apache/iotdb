@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

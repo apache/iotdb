@@ -119,6 +119,7 @@ public enum ConfigPhysicalPlanType {
   SetPipeStatus((short) 904),
   DropPipe((short) 905),
   ShowPipe((short) 906),
+  RecordPipeMessage((short) 907),
 
   /** Trigger */
   AddTriggerInTable((short) 1000),

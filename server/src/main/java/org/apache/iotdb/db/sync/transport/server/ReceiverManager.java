@@ -22,6 +22,7 @@ package org.apache.iotdb.db.sync.transport.server;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -60,7 +61,7 @@ public class ReceiverManager {
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId;
   // Record the remote message for every rpc connection
-  private final Map<Long, TSyncIdentityInfo> connectionIdToIdentityInfoMap;
+  private final Map<Long, SyncIdentityInfo> connectionIdToIdentityInfoMap;
   // Record the remote message for every rpc connection
   private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord;
 
@@ -139,13 +140,16 @@ public class ReceiverManager {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to connect; {@link
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
-  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
-    logger.info("Invoke handshake method from client ip = {}", identityInfo.address);
+  public TSStatus handshake(TSyncIdentityInfo tIdentityInfo, String remoteAddress) {
+    SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
+    logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
     // check ip address
-    if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
+    if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.getRemoteAddress())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
-          "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
+          String.format(
+              "Permission is not allowed because sender IP[%s]is not in the white list of receiver[%s].",
+              identityInfo.getRemoteAddress(), config.getIpWhiteList()));
     }
     // Version check
     if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
@@ -209,15 +213,16 @@ public class ReceiverManager {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
    *     TSStatusCode#SUCCESS_STATUS} if load successfully.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
+   *     by {@link ReceiverManager#handshake}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
-    TSyncIdentityInfo identityInfo = getCurrentTSyncIdentityInfo();
+    SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
     }
-    logger.debug("Invoke transportPipeData method from client ip = {}", identityInfo.address);
+    logger.debug(
+        "Invoke transportPipeData method from client ip = {}", identityInfo.getRemoteAddress());
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
 
     // step2. deserialize PipeData
@@ -229,7 +234,7 @@ public class ReceiverManager {
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
         TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
-        tsFilePipeData.setStorageGroupName(identityInfo.getStorageGroup());
+        tsFilePipeData.setStorageGroupName(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
@@ -264,16 +269,17 @@ public class ReceiverManager {
    *     TSStatusCode#SYNC_FILE_REBASE} if startIndex needs to rollback because mismatched; {@link
    *     TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
+   *     by {@link ReceiverManager#handshake}
    */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
     // step1. check connection
-    TSyncIdentityInfo identityInfo = getCurrentTSyncIdentityInfo();
+    SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
     }
-    logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
+    logger.debug(
+        "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());
 
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
     String fileName = metaInfo.fileName;
@@ -354,11 +360,11 @@ public class ReceiverManager {
   }
 
   /**
-   * Get current TSyncIdentityInfo
+   * Get current SyncIdentityInfo
    *
    * @return null if connection has been exited
    */
-  private TSyncIdentityInfo getCurrentTSyncIdentityInfo() {
+  private SyncIdentityInfo getCurrentSyncIdentityInfo() {
     Long id = currentConnectionId.get();
     if (id != null) {
       return connectionIdToIdentityInfoMap.get(id);
@@ -368,7 +374,7 @@ public class ReceiverManager {
   }
 
   /**
-   * Get current TSyncIdentityInfo
+   * Get current FileStartIndex
    *
    * @return startIndex of file: -1 if file doesn't exist
    */
@@ -383,7 +389,7 @@ public class ReceiverManager {
     return -1;
   }
 
-  private void createConnection(TSyncIdentityInfo identityInfo) {
+  private void createConnection(SyncIdentityInfo identityInfo) {
     long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
@@ -396,12 +402,12 @@ public class ReceiverManager {
     if (checkConnection()) {
       long id = currentConnectionId.get();
       connectionIdToIdentityInfoMap.remove(id);
-      connectionIdToIdentityInfoMap.remove(id);
+      connectionIdToStartIndexRecord.remove(id);
       currentConnectionId.remove();
     }
   }
 
-  public List<TSyncIdentityInfo> getAllTSyncIdentityInfos() {
+  public List<SyncIdentityInfo> getAllTSyncIdentityInfos() {
     return new ArrayList<>(connectionIdToIdentityInfoMap.values());
   }
 
