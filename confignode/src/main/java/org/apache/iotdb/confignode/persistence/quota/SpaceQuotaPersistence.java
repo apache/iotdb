@@ -85,7 +85,7 @@ public class SpaceQuotaPersistence {
 
   public Map<String, TSpaceQuota> loadSpaceQuota(String path) throws IOException {
     File quotaProfile =
-        SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path + SUFFIX);
+        SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path);
     Map<String, TSpaceQuota> spaceQuotaLimit = new HashMap<>();
     if (!quotaProfile.exists() || !quotaProfile.isFile()) {
       // System may crush before a newer file is renamed.
