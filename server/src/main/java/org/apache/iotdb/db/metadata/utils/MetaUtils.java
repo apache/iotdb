@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -270,6 +271,7 @@ public class MetaUtils {
       return new Pair<>(null, null);
     }
     String deadband = props.get(LOSS);
+    deadband = deadband == null ? null : deadband.toUpperCase(Locale.ROOT);
     Map<String, String> deadbandParameters = new HashMap<>();
     for (String k : SDT_PARAMETERS) {
       if (props.containsKey(k)) {
