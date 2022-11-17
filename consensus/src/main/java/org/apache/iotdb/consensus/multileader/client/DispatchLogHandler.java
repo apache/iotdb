@@ -67,7 +67,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
     MetricService.getInstance()
         .getOrCreateHistogram(
             Metric.STAGE.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             Metric.MULTI_LEADER.toString(),
             Tag.TYPE.toString(),
