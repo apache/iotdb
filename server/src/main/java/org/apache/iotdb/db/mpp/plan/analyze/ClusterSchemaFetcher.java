@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
@@ -61,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -490,7 +492,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           new IoTDBException(executionResult.status.getMessage(), statusCode));
     }
 
-    List<String> failedCreationList = new ArrayList<>();
+    Set<String> failedCreationList = new HashSet<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
@@ -502,12 +504,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     if (!failedCreationList.isEmpty()) {
-      StringBuilder stringBuilder = new StringBuilder();
-      for (String message : failedCreationList) {
-        stringBuilder.append(message).append("\n");
-      }
-      throw new RuntimeException(
-          new MetadataException(String.format("Failed to auto create schema\n %s", stringBuilder)));
+      throw new SemanticException(new MetadataException(String.join(";, ", failedCreationList)));
     }
 
     return alreadyExistingMeasurements;

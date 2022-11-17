@@ -158,6 +158,22 @@ public class LocalSinkHandle implements ISinkHandle {
   }
 
   @Override
+  public void abort(Throwable throwable) {
+    logger.debug("[StartAbortLocalSinkHandle]");
+    synchronized (queue) {
+      synchronized (this) {
+        if (aborted || closed) {
+          return;
+        }
+        aborted = true;
+        queue.abort(throwable);
+        sinkHandleListener.onAborted(this);
+      }
+    }
+    logger.debug("[EndAbortLocalSinkHandle]");
+  }
+
+  @Override
   public void close() {
     logger.debug("[StartCloseLocalSinkHandle]");
     synchronized (queue) {

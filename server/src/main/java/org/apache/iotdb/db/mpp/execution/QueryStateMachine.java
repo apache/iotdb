@@ -142,6 +142,10 @@ public class QueryStateMachine {
     return "no detailed failure reason in QueryStateMachine";
   }
 
+  public Throwable getFailureException() {
+    return failureException;
+  }
+
   public TSStatus getFailureStatus() {
     return failureStatus;
   }

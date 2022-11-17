@@ -116,7 +116,12 @@ public class FragmentInstanceExecution {
             }
 
             if (newState.isFailed()) {
-              sinkHandle.abort();
+              Throwable throwable = stateMachine.getFailureCauses().peek();
+              if (throwable == null) {
+                sinkHandle.abort();
+              } else {
+                sinkHandle.abort(throwable);
+              }
             } else {
               sinkHandle.close();
             }

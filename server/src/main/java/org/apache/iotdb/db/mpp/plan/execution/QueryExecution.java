@@ -388,22 +388,28 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
       } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
-        if (stateMachine.getFailureStatus() != null) {
-          throw new IoTDBException(
-              stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-        }
-        Throwable t = e.getCause() == null ? e : e.getCause();
-        throwIfUnchecked(t);
-        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        dealWithException(e.getCause() != null ? e.getCause() : e);
       } catch (InterruptedException e) {
-        stateMachine.transitionToFailed(e);
         Thread.currentThread().interrupt();
-        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        dealWithException(e);
       } catch (Throwable t) {
-        stateMachine.transitionToFailed(t);
-        throw t;
+        dealWithException(t);
       }
+    }
+  }
+
+  private void dealWithException(Throwable t) throws IoTDBException {
+    stateMachine.transitionToFailed(t);
+    if (stateMachine.getFailureStatus() != null) {
+      throw new IoTDBException(
+          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+    } else if (stateMachine.getFailureException() != null) {
+      Throwable rootCause = stateMachine.getFailureException();
+      throwIfUnchecked(rootCause);
+      throw new IoTDBException(rootCause, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+    } else {
+      throwIfUnchecked(t);
+      throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
     }
   }
 

@@ -196,6 +196,11 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
+  public void abort(Throwable throwable) {
+    abort();
+  }
+
+  @Override
   public synchronized void close() {
     logger.debug("[StartCloseSinkHandle]");
     sequenceIdToTsBlock.clear();
