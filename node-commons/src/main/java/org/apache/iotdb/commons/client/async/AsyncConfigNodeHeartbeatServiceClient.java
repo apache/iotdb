@@ -115,6 +115,7 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncConfigNodeHeartbeatServiceClient> pooledObject) {
+      super.stopTManagers();
       pooledObject.getObject().close();
     }
 

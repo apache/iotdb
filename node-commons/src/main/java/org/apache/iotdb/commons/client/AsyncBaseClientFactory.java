@@ -54,4 +54,10 @@ public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, 
           .forEach(thread -> thread.setName(threadName + "-selector" + "-" + thread.getId()));
     }
   }
+
+  protected void stopTManagers() {
+    for (TAsyncClientManager tManager : tManagers) {
+      tManager.stop();
+    }
+  }
 }

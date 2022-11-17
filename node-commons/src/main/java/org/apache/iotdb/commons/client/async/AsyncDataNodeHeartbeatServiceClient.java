@@ -115,6 +115,7 @@ public class AsyncDataNodeHeartbeatServiceClient extends IDataNodeRPCService.Asy
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncDataNodeHeartbeatServiceClient> pooledObject) {
+      super.stopTManagers();
       pooledObject.getObject().close();
     }
 

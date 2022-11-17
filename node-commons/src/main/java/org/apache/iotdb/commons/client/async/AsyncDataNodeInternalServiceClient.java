@@ -132,6 +132,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncDataNodeInternalServiceClient> pooledObject) {
+      super.stopTManagers();
       pooledObject.getObject().close();
     }
 

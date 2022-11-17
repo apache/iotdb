@@ -177,11 +177,7 @@ public class LoadManager {
       if (currentLoadStatisticsFuture != null) {
         currentLoadStatisticsFuture.cancel(false);
         currentLoadStatisticsFuture = null;
-        //        Thread.getAllStackTraces().keySet().stream()
-        //            .filter(thread ->
-        // thread.getName().contains("AsyncDataNodeInternalServiceClientPool-selector"))
-        //            .collect(Collectors.toList())
-        //            .forEach(Thread::interrupt);
+        AsyncDataNodeClientPool.getInstance().close();
         LOGGER.info("LoadStatistics service is stopped successfully.");
       }
     }
