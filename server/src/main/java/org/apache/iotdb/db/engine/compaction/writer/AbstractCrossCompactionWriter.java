@@ -61,24 +61,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   protected List<TsFileResource> targetResources;
 
-  // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
-  // overlapped or not
-  protected long chunkSizeLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-
-  // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
-  // overlapped or not
-  protected long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-
-  // if unsealed page size is lower then this, then deserialize next page no matter it is
-  // overlapped or not
-  protected long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
-
-  // if point num of unsealed page is lower then this, then deserialize next page no matter it is
-  // overlapped or not
-  protected long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
-
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {

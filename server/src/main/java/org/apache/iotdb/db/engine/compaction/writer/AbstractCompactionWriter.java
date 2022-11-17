@@ -40,12 +40,17 @@ import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import com.google.common.util.concurrent.RateLimiter;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+
+  private RateLimiter compactionRateLimiter =
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   // check if there is unseq error point during writing
   protected long[] lastTime = new long[subTaskNum];
@@ -70,6 +75,24 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
 
   private long lastCheckIndex = 0;
+
+  // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
+  protected long chunkSizeLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+
+  // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
+  // overlapped or not
+  protected long chunkPointNumLowerBoundInCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
+  // if unsealed page size is lower then this, then deserialize next page no matter it is
+  // overlapped or not
+  protected long pageSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction / 10;
+
+  // if point num of unsealed page is lower then this, then deserialize next page no matter it is
+  // overlapped or not
+  protected long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
 
   private final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
@@ -140,7 +163,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void sealChunk(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
-    writeRateLimit(iChunkWriter.estimateMaxSeriesMemSize());
+    CompactionTaskManager.mergeRateLimiterAcquire(
+        compactionRateLimiter, iChunkWriter.estimateMaxSeriesMemSize());
     synchronized (targetWriter) {
       iChunkWriter.writeToFileWriter(targetWriter);
     }
@@ -161,6 +185,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void flushNonAlignedChunkToFileWriter(
       TsFileIOWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
+    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
     synchronized (targetWriter) {
       // seal last chunk to file writer
       chunkWriters[subTaskId].writeToFileWriter(targetWriter);
@@ -184,11 +209,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       chunkPointNumArray[subTaskId] = 0;
 
       // flush time chunk
+      CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(timeChunk));
       targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
 
       // flush value chunks
       for (int i = 0; i < valueChunks.size(); i++) {
-        if (valueChunks.get(i) == null) {
+        Chunk valueChunk = valueChunks.get(i);
+        if (valueChunk == null) {
           // sub sensor does not exist in current file or value chunk has been deleted completely
           ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
           targetWriter.writeEmptyValueChunk(
@@ -199,7 +226,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               valueChunkWriter.getStatistics());
           continue;
         }
-        targetWriter.writeChunk(valueChunks.get(i), (ChunkMetadata) valueChunkMetadatas.get(i));
+        CompactionTaskManager.mergeRateLimiterAcquire(
+            compactionRateLimiter, getChunkSize(valueChunk));
+        targetWriter.writeChunk(valueChunk, (ChunkMetadata) valueChunkMetadatas.get(i));
       }
     }
   }
@@ -209,12 +238,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       throws IOException, PageException;
 
   protected void flushNonAlignedPageToChunkWriter(
-      TsFileIOWriter targetWriter,
       ChunkWriterImpl chunkWriter,
       ByteBuffer compressedPageData,
       PageHeader pageHeader,
       int subTaskId)
-      throws PageException, IOException {
+      throws PageException {
     // seal current page
     chunkWriter.sealCurrentPage();
     // flush new page to chunk writer directly
@@ -232,7 +260,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       throws IOException, PageException;
 
   protected void flushAlignedPageToChunkWriter(
-      TsFileIOWriter targetWriter,
       AlignedChunkWriterImpl alignedChunkWriter,
       ByteBuffer compressedTimePageData,
       PageHeader timePageHeader,
@@ -259,11 +286,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     chunkPointNumArray[subTaskId] += timePageHeader.getStatistics().getCount();
   }
 
-  private void writeRateLimit(long bytesLength) {
-    CompactionTaskManager.mergeRateLimiterAcquire(
-        CompactionTaskManager.getInstance().getMergeWriteRateLimiter(), bytesLength);
-  }
-
   protected void checkChunkSizeAndMayOpenANewChunk(
       TsFileIOWriter fileWriter, IChunkWriter iChunkWriter, int subTaskId, boolean isCrossSpace)
       throws IOException {
@@ -284,5 +306,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
         }
       }
     }
+  }
+
+  protected long getChunkSize(Chunk chunk) {
+    return chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
   }
 }

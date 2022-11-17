@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 
 public enum InnerSeqCompactionPerformer {
-  READ_CHUNK;
+  READ_CHUNK,
+  FAST;
 
   public static InnerSeqCompactionPerformer getInnerSeqCompactionPerformer(String name) {
     if (READ_CHUNK.toString().equalsIgnoreCase(name)) {
       return READ_CHUNK;
+    } else if (FAST.toString().equalsIgnoreCase(name)) {
+      return FAST;
     }
     throw new RuntimeException("Illegal compaction performer for seq inner compaction " + name);
   }
@@ -34,8 +38,11 @@ public enum InnerSeqCompactionPerformer {
   public ISeqCompactionPerformer createInstance() {
     switch (this) {
       case READ_CHUNK:
-      default:
         return new ReadChunkCompactionPerformer();
+      case FAST:
+        return new FastCompactionPerformer(true);
+      default:
+        throw new RuntimeException("Illegal compaction performer for seq inner compaction " + this);
     }
   }
 }

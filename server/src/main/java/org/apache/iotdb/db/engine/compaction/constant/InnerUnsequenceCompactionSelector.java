@@ -23,12 +23,15 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompacti
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 public enum InnerUnsequenceCompactionSelector {
-  SIZE_TIERED;
+  SIZE_TIERED,
+  FAST;
 
   public static InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector(
       String name) {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
+    } else if (FAST.toString().equalsIgnoreCase(name)) {
+      return FAST;
     }
     throw new RuntimeException("Illegal Compaction Selector " + name);
   }
@@ -40,6 +43,7 @@ public enum InnerUnsequenceCompactionSelector {
       TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED:
+      case FAST:
       default:
         return new SizeTieredCompactionSelector(
             storageGroupName, dataRegionId, timePartition, false, tsFileManager);

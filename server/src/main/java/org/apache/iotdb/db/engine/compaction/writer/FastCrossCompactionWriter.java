@@ -129,7 +129,6 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        targetFileWriters.get(fileIndex),
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
         compressedTimePageData,
         timePageHeader,
@@ -163,11 +162,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
 
     flushNonAlignedPageToChunkWriter(
-        targetFileWriters.get(fileIndex),
-        (ChunkWriterImpl) chunkWriters[subTaskId],
-        compressedPageData,
-        pageHeader,
-        subTaskId);
+        (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
 
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(

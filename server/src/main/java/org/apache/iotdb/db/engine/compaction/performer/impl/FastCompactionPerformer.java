@@ -27,6 +27,8 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
@@ -50,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,7 +60,8 @@ import java.util.concurrent.Future;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
-public class FastCompactionPerformer implements ICrossCompactionPerformer {
+public class FastCompactionPerformer
+    implements ICrossCompactionPerformer, ISeqCompactionPerformer, IUnseqCompactionPerformer {
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResource> seqFiles = Collections.emptyList();
 
@@ -208,10 +210,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 
     // assign all measurements to different sub tasks
-    List<String>[] measurementsForEachSubTask = new LinkedList[subTaskNums];
+    List<String>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
     for (int idx = 0; idx < allMeasurements.size(); idx++) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new LinkedList<>();
+        measurementsForEachSubTask[idx % subTaskNums] = new ArrayList<>();
       }
       measurementsForEachSubTask[idx % subTaskNums].add(allMeasurements.get(idx));
     }

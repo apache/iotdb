@@ -129,7 +129,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        fileWriter,
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
         compressedTimePageData,
         timePageHeader,
@@ -163,11 +162,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     }
 
     flushNonAlignedPageToChunkWriter(
-        fileWriter,
-        (ChunkWriterImpl) chunkWriters[subTaskId],
-        compressedPageData,
-        pageHeader,
-        subTaskId);
+        (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
 
     isEmptyFile = false;
     lastTime[subTaskId] = pageHeader.getEndTime();
@@ -191,8 +186,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
   private boolean checkIsChunkLargeEnough(Chunk chunk) {
     return chunk.getChunkStatistic().getCount() >= targetChunkPointNum
-        || chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize()
-            >= targetChunkSize;
+        || getChunkSize(chunk) >= targetChunkSize;
   }
 
   private boolean checkIsAlignedPageLargeEnough(
@@ -212,7 +206,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   private boolean checkIsPageLargeEnough(PageHeader pageHeader) {
-    return pageHeader.getStatistics().getCount() >= targetPagePointNum
-        || pageHeader.getSerializedPageSize() >= targetPageSize;
+    return pageHeader.getStatistics().getCount() >= pagePointNumLowerBoundInCompaction
+        || pageHeader.getSerializedPageSize() >= pageSizeLowerBoundInCompaction;
   }
 }

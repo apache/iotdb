@@ -416,7 +416,7 @@ public class IoTDBConfig {
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.READ_POINT;
+  private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
 
   private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.FAST;
 
