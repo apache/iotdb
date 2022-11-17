@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -231,5 +232,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public Optional<Throwable> getFailureCause() {
+    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
   }
 }

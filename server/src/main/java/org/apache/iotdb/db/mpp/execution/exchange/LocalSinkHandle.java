@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -150,24 +151,12 @@ public class LocalSinkHandle implements ISinkHandle {
           return;
         }
         aborted = true;
-        queue.abort();
-        sinkHandleListener.onAborted(this);
-      }
-    }
-    logger.debug("[EndAbortLocalSinkHandle]");
-  }
-
-  @Override
-  public void abort(Throwable throwable) {
-    logger.debug("[StartAbortLocalSinkHandle]");
-    synchronized (queue) {
-      synchronized (this) {
-        if (aborted || closed) {
-          return;
+        Optional<Throwable> t = sinkHandleListener.onAborted(this);
+        if (t.isPresent()) {
+          queue.abort(t.get());
+        } else {
+          queue.abort();
         }
-        aborted = true;
-        queue.abort(throwable);
-        sinkHandleListener.onAborted(this);
       }
     }
     logger.debug("[EndAbortLocalSinkHandle]");

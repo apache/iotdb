@@ -214,7 +214,7 @@ public class QueryExecution implements IQueryExecution {
     }
     logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
-    this.stopAndCleanup();
+    this.stopAndCleanup(stateMachine.getFailureException());
     logger.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
@@ -346,6 +346,12 @@ public class QueryExecution implements IQueryExecution {
     if (resultHandle != null) {
       resultHandle.abort();
     }
+  }
+
+  // Stop the query and clean up all the resources this query occupied
+  public void stopAndCleanup(Throwable t) {
+    stop();
+    releaseResource(t);
   }
 
   /** Release the resources that current QueryExecution hold with a specified exception */

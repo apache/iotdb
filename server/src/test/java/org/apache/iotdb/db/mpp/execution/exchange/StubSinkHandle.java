@@ -94,11 +94,6 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void abort(Throwable throwable) {
-    abort();
-  }
-
-  @Override
   public void close() {
     closed = true;
     tsBlocks.clear();
