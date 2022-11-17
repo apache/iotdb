@@ -57,14 +57,14 @@ public class StatusUtils {
       case SUCCESS_STATUS:
         status.setMessage("Executed successfully.");
         break;
-      case TIME_OUT:
+      case INTERNAL_REQUEST_TIME_OUT:
         status.setMessage("Request timed out.");
         break;
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version.");
         break;
-      case NODE_DELETE_ERROR:
-        status.setMessage("Failed while deleting node.");
+      case REMOVE_DATANODE_ERROR:
+        status.setMessage("Failed while removing DataNode.");
         break;
       case ALIAS_ALREADY_EXIST:
         status.setMessage("Alias already exists.");
@@ -84,13 +84,10 @@ public class StatusUtils {
       case COMPACTION_ERROR:
         status.setMessage("Meet error while merging.");
         break;
-      case SYSTEM_CHECK_ERROR:
-        status.setMessage("Meet error while system checking.");
-        break;
       case SYNC_CONNECTION_ERROR:
         status.setMessage("Meet error while sync connecting.");
         break;
-      case DATABASE_PROCESS_ERROR:
+      case DATAREGION_PROCESS_ERROR:
         status.setMessage("Database processor related error.");
         break;
       case STORAGE_ENGINE_ERROR:
@@ -99,7 +96,7 @@ public class StatusUtils {
       case TSFILE_PROCESSOR_ERROR:
         status.setMessage("TsFile processor related error.");
         break;
-      case PATH_ILLEGAL:
+      case ILLEGAL_PATH:
         status.setMessage("Illegal path.");
         break;
       case LOAD_FILE_ERROR:
@@ -141,7 +138,7 @@ public class StatusUtils {
       case CLOSE_OPERATION_ERROR:
         status.setMessage("Meet error in close operation.");
         break;
-      case READ_ONLY_SYSTEM:
+      case SYSTEM_READ_ONLY:
         status.setMessage("Database is read-only.");
         break;
       case DISK_SPACE_INSUFFICIENT:
@@ -165,7 +162,7 @@ public class StatusUtils {
       case UNSUPPORTED_OPERATION:
         status.setMessage("Unsupported operation.");
         break;
-      case NO_CONNECTION:
+      case CAN_NOT_CONNECT_DATANODE:
         status.setMessage("Node cannot be reached.");
         break;
       default:

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
@@ -850,7 +849,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       Set<String> failedNames = new HashSet<>();
       int deletedNum = 0;
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p);
         deletedNum++;
       }
       return new Pair<>(deletedNum, failedNames);
@@ -970,15 +969,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return deleteTimeseries(pathPattern, false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
-      throws MetadataException, IOException {
-    try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
-      if (!isRecovering) {
-        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-      }
-    } catch (DeleteFailedException e) {
-      failedNames.add(e.getName());
+  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
+    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    if (!isRecovering) {
+      writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
   }
 

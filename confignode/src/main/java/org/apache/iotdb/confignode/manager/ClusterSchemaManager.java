@@ -123,7 +123,7 @@ public class ClusterSchemaManager {
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       } else {
         result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }

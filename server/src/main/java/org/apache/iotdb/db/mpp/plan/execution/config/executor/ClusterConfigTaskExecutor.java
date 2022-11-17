@@ -994,13 +994,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
@@ -1078,13 +1078,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
@@ -1294,13 +1294,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(

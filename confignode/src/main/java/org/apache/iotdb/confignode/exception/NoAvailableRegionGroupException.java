@@ -15,26 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.confignode.exception;
 
-package org.apache.iotdb.db.exception.metadata;
+public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class DeleteFailedException extends MetadataException {
-
-  private String name;
-
-  public DeleteFailedException(String name) {
+  public NoAvailableRegionGroupException() {
     super(
-        String.format("Node [%s] is being used. Deletion failed.", name),
-        TSStatusCode.NODE_DELETE_ERROR.getStatusCode());
-    this.name = name;
-  }
-
-  public String getName() {
-    return name;
+        "There are no available RegionGroups currently, please check the status of cluster DataNodes");
   }
 }

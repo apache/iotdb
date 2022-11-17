@@ -724,7 +724,7 @@ public class StorageEngineV2 implements IService {
               "IO error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -763,11 +763,7 @@ public class StorageEngineV2 implements IService {
           status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
-    } catch (IOException e) {
-      logger.error(String.format("Execute load command %s error.", loadCommand), e);
-      status.setCode(TSStatusCode.DATABASE_PROCESS_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    } catch (LoadFileException e) {
+    } catch (IOException | LoadFileException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
