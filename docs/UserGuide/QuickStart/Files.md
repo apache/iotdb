@@ -68,7 +68,7 @@ System files include schema files, which store metadata information of data in I
 
 ### Other System Files
 #### Version
-> under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
+> under directory basedir/system/database/{DatabaseName}/{TimePartitionId} or upgrade 
 
 1. Version-{version}
     + version file, record the max version in fileName of a storage group
@@ -80,7 +80,7 @@ System files include schema files, which store metadata information of data in I
     + record which files have been upgraded
 
 #### Merge
-> under directory basedir/system/storage_groups/{StorageGroup}/
+> under directory basedir/system/database/{Database}/
 
 1. merge.mods
     + modification file generated during a merge

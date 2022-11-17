@@ -66,7 +66,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 
 ### 其他系统文件
 #### Version
-> 在 basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade 目录下
+> 在 basedir/system/database/{DatabaseName}/{TimePartitionId} or upgrade 目录下
 1. Version-{version}
     + 版本号文件，使用文件名来记录当前最大的版本号
 
@@ -76,7 +76,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
     + 记录升级进度
 
 #### Merge
-> 在 basedir/system/storage_groups/{StorageGroup}/目录下
+> 在 basedir/system/database/{Database}/目录下
 1. merge.mods
     + 记录合并过程中发生的删除等操作
 2. merge.log
