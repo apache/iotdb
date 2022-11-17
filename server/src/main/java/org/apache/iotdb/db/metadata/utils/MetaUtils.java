@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +37,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_PARAMETERS;
 
 public class MetaUtils {
 
@@ -246,5 +250,21 @@ public class MetaUtils {
       result.put(alignedPath, aggregationDescriptorList);
     }
     return result;
+  }
+
+  public static Pair<String, String> parseDeadbandInfo(Map<String, String> props) {
+    if (props == null) {
+      return new Pair<>(null, null);
+    }
+    String deadband = props.get(LOSS);
+    Map<String, String> deadbandParameters = new HashMap<>();
+    for (String k : SDT_PARAMETERS) {
+      if (props.containsKey(k)) {
+        deadbandParameters.put(k, props.get(k));
+      }
+    }
+
+    return new Pair<>(
+        deadband, deadbandParameters.isEmpty() ? null : String.format("%s", deadbandParameters));
   }
 }
