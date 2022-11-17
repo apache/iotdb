@@ -90,7 +90,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
     // special logic.
-    if (isAggregationQuery(node)) {}
+    if (isAggregationQuery(node)) {
+      return processDeviceViewWithAggregation(node, context);
+    }
 
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
 
@@ -121,12 +123,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           children.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
         }
       }
-      DeviceViewNode regionDeviceViewNode =
-          new DeviceViewNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrderParameter(),
-              node.getOutputColumnNames(),
-              node.getDeviceToMeasurementIndexesMap());
+      DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
       for (int i = 0; i < devices.size(); i++) {
         regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
       }
@@ -134,6 +131,25 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     }
 
     return deviceMergeNode;
+  }
+
+  private PlanNode processDeviceViewWithAggregation(
+      DeviceViewNode node, DistributionPlanContext context) {
+    DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      newRoot.addChildDeviceNode(
+          node.getDevices().get(i), rewrite(node.getChildren().get(i), context));
+    }
+    return newRoot;
+  }
+
+  private DeviceViewNode cloneDeviceViewNodeWithoutChild(
+      DeviceViewNode node, DistributionPlanContext context) {
+    return new DeviceViewNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getMergeOrderParameter(),
+        node.getOutputColumnNames(),
+        node.getDeviceToMeasurementIndexesMap());
   }
 
   private static class DeviceViewSplit {
