@@ -476,7 +476,7 @@ public class IoTDBSelectIntoIT {
     executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
     assertTestFail(
         "select s1, s2 into root.sg_error_bk2.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "303: timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.sg_error.new_d)");
+        "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.sg_error_bk2.new_d)");
   }
 
   @Test
