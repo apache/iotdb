@@ -67,6 +67,8 @@ def test_non_time_query():
         "Compression",
         "Tags",
         "Attributes",
+        "Deadband",
+        "DeadbandParameters"
     ]
     assert_array_equal(
         df.values,
@@ -78,6 +80,8 @@ def test_non_time_query():
                 "FLOAT",
                 "GORILLA",
                 "SNAPPY",
+                None,
+                None,
                 None,
                 None,
             ]

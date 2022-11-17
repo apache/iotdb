@@ -28,6 +28,12 @@ public class PathNotExistException extends MetadataException {
 
   private static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
 
+  private static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "Timeseries [%s] does not exist or is represented by schema template";
+
+  private static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
+      "Timeseries [%s] does not exist or is not represented by schema template";
+
   public PathNotExistException(String path) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
@@ -45,6 +51,18 @@ public class PathNotExistException extends MetadataException {
     super(
         String.format(
             PATH_NOT_EXIST_WRONG_MESSAGE,
+            paths.size() == 1
+                ? paths.get(0)
+                : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
+  }
+
+  public PathNotExistException(List<String> paths, boolean isTemplateSeries) {
+    super(
+        String.format(
+            isTemplateSeries
+                ? TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE
+                : NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE,
             paths.size() == 1
                 ? paths.get(0)
                 : paths.get(0) + " ... " + paths.get(paths.size() - 1)),

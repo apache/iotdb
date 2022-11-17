@@ -134,7 +134,7 @@ public class IoTDBTtlIT {
               String.format(
                   "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
         } catch (SQLException e) {
-          assertEquals(400, e.getErrorCode());
+          assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), e.getErrorCode());
         }
       }
 
@@ -222,7 +222,7 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
                   now - 5000000 + i, i));
         } catch (SQLException e) {
-          assertEquals(400, e.getErrorCode());
+          assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), e.getErrorCode());
         }
       }
       for (int i = 100; i < 200; i++) {
@@ -233,7 +233,7 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
                   now - 5000000 + i, i));
         } catch (SQLException e) {
-          assertEquals(400, e.getErrorCode());
+          assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), e.getErrorCode());
         }
       }
 

@@ -198,11 +198,24 @@ public class IoTDBDeactivateTemplateIT {
 
   @Test
   public void deactivateNoneUsageTemplateTest() throws Exception {
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+    try {
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "324: Schema Template t1 is not set on any prefix path of [root.sg5.d1]", e.getMessage());
+    }
 
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+    statement.execute("CREATE DATABASE root.sg5");
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg5 ");
+    try {
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "366: Target schema Template is not activated on any path matched by given path pattern",
+          e.getMessage());
+    }
   }
 
   @Test

@@ -268,7 +268,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionForRouting(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       if (splitMap.containsKey(dataRegionReplicaSet)) {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);

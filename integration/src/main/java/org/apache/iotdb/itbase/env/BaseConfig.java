@@ -74,10 +74,6 @@ public interface BaseConfig {
     return this;
   }
 
-  default BaseConfig setEnablePartition(boolean enablePartition) {
-    return this;
-  }
-
   default BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     return this;
   }

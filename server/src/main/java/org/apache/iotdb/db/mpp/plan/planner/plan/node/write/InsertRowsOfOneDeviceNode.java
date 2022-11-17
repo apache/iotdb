@@ -174,7 +174,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionForRouting(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       List<InsertRowNode> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
       List<Integer> tmpIndexMap =

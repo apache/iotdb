@@ -264,6 +264,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
@@ -757,8 +758,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(
-          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
@@ -1112,7 +1112,11 @@ public class ConfigManager implements IManager {
 
     Map<PartialPath, List<Template>> templateSetInfo = templateSetInfoResp.getPatternTemplateMap();
     if (templateSetInfo.isEmpty()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return RpcUtils.getStatus(
+          TSStatusCode.TEMPLATE_NOT_SET,
+          String.format(
+              "Schema Template %s is not set on any prefix path of %s",
+              req.getTemplateName(), patternList));
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1127,7 +1131,11 @@ public class ConfigManager implements IManager {
       }
 
       if (filteredTemplateSetInfo.isEmpty()) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        return RpcUtils.getStatus(
+            TSStatusCode.TEMPLATE_NOT_SET,
+            String.format(
+                "Schema Template %s is not set on any prefix path of %s",
+                req.getTemplateName(), patternList));
       }
 
       templateSetInfo = filteredTemplateSetInfo;

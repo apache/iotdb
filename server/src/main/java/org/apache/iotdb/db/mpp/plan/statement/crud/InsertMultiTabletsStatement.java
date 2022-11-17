@@ -106,7 +106,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       TRegionReplicaSet regionReplicaSet =
           dataPartition.getDataRegionReplicaSetForWriting(
               insertTabletStatement.devicePath.getFullPath(),
-              TimePartitionUtils.getTimePartitionForRouting(
+              TimePartitionUtils.getTimePartition(
                   insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
       result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }

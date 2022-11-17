@@ -197,7 +197,7 @@ public class SchemaRegionPlanCompatibilityTest {
     oldPlan.setMeasurements(Arrays.asList("s1", "s2"));
     oldPlan.setDataTypes(Arrays.asList(TSDataType.INT32, TSDataType.FLOAT));
     oldPlan.setEncodings(Arrays.asList(TSEncoding.GORILLA, TSEncoding.BITMAP));
-    oldPlan.setCompressors(Arrays.asList(CompressionType.PLA, CompressionType.GZIP));
+    oldPlan.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.GZIP));
     oldPlan.setAliasList(Arrays.asList("status", "temperature"));
     Map<String, String> tagMap = new HashMap<>();
     tagMap.put("tag-key", "tag-value");
