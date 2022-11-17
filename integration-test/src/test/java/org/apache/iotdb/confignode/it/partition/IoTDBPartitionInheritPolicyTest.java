@@ -92,7 +92,7 @@ public class IoTDBPartitionInheritPolicyTest {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     EnvFactory.getEnv().initBeforeClass();
 
@@ -116,7 +116,7 @@ public class IoTDBPartitionInheritPolicyTest {
     ConfigFactory.getConfig()
         .setEnableDataPartitionInheritPolicy(originalEnableDataPartitionInheritPolicy);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
