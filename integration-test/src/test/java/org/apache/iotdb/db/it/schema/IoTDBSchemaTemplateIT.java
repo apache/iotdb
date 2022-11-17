@@ -72,6 +72,7 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
+      Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
     }
@@ -83,6 +84,7 @@ public class IoTDBSchemaTemplateIT {
     // test drop template which has been set
     try {
       statement.execute("DROP SCHEMA TEMPLATE t1");
+      Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
           "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
@@ -141,6 +143,7 @@ public class IoTDBSchemaTemplateIT {
 
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }
@@ -152,6 +155,7 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
+      Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
     }
@@ -213,6 +217,7 @@ public class IoTDBSchemaTemplateIT {
 
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }

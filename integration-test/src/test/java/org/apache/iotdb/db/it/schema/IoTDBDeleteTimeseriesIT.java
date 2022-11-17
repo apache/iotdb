@@ -395,7 +395,10 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.**");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.**] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  "304: Timeseries [root.**] does not exist or is represented by schema template"));
     }
 
     String[] retArray1 = new String[] {"0,4,4,4,4"};
@@ -423,7 +426,10 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.*.d1.s3");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  "304: Timeseries [root.*.d1.s3] does not exist or is represented by schema template"));
     }
   }
 

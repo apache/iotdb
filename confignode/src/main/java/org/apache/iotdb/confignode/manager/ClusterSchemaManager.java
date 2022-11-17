@@ -597,7 +597,7 @@ public class ClusterSchemaManager {
           || !pathInfoResp.getPathList().contains(path)) {
         return new Pair<>(
             RpcUtils.getStatus(
-                TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
+                TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
                 String.format("No template on %s", path)),
             null);
       } else {
