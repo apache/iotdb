@@ -492,19 +492,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           new IoTDBException(executionResult.status.getMessage(), statusCode));
     }
 
-    Set<String> failedCreationList = new HashSet<>();
+    Set<String> failedCreationSet = new HashSet<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
             MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {
-        failedCreationList.add(subStatus.message);
+        failedCreationSet.add(subStatus.message);
       }
     }
 
-    if (!failedCreationList.isEmpty()) {
-      throw new SemanticException(new MetadataException(String.join(";, ", failedCreationList)));
+    if (!failedCreationSet.isEmpty()) {
+      throw new SemanticException(new MetadataException(String.join("; ", failedCreationSet)));
     }
 
     return alreadyExistingMeasurements;

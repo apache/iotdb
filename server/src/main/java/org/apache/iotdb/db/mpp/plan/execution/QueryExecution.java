@@ -153,15 +153,16 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
-            this.stop();
             // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
             // invoked
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
               logger.debug("[ReleaseQueryResource] state is: {}", state);
-              releaseResource();
+              Throwable cause = stateMachine.getFailureException();
+              releaseResource(cause);
             }
+            this.stop();
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -344,6 +345,20 @@ public class QueryExecution implements IQueryExecution {
     // waiting it to be finished.
     if (resultHandle != null) {
       resultHandle.abort();
+    }
+  }
+
+  /** Release the resources that current QueryExecution hold with a specified exception */
+  private void releaseResource(Throwable t) {
+    // close ResultHandle to unblock client's getResult request
+    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
+    // There are only two scenarios where the ResultHandle should be closed:
+    //   1. The client fetch all the result and the ResultHandle is finished.
+    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
+    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
+    // waiting it to be finished.
+    if (resultHandle != null) {
+      resultHandle.abort(t);
     }
   }
 

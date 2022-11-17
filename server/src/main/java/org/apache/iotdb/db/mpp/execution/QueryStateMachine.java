@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.QueryId;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -143,7 +144,11 @@ public class QueryStateMachine {
   }
 
   public Throwable getFailureException() {
-    return failureException;
+    if (failureException == null) {
+      return new IoTDBException(getFailureStatus().getMessage(), getFailureStatus().code);
+    } else {
+      return failureException;
+    }
   }
 
   public TSStatus getFailureStatus() {
