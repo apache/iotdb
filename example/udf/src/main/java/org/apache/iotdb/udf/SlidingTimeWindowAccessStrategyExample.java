@@ -31,11 +31,11 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestSlidingTimeWindowAccessStrategy implements UDTF {
+public class SlidingTimeWindowAccessStrategyExample implements UDTF {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TestSlidingTimeWindowAccessStrategy.class);
+      LoggerFactory.getLogger(SlidingTimeWindowAccessStrategyExample.class);
 
-  public TestSlidingTimeWindowAccessStrategy() {}
+  public SlidingTimeWindowAccessStrategyExample() {}
 
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
