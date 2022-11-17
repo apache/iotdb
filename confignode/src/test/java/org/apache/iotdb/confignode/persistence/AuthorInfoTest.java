@@ -125,7 +125,7 @@ public class AuthorInfoTest {
         authorInfo
             .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
             .getStatus();
-    Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     // drop user
     authorPlan =

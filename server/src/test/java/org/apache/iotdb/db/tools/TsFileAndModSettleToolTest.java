@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.tools;
 
 // public class TsFileAndModSettleToolTest {
-//  private final boolean newEnablePartition = true;
 //  private final long newPartitionInterval = 3600_000;
 //  protected final long maxTimestamp = 50000L; // 100000000L;
 //  protected final String folder = "target" + File.separator + "settle";
@@ -32,7 +31,6 @@ package org.apache.iotdb.db.tools;
 //  private final Planner processor = new Planner();
 //  private String path = null;
 //  private IoTDBConfig config;
-//  private boolean originEnablePartition;
 //  private long originPartitionInterval;
 //
 //  @Before
@@ -40,13 +38,10 @@ package org.apache.iotdb.db.tools;
 //    EnvironmentUtils.envSetUp();
 //
 //    config = IoTDBDescriptor.getInstance().getConfig();
-//    originEnablePartition = config.isEnablePartition();
 //    originPartitionInterval = config.getTimePartitionIntervalForStorage();
 //
-//    config.setEnablePartition(newEnablePartition);
 //    config.setTimePartitionIntervalForStorage(newPartitionInterval);
 //
-//    StorageEngineV2.setEnablePartition(newEnablePartition);
 //    StorageEngineV2.setPartitionIntervalForStorage(newPartitionInterval);
 //
 //    File f = new File(folder);
@@ -66,10 +61,8 @@ package org.apache.iotdb.db.tools;
 //        Assert.assertTrue(deleteSuccess);
 //      }
 //    }
-//    config.setEnablePartition(originEnablePartition);
 //    config.setTimePartitionIntervalForStorage(originPartitionInterval);
 //
-//    StorageEngine.setEnablePartition(originEnablePartition);
 //    StorageEngine.setTimePartitionInterval(originPartitionInterval);
 //
 //    File directory = new File(folder);

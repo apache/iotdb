@@ -261,8 +261,8 @@ public class ReceiverManager {
    * Receive TsFile based on startIndex.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
-   *     TSStatusCode#SYNC_FILE_REBASE} if startIndex needs to rollback because mismatched; {@link
-   *     TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
+   *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
+   *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
    *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
    */
@@ -284,7 +284,7 @@ public class ReceiverManager {
     try {
       CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
       if (!result.isResult()) {
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REBASE, result.getIndex());
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
       }
     } catch (IOException e) {
       logger.error(e.getMessage());

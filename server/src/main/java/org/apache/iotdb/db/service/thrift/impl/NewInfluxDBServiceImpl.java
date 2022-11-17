@@ -137,7 +137,7 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
   public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) {
     TSStatus tsStatus =
         clientRPCService.setStorageGroup(req.sessionId, "root." + req.getDatabase());
-    if (tsStatus.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage("Execute successfully");
     }

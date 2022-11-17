@@ -417,7 +417,7 @@ public class RegionWriteExecutor {
               failingMeasurementMap.entrySet()) {
             metadataException = failingMeasurement.getValue();
             if (metadataException.getErrorCode()
-                == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
               LOGGER.info(
                   "There's no need to internal create timeseries. {}",
                   failingMeasurement.getValue().getMessage());
@@ -447,7 +447,7 @@ public class RegionWriteExecutor {
           if (failingStatus.isEmpty()) {
             if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
                 // there's only measurement_already_exist exception
                 alreadyExistingStatus.addAll(executionStatus.getSubStatus());
               } else {
@@ -459,7 +459,7 @@ public class RegionWriteExecutor {
           } else {
             if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  != TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
                 failingStatus.addAll(executionStatus.getSubStatus());
               }
             } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

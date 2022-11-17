@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.RaftProperties;
@@ -145,12 +146,11 @@ public class Utils {
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
-    // TODO Pooling ByteBuffer
-    TByteBuffer byteBuffer = new TByteBuffer(ByteBuffer.allocate(tempBufferSize));
+    AutoScalingBufferWriteTransport byteBuffer =
+        new AutoScalingBufferWriteTransport(tempBufferSize);
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.write(protocol);
-    byteBuffer.getByteBuffer().flip();
-    return byteBuffer.getByteBuffer();
+    return ByteBuffer.wrap(byteBuffer.getBuffer());
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {
