@@ -1570,7 +1570,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (loadTsFileStatement.isVerifySchema()) {
         verifyLoadingMeasurements(device2Schemas);
       }
-      if (loadTsFileStatement.isAutoCreateSchema()) {
+      if (loadTsFileStatement.isAutoCreateDatabase()) {
         autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
       }
       ISchemaTree schemaTree =
@@ -1638,7 +1638,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
 
-      if (statement.isAutoCreateSchema() || statement.isVerifySchema()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+          || statement.isVerifySchema()) {
         // construct schema
         for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
           String device = entry.getKey();
