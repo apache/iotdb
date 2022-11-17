@@ -152,7 +152,6 @@ public class IoTDBSyncClient implements ISyncClient {
         return false;
       }
     } catch (TException e) {
-      logger.warn("Cannot connect to the receiver because {}", e.getMessage());
       throw new SyncConnectionException(
           String.format("Cannot connect to the receiver because %s.", e.getMessage()));
     }

@@ -44,7 +44,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SenderManager handles rpc send logic in sender-side. Each SenderManager and Pipe have a
@@ -56,18 +55,20 @@ public class SenderManager {
   // <DataRegionId, ISyncClient>
   private final Map<String, ISyncClient> clientMap;
   // <DataRegionId, ISyncClient>
-  private final Map<String, Future> transportFutureMap;
-  private ScheduledFuture heartbeatFuture;
+  private final Map<String, Future<?>> transportFutureMap;
+  private ScheduledFuture<?> heartbeatFuture;
   private final Pipe pipe;
   private final PipeSink pipeSink;
-  private final BlockingQueue<Byte> blockingQueue = new LinkedBlockingQueue<>();
-  private AtomicInteger blockedClientNum = new AtomicInteger(0);
+
+  // store lock object for each waiting transport task thread
+  private final BlockingQueue<Object> blockingQueue = new LinkedBlockingQueue<>();
 
   // Thread pool that send PipeData in parallel by DataRegion
   protected ExecutorService transportExecutorService;
   protected ScheduledExecutorService heartbeatExecutorService;
 
-  protected int connectErrorTime = 0;
+  protected long lastReportTime = 0;
+  protected long lostConnectionTime = Long.MAX_VALUE;
 
   private boolean isRunning;
 
@@ -87,7 +88,8 @@ public class SenderManager {
 
   public void start() {
     blockingQueue.clear();
-    blockedClientNum = new AtomicInteger(0);
+    lastReportTime = System.currentTimeMillis();
+    lostConnectionTime = Long.MAX_VALUE;
     for (Map.Entry<String, ISyncClient> entry : clientMap.entrySet()) {
       String dataRegionId = entry.getKey();
       ISyncClient syncClient = entry.getValue();
@@ -97,12 +99,12 @@ public class SenderManager {
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
     heartbeatFuture =
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
             heartbeatExecutorService,
             this::heartbeat,
             0,
-            SyncConstant.HEARTBEAT_INTERVAL_SECONDS,
-            TimeUnit.SECONDS);
+            SyncConstant.HEARTBEAT_INTERVAL_MILLISECONDS,
+            TimeUnit.MILLISECONDS);
     isRunning = true;
   }
 
@@ -110,9 +112,10 @@ public class SenderManager {
     if (heartbeatFuture != null) {
       heartbeatFuture.cancel(true);
     }
-    for (Future future : transportFutureMap.values()) {
+    for (Future<?> future : transportFutureMap.values()) {
       future.cancel(true);
     }
+    blockingQueue.clear();
     isRunning = false;
   }
 
@@ -142,61 +145,87 @@ public class SenderManager {
     }
   }
 
+  /**
+   * heartbeat will be executed with delay time {@link SyncConstant#HEARTBEAT_INTERVAL_MILLISECONDS}
+   * only if there are transport threads being blocked. It will notify all blocked transport thread
+   * if successfully reconnect to receiver.
+   *
+   * <p>It will print warn log per {@link SyncConstant#LOST_CONNECT_REPORT_MILLISECONDS} ms.
+   */
   private void heartbeat() {
-    ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
     try {
-      client.handshake();
-      if (connectErrorTime > 0) {
+      Object object = blockingQueue.take();
+      ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
+      try {
+        client.handshake();
+        lostConnectionTime = Long.MAX_VALUE;
         logger.info("Reconnect to {} successfully.", pipeSink);
+        synchronized (object) {
+          object.notify();
+        }
+        while (!blockingQueue.isEmpty()) {
+          object = blockingQueue.take();
+          synchronized (object) {
+            object.notify();
+          }
+        }
+      } catch (SyncConnectionException e) {
+        blockingQueue.offer(object);
+        long reportInterval = System.currentTimeMillis() - lastReportTime;
+        if (reportInterval > SyncConstant.LOST_CONNECT_REPORT_MILLISECONDS) {
+          logger.warn(
+              "Connection error because {}, lost contact with the receiver {} for {} milliseconds.",
+              e.getMessage(),
+              pipeSink,
+              System.currentTimeMillis() - lostConnectionTime);
+          lastReportTime = System.currentTimeMillis();
+        }
+      } finally {
+        client.close();
       }
-      for (int i = 0; i < blockedClientNum.get(); i++) {
-        blockedClientNum.decrementAndGet();
-        blockingQueue.offer((byte) 0);
-      }
-      connectErrorTime = 0;
-    } catch (SyncConnectionException e) {
-      connectErrorTime++;
-      logger.warn(
-          "Connection error because {}, lost contact with the receiver {} for {} seconds.",
-          e.getMessage(),
-          pipeSink,
-          connectErrorTime * SyncConstant.HEARTBEAT_INTERVAL_SECONDS);
-    } finally {
-      client.close();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
   }
 
   private void takePipeDataAndTransport(ISyncClient syncClient, String dataRegionId) {
     try {
-      while (!Thread.currentThread().isInterrupted()) {
-        try {
-          if (!syncClient.handshake()) {
-            SyncService.getInstance()
-                .recordMessage(
-                    pipe.getName(),
-                    new PipeMessage(
-                        PipeMessage.PipeMessageType.ERROR,
-                        String.format("Can not handshake with %s", pipeSink)));
-          }
-          while (!Thread.currentThread().isInterrupted()) {
-            PipeData pipeData = pipe.take(dataRegionId);
-            if (!syncClient.send(pipeData)) {
-              logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
-              // can do something.
+      Object lock = new Object();
+      synchronized (lock) {
+        while (!Thread.currentThread().isInterrupted()) {
+          try {
+            if (!syncClient.handshake()) {
               SyncService.getInstance()
                   .recordMessage(
                       pipe.getName(),
                       new PipeMessage(
-                          PipeMessage.PipeMessageType.WARN,
-                          String.format(
-                              "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
+                          PipeMessage.PipeMessageType.ERROR,
+                          String.format("Can not handshake with %s", pipeSink)));
             }
-            pipe.commit(dataRegionId);
+            while (!Thread.currentThread().isInterrupted()) {
+              PipeData pipeData = pipe.take(dataRegionId);
+              if (!syncClient.send(pipeData)) {
+                logger.error(String.format("Can not transfer PipeData %s, skip it.", pipeData));
+                // can do something.
+                SyncService.getInstance()
+                    .recordMessage(
+                        pipe.getName(),
+                        new PipeMessage(
+                            PipeMessage.PipeMessageType.WARN,
+                            String.format(
+                                "Transfer PipeData %s error, skip it.",
+                                pipeData.getSerialNumber())));
+              }
+              pipe.commit(dataRegionId);
+            }
+          } catch (SyncConnectionException e) {
+            // If failed to connect to receiver, it will hang up until scheduled heartbeat task
+            // successfully reconnect to receiver.
+            logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
+            lostConnectionTime = Math.min(lostConnectionTime, System.currentTimeMillis());
+            blockingQueue.offer(lock);
+            lock.wait();
           }
-        } catch (SyncConnectionException e) {
-          logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
-          blockedClientNum.incrementAndGet();
-          blockingQueue.take();
         }
       }
     } catch (InterruptedException e) {
@@ -218,7 +247,7 @@ public class SenderManager {
   }
 
   public void unregisterDataRegion(String dataRegionId) {
-    Future future = transportFutureMap.remove(dataRegionId);
+    Future<?> future = transportFutureMap.remove(dataRegionId);
     if (future != null) {
       future.cancel(true);
       clientMap.remove(dataRegionId);
