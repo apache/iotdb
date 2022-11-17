@@ -70,7 +70,7 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
   @Override
   public RowIterator getRowIterator() {
     if (this.size == 0) {
-      return null;
+      return new EmptyRowIterator();
     }
     if (rowIterator == null) {
       rowIterator =

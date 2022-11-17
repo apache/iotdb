@@ -57,8 +57,7 @@ public interface RowWindow {
   Type getDataType(int columnIndex);
 
   /**
-   * Returns an iterator used to access this window. Result could be null if current window is
-   * empty.
+   * Returns an iterator used to access this window.
    *
    * @return an iterator used to access this window
    */

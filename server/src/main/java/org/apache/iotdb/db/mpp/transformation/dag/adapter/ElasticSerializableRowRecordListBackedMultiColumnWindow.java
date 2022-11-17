@@ -77,7 +77,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   @Override
   public RowIterator getRowIterator() {
     if (this.size == 0) {
-      return null;
+      return new EmptyRowIterator();
     }
     if (rowIterator == null) {
       rowIterator =
