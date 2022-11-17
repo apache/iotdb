@@ -62,6 +62,7 @@ public class IoTDBRpcDataSet {
   public long sessionId;
   public long queryId;
   public long statementId;
+  public long time;
   public boolean ignoreTimeStamp;
   // indicates that there is still more data in server side and we can call fetchResult to get more
   public boolean moreData;
@@ -331,6 +332,7 @@ public class IoTDBRpcDataSet {
   public void constructOneRow() {
     tsBlockIndex++;
     hasCachedRecord = true;
+    time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
   }
 
   public void constructOneTsBlock() {
