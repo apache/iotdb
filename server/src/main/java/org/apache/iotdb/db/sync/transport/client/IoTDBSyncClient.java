@@ -67,8 +67,6 @@ public class IoTDBSyncClient implements ISyncClient {
   private final String ipAddress;
   /* remote port */
   private final int port;
-  /* local IP address*/
-  private final String localIP;
   /* database name that client belongs to*/
   private final String databaseName;
 
@@ -78,16 +76,13 @@ public class IoTDBSyncClient implements ISyncClient {
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
-   * @param localAddress local ip address
    * @param databaseName database name that client belongs to
    */
-  public IoTDBSyncClient(
-      Pipe pipe, String remoteAddress, int port, String localAddress, String databaseName) {
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String databaseName) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = remoteAddress;
     this.port = port;
-    this.localIP = localAddress;
     this.databaseName = databaseName;
   }
 
@@ -127,11 +122,7 @@ public class IoTDBSyncClient implements ISyncClient {
 
       TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
-              localIP,
-              pipe.getName(),
-              pipe.getCreateTime(),
-              config.getIoTDBMajorVersion(),
-              databaseName);
+              pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion(), databaseName);
       TSStatus status = serviceClient.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("The receiver rejected the synchronization task because {}", status.message);

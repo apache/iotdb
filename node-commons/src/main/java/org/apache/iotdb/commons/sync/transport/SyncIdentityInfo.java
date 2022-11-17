@@ -31,7 +31,7 @@ public class SyncIdentityInfo {
     this.pipeName = identityInfo.getPipeName();
     this.createTime = identityInfo.getCreateTime();
     this.version = identityInfo.getVersion();
-    this.database = identityInfo.getStorageGroup();
+    this.database = identityInfo.getDatabase();
     this.remoteAddress = remoteAddress;
   }
 
