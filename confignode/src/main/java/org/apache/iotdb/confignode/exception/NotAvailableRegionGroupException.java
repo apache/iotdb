@@ -18,10 +18,19 @@
  */
 package org.apache.iotdb.confignode.exception;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 public class NotAvailableRegionGroupException extends ConfigNodeException {
 
-  public NotAvailableRegionGroupException() {
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
+  private static final String DATA_REGION_GROUP = "DataRegionGroup";
+
+  public NotAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
     super(
-        "There are no available RegionGroups currently, please check the status of cluster DataNodes");
+        String.format(
+            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+                ? SCHEMA_REGION_GROUP
+                : DATA_REGION_GROUP));
   }
 }
