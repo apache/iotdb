@@ -43,7 +43,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class BufferedPipeDataQueueTest {
-  // test3
+  // test4
   private static final Logger logger = LoggerFactory.getLogger(BufferedPipeDataQueueTest.class);
 
   File pipeLogDir =
