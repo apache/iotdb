@@ -87,6 +87,7 @@ public class Util {
       String device3 = "root.sg.d333";
       String device4 = "root.sg.d4444";
       String device5 = "root.sg.d55555";
+      String device6 = "root.sg.d666666";
 
       TRegionReplicaSet dataRegion1 =
           new TRegionReplicaSet(
@@ -156,11 +157,18 @@ public class Util {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> d5DataRegionMap = new HashMap<>();
       d5DataRegionMap.put(new TTimePartitionSlot(), d5DataRegions);
 
+      List<TRegionReplicaSet> d6DataRegions = new ArrayList<>();
+      d6DataRegions.add(dataRegion1);
+      d6DataRegions.add(dataRegion2);
+      Map<TTimePartitionSlot, List<TRegionReplicaSet>> d6DataRegionMap = new HashMap<>();
+      d6DataRegionMap.put(new TTimePartitionSlot(), d6DataRegions);
+
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device4), d4DataRegionMap);
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device5), d5DataRegionMap);
+      sgPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
 
       dataPartitionMap.put("root.sg", sgPartitionMap);
 
@@ -246,19 +254,25 @@ public class Util {
     d2.addChild("s2", s2);
 
     SchemaEntityNode d3 = new SchemaEntityNode("d333");
-    sg.addChild("d333", d2);
+    sg.addChild("d333", d3);
     d3.addChild("s1", s1);
     d3.addChild("s2", s2);
 
     SchemaEntityNode d4 = new SchemaEntityNode("d4444");
-    sg.addChild("d4444", d2);
+    sg.addChild("d4444", d4);
     d4.addChild("s1", s1);
     d4.addChild("s2", s2);
 
     SchemaEntityNode d5 = new SchemaEntityNode("d55555");
-    sg.addChild("d55555", d2);
+    sg.addChild("d55555", d5);
     d5.addChild("s1", s1);
     d5.addChild("s2", s2);
+
+    SchemaEntityNode d6 = new SchemaEntityNode("d666666");
+    d6.setAligned(true);
+    sg.addChild("d666666", d6);
+    d6.addChild("s1", s1);
+    d6.addChild("s2", s2);
 
     ClusterSchemaTree tree = new ClusterSchemaTree(root);
     tree.setStorageGroups(Collections.singletonList("root.sg"));
@@ -266,10 +280,13 @@ public class Util {
     return tree;
   }
 
-  public static PlanNode genLogicalPlan(String sql, MPPQueryContext context) {
+  public static Analysis analyze(String sql, MPPQueryContext context) {
     Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     Analyzer analyzer = new Analyzer(context, getFakePartitionFetcher(), getFakeSchemaFetcher());
-    Analysis analysis = analyzer.analyze(statement);
+    return analyzer.analyze(statement);
+  }
+
+  public static PlanNode genLogicalPlan(Analysis analysis, MPPQueryContext context) {
     LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
     return planner.plan(analysis).getRootNode();
   }

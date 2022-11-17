@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -90,7 +91,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
     // special logic.
-    if (isAggregationQuery(node)) {
+    if (isAggregationQuery()) {
       return processDeviceViewWithAggregation(node, context);
     }
 
@@ -473,7 +474,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
-    if (isAggregationQuery(node)) {
+    if (isAggregationQuery()) {
       return planAggregationWithTimeJoin(node, context);
     }
     return processRawMultiChildNode(node, context);
@@ -561,17 +562,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return root;
   }
 
-  private boolean isAggregationQuery(PlanNode node) {
-    if (node instanceof SeriesAggregationScanNode
-        || node instanceof AlignedSeriesAggregationScanNode) {
-      return true;
-    }
-    for (PlanNode child : node.getChildren()) {
-      if (isAggregationQuery(child)) {
-        return true;
-      }
-    }
-    return false;
+  private boolean isAggregationQuery() {
+    return ((QueryStatement) analysis.getStatement()).isAggregationQuery();
   }
 
   // This method is only used to process the PlanNodeTree whose root is SlidingWindowAggregationNode
