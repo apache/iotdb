@@ -78,7 +78,7 @@ public class IoTDBSessionSchemaTemplateIT {
         Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
     List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
     List<CompressionType> compressors =
-        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.GZIP);
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
 
     session.setStorageGroup("root.sg");
 
