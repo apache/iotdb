@@ -120,7 +120,6 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncConfigNodeIServiceClient> pooledObject) {
-      super.stopTManagers();
       pooledObject.getObject().close();
     }
 

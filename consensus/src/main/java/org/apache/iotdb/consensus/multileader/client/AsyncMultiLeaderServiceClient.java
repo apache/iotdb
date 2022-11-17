@@ -120,7 +120,6 @@ public class AsyncMultiLeaderServiceClient extends MultiLeaderConsensusIService.
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncMultiLeaderServiceClient> pooledObject) {
-      super.stopTManagers();
       pooledObject.getObject().close();
     }
 

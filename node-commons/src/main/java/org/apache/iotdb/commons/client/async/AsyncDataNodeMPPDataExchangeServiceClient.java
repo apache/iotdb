@@ -121,7 +121,6 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     @Override
     public void destroyObject(
         TEndPoint endPoint, PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
-      super.stopTManagers();
       pooledObject.getObject().close();
     }
 
