@@ -404,8 +404,8 @@ public class IoTDBUDFOtherWindowQueryIT {
     String delta = "9";
     Long displayBegin = 0L;
     Long displayEnd = 100000L;
-    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 500, 502, 996, 999};
-    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 499, 501, 995, 998, 999};
+    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
@@ -414,16 +414,16 @@ public class IoTDBUDFOtherWindowQueryIT {
     String delta = "102";
     Long displayBegin = -100L;
     Long displayEnd = 100000L;
-    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 996, 999};
-    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
+    long[] windowStart = new long[] {0, 3, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {2, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
   @Test
   public void testStateWindowSS4() {
     String delta = "102";
-    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 996, 999};
-    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
+    long[] windowStart = new long[] {0, 3, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {2, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, null, null);
   }
 
