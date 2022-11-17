@@ -28,7 +28,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.AuditLogUtils;
 
 public class StandaloneServiceProvider extends ServiceProvider {
 

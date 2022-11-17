@@ -142,6 +142,8 @@ public class Session {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
+  protected boolean enableAudit = Config.DEFAULT_ENABLE_AUDIT;
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -253,6 +255,27 @@ public class Session {
       int rpcPort,
       String username,
       String password,
+      boolean enableCacheLeader,
+      boolean enableAudit) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        enableCacheLeader,
+        enableAudit,
+        Config.DEFAULT_VERSION);
+  }
+
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
       int fetchSize,
       ZoneId zoneId,
       boolean enableCacheLeader) {
@@ -289,6 +312,30 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
+  }
+
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader,
+      boolean enableAudit,
+      Version version) {
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableCacheLeader = enableCacheLeader;
+    this.enableAudit = enableAudit;
     this.version = version;
   }
 
@@ -371,6 +418,10 @@ public class Session {
 
   public void setVersion(Version version) {
     this.version = version;
+  }
+
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
   }
 
   public synchronized void open() throws IoTDBConnectionException {

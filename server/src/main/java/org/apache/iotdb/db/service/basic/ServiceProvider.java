@@ -172,7 +172,8 @@ public abstract class ServiceProvider {
       String password,
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion)
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean enableAudit)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -205,21 +206,21 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion);
-      LOGGER.info(
-          "{}: Login status: {}. User : {}, opens Session-{}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          openSessionResp.getMessage(),
-          username,
-          session);
+      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "%s: Login status: %s. User : %s, opens Session-%s",
+              IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+
     } else {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
-      AuditLogUtils.writeAuditLog(String.format("User %s opens Session failed with an incorrect password",username));
+      session.setUsername(username);
+      AuditLogUtils.writeAuditLog(
+          String.format("User %s opens Session failed with an incorrect password", username), true);
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
     SessionTimeoutManager.getInstance().register(session);
-    AuditLogUtils.writeAuditLog("user login");
     return openSessionResp.sessionId(session == null ? -1 : session.getId());
   }
 
@@ -231,11 +232,17 @@ public abstract class ServiceProvider {
       TSProtocolVersion tsProtocolVersion)
       throws TException {
     return login(
-        session, username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
+        session,
+        username,
+        password,
+        zoneId,
+        tsProtocolVersion,
+        IoTDBConstant.ClientVersion.V_0_12,
+        false);
   }
 
   public boolean closeSession(IClientSession session) {
-    AuditLogUtils.writeAuditLog(String.format("Session-%s is closing",session));
+    AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 
@@ -253,7 +260,9 @@ public abstract class ServiceProvider {
     if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
     }
-    AuditLogUtils.writeAuditLog(String.format("%s: receive close operation from Session %s", IoTDBConstant.GLOBAL_DB_NAME, session));
+    AuditLogUtils.writeAuditLog(
+        String.format(
+            "%s: receive close operation from Session %s", IoTDBConstant.GLOBAL_DB_NAME, session));
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {

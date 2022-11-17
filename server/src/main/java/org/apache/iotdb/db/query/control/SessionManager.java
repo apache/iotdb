@@ -140,13 +140,15 @@ public class SessionManager implements SessionManagerMBean {
       IClientSession session,
       String username,
       String zoneId,
-      IoTDBConstant.ClientVersion clientVersion) {
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean enableAudit) {
     session.setId(sessionIdGenerator.incrementAndGet());
     session.setUsername(username);
     session.setZoneId(ZoneId.of(zoneId));
     session.setClientVersion(clientVersion);
     session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setEnableAudit(enableAudit);
   }
 
   /**

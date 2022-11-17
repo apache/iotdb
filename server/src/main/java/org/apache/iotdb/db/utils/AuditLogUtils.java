@@ -48,31 +48,37 @@ public class AuditLogUtils {
   public static final String LOG_LEVEL_NONE = "NONE";
 
   public static void writeAuditLog(String log) {
+    writeAuditLog(log, false);
+  }
+
+  public static void writeAuditLog(String log, boolean enableWrite) {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     String auditLogStorage = config.getAuditLogStorage();
     IClientSession currSession = SessionManager.getInstance().getCurrSession();
     if (currSession == null) {
       return;
     }
-    String clientAddress = ((ClientSession) currSession).getClientAddress();
+    ClientSession clientSession = (ClientSession) currSession;
+    String clientAddress = clientSession.getClientAddress();
     int clientPort = ((ClientSession) currSession).getClientPort();
     String address = String.format("%s:%s", clientAddress, clientPort);
     String username = currSession.getUsername();
-    if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
-      try {
-        InsertRowPlan insertRowPlan =
-            new InsertRowPlan(
-                new PartialPath(String.format(AUDIT_LOG_DEVICE, username)),
-                DateTimeUtils.currentTime(),
-                new String[] { LOG, USERNAME, ADDRESS},
-                new String[] {log, username, address});
-        IoTDB.serviceProvider.getExecutor().insert(insertRowPlan);
-      } catch (IllegalPathException | QueryProcessException e) {
-        logger.error("write audit log series error,", e);
+    if (clientSession.isEnableAudit() || enableWrite) {
+      if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
+        try {
+          InsertRowPlan insertRowPlan =
+              new InsertRowPlan(
+                  new PartialPath(String.format(AUDIT_LOG_DEVICE, username)),
+                  DateTimeUtils.currentTime(),
+                  new String[] {LOG, USERNAME, ADDRESS},
+                  new String[] {log, username, address});
+          IoTDB.serviceProvider.getExecutor().insert(insertRowPlan);
+        } catch (IllegalPathException | QueryProcessException e) {
+          logger.error("write audit log series error,", e);
+        }
+      } else if (LOG_LEVEL_LOGGER.equals(auditLogStorage)) {
+        AUDIT_LOGGER.info("user:{},address:{},log:{}", username, address, log);
       }
-
-    } else if (LOG_LEVEL_LOGGER.equals(auditLogStorage)) {
-      AUDIT_LOGGER.debug("user:{},address:{},log:{}", username,address, log);
     }
   }
 }

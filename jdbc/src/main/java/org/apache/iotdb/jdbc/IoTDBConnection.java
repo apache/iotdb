@@ -464,7 +464,7 @@ public class IoTDBConnection implements Connection {
     openReq.setPassword(params.getPassword());
     openReq.setZoneId(getTimeZone());
     openReq.putToConfiguration("version", params.getVersion().toString());
-
+    openReq.putToConfiguration("enableAudit", String.valueOf(params.isEnableAudit()));
     TSOpenSessionResp openResp = null;
     try {
       openResp = client.openSession(openReq);

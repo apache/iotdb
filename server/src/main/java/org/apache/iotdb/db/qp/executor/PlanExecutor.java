@@ -519,7 +519,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       // delete related data
-      AuditLogUtils.writeAuditLog(String.format("delete timeseries %s",pathToDelete));
+      AuditLogUtils.writeAuditLog(String.format("delete timeseries %s", pathToDelete));
       DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
       for (PartialPath path : pathToDelete) {
         StorageEngine.getInstance()
@@ -1376,9 +1376,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(String.format("delete data from %s in [%s,%s]",deletePlan.getPaths(),
-            deletePlan.getDeleteStartTime(),
-            deletePlan.getDeleteEndTime()));
+    AuditLogUtils.writeAuditLog(
+        String.format(
+            "delete data from %s in [%s,%s]",
+            deletePlan.getPaths(), deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime()));
 
     for (PartialPath path : deletePlan.getPaths()) {
       delete(
@@ -2147,7 +2148,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(String.format("delete timeseries %s",deleteTimeSeriesPlan.getPaths()));
+    AuditLogUtils.writeAuditLog(
+        String.format("delete timeseries %s", deleteTimeSeriesPlan.getPaths()));
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
@@ -2226,7 +2228,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(String.format("set storage group to %s",setStorageGroupPlan.getPaths()));
+    AuditLogUtils.writeAuditLog(
+        String.format("set storage group to %s", setStorageGroupPlan.getPaths()));
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
@@ -2238,7 +2241,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(String.format("set storage group to %s",deleteStorageGroupPlan.getPaths()));
+    AuditLogUtils.writeAuditLog(
+        String.format("set storage group to %s", deleteStorageGroupPlan.getPaths()));
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {

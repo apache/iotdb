@@ -141,7 +141,7 @@ public class SessionConnection {
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
-
+    openReq.putToConfiguration("enableAudit", String.valueOf(session.enableAudit));
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
