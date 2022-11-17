@@ -55,7 +55,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 ### `INTO` 子句
 
 - `SELECT INTO` 用于将查询结果写入一系列指定的时间序列中。`INTO` 子句指定了查询结果写入的目标时间序列。
-- 详细说明及示例见文档 [SELECT INTO](Select-Into.md) 。
+- 详细说明及示例见文档 [SELECT INTO（查询写回）](Select-Into.md) 。
 
 ### `FROM` 子句
 
@@ -104,18 +104,18 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 
 ### `SLIMIT` 和 `SOFFSET` 子句
 
-- `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列无效。
-- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
+- `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列和设备列无效。
+- 关于查询结果分页，详细说明及示例见文档 [结果集分页](./Pagination.md) 。
 
 ### `LIMIT` 和 `OFFSET` 子句
 
 - `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
-- 关于查询结果分页，详细说明及示例见文档 [查询结果分页](./Pagination.md) 。
+- 关于查询结果分页，详细说明及示例见文档 [结果集分页](./Pagination.md) 。
 
 
 ## SQL 示例
 
-**示例1：** 根据一个时间区间选择一列数据
+### 示例1：根据一个时间区间选择一列数据
 
 SQL 语句为：
 
@@ -146,7 +146,7 @@ Total line number = 8
 It costs 0.026s
 ```
 
-**示例2：** 根据一个时间区间选择多列数据
+### 示例2：根据一个时间区间选择多列数据
 
 SQL 语句为：
 
@@ -175,7 +175,7 @@ Total line number = 6
 It costs 0.018s
 ```
 
-**示例3：** 按照多个时间区间选择同一设备的多列数据
+### 示例3：按照多个时间区间选择同一设备的多列数据
 
 IoTDB 支持在一次查询中指定多个时间区间条件，用户可以根据需求随意组合时间区间条件。例如，
 
@@ -209,7 +209,7 @@ Total line number = 9
 It costs 0.018s
 ```
 
-**示例4：** 按照多个时间区间选择不同设备的多列数据
+### 示例4：按照多个时间区间选择不同设备的多列数据
 
 该系统支持在一次查询中选择任意列的数据，也就是说，被选择的列可以来源于不同的设备。例如，SQL 语句为：
 
@@ -241,7 +241,7 @@ Total line number = 9
 It costs 0.014s
 ```
 
-**示例5：** 根据时间降序返回结果集
+### 示例5：根据时间降序返回结果集
 
 IoTDB 支持 `order by time` 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 
@@ -278,7 +278,7 @@ It costs 0.016s
 
 - 在 JDBC 中执行查询语句，详见 [JDBC](../API/Programming-JDBC.md) 。
 
-- 在 JAVA / C++ / Python / Go 等编程语言 API 中执行查询语句，详见应用编程接口一章相关文档。接口原型如下：
+- 在 JAVA / C++ / Python / Go 等编程语言 API 中执行查询语句，详见应用编程接口一章相应文档。接口原型如下：
 
   ```java
   SessionDataSet executeQueryStatement(String sql);
