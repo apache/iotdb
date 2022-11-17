@@ -181,11 +181,13 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    long originSize = this.compactionMemoryCost.get();
-    while (originSize + memoryCost > memorySizeForCompaction
-        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-      Thread.sleep(100);
-      originSize = this.compactionMemoryCost.get();
+    if (config.isEnableMemControl()) {
+      long originSize = this.compactionMemoryCost.get();
+      while (originSize + memoryCost > memorySizeForCompaction
+          || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+        Thread.sleep(100);
+        originSize = this.compactionMemoryCost.get();
+      }
     }
   }
 
@@ -194,7 +196,11 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    return memorySizeForCompaction;
+    if (config.isEnableMemControl()) {
+      return memorySizeForCompaction;
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 
   public void allocateWriteMemory() {
