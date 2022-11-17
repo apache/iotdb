@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -125,7 +126,7 @@ public class ClusterSchemaManager {
       if (metadataException instanceof IllegalPathException) {
         result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
       return result;
@@ -196,7 +197,7 @@ public class ClusterSchemaManager {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
             .setStatus(
-                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
       }
 
@@ -204,6 +205,22 @@ public class ClusterSchemaManager {
     }
 
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+  }
+
+  public Map<String, Long> getAllTTLInfo() {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp)
+            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return infoMap;
+    }
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
+    }
+    return infoMap;
   }
 
   /**
@@ -221,7 +238,7 @@ public class ClusterSchemaManager {
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          TSStatusCode.DATABASE_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
 

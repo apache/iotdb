@@ -21,6 +21,8 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
@@ -61,6 +63,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
 
   private IAuthorCache iAuthorCache;
+  private IAuthorizer authorizer;
 
   private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
@@ -69,6 +72,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
+    try {
+      authorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      logger.error("get user or role permissionInfo failed because ", e);
+    }
   }
 
   @Override
@@ -77,27 +85,29 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (user != null) {
       for (String path : allPath) {
         try {
-          if (!user.checkPrivilege(path, permission)) {
-            if (user.getRoleList().isEmpty()) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
-            }
-            boolean status = false;
-            for (String roleName : user.getRoleList()) {
-              Role role = iAuthorCache.getRoleCache(roleName);
-              // It is detected that the role of the user does not exist in the cache, indicating
-              // that the permission information of the role has changed.
-              // The user cache needs to be initialized
-              if (role == null) {
-                iAuthorCache.invalidateCache(username, "");
-                return checkPath(username, allPath, permission);
+          if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
+            if (!user.checkPrivilege(path, permission)) {
+              if (user.getRoleList().isEmpty()) {
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
               }
-              status = role.checkPrivilege(path, permission);
-              if (status) {
-                break;
+              boolean status = false;
+              for (String roleName : user.getRoleList()) {
+                Role role = iAuthorCache.getRoleCache(roleName);
+                // It is detected that the role of the user does not exist in the cache, indicating
+                // that the permission information of the role has changed.
+                // The user cache needs to be initialized
+                if (role == null) {
+                  iAuthorCache.invalidateCache(username, "");
+                  return checkPath(username, allPath, permission);
+                }
+                status = role.checkPrivilege(path, permission);
+                if (status) {
+                  break;
+                }
               }
-            }
-            if (!status) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+              if (!status) {
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+              }
             }
           }
         } catch (AuthException e) {
@@ -189,11 +199,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public TSStatus checkUser(String username, String password) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
+      if (user.isOpenIdUser()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } else {
       TLoginReq req = new TLoginReq(username, password);
@@ -256,6 +267,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       String privilege = privilegeList.get(++i);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
+    user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {

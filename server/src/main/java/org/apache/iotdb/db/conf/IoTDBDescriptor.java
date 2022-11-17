@@ -886,16 +886,6 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
-    conf.setEnablePartition(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
-
-    conf.setTimePartitionIntervalForStorage(
-        Long.parseLong(
-            properties.getProperty(
-                "time_partition_interval_for_storage",
-                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
-
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
             properties.getProperty(
@@ -1011,13 +1001,9 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    conf.setTimePartitionIntervalForStorage(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
-
-    if (!conf.isClusterMode()) {
-      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
-    }
+            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1941,7 +1927,7 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());

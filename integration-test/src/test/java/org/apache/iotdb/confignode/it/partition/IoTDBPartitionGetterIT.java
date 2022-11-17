@@ -109,7 +109,7 @@ public class IoTDBPartitionGetterIT {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -220,7 +220,7 @@ public class IoTDBPartitionGetterIT {
     ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
 
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

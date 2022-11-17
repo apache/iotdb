@@ -32,8 +32,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
-import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -554,7 +554,7 @@ public class IoTDBConfig {
   private int sessionTimeoutThreshold = 0;
 
   /** Replace implementation class of JDBC service */
-  private String rpcImplClassName = TSServiceImpl.class.getName();
+  private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
@@ -743,14 +743,8 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
-  /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = true;
-
-  /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 604_800_000;
-
-  /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 604_800_000;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -1122,28 +1116,12 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public boolean isEnablePartition() {
-    return enablePartition;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
-  public void setEnablePartition(boolean enablePartition) {
-    this.enablePartition = enablePartition;
-  }
-
-  public long getTimePartitionIntervalForStorage() {
-    return timePartitionIntervalForStorage;
-  }
-
-  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
-  }
-
-  public long getTimePartitionIntervalForRouting() {
-    return timePartitionIntervalForRouting;
-  }
-
-  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {

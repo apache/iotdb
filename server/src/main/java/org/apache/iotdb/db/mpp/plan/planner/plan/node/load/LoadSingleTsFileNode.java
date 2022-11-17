@@ -79,12 +79,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
       TTimePartitionSlot startSlot =
-          TimePartitionUtils.getTimePartitionForRouting(resource.getStartTime(device));
+          TimePartitionUtils.getTimePartition(resource.getStartTime(device));
       if (timePartitionSlot == null) {
         timePartitionSlot = startSlot;
       }
       if (!startSlot.equals(timePartitionSlot)
-          || !TimePartitionUtils.getTimePartitionForRouting(resource.getEndTime(device))
+          || !TimePartitionUtils.getTimePartition(resource.getEndTime(device))
               .equals(timePartitionSlot)) {
         needDecodeTsFile = true;
         return;

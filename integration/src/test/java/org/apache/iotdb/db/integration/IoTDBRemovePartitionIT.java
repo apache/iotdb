@@ -54,14 +54,12 @@ package org.apache.iotdb.db.integration;
 //  @Before
 //  public void setUp() throws Exception {
 //    EnvironmentUtils.envSetUp();
-////    StorageEngine.setEnablePartition(true);
 ////    StorageEngine.setTimePartitionInterval(partitionInterval);
 //    insertData();
 //  }
 //
 //  @After
 //  public void tearDown() throws Exception {
-////    StorageEngine.setEnablePartition(false);
 ////    StorageEngine.setTimePartitionInterval(-1);
 //    EnvironmentUtils.cleanEnv();
 //  }

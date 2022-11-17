@@ -99,7 +99,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(time);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
@@ -178,7 +178,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
   }
 
   @Override
