@@ -499,10 +499,6 @@ public class IoTDBRpcDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
-  public Timestamp getTimestamp() throws StatementExecutionException {
-    return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
-  }
-
   public int findColumn(String columnName) {
     return columnOrdinalMap.get(columnName);
   }
@@ -551,10 +547,6 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    return getObject(index, columnTypeDeduplicatedList.get(index));
-  }
-
-  public Object getObject(int index, TSDataType tsDataType) {
     return curTsBlock.getColumn(index).getObject(tsBlockIndex);
   }
 
