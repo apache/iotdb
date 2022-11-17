@@ -118,6 +118,7 @@ public class IoTDBSelectIntoIT {
 
   // -------------------------------------- ALIGN BY TIME ---------------------------------------
 
+  @Ignore
   @Test
   public void testRawDataQuery1() {
     String[] intoRetArray =
@@ -159,6 +160,7 @@ public class IoTDBSelectIntoIT {
         rawDataSet);
   }
 
+  @Ignore
   @Test
   public void testSamePathQuery() {
     String[] intoRetArray =
@@ -196,6 +198,7 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Ignore
   @Test
   public void testEmptyQuery() {
     resultSetEqualTest(
@@ -203,6 +206,7 @@ public class IoTDBSelectIntoIT {
         selectIntoHeader, new String[] {});
   }
 
+  @Ignore
   @Test
   public void testAggregationQuery1() {
     String[] intoRetArray =
@@ -228,6 +232,7 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Ignore
   @Test
   public void testAggregationQuery2() {
     String[] intoRetArray =
@@ -254,6 +259,7 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Ignore
   @Test
   public void testExpression() {
     String[] intoRetArray =
@@ -289,6 +295,7 @@ public class IoTDBSelectIntoIT {
 
   // -------------------------------------- ALIGN BY DEVICE -------------------------------------
 
+  @Ignore
   @Test
   public void testRawDataQueryAlignByDevice1() {
     String[] intoRetArray =
@@ -330,6 +337,7 @@ public class IoTDBSelectIntoIT {
         rawDataSet);
   }
 
+  @Ignore
   @Test
   public void testSamePathQueryAlignByDevice() {
     String[] intoRetArray =
@@ -365,6 +373,7 @@ public class IoTDBSelectIntoIT {
         "select t1, t2, t3, t4 from root.sg_abd_bk3.new_d1;", expectedQueryHeader, queryRetArray);
   }
 
+  @Ignore
   @Test
   public void testEmptyQueryAlignByDevice() {
     resultSetEqualTest(
@@ -372,6 +381,7 @@ public class IoTDBSelectIntoIT {
         selectIntoAlignByDeviceHeader, new String[] {});
   }
 
+  @Ignore
   @Test
   public void testAggregationQueryAlignByDevice1() {
     String[] intoRetArray =
@@ -397,6 +407,7 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Ignore
   @Test
   public void testAggregationQueryAlignByDevice2() {
     String[] intoRetArray =
@@ -464,6 +475,7 @@ public class IoTDBSelectIntoIT {
 
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
+  @Ignore
   @Test
   public void testDataTypeInconsistent() {
     executeNonQuery("CREATE TIMESERIES root.sg_error_bk1.new_d.t1 TEXT;");
@@ -472,6 +484,7 @@ public class IoTDBSelectIntoIT {
         "Task was cancelled.");
   }
 
+  @Ignore
   @Test
   public void testAlignmentInconsistent() {
     executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
@@ -480,6 +493,7 @@ public class IoTDBSelectIntoIT {
         "Task was cancelled.");
   }
 
+  @Ignore
   @Test
   public void testPermission1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
