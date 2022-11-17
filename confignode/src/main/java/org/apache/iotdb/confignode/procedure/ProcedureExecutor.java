@@ -863,7 +863,6 @@ public class ProcedureExecutor<Env> {
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
     }
-
     try {
       threadGroup.destroy();
     } catch (IllegalThreadStateException e) {
