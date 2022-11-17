@@ -541,26 +541,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 536870912 |
 |Effective| After restarting system |
 
-* enable\_partition
-
-|Name| enable\_partition |
-|:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
-|Type|Bool|
-|Default| false |
-|Effective|Only allowed to be modified in first start up|
-
-* time\_partition\_interval\_for\_storage
-
-|Name| time\_partition\_interval\_for\_storage                                                                |
-|:---:|:-------------------------------------------------------------------------------------------------------|
-|Description| Time range for dividing database, time series data will be divided into groups by this time range |
-|Type| Int64                                                                                                  |
-|Unit| ms                                                                                                     |
-|Default| 604800000                                                                                               |
-|Effective| Only allowed to be modified in first start up                                                          |
-
-
 * concurrent\_writing\_time\_partition
 
 |Name| concurrent\_writing\_time\_partition |

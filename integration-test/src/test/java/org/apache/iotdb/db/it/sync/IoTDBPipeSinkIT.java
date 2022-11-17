@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.it.sync;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -40,6 +42,14 @@ import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPipeSinkIT {
+
+  private static final String SHOW_PIPESINK_HEADER =
+      StringUtils.join(
+              ColumnHeaderConstant.showPipeSinkColumnHeaders.stream()
+                  .map(ColumnHeader::getColumnName)
+                  .toArray(),
+              ",")
+          + ",";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -86,23 +96,16 @@ public class IoTDBPipeSinkIT {
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("PIPESINK [demo2] does not exist"));
       }
-      String expectedHeader =
-          ColumnHeaderConstant.NAME
-              + ","
-              + ColumnHeaderConstant.TYPE
-              + ","
-              + ColumnHeaderConstant.ATTRIBUTES
-              + ",";
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK")) {
         String[] expectedRetSet =
             new String[] {
               "demo3,IoTDB,ip='127.0.0.1',port=6667,", "demo1,IoTDB,ip='192.168.0.1',port=6677,"
             };
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, SHOW_PIPESINK_HEADER, expectedRetSet);
       }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK demo3")) {
         String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6667,"};
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, SHOW_PIPESINK_HEADER, expectedRetSet);
       }
     } catch (Exception e) {
       e.printStackTrace();

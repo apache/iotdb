@@ -110,7 +110,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -169,7 +169,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -256,7 +256,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -299,7 +299,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -335,7 +335,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -371,7 +371,7 @@ public class TsFileProcessorV2Test {
             SystemFileFactory.INSTANCE.getFile(filePath),
             sgInfo,
             this::closeTsFileProcessor,
-            (tsFileProcessor, updateMap, systemFlushTime) -> true,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);

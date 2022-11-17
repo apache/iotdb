@@ -234,7 +234,7 @@ public class ReceiverManager {
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
         TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
-        tsFilePipeData.setStorageGroupName(identityInfo.getDatabase());
+        tsFilePipeData.setDatabase(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
@@ -247,7 +247,7 @@ public class ReceiverManager {
     logger.info(
         "Start load pipeData with serialize number {} and type {},value={}",
         pipeData.getSerialNumber(),
-        pipeData.getType(),
+        pipeData.getPipeDataType(),
         pipeData);
     try {
       pipeData.createLoader().load();
@@ -266,8 +266,8 @@ public class ReceiverManager {
    * Receive TsFile based on startIndex.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
-   *     TSStatusCode#SYNC_FILE_REBASE} if startIndex needs to rollback because mismatched; {@link
-   *     TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
+   *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
+   *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
    *     by {@link ReceiverManager#handshake}
    */
@@ -290,7 +290,7 @@ public class ReceiverManager {
     try {
       CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
       if (!result.isResult()) {
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REBASE, result.getIndex());
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
       }
     } catch (IOException e) {
       logger.error(e.getMessage());

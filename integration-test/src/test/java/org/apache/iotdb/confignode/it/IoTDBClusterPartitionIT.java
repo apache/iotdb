@@ -114,7 +114,7 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     EnvFactory.getEnv().initBeforeClass();
   }
@@ -133,7 +133,7 @@ public class IoTDBClusterPartitionIT {
     ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
 
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

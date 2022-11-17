@@ -90,7 +90,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       if (impl.isReadOnly()) {
         String message = "fail to sync log because system is read-only.";
         logger.error(message);
-        TSStatus status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+        TSStatus status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM.getStatusCode());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;

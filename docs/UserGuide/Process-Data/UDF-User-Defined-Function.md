@@ -218,6 +218,8 @@ The `StateWindowAccessStrategy` is shown schematically below.
 - Constructor 3: For numerical data, there are 1 parameters: you can only provide the threshold delta that is allowed to change within a single window. The start time of the time axis display time window will be defined as the smallest timestamp in the entire query result set, and the time axis display time window end time will be defined as The largest timestamp in the entire query result set.
 - Constructor 4: For text data and boolean data, you can provide no parameter. The start and end timestamps are explained in Constructor 3.
 
+StateWindowAccessStrategy can only take one column as input for now.
+
 Please see the Javadoc for more details. 
 
 

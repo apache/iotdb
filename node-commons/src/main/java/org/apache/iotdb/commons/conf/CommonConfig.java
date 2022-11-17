@@ -306,6 +306,7 @@ public class CommonConfig {
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
+    this.statusReason = null;
 
     switch (newStatus) {
       case ReadOnly:

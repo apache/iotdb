@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -37,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category(ClusterIT.class) // TODO After old StandAlone remove
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBFilterNullIT {
 
   private static final String[] createSqls =
@@ -64,10 +65,9 @@ public class IoTDBFilterNullIT {
       }
 
       for (String insertSql : insertSqls) {
-        // TODO statement.addBatch(insertSql);
-        statement.execute(insertSql);
+        statement.addBatch(insertSql);
       }
-      // TODO statement.executeBatch();
+      statement.executeBatch();
 
     } catch (Exception e) {
       e.printStackTrace();

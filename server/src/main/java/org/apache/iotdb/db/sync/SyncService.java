@@ -399,7 +399,7 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getRemoteAddress(),
                 PipeStatus.RUNNING.name(),
-                String.format("storageGroup='%s'", identityInfo.getDatabase()),
+                String.format("Database='%s'", identityInfo.getDatabase()),
                 // TODO: implement receiver message
                 PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);

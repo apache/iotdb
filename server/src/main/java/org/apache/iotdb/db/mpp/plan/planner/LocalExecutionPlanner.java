@@ -63,7 +63,8 @@ public class LocalExecutionPlanner {
       Filter timeFilter,
       DataRegion dataRegion)
       throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 

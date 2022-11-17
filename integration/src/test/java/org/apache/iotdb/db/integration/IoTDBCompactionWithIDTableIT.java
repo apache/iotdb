@@ -53,8 +53,7 @@ public class IoTDBCompactionWithIDTableIT {
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1);
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =

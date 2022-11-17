@@ -242,9 +242,15 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    consensusManager.close();
-    partitionManager.getRegionMaintainer().shutdown();
-    procedureManager.shiftExecutor(false);
+    if (consensusManager != null) {
+      consensusManager.close();
+    }
+    if (partitionManager != null) {
+      partitionManager.getRegionMaintainer().shutdown();
+    }
+    if (procedureManager != null) {
+      procedureManager.shiftExecutor(false);
+    }
   }
 
   @Override
@@ -260,6 +266,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
@@ -437,7 +444,7 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
@@ -753,8 +760,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(
-          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);

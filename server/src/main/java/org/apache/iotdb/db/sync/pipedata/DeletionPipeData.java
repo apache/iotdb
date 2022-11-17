@@ -36,7 +36,7 @@ import java.util.Objects;
 public class DeletionPipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(DeletionPipeData.class);
 
-  private String storageGroup;
+  private String database;
   private Deletion deletion;
 
   public DeletionPipeData() {
@@ -49,25 +49,25 @@ public class DeletionPipeData extends PipeData {
 
   public DeletionPipeData(String sgName, Deletion deletion, long serialNumber) {
     super(serialNumber);
-    this.storageGroup = sgName;
+    this.database = sgName;
     this.deletion = deletion;
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.DELETION;
   }
 
   @Override
   public long serialize(DataOutputStream stream) throws IOException {
     return super.serialize(stream)
-        + ReadWriteIOUtils.write(storageGroup, stream)
+        + ReadWriteIOUtils.write(database, stream)
         + deletion.serializeWithoutFileOffset(stream);
   }
 
   public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
     super.deserialize(stream);
-    storageGroup = ReadWriteIOUtils.readString(stream);
+    database = ReadWriteIOUtils.readString(stream);
     deletion = Deletion.deserializeWithoutFileOffset(stream);
   }
 
@@ -85,8 +85,8 @@ public class DeletionPipeData extends PipeData {
     return deletion;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
   @Override

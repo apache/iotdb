@@ -16,23 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.lang.management.ManagementFactory;
 
-public class PathException extends QueryProcessException {
-
-  private static final long serialVersionUID = 2141197032898163234L;
-
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message, int errorCode) {
-    super(message, errorCode);
+public class ProcessIdUtils {
+  /**
+   * There exists no platform-independent way that can be guaranteed to work in all jvm
+   * implementations. ManagementFactory.getRuntimeMXBean().getName() looks like the best solution,
+   * and typically includes the PID. On linux+windows, it returns a value like "12345@hostname"
+   * (12345 being the process id).
+   *
+   * @return process id of running Java virtual machine
+   */
+  public static String getProcessId() {
+    return ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
   }
 }
