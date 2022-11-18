@@ -44,6 +44,8 @@ public enum TSStatusCode {
   MULTIPLE_ERROR(302),
   ILLEGAL_PARAMETER(303),
   OVERLAP_WITH_EXISTING_TASK(304),
+
+  // Do not use this, use a more precise code instead
   INTERNAL_SERVER_ERROR(305),
 
   // Client,
