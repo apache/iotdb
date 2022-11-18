@@ -6088,6 +6088,596 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
+  @Test
+  public void test19() throws MetadataException, IOException {
+    List<PartialPath> timeserisPathList = new ArrayList<>();
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    // seq file 1
+    int deviceNum = 10;
+    int measurementNum = 10;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(0L, 300L));
+        pages.add(new TimeRange(500L, 600L));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write second chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(900L, 1199L));
+        timeRanges.add(new TimeRange(1301L, 1400L));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, true);
+          iChunkWriter.writeToFileWriter(tsFileIOWriter);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 0);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 1400);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // seq file 2
+    deviceNum = 5;
+    measurementNum = 20;
+    resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(1800L, 1900L));
+        pages.add(new TimeRange(2150L, 2250L));
+        pages.add(new TimeRange(2400L, 2500L));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 1800);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2500);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // seq file 3
+    deviceNum = 15;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(2801, 2850));
+        pages.add(new TimeRange(2851, 2900));
+        pages.add(new TimeRange(3300, 3400));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write second chunk
+        pages.clear();
+        pages.add(new TimeRange(3950, 4100));
+        pages.add(new TimeRange(4200, 4300));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2801);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 4300);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // unseq file 1
+    deviceNum = 20;
+    measurementNum = 10;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(100L, 1199L));
+        timeRanges.add(new TimeRange(1301L, 1650L));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, false);
+          writeOneAlignedPage(
+              (AlignedChunkWriterImpl) iChunkWriter,
+              Collections.singletonList(new TimeRange(1700, 2000)),
+              false);
+          iChunkWriter.writeToFileWriter(tsFileIOWriter);
+        }
+
+        // write second chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(2200, 2400));
+        timeRanges.add(new TimeRange(2500, 2600));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 100);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2600);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 2
+    deviceNum = 12;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(2700, 2800));
+        pages.add(new TimeRange(3150, 3250));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write second chunk
+        pages.clear();
+        pages.add(new TimeRange(3600, 3700));
+        pages.add(new TimeRange(3900, 4000));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2700);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 4000);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 3
+    deviceNum = 12;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(550L, 800L));
+        pages.add(new TimeRange(1200L, 1300L));
+        pages.add(new TimeRange(1500L, 1750L));
+        pages.add(new TimeRange(1850L, 2200));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 550);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2200);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 4
+    deviceNum = 20;
+    measurementNum = 20;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(350L, 400L));
+        timeRanges.add(new TimeRange(550L, 700L));
+        timeRanges.add(new TimeRange(1250L, 1550L));
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        // write second chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(2620, 2670));
+        timeRanges.add(new TimeRange(3000, 3050));
+        timeRanges.add(new TimeRange(3450, 3550));
+        timeRanges.add(new TimeRange(3750, 3850));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 350);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 3850);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
+
+    // start compacting
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+    task.start();
+
+    validateSeqFiles(true);
+
+    validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
+  @Test
+  public void test20() throws IOException, IllegalPathException {
+    List<PartialPath> timeserisPathList = new ArrayList<>();
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    // seq file 1
+    int deviceNum = 10;
+    int measurementNum = 10;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(300, 600, 100);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write second chunk
+        pages = createPages(700, 1000, 30);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write third chunk
+        pages = createPages(1100, 1400, 80);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 300);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1400);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // seq file 2
+    deviceNum = 15;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(1600, 1900, 100);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write second chunk
+        pages = createPages(1950, 2250, 40);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1600);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 2250);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // unseq file 1
+    deviceNum = 18;
+    measurementNum = 18;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(0, 2000, 100);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 0);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 2000);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 2
+    deviceNum = 13;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(100, 400, 100);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write second chunk
+        pages = createPages(500, 800, 90);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 100);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 800);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 3
+    deviceNum = 20;
+    measurementNum = 20;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(450, 950, 100);
+
+        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write second chunk
+        pages = createPages(1100, 1920, 90);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 450);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1920);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
+
+    // start compacting
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+    task.start();
+
+    validateSeqFiles(true);
+
+    validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
   private List<TimeRange> createPages(long startTime, long endTime, int pagePointNum) {
     List<TimeRange> pages = new ArrayList<>();
     for (long i = startTime; i <= endTime; i += pagePointNum) {
