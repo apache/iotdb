@@ -583,13 +583,16 @@ public class OperatorMemoryTest {
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
       Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(1024L);
-      expectedMaxPeekMemory += 1024L;
       childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
-      expectedRetainedSizeAfterCallingNext += 1024L;
+      expectedRetainedSizeAfterCallingNext =
+          Math.max(
+              expectedRetainedSizeAfterCallingNext, child.calculateRetainedSizeAfterCallingNext());
       children.add(child);
     }
 
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory)
+            + expectedRetainedSizeAfterCallingNext;
 
     DeviceViewOperator deviceViewOperator =
         new DeviceViewOperator(
