@@ -426,8 +426,7 @@ public class QueryExecution implements IQueryExecution {
           stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
     } else if (stateMachine.getFailureException() != null) {
       Throwable rootCause = stateMachine.getFailureException();
-      throwIfUnchecked(rootCause);
-      throw new IoTDBException(rootCause, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {
       throwIfUnchecked(t);
       throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());

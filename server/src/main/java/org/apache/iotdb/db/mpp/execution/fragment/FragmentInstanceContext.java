@@ -186,8 +186,9 @@ public class FragmentInstanceContext extends QueryContext {
   /** @return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
+        .findFirst()
         .map(Throwable::getMessage)
-        .collect(Collectors.joining("; "));
+        .orElse("");
   }
 
   /** @return List of specific throwable and stack trace */
