@@ -46,6 +46,8 @@ It is information measured by detection equipment in an actual scene and can tra
 > Note1: A full path (`root.ln.wf01.wt01.status` as in the above example) is not allowed to be set as a database.
 >
 > Note2: The prefix of a timeseries must belong to a database. Before creating a timeseries, users must set which database the series belongs to. Only timeseries whose database is set can be persisted to disk.
+> 
+> Note3: The length of database name shall not exceed 64.
 
 Once a prefix path is set as a database, the database settings cannot be changed.
 
