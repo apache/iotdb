@@ -125,7 +125,7 @@ public class ClusterSchemaManager {
       IllegalPathException illegalPathException =
           new IllegalPathException(
               setStorageGroupPlan.getSchema().getName(),
-              "the length of database name shall not exceed 64.");
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       return RpcUtils.getStatus(
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
