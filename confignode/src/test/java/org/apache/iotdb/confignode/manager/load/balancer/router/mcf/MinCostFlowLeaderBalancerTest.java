@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFlowLeaderBalancer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -38,7 +39,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MCFLeaderBalancerTest {
+public class MinCostFlowLeaderBalancerTest {
+
+  private static final MinCostFlowLeaderBalancer BALANCER = new MinCostFlowLeaderBalancer();
 
   /** This test shows a simple case that greedy algorithm might fail */
   @Test
@@ -83,18 +86,17 @@ public class MCFLeaderBalancerTest {
     disabledDataNodeSet.add(0);
 
     // Do balancing
-    MCFLeaderBalancer mcfLeaderBalancer =
-        new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        mcfLeaderBalancer.generateOptimalLeaderDistribution();
+        BALANCER.generateOptimalLeaderDistribution(
+            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
     // Each DataNode occurs exactly once
     Assert.assertEquals(3, new HashSet<>(leaderDistribution.values()).size());
     // MaxFlow is 3
-    Assert.assertEquals(3, mcfLeaderBalancer.getMaximumFlow());
+    Assert.assertEquals(3, BALANCER.getMaximumFlow());
     // MinimumCost is 3(switch leader cost) + 3(load cost, 1 for each DataNode)
-    Assert.assertEquals(3 + 3, mcfLeaderBalancer.getMinimumCost());
+    Assert.assertEquals(3 + 3, BALANCER.getMinimumCost());
   }
 
   /** The leader will remain the same if all DataNodes are disabled */
@@ -119,10 +121,9 @@ public class MCFLeaderBalancerTest {
     disabledDataNodeSet.add(2);
 
     // Do balancing
-    MCFLeaderBalancer mcfLeaderBalancer =
-        new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        mcfLeaderBalancer.generateOptimalLeaderDistribution();
+        BALANCER.generateOptimalLeaderDistribution(
+            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Assert.assertEquals(1, leaderDistribution.size());
     Assert.assertEquals(1, new HashSet<>(leaderDistribution.values()).size());
     // Leader remains the same
@@ -130,9 +131,9 @@ public class MCFLeaderBalancerTest {
         regionLeaderMap.get(regionReplicaSet.getRegionId()),
         leaderDistribution.get(regionReplicaSet.getRegionId()));
     // MaxFlow is 0
-    Assert.assertEquals(0, mcfLeaderBalancer.getMaximumFlow());
+    Assert.assertEquals(0, BALANCER.getMaximumFlow());
     // MinimumCost is 0
-    Assert.assertEquals(0, mcfLeaderBalancer.getMinimumCost());
+    Assert.assertEquals(0, BALANCER.getMinimumCost());
   }
 
   /**
@@ -171,10 +172,9 @@ public class MCFLeaderBalancerTest {
     }
 
     // Do balancing
-    MCFLeaderBalancer mcfLeaderBalancer =
-        new MCFLeaderBalancer(regionReplicaSetMap, regionLeaderMap, new HashSet<>());
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        mcfLeaderBalancer.generateOptimalLeaderDistribution();
+        BALANCER.generateOptimalLeaderDistribution(
+            regionReplicaSetMap, regionLeaderMap, new HashSet<>());
     // All RegionGroup got a leader
     Assert.assertEquals(regionGroupNum, leaderDistribution.size());
 
@@ -194,9 +194,9 @@ public class MCFLeaderBalancerTest {
         .forEach(leaderNum -> Assert.assertEquals(regionGroupNum / dataNodeNum, leaderNum.get()));
 
     // MaxFlow is regionGroupNum
-    Assert.assertEquals(regionGroupNum, mcfLeaderBalancer.getMaximumFlow());
+    Assert.assertEquals(regionGroupNum, BALANCER.getMaximumFlow());
 
-    int minimumCost = mcfLeaderBalancer.getMinimumCost();
+    int minimumCost = BALANCER.getMinimumCost();
     Assert.assertTrue(minimumCost >= loadCost * dataNodeNum);
     // The number of RegionGroups who have switched leader
     int switchCost = minimumCost - loadCost * dataNodeNum;

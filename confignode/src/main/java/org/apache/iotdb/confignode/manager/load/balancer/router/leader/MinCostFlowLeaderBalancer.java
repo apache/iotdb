@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router.mcf;
+package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** Leader distribution balancer that uses minimum cost flow algorithm */
-public class MCFLeaderBalancer {
+public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
 
   private static final int INFINITY = Integer.MAX_VALUE;
 
@@ -63,7 +64,7 @@ public class MCFLeaderBalancer {
   // Maximum index of graph edges
   private int maxEdge = 0;
 
-  private final List<MCFEdge> mcfEdges;
+  private final List<MinCostFlowEdge> minCostFlowEdges;
   private int[] nodeHeadEdge;
   private int[] nodeCurrentEdge;
 
@@ -73,25 +74,55 @@ public class MCFLeaderBalancer {
   private int maximumFlow = 0;
   private int minimumCost = 0;
 
-  public MCFLeaderBalancer(
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Set<Integer> disabledDataNodeSet) {
-    this.regionReplicaSetMap = regionReplicaSetMap;
-    this.regionLeaderMap = regionLeaderMap;
-    this.disabledDataNodeSet = disabledDataNodeSet;
-
+  public MinCostFlowLeaderBalancer() {
+    this.regionReplicaSetMap = new HashMap<>();
+    this.regionLeaderMap = new HashMap<>();
+    this.disabledDataNodeSet = new HashSet<>();
     this.rNodeMap = new HashMap<>();
     this.dNodeMap = new HashMap<>();
     this.dNodeReflect = new HashMap<>();
-
-    this.mcfEdges = new ArrayList<>();
+    this.minCostFlowEdges = new ArrayList<>();
   }
 
-  public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution() {
+  @Override
+  public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Integer> regionLeaderMap,
+      Set<Integer> disabledDataNodeSet) {
+
+    initialize(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+
+    Map<TConsensusGroupId, Integer> result;
     constructMCFGraph();
     dinicAlgorithm();
-    return collectLeaderDistribution();
+    result = collectLeaderDistribution();
+
+    clear();
+    return result;
+  }
+
+  private void initialize(
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Integer> regionLeaderMap,
+      Set<Integer> disabledDataNodeSet) {
+    this.regionReplicaSetMap.putAll(regionReplicaSetMap);
+    this.regionLeaderMap.putAll(regionLeaderMap);
+    this.disabledDataNodeSet.addAll(disabledDataNodeSet);
+  }
+
+  void clear() {
+    this.regionReplicaSetMap.clear();
+    this.regionLeaderMap.clear();
+    this.disabledDataNodeSet.clear();
+    this.rNodeMap.clear();
+    this.dNodeMap.clear();
+    this.dNodeReflect.clear();
+    this.minCostFlowEdges.clear();
+
+    this.nodeHeadEdge = null;
+    this.nodeCurrentEdge = null;
+    this.isNodeVisited = null;
+    this.nodeMinimumCost = null;
   }
 
   private void constructMCFGraph() {
@@ -177,8 +208,8 @@ public class MCFLeaderBalancer {
   }
 
   private void addEdge(int fromNode, int destNode, int capacity, int cost) {
-    MCFEdge edge = new MCFEdge(destNode, capacity, cost, nodeHeadEdge[fromNode]);
-    mcfEdges.add(edge);
+    MinCostFlowEdge edge = new MinCostFlowEdge(destNode, capacity, cost, nodeHeadEdge[fromNode]);
+    minCostFlowEdges.add(edge);
     nodeHeadEdge[fromNode] = maxEdge++;
   }
 
@@ -203,8 +234,8 @@ public class MCFLeaderBalancer {
       isNodeVisited[currentNode] = false;
       for (int currentEdge = nodeHeadEdge[currentNode];
           currentEdge >= 0;
-          currentEdge = mcfEdges.get(currentEdge).nextEdge) {
-        MCFEdge edge = mcfEdges.get(currentEdge);
+          currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
+        MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
         if (edge.capacity > 0
             && nodeMinimumCost[currentNode] + edge.cost < nodeMinimumCost[edge.destNode]) {
           nodeMinimumCost[edge.destNode] = nodeMinimumCost[currentNode] + edge.cost;
@@ -230,8 +261,8 @@ public class MCFLeaderBalancer {
     isNodeVisited[currentNode] = true;
     for (currentEdge = nodeCurrentEdge[currentNode];
         currentEdge >= 0;
-        currentEdge = mcfEdges.get(currentEdge).nextEdge) {
-      MCFEdge edge = mcfEdges.get(currentEdge);
+        currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
+      MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
       if (nodeMinimumCost[currentNode] + edge.cost == nodeMinimumCost[edge.destNode]
           && edge.capacity > 0
           && !isNodeVisited[edge.destNode]) {
@@ -241,7 +272,7 @@ public class MCFLeaderBalancer {
         minimumCost += subOutputFlow * edge.cost;
 
         edge.capacity -= subOutputFlow;
-        mcfEdges.get(currentEdge ^ 1).capacity += subOutputFlow;
+        minCostFlowEdges.get(currentEdge ^ 1).capacity += subOutputFlow;
 
         inputFlow -= subOutputFlow;
         outputFlow += subOutputFlow;
@@ -278,8 +309,8 @@ public class MCFLeaderBalancer {
           boolean matchLeader = false;
           for (int currentEdge = nodeHeadEdge[rNode];
               currentEdge >= 0;
-              currentEdge = mcfEdges.get(currentEdge).nextEdge) {
-            MCFEdge edge = mcfEdges.get(currentEdge);
+              currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
+            MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
             if (edge.destNode != sNode && edge.capacity == 0) {
               matchLeader = true;
               result.put(regionGroupId, dNodeReflect.get(edge.destNode));
@@ -301,5 +332,20 @@ public class MCFLeaderBalancer {
   @TestOnly
   public int getMinimumCost() {
     return minimumCost;
+  }
+
+  private static class MinCostFlowEdge {
+
+    private final int destNode;
+    private int capacity;
+    private final int cost;
+    private final int nextEdge;
+
+    private MinCostFlowEdge(int destNode, int capacity, int cost, int nextEdge) {
+      this.destNode = destNode;
+      this.capacity = capacity;
+      this.cost = cost;
+      this.nextEdge = nextEdge;
+    }
   }
 }

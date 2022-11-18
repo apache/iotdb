@@ -93,10 +93,10 @@ public class ConfigNodeStartupCheck {
     }
 
     // The routing policy is limited
-    if (!CONF.getRoutingPolicy().equals(RouteBalancer.LEADER_POLICY)
-        && !CONF.getRoutingPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
+    if (!CONF.getRoutePriorityPolicy().equals(RouteBalancer.LEADER_POLICY)
+        && !CONF.getRoutePriorityPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "routing_policy", CONF.getRoutingPolicy(), "leader or greedy");
+          "routing_policy", CONF.getRoutePriorityPolicy(), "leader or greedy");
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0

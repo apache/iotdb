@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.LeaderPriorityBalancer;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
@@ -100,7 +101,8 @@ public class LeaderRouterTest {
 
     // Check result
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderRouter().getLatestRegionRouteMap(regionReplicaSets, leaderMap, loadScoreMap);
+        new LeaderPriorityBalancer()
+            .generateOptimalRoutePriority(regionReplicaSets, leaderMap, loadScoreMap);
     TRegionReplicaSet result1 = result.get(groupId1);
     // Leader first
     Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
