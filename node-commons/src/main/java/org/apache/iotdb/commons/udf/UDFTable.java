@@ -87,7 +87,7 @@ public class UDFTable {
   public void updateFunctionClass(UDFInformation udfInformation, UDFClassLoader classLoader)
       throws ClassNotFoundException {
     Class<?> functionClass = Class.forName(udfInformation.getClassName(), true, classLoader);
-    functionToClassMap.put(udfInformation.getClassName(), functionClass);
+    functionToClassMap.put(udfInformation.getFunctionName().toUpperCase(), functionClass);
   }
 
   public UDFInformation[] getAllUDFInformation() {
