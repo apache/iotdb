@@ -58,7 +58,6 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -874,8 +873,7 @@ public class DataRegion {
    *
    * @param insertRowNode one row of data
    */
-  public void insert(InsertRowNode insertRowNode)
-      throws WriteProcessException, TriggerExecutionException {
+  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
       throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
@@ -925,7 +923,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
+      throws BatchProcessException, WriteProcessException {
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
     }
@@ -3053,7 +3051,7 @@ public class DataRegion {
    * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
-      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+      throws WriteProcessException, BatchProcessException {
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
     }
@@ -3135,7 +3133,7 @@ public class DataRegion {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       try {
         insert(insertRowNode);
-      } catch (WriteProcessException | TriggerExecutionException e) {
+      } catch (WriteProcessException e) {
         insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -3156,7 +3154,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
+      } catch (WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
