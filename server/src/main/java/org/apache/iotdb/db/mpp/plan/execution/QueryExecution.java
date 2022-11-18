@@ -388,7 +388,8 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
             throw new IoTDBException(
-                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+                stateMachine.getFailureMessage(),
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
           logger.debug("[ResultHandleFinished]");
