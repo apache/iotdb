@@ -296,23 +296,30 @@ public class ConfigNodeDescriptor {
                     "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))
                 .trim()));
 
-    String leaderDistributionPolicy = properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy()).trim();
-    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy) || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+    String leaderDistributionPolicy =
+        properties
+            .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
+            .trim();
+    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
-        String.format(
-          "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"", leaderDistributionPolicy));
+          String.format(
+              "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              leaderDistributionPolicy));
     }
 
-    String routePriorityPolicy = properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
+    String routePriorityPolicy =
+        properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
     if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
         || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
       conf.setRoutePriorityPolicy(routePriorityPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"", routePriorityPolicy));
+              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
+              routePriorityPolicy));
     }
 
     String readConsistencyLevel =

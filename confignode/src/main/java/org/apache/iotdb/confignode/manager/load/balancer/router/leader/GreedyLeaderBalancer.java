@@ -76,18 +76,21 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
     /* Count the number of leaders that each DataNode have */
     // Map<DataNodeId, leader count>
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
-    regionLeaderMap
-        .values()
-        .forEach(
-            leaderId ->
-                leaderCounter
-                    .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
-                    .getAndIncrement());
+    regionReplicaSetMap.forEach(
+        (regionGroupId, regionReplicaSet) ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        leaderCounter.putIfAbsent(
+                            dataNodeLocation.getDataNodeId(), new AtomicInteger(0))));
+    regionLeaderMap.forEach(
+        (regionGroupId, leaderId) -> leaderCounter.get(leaderId).getAndIncrement());
 
     /* Ensure all RegionGroups' leader are not inside disabled DataNodes */
     for (TConsensusGroupId regionGroupId : regionReplicaSetMap.keySet()) {
       int leaderId = regionLeaderMap.get(regionGroupId);
-      if (!disabledDataNodeSet.contains(leaderId)) {
+      if (disabledDataNodeSet.contains(leaderId)) {
         int newLeaderId = -1;
         int newLeaderWeight = Integer.MAX_VALUE;
         for (TDataNodeLocation candidate :
@@ -137,7 +140,7 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
       int newLeaderId = -1;
       int newLeaderWeight = Integer.MAX_VALUE;
       for (TDataNodeLocation candidate :
-      regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
+          regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
         int candidateId = candidate.getDataNodeId();
         int candidateWeight = leaderCounter.get(candidateId).get();
         if (candidateId != leaderId && candidateWeight < newLeaderWeight) {
@@ -174,6 +177,7 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
 
     // Compare the first key by descending order and the second key by ascending order.
     private static final Comparator<WeightEntry> COMPARATOR =
-        (o1, o2) -> o1.firstKey == o2.firstKey ? o1.secondKey - o2.secondKey : o2.firstKey - o1.firstKey;
+        (o1, o2) ->
+            o1.firstKey == o2.firstKey ? o1.secondKey - o2.secondKey : o2.firstKey - o1.firstKey;
   }
 }

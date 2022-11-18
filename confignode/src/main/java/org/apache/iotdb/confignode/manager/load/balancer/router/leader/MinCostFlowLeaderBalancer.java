@@ -110,7 +110,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     this.disabledDataNodeSet.addAll(disabledDataNodeSet);
   }
 
-  void clear() {
+  private void clear() {
     this.regionReplicaSetMap.clear();
     this.regionLeaderMap.clear();
     this.disabledDataNodeSet.clear();
@@ -123,9 +123,15 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     this.nodeCurrentEdge = null;
     this.isNodeVisited = null;
     this.nodeMinimumCost = null;
+
+    this.maxNode = tNode + 1;
+    this.maxEdge = 0;
   }
 
   private void constructMCFGraph() {
+    this.maximumFlow = 0;
+    this.minimumCost = 0;
+
     /* Indicate nodes in mcf */
     for (TRegionReplicaSet regionReplicaSet : regionReplicaSetMap.values()) {
       rNodeMap.put(regionReplicaSet.getRegionId(), maxNode++);

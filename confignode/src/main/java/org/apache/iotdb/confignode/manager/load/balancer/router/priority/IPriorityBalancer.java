@@ -29,7 +29,6 @@ public interface IPriorityBalancer {
   String LEADER_POLICY = "LEADER";
   String GREEDY_POLICY = "GREEDY";
 
-
   /**
    * Generate an optimal route priority.
    *

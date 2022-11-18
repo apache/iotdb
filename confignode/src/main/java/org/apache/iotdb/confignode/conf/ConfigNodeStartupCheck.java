@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
@@ -93,13 +93,18 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
-    
+    // The leader distribution policy is limited
+    if (!ILeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
+        && !ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
+      throw new ConfigurationException(
+          "leader_distribution_policy", CONF.getRoutePriorityPolicy(), "GREEDY or MIN_COST_FLOW");
+    }
 
-    // The routing policy is limited
+    // The route priority policy is limited
     if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
         && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "routing_policy", CONF.getRoutePriorityPolicy(), "leader or greedy");
+          "route_priority_policy", CONF.getRoutePriorityPolicy(), "LEADER or GREEDY");
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0
