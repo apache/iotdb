@@ -69,7 +69,7 @@ public class LocalSyncInfo {
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
       throws PipeSinkException, IOException {
-    syncMetadata.checkAddPipeSink(createPipeSinkStatement.getPipeSinkName());
+    syncMetadata.checkPipeSinkNoExist(createPipeSinkStatement.getPipeSinkName());
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkStatement(createPipeSinkStatement);
     // should guarantee the adding pipesink is not exist.
     syncMetadata.addPipeSink(pipeSink);

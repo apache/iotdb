@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +60,7 @@ public class IoTDBEncodingIT {
       statement.execute("CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=REGULAR");
       fail();
     } catch (SQLException e) {
-      assertEquals(303, e.getErrorCode());
+      assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
     }
   }
 

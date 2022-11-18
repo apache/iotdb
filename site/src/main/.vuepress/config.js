@@ -853,6 +853,7 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
 							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Deadband-Process', 'Deadband Process'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
 							['Data-Concept/Time-Partition','Time Partition of Data'],
@@ -962,7 +963,6 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
-							['Maintenance-Tools/Sync-Tool','Sync Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
@@ -1801,6 +1801,7 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
 							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Deadband-Process', '死区处理'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
 							['Data-Concept/Time-Partition','数据的时间分区'],

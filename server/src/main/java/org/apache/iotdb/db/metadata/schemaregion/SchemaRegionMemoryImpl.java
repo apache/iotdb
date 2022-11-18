@@ -30,7 +30,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -78,6 +77,7 @@ import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -771,7 +771,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       Set<String> failedNames = new HashSet<>();
       int deletedNum = 0;
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p);
         deletedNum++;
       }
       return new Pair<>(deletedNum, failedNames);
@@ -889,15 +889,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return deleteTimeseries(pathPattern, false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
-      throws MetadataException, IOException {
-    try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
-      if (!isRecovering) {
-        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-      }
-    } catch (DeleteFailedException e) {
-      failedNames.add(e.getName());
+  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
+    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    if (!isRecovering) {
+      writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
   }
 
@@ -1246,6 +1241,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagManager.readTagFile(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
+          Pair<String, String> deadbandInfo =
+              MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -1258,7 +1255,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
                       : 0,
                   tagAndAttributePair.left,
-                  tagAndAttributePair.right));
+                  tagAndAttributePair.right,
+                  deadbandInfo.left,
+                  deadbandInfo.right));
           if (limit != 0) {
             count++;
           }
@@ -1319,7 +1318,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 CompressionType.valueOf(ansString.right[4]),
                 ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
-                tagAndAttributePair.right));
+                tagAndAttributePair.right,
+                ansString.right[7],
+                ansString.right[8]));
       } catch (IOException e) {
         throw new MetadataException(
             "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),

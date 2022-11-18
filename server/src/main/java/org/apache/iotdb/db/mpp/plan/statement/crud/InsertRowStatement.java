@@ -127,14 +127,14 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
   }
 
   @Override
   public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
     TRegionReplicaSet regionReplicaSet =
         dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(), TimePartitionUtils.getTimePartitionForRouting(time));
+            devicePath.getFullPath(), TimePartitionUtils.getTimePartition(time));
     return Collections.singletonList(
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }

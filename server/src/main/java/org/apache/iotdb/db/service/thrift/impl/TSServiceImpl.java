@@ -733,7 +733,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         port);
     TSStatus status = new TSStatus();
     status.setRedirectNode(new TEndPoint(ip, port));
-    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    status.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());
     return resp;

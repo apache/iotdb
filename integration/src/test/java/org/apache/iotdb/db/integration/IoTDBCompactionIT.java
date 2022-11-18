@@ -49,8 +49,7 @@ public class IoTDBCompactionIT {
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1);
     EnvFactory.getEnv().initBeforeTest();
   }

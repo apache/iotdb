@@ -743,14 +743,8 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
-  /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = true;
-
-  /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 604_800_000;
-
-  /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 604_800_000;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -1122,28 +1116,12 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public boolean isEnablePartition() {
-    return enablePartition;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
-  public void setEnablePartition(boolean enablePartition) {
-    this.enablePartition = enablePartition;
-  }
-
-  public long getTimePartitionIntervalForStorage() {
-    return timePartitionIntervalForStorage;
-  }
-
-  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
-  }
-
-  public long getTimePartitionIntervalForRouting() {
-    return timePartitionIntervalForRouting;
-  }
-
-  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
