@@ -551,7 +551,7 @@ public class QueryExecution implements IQueryExecution {
       statusCode =
           state == QueryState.FINISHED || state == QueryState.RUNNING
               ? TSStatusCode.SUCCESS_STATUS
-              : TSStatusCode.QUERY_PROCESS_ERROR;
+              : TSStatusCode.EXECUTE_STATEMENT_ERROR;
     }
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());

@@ -242,7 +242,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
     } catch (Exception e) {
       finished = true;
-      LOGGER.error("test11111, ", e);
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
