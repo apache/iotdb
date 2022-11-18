@@ -227,7 +227,7 @@ public class IoTDBPartitionGetterIT {
 
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
-      CONF.setTimePartitionInterval(originalTimePartitionInterval);
+    CONF.setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
@@ -399,7 +399,7 @@ public class IoTDBPartitionGetterIT {
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-      Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
+      Assert.assertEquals(10, getRegionIdResp.getDataRegionIdListSize());
 
       final String d00 = sg0 + ".d0.s";
       final String d01 = sg0 + ".d1.s";
