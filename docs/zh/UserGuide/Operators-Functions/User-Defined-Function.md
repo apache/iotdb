@@ -36,7 +36,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 ## UDF 依赖
 
-如果您使用 [Maven](http://search.maven.org/)，可以从 [Maven 库](http://search.maven.org/) 中搜索下面示例中的依赖。请注意选择和目标 IoTDB 服务器版本相同的依赖版本。
+如果您使用 [Maven](http://search.maven.org/) ，可以从 [Maven 库](http://search.maven.org/) 中搜索下面示例中的依赖。请注意选择和目标 IoTDB 服务器版本相同的依赖版本。
 
 ``` xml
 <dependency>
