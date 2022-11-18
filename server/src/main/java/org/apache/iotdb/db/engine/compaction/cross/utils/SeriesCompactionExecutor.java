@@ -279,6 +279,29 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithOverlapPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
+    checkAndCompactOverlappePages();
+
+    // write remaining data points, of which point.time >= the last overlapped page.startTime
+    while (pointPriorityReader.hasNext()) {
+      // write data point to chunk writer
+
+      compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
+      pointPriorityReader.next();
+      if (candidateOverlappedPages.size() > 0) {
+        // finish compacting the first page or there are new chunks being deserialized and find
+        // the new overlapped pages, then start compacting them
+        checkAndCompactOverlappePages();
+      }
+    }
+  }
+
+  /**
+   * Check whether the page is true overlap or fake overlap. If a page is located in the gap of
+   * another page, then this page is fake overlap, which can be flushed to chunk writer directly.
+   * Otherwise, deserialize this page into point priority reader.
+   */
+  private void checkAndCompactOverlappePages()
+      throws IllegalPathException, IOException, WriteProcessException, PageException {
     // write point.time < the last overlapped page.startTime
     while (candidateOverlappedPages.size() > 0) {
       PageElement nextPageElement = candidateOverlappedPages.get(0);
@@ -322,24 +345,6 @@ public abstract class SeriesCompactionExecutor {
         }
       }
       candidateOverlappedPages.remove(0);
-    }
-
-    // write remaining data points, of which point.time >= the last overlapped page.startTime
-    writeRemainingPoints();
-  }
-
-  private void writeRemainingPoints()
-      throws IOException, IllegalPathException, WriteProcessException, PageException {
-    while (pointPriorityReader.hasNext()) {
-      // write data point to chunk writer
-
-      compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
-      pointPriorityReader.next();
-      if (candidateOverlappedPages.size() > 0) {
-        // finish compacting the first page or there are new chunks being deserialized and find
-        // the new overlapped pages, then start compacting them
-        compactWithOverlapPages();
-      }
     }
   }
 
