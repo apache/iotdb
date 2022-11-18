@@ -196,13 +196,14 @@ public class MeasurementGroup {
 
   public List<MeasurementGroup> split(int targetSize) {
     int totalSize = measurements.size();
-    int num = totalSize / targetSize + (totalSize % targetSize == 0 ? 0 : 1);
-    List<MeasurementGroup> result = new ArrayList<>(num);
+    int fullGroupNum = totalSize / targetSize;
+    int partialGroupNum = totalSize % targetSize == 0 ? 0 : 1;
+    List<MeasurementGroup> result = new ArrayList<>(fullGroupNum + partialGroupNum);
     if (totalSize <= targetSize) {
       result.add(this);
       return result;
     }
-    for (int i = 0; i < num - 1; i++) {
+    for (int i = 0; i < fullGroupNum; i++) {
       result.add(getSubMeasurementGroup(i * targetSize, i * targetSize + targetSize));
     }
     int restSize = totalSize % targetSize;
