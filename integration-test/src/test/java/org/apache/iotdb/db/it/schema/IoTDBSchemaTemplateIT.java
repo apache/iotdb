@@ -90,7 +90,9 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
+          TSStatusCode.METADATA_ERROR.getStatusCode()
+              + ": Template [t1] has been set on MTree, cannot be dropped now.",
+          e.getMessage());
     }
 
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
@@ -226,7 +228,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
       Assert.fail();
     } catch (SQLException e) {
-      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
     }
   }
 

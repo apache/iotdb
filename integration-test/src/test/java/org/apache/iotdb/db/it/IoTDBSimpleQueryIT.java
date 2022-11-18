@@ -940,14 +940,20 @@ public class IoTDBSimpleQueryIT {
             "CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("303: encoding REGULAR does not support DOUBLE", e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": encoding REGULAR does not support DOUBLE",
+            e.getMessage());
       }
 
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("303: encoding TS_2DIFF does not support TEXT", e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": encoding TS_2DIFF does not support TEXT",
+            e.getMessage());
       }
 
     } catch (SQLException e) {

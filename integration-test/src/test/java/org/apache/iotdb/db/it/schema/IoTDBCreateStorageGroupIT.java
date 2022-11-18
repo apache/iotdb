@@ -120,7 +120,8 @@ public class IoTDBCreateStorageGroupIT {
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.DATABASE_ALREADY_EXISTS + ": root.sg has already been created as database",
+          TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+              + ": root.sg has already been created as database",
           e.getMessage());
     }
   }
@@ -136,7 +137,8 @@ public class IoTDBCreateStorageGroupIT {
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.DATABASE_ALREADY_EXISTS + ": root.sg has already been created as database",
+          TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+              + ": root.sg has already been created as database",
           e.getMessage());
     }
   }

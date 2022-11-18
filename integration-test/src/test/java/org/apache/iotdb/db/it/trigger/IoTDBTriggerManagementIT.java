@@ -607,7 +607,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }
 
@@ -618,7 +619,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }
 
