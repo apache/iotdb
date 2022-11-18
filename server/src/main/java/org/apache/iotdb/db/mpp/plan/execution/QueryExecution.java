@@ -550,10 +550,11 @@ public class QueryExecution implements IQueryExecution {
         // multiple devices
         if (statusCode == TSStatusCode.SUCCESS_STATUS) {
           List<TSStatus> subStatus = new ArrayList<>();
-          tsstatus.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           for (TEndPoint endPoint : redirectNodeList) {
             subStatus.add(
-                StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION).setRedirectNode(endPoint));
+                StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+                    .setRedirectNode(endPoint));
           }
           tsstatus.setSubStatus(subStatus);
         }

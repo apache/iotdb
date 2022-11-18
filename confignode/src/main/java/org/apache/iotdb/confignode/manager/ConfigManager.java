@@ -737,7 +737,7 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
