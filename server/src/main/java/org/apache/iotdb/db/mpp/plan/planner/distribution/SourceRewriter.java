@@ -474,7 +474,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
-    if (isAggregationQuery()) {
+    if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
     return processRawMultiChildNode(node, context);
@@ -564,6 +564,16 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   private boolean isAggregationQuery() {
     return ((QueryStatement) analysis.getStatement()).isAggregationQuery();
+  }
+
+  private boolean containsAggregationSource(TimeJoinNode node) {
+    for (PlanNode child : node.getChildren()) {
+      if (child instanceof SeriesAggregationScanNode
+          || child instanceof AlignedSeriesAggregationScanNode) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // This method is only used to process the PlanNodeTree whose root is SlidingWindowAggregationNode
