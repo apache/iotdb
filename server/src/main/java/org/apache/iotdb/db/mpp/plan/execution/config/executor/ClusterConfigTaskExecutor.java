@@ -204,6 +204,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IllegalPathException(
               storageGroupPath, "the length of database name shall not exceed 64."));
+      return future;
     }
     // Construct request using statement
     TStorageGroupSchema storageGroupSchema =
