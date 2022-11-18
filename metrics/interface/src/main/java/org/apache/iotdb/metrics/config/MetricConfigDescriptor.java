@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.ReporterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -65,6 +66,8 @@ public class MetricConfigDescriptor {
       logger.warn("Fail to find config file, use default config.");
       metricConfig = new MetricConfig();
     }
+    // internal reporter is no need to add into config
+    metricConfig.getMetricReporterList().remove(ReporterType.INTERNAL);
     return metricConfig;
   }
 
