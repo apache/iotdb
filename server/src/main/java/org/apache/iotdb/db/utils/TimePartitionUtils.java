@@ -25,21 +25,21 @@ import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
 public class TimePartitionUtils {
   @ServerConfigConsistent
-  public static long timePartitionIntervalForRouting =
-      IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+  public static long timePartitionInterval =
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
-  public static TTimePartitionSlot getTimePartitionForRouting(long time) {
+  public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(time - time % timePartitionIntervalForRouting);
+    timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     return timePartitionSlot;
   }
 
-  public static long getTimePartitionIntervalForRouting() {
-    return timePartitionIntervalForRouting;
+  public static long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @TestOnly
-  public static void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    TimePartitionUtils.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public static void setTimePartitionInterval(long timePartitionInterval) {
+    TimePartitionUtils.timePartitionInterval = timePartitionInterval;
   }
 }

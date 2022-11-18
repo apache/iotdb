@@ -392,10 +392,10 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |DROP_TRIGGER|卸载触发器。路径相关|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
-|UPDATE_TEMPLATE|创建、删除、修改模板。路径无关。|Eg1: `create schema template t1(s1 int32)`
-|READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`
-|APPLY_TEMPLATE|挂载、卸载、激活模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
-|READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+|UPDATE_TEMPLATE|创建、删除模板。路径无关。|Eg1: `create schema template t1(s1 int32)`<br />Eg2: `drop schema template t1`|
+|READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`|
+|APPLY_TEMPLATE|挂载、卸载、激活、解除模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `unset schema template t1 from root.sg.d`<br/>Eg3: `create timeseries of schema template on root.sg.d`<br/>Eg4: `delete timeseries of schema template on root.sg.d`|
+|READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`|
 
 注意： 路径无关的权限只能在路径root.**下赋予或撤销；
 

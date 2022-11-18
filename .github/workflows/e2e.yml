@@ -9,11 +9,13 @@ on:
       - test/e2e
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - cluster_new
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 

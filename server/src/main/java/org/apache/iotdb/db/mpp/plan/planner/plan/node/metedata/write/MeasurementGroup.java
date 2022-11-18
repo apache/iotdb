@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class MeasurementGroup {
 
@@ -139,6 +140,50 @@ public class MeasurementGroup {
     if (attributesList != null) {
       attributesList.remove(index);
     }
+  }
+
+  public void removeMeasurements(Set<Integer> indexSet) {
+    int restSize = this.measurements.size() - indexSet.size();
+    List<String> measurements = new ArrayList<>(restSize);
+    List<TSDataType> dataTypes = new ArrayList<>(restSize);
+    List<TSEncoding> encodings = new ArrayList<>(restSize);
+    List<CompressionType> compressors = new ArrayList<>(restSize);
+    List<String> aliasList = this.aliasList == null ? null : new ArrayList<>(restSize);
+    List<Map<String, String>> propsList = this.propsList == null ? null : new ArrayList<>(restSize);
+    List<Map<String, String>> tagsList = this.tagsList == null ? null : new ArrayList<>(restSize);
+    List<Map<String, String>> attributesList =
+        this.attributesList == null ? null : new ArrayList<>(restSize);
+
+    for (int i = 0; i < this.measurements.size(); i++) {
+      if (indexSet.contains(i)) {
+        continue;
+      }
+      measurements.add(this.measurements.get(i));
+      dataTypes.add(this.dataTypes.get(i));
+      encodings.add(this.encodings.get(i));
+      compressors.add(this.compressors.get(i));
+      if (aliasList != null) {
+        aliasList.add(this.aliasList.get(i));
+      }
+      if (propsList != null) {
+        propsList.add(this.propsList.get(i));
+      }
+      if (tagsList != null) {
+        tagsList.add(this.tagsList.get(i));
+      }
+      if (attributesList != null) {
+        attributesList.add(this.attributesList.get(i));
+      }
+    }
+
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+    this.aliasList = aliasList;
+    this.propsList = propsList;
+    this.tagsList = tagsList;
+    this.attributesList = attributesList;
   }
 
   public int size() {

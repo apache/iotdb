@@ -148,7 +148,7 @@ public class AuthorityChecker {
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION_ERROR,
+            TSStatusCode.NO_PERMISSION,
             "No permissions for this operation, please add privilege "
                 + PrivilegeType.values()[
                     AuthorityChecker.translateToPermissionId(statement.getType())]);
@@ -347,9 +347,12 @@ public class AuthorityChecker {
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
       case CREATE_TEMPLATE:
+      case DROP_TEMPLATE:
         return PrivilegeType.UPDATE_TEMPLATE.ordinal();
       case SET_TEMPLATE:
       case ACTIVATE_TEMPLATE:
+      case DEACTIVATE_TEMPLATE:
+      case UNSET_TEMPLATE:
         return PrivilegeType.APPLY_TEMPLATE.ordinal();
       case SHOW_SCHEMA_TEMPLATE:
       case SHOW_NODES_IN_SCHEMA_TEMPLATE:

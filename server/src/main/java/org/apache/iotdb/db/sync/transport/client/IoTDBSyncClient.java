@@ -75,6 +75,8 @@ public class IoTDBSyncClient implements ISyncClient {
   private final Pipe pipe;
 
   /**
+   * Create IoTDBSyncClient only for data transfer
+   *
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
@@ -89,6 +91,18 @@ public class IoTDBSyncClient implements ISyncClient {
     this.port = port;
     this.localIP = localAddress;
     this.databaseName = databaseName;
+  }
+
+  /**
+   * Create IoTDBSyncClient only for heartbeat
+   *
+   * @param pipe sync task
+   * @param remoteAddress remote ip address
+   * @param port remote port
+   * @param localAddress local ip address
+   */
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
+    this(pipe, remoteAddress, port, localAddress, "");
   }
 
   /**
@@ -138,7 +152,6 @@ public class IoTDBSyncClient implements ISyncClient {
         return false;
       }
     } catch (TException e) {
-      logger.warn("Cannot connect to the receiver because {}", e.getMessage());
       throw new SyncConnectionException(
           String.format("Cannot connect to the receiver because %s.", e.getMessage()));
     }
@@ -209,7 +222,7 @@ public class IoTDBSyncClient implements ISyncClient {
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
           position += dataLength;
-        } else if (status.code == TSStatusCode.SYNC_FILE_REBASE.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           logger.error(

@@ -44,6 +44,8 @@ public class ColumnHeaderConstant {
   public static final String COMPRESSION = "Compression";
   public static final String TAGS = "Tags";
   public static final String ATTRIBUTES = "Attributes";
+  public static final String DEADBAND = "Deadband";
+  public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
   public static final String COUNT = "Count";
   public static final String COLUMN_TTL = "TTL(ms)";
@@ -138,7 +140,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ENCODING, TSDataType.TEXT),
           new ColumnHeader(COMPRESSION, TSDataType.TEXT),
           new ColumnHeader(TAGS, TSDataType.TEXT),
-          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT));
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
+          new ColumnHeader(DEADBAND, TSDataType.TEXT),
+          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(

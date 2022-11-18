@@ -777,6 +777,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   @Override
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(
+        "StateWindowAccessStrategy only support one input series for now.");
   }
 }

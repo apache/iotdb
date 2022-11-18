@@ -158,7 +158,12 @@ public class IoTDBPipeIT {
       }
       statement.execute("DROP PIPE p1;");
       statement.execute("DROP PIPE p2;");
-      statement.execute("DROP PIPE p3;");
+      try {
+        statement.execute("DROP PIPE p3;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PIPE [p3] does not exist"));
+      }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet = new String[] {};
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
