@@ -221,7 +221,7 @@ public class SenderManager {
           } catch (SyncConnectionException e) {
             // If failed to connect to receiver, it will hang up until scheduled heartbeat task
             // successfully reconnect to receiver.
-            logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
+            logger.error("Connect to receiver {} error, because {}.", pipeSink, e.getMessage(), e);
             lostConnectionTime = Math.min(lostConnectionTime, System.currentTimeMillis());
             blockingQueue.offer(lock);
             lock.wait();
