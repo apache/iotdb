@@ -85,7 +85,7 @@ IoTDB> select s1, s2 into root.sg_copy.d1(t1), root.sg_copy.d2(t1, t2), root.sg_
 Total line number = 4
 It costs 0.725s
 ```
-This statement writes the query results of the four time series under the `root.sg` storage group to the four specified time series under the `root.sg_copy` storage group. Note that `root.sg_copy.d2(t1, t2)` can also be written as `root.sg_copy.d2(t1), root.sg_copy.d2(t2)`.
+This statement writes the query results of the four time series under the `root.sg` database to the four specified time series under the `root.sg_copy` database. Note that `root.sg_copy.d2(t1, t2)` can also be written as `root.sg_copy.d2(t1), root.sg_copy.d2(t2)`.
 
 We can see that the writing of the `INTO` clause is very flexible as long as the combined target time series is not repeated and corresponds to the query result column one-to-one.
 
@@ -128,7 +128,7 @@ IoTDB> select s1, s2 into root.sg_copy.d1(t1, t2), root.sg_copy.d2(t1, t2) from 
 Total line number = 4
 It costs 0.625s
 ```
-This statement also writes the query results of the four time series under the `root.sg` storage group to the four specified time series under the `root.sg_copy` storage group. However, in ALIGN BY DEVICE, the number of `intoItem` must be the same as the number of queried devices, and each queried device corresponds to one `intoItem`.
+This statement also writes the query results of the four time series under the `root.sg` database to the four specified time series under the `root.sg_copy` database. However, in ALIGN BY DEVICE, the number of `intoItem` must be the same as the number of queried devices, and each queried device corresponds to one `intoItem`.
 
 > When aligning the query by device, the result set displayed by `CLI` has one more column, the `source device` column indicating the queried device.
 
@@ -270,7 +270,7 @@ This statement specifies that `root.sg_copy.d1` is an unaligned device and `root
 
 - For general aggregation queries, the timestamp is meaningless, and the convention is to use 0 to store.
 - When the target time series exists, the metadata information such as the data type, compression,  encoding, and whether it belongs to the aligned device of the source time series and the target time series must be consistent.
-- When the target time series does not exist, the system automatically creates it (including the storage group).
+- When the target time series does not exist, the system automatically creates it (including the database).
 - When the queried time series does not exist, or the queried sequence does not have data, the target time series will not be created automatically.
 
 ## Application examples

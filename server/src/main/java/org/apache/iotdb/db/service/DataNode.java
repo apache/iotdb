@@ -89,6 +89,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.service.DataNodeServerCommandLine.MODE_START;
+
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -128,8 +130,13 @@ public class DataNode implements DataNodeMBean {
     new DataNodeServerCommandLine().doMain(args);
   }
 
-  protected void serverCheckAndInit() throws ConfigurationException, IOException {
+  protected void serverCheckAndInit(String mode) throws ConfigurationException, IOException {
+    config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
+    if (MODE_START.equals(mode)) {
+      // Only checkDirectory when start DataNode
+      IoTDBStartCheck.getInstance().checkDirectory();
+    }
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -163,7 +170,6 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    config.setClusterMode(true);
     return true;
   }
 
@@ -175,9 +181,6 @@ public class DataNode implements DataNodeMBean {
 
     // Register services
     JMXService.registerMBean(getInstance(), mbeanName);
-    // set the mpp mode to true
-    config.setMppMode(true);
-    config.setClusterMode(true);
   }
 
   /** register DataNode with ConfigNode */
@@ -206,6 +209,9 @@ public class DataNode implements DataNodeMBean {
 
         // store triggerInformationList
         getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
+
+        // store ttl information
+        StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -337,7 +343,7 @@ public class DataNode implements DataNodeMBean {
     registerUdfServices();
 
     logger.info(
-        "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {

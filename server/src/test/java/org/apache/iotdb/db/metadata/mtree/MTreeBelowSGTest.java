@@ -383,7 +383,7 @@ public abstract class MTreeBelowSGTest {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
     // check timeseries
     assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s0")));

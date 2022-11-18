@@ -180,14 +180,14 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 滑动步长参数不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为窗口大小。
 
-如图是`SessionTimeWindowAccessStrategy`的开窗示意图。
+如图是`SessionTimeWindowAccessStrategy`的开窗示意图。**时间间隔小于等于给定的最小时间间隔 sessionGap 则分为一组。**
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/sessionWindow.png">
 
 `SessionTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 类参数：
 1. 时间轴显示时间窗开始和结束时间。
 2. 会话窗口之间的最小时间间隔。
    
-如图是`StateWindowAccessStrategy`的开窗示意图。
+如图是`StateWindowAccessStrategy`的开窗示意图。**对于数值型数据，状态差值小于等于给定的阈值 delta 则分为一组。**
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
 
 `StateWindowAccessStrategy`有四种构造方法。
@@ -196,7 +196,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 3. 针对数值型数据，可以只提供单个窗口内部允许变化的阈值delta，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
 4. 针对文本数据以及布尔数据，可以不提供任何参数，开始与结束时间戳见3中解释。
 
-策略的构造方法详见 Javadoc。
+StateWindowAccessStrategy 目前只能接收一列输入。策略的构造方法详见 Javadoc。
 
  * setOutputDataType
 

@@ -216,7 +216,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
       storageGroupSchemaRegionMap.forEach(
           (storageGroup, schemaRegionSet) -> {
-            // extract the patterns overlap with current storage group
+            // extract the patterns overlap with current database
             Set<PartialPath> filteredPathPatternSet = new HashSet<>();
             try {
               PartialPath storageGroupPath = new PartialPath(storageGroup);

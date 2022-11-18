@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -65,13 +66,17 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE DATABASE root.sg1");
 
       try {
         statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
         fail();
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("304: Path [root.sg1.s0] does not exist"));
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                        + ": Path [root.sg1.s0] does not exist"));
       }
     }
   }
@@ -81,7 +86,7 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 datatype=text");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 datatype=double");
 

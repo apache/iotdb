@@ -331,7 +331,7 @@ public class WALNode implements IWALNode {
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
 
-      // get memTable's virtual storage group processor
+      // get memTable's virtual database processor
       File oldestTsFile =
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
       DataRegion dataRegion;
@@ -340,7 +340,7 @@ public class WALNode implements IWALNode {
             StorageEngineV2.getInstance()
                 .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
       } catch (Exception e) {
-        logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
+        logger.error("Fail to get data region processor for {}", oldestTsFile, e);
         return false;
       }
 

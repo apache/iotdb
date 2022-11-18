@@ -63,7 +63,8 @@ public class LocalExecutionPlanner {
       Filter timeFilter,
       DataRegion dataRegion)
       throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
@@ -129,7 +130,7 @@ public class LocalExecutionPlanner {
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
+            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
         LOGGER.debug(

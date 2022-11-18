@@ -181,7 +181,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public boolean updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
+  public void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
     for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(partitionId, id -> new HashMap<>())
@@ -193,7 +193,6 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
     }
-    return true;
   }
 
   @Override

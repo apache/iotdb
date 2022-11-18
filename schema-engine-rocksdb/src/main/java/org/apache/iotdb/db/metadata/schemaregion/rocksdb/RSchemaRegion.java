@@ -65,6 +65,7 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -559,9 +560,9 @@ public class RSchemaRegion implements ISchemaRegion {
         } else {
           if (start == nodes.length) {
             // make sure sg node and entity node are different
-            // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
+            // eg.,'root.a' is a database path, 'root.a.b' can not be a timeseries
             if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
-              throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+              throw new MetadataException("Database Node and Entity Node could not be same!");
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
@@ -1262,6 +1263,9 @@ public class RSchemaRegion implements ISchemaRegion {
     for (Entry<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> entry :
         measurementPathsAndTags.entrySet()) {
       MeasurementPath measurementPath = entry.getKey();
+      Pair<String, String> deadbandInfo =
+          MetaUtils.parseDeadbandInfo(
+              ((MeasurementSchema) measurementPath.getMeasurementSchema()).getProps());
       res.add(
           new ShowTimeSeriesResult(
               measurementPath.getFullPath(),
@@ -1272,7 +1276,9 @@ public class RSchemaRegion implements ISchemaRegion {
               measurementPath.getMeasurementSchema().getCompressor(),
               0,
               entry.getValue().left,
-              entry.getValue().right));
+              entry.getValue().right,
+              deadbandInfo.left,
+              deadbandInfo.right));
     }
     // todo Page query, record offset
     return new Pair<>(res, 1);
@@ -1938,7 +1944,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public String toString() {
-    return String.format("storage group:[%s]", storageGroupFullPath);
+    return String.format("database:[%s]", storageGroupFullPath);
   }
 
   @TestOnly

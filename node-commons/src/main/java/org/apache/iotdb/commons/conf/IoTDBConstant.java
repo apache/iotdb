@@ -140,26 +140,12 @@ public class IoTDBConstant {
   public static final String COLUMN_USER = "user";
   public static final String COLUMN_PRIVILEGE = "privilege";
 
-  public static final String COLUMN_STORAGE_GROUP = "storage group";
-  public static final String COLUMN_LOCK_INFO = "lock holder";
+  public static final String COLUMN_DATABASE = "database";
   public static final String COLUMN_TTL = "ttl";
-
-  public static final String COLUMN_TASK_NAME = "task name";
-  public static final String COLUMN_CREATED_TIME = "created time";
-  public static final String COLUMN_PROGRESS = "progress";
-  public static final String COLUMN_CANCELLED = "cancelled";
-  public static final String COLUMN_DONE = "done";
 
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
-
-  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
-  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
-  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
-  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
@@ -179,24 +165,9 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  // sync module
-  // TODO(sync): delete this in new-standalone version
-  public static final String COLUMN_PIPESERVER_STATUS = "enable";
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_TYPE = "type";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_MSG = "message";
-
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
-  public static final String SYNC_SENDER_ROLE = "sender";
-  public static final String SYNC_RECEIVER_ROLE = "receiver";
 
   // sdt parameters
   public static final String LOSS = "loss";
@@ -204,6 +175,8 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+  public static final String[] SDT_PARAMETERS =
+      new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
 
   // default base dir, stores all IoTDB runtime files
   public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
@@ -250,14 +223,6 @@ public class IoTDBConstant {
   // ratis
   public static final int RAFT_LOG_BASIC_SIZE = 48;
 
-  // change tsFile name
-  public static final int FILE_NAME_SUFFIX_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
-  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
-  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
-  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
-
   // inner space compaction
   public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
 
@@ -296,4 +261,6 @@ public class IoTDBConstant {
   // select into
   public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
   public static final String DOUBLE_COLONS = "::";
+
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
 }

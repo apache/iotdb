@@ -115,8 +115,7 @@ public class TsFileResource {
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
-   * 0.12/v3
+   * load upgraded TsFile Resources to database processor used for upgrading v0.11.x/v2 -> 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
@@ -511,6 +510,7 @@ public class TsFileResource {
    * file physically.
    */
   public boolean remove() {
+    this.status = TsFileResourceStatus.DELETED;
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -578,7 +578,7 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return !this.file.exists();
+    return this.status == TsFileResourceStatus.DELETED;
   }
 
   public boolean isCompacting() {
@@ -863,6 +863,7 @@ public class TsFileResource {
               .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
               .toPath());
     }
+    this.status = TsFileResourceStatus.DELETED;
   }
 
   public long getMaxPlanIndex() {

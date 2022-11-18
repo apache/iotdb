@@ -43,7 +43,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class BufferedPipeDataQueueTest {
-  // test2
+  // test4
   private static final Logger logger = LoggerFactory.getLogger(BufferedPipeDataQueueTest.class);
 
   File pipeLogDir =
@@ -606,8 +606,10 @@ public class BufferedPipeDataQueueTest {
           });
       // offer
       for (int i = 16; i < 20; i++) {
-        pipeDataQueue.offer(
-            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i));
+        if (!pipeDataQueue.offer(
+            new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i))) {
+          logger.info(String.format("Can not offer serialize number %d", i));
+        }
       }
       try {
         Thread.sleep(3000);

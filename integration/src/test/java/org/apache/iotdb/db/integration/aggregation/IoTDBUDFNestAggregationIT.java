@@ -46,8 +46,8 @@ public class IoTDBUDFNestAggregationIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -56,7 +56,7 @@ public class IoTDBUDFNestAggregationIT {
       };
   private static String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -73,7 +73,7 @@ public class IoTDBUDFNestAggregationIT {
       };
   private static String[] dataSet3 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.sg.d1(timestamp,s1) values(5,5)",
         "insert into root.sg.d1(timestamp,s1) values(12,12)",
@@ -88,8 +88,8 @@ public class IoTDBUDFNestAggregationIT {
 
   private static final String[] dataSet4 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg1",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -111,7 +111,7 @@ public class IoTDBUDFNestAggregationIT {
 
   private static final String[] dataSet5 =
       new String[] {
-        "SET STORAGE GROUP TO root.st",
+        "CREATE DATABASE root.st",
         "CREATE TIMESERIES root.st.a WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.st.b WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.st.c WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
@@ -136,8 +136,7 @@ public class IoTDBUDFNestAggregationIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeClass();
     prepareData();

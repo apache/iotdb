@@ -115,7 +115,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
-      LOGGER.error("Failed to set storage group, caused by ", e);
+      LOGGER.error("Failed to create database, caused by ", e);
       future.setException(e);
     }
     return future;
@@ -192,7 +192,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format(
                     "Path %s does not exist",
                     Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
-                TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()));
+                TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
         return future;
       } else {
         LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);

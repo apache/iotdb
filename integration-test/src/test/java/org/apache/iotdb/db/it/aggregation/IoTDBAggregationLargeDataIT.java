@@ -61,7 +61,7 @@ public class IoTDBAggregationLargeDataIT {
 
   private static String[] createSql =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",

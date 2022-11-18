@@ -47,7 +47,7 @@ public class ConfigNodeConfig {
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   // TODO: Read from iotdb-confignode.properties
-  private int partitionRegionId = 0;
+  private int configNodeRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
@@ -67,6 +67,12 @@ public class ConfigNodeConfig {
   /** region allocate strategy. */
   private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
       RegionBalancer.RegionAllocateStrategy.GREEDY;
+
+  /**
+   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
+   * previous TimePartitionSlot if set true
+   */
+  private boolean enableDataPartitionInheritPolicy = false;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
@@ -90,7 +96,7 @@ public class ConfigNodeConfig {
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
 
-  /** System directory, including version file for each storage group and metadata */
+  /** System directory, including version file for each database and metadata */
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
@@ -299,12 +305,12 @@ public class ConfigNodeConfig {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public int getPartitionRegionId() {
-    return partitionRegionId;
+  public int getConfigNodeRegionId() {
+    return configNodeRegionId;
   }
 
-  public void setPartitionRegionId(int partitionRegionId) {
-    this.partitionRegionId = partitionRegionId;
+  public void setConfigNodeRegionId(int configNodeRegionId) {
+    this.configNodeRegionId = configNodeRegionId;
   }
 
   public int getSeriesPartitionSlotNum() {
@@ -418,6 +424,14 @@ public class ConfigNodeConfig {
   public void setRegionAllocateStrategy(
       RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
     this.regionAllocateStrategy = regionAllocateStrategy;
+  }
+
+  public boolean isEnableDataPartitionInheritPolicy() {
+    return enableDataPartitionInheritPolicy;
+  }
+
+  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

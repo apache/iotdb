@@ -16,23 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+package org.apache.iotdb.commons.consensus;
 
-public class PathException extends QueryProcessException {
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-  private static final long serialVersionUID = 2141197032898163234L;
+public class ConfigNodeRegionId extends ConsensusGroupId {
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
+  public ConfigNodeRegionId(int id) {
+    this.id = id;
   }
 
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message, int errorCode) {
-    super(message, errorCode);
+  @Override
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.ConfigNodeRegion;
   }
 }

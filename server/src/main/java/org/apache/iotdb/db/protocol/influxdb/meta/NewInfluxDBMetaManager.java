@@ -109,7 +109,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   }
 
   /**
-   * set storage group
+   * create database
    *
    * @param database database of influxdb
    * @param sessionID session id
@@ -118,7 +118,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   public void setStorageGroup(String database, long sessionID) {
     TSStatus status = clientRPCService.setStorageGroup(sessionID, "root." + database);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
+        || status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       return;
     }
     throw new InfluxDBException(status.getMessage());

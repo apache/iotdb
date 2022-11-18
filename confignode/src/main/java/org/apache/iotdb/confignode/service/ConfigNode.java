@@ -260,12 +260,17 @@ public class ConfigNode implements ConfigNodeMBean {
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
-      } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.CONFIGURATION_ERROR.getStatusCode()) {
         LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
+      } else if (status.getCode() == TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new StartupException(
+            "The target ConfigNode is not started successfully, "
+                + "please check the cn_target_config_node_list config!");
       }
 
       try {

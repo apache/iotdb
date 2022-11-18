@@ -104,7 +104,7 @@ public class TsFileProcessor {
   /** whether it's enable mem control */
   private final boolean enableMemControl = config.isEnableMemControl();
 
-  /** storage group info for mem control */
+  /** database info for mem control */
   private DataRegionInfo dataRegionInfo;
   /** tsfile processor info for mem control */
   private TsFileProcessorInfo tsFileProcessorInfo;
@@ -269,7 +269,6 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
-    // tsFileResource.updatePlanIndexes(insertRowNode.getIndex());
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -366,9 +365,6 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
-    // TODO: PlanIndex
-    tsFileResource.updatePlanIndexes(0);
-    //    tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -798,7 +794,6 @@ public class TsFileProcessor {
           FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-
       if (logger.isInfoEnabled()) {
         if (workMemTable != null) {
           logger.info(
@@ -833,7 +828,7 @@ public class TsFileProcessor {
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable =
-          workMemTable == null || workMemTable.memSize() == 0
+          workMemTable == null || workMemTable.getTotalPointsNum() == 0
               ? new NotifyFlushMemTable()
               : workMemTable;
 
@@ -845,8 +840,12 @@ public class TsFileProcessor {
         }
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
-        addAMemtableIntoFlushingList(tmpMemTable);
-        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
+        if (totalMemTableSize == 0 && tmpMemTable.getTotalPointsNum() == 0) {
+          endEmptyFile();
+        } else {
+          addAMemtableIntoFlushingList(tmpMemTable);
+          logger.info("Memtable {} has been added to flushing list", tmpMemTable);
+        }
         shouldClose = true;
       } catch (Exception e) {
         logger.error(
@@ -956,10 +955,10 @@ public class TsFileProcessor {
       lastTimeForEachDevice = tobeFlushed.getMaxTime();
       tsFileResource.updateEndTime(lastTimeForEachDevice);
     }
-    if (!tobeFlushed.isSignalMemTable()
-        && (tobeFlushed.memSize() == 0
-            || (!updateLatestFlushTimeCallback.call(
-                this, lastTimeForEachDevice, System.currentTimeMillis())))) {
+
+    updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, System.currentTimeMillis());
+
+    if (!tobeFlushed.isSignalMemTable() && tobeFlushed.getTotalPointsNum() == 0) {
       logger.warn(
           "This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
           storageGroupName,
@@ -1291,7 +1290,7 @@ public class TsFileProcessor {
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info(
-          "Storage group {} close the file {}, TsFile size is {}, "
+          "Database {} close the file {}, TsFile size is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName,
           tsFileResource.getTsFile().getAbsoluteFile(),
@@ -1299,6 +1298,28 @@ public class TsFileProcessor {
           closeEndTime - closeStartTime);
     }
     TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), sequence);
+
+    writer = null;
+  }
+
+  /** end empty file and remove it from file system */
+  private void endEmptyFile() throws TsFileProcessorException, IOException {
+    logger.info("Start to end empty file {}", tsFileResource);
+
+    // remove this processor from Closing list in DataRegion,
+    // mark the TsFileResource closed, no need writer anymore
+    writer.close();
+    for (CloseFileListener closeFileListener : closeFileListeners) {
+      closeFileListener.onClosed(this);
+    }
+    if (enableMemControl) {
+      tsFileProcessorInfo.clear();
+      dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
+    }
+    logger.info(
+        "Storage group {} close and remove empty file {}",
+        storageGroupName,
+        tsFileResource.getTsFile().getAbsoluteFile());
 
     writer = null;
   }
@@ -1494,6 +1515,11 @@ public class TsFileProcessor {
       logger.error("device id is illegal");
       throw e;
     }
+  }
+
+  public boolean isEmpty() {
+    return totalMemTableSize == 0
+        && (workMemTable == null || workMemTable.getTotalPointsNum() == 0);
   }
 
   @TestOnly

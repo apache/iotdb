@@ -42,22 +42,22 @@ public interface IPartitionFetcher {
   /**
    * Get data partition, used in query scenarios.
    *
-   * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
+   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
    * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is
-   * true and storage group/series/time slots not exists, then automatically create.
+   * true and database/series/time slots not exists, then automatically create.
    *
-   * @param sgNameToQueryParamsMap storage group name -> the list of DataPartitionQueryParams
+   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
    * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
-   * true and storage group/series/time slots not exists, then automatically create.
+   * true and database/series/time slots not exists, then automatically create.
    *
    * @param dataPartitionQueryParams the list of DataPartitionQueryParams
    */

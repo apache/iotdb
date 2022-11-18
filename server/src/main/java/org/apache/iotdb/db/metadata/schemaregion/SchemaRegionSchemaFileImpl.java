@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
@@ -74,6 +73,7 @@ import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -167,13 +167,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   //  private File logFile;
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
-  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final SchemaStatisticsManager schemaStatisticsManager =
+      SchemaStatisticsManager.getInstance();
+  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
-  private LoadingCache<PartialPath, IMNode> mNodeCache;
+  private final LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
   // seriesNumberMonitor may be null
@@ -259,10 +260,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", storageGroupDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create storage group schema folder {} failed.", storageGroupDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
           throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
@@ -849,7 +850,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       Set<String> failedNames = new HashSet<>();
       int deletedNum = 0;
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p);
         deletedNum++;
       }
       return new Pair<>(deletedNum, failedNames);
@@ -969,15 +970,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return deleteTimeseries(pathPattern, false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
-      throws MetadataException, IOException {
-    try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
-      if (!isRecovering) {
-        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-      }
-    } catch (DeleteFailedException e) {
-      failedNames.add(e.getName());
+  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
+    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    if (!isRecovering) {
+      writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
   }
 
@@ -1237,7 +1233,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
@@ -1326,6 +1322,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagManager.readTagFile(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
+          Pair<String, String> deadbandInfo =
+              MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -1338,7 +1336,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
                       : 0,
                   tagAndAttributePair.left,
-                  tagAndAttributePair.right));
+                  tagAndAttributePair.right,
+                  deadbandInfo.left,
+                  deadbandInfo.right));
           if (limit != 0) {
             count++;
           }
@@ -1399,7 +1399,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                 CompressionType.valueOf(ansString.right[4]),
                 ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
-                tagAndAttributePair.right));
+                tagAndAttributePair.right,
+                ansString.right[7],
+                ansString.right[8]));
       } catch (IOException e) {
         throw new MetadataException(
             "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),

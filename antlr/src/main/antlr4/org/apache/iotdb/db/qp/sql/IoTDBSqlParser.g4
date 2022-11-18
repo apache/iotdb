@@ -291,7 +291,7 @@ showStorageGroup
 
 // Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? limitClause?
     ;
 
 // Show Timeseries

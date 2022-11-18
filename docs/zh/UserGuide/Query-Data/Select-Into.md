@@ -84,7 +84,7 @@ Total line number = 4
 It costs 0.725s
 ```
 
-该语句将 `root.sg` 存储组下四条序列的查询结果写入到 `root.sg_copy` 存储组下指定的四条序列中。注意，`root.sg_copy.d2(t1, t2)` 也可以写做 `root.sg_copy.d2(t1), root.sg_copy.d2(t2)`。
+该语句将 `root.sg` database 下四条序列的查询结果写入到 `root.sg_copy` database 下指定的四条序列中。注意，`root.sg_copy.d2(t1, t2)` 也可以写做 `root.sg_copy.d2(t1), root.sg_copy.d2(t2)`。
 
 可以看到，`INTO` 子句的写法非常灵活，只要满足组合出的目标序列没有重复，且与查询结果列一一对应即可。
 
@@ -127,7 +127,7 @@ Total line number = 4
 It costs 0.625s
 ```
 
-该语句同样是将 `root.sg` 存储组下四条序列的查询结果写入到 `root.sg_copy` 存储组下指定的四条序列中。但在按设备对齐中，`intoItem` 的数量必须和查询的设备数量一致，每个查询设备对应一个 `intoItem`。
+该语句同样是将 `root.sg` database 下四条序列的查询结果写入到 `root.sg_copy` database 下指定的四条序列中。但在按设备对齐中，`intoItem` 的数量必须和查询的设备数量一致，每个查询设备对应一个 `intoItem`。
 
 > 按设备对齐查询时，`CLI` 展示的结果集多出一列 `source device` 列表示查询的设备。
 
@@ -271,7 +271,7 @@ select s1, s2 into root.sg_copy.d1(t1, t2), aligned root.sg_copy.d2(t1, t2) from
 
 - 对于一般的聚合查询，时间戳是无意义的，约定使用 0 来存储。
 - 当目标序列存在时，需要保证源序列和目标时间序列的数据类型、压缩和编码方式、是否属于对齐设备等元数据信息一致。
-- 当目标序列不存在时，系统将自动创建目标序列（包括存储组）。
+- 当目标序列不存在时，系统将自动创建目标序列（包括 database）。
 - 当查询的序列不存在或查询的序列不存在数据，则不会自动创建目标序列。
 
 ## 应用举例

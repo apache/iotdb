@@ -65,7 +65,7 @@ void query(char * sql_str) {
 }
 
 void nonQuery(char* sql_str) {
-    //curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+    //curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
     CURL *curl_handle = curl_easy_init();
     if (curl_handle == NULL) {
         fprintf(stderr, "curl_handle == NULL\n");
@@ -118,7 +118,7 @@ int main() {
     printf("\n");
     query("{\"sql\":\"show functions\"}");
     printf("\n");
-    nonQuery("{\"sql\":\"set storage group to root.lns\"}");
+    nonQuery("{\"sql\":\"CREATE DATABASE root.lns\"}");
     printf("\n");
     insertTablet("{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\"],\"dataTypes\":[\"INT32\",\"BOOLEAN\"],\"values\":[[11,null],[false,true]],\"isAligned\":false,\"deviceId\":\"root.lns.d1\"}");
     printf("\n");

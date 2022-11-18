@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -63,6 +62,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -70,12 +70,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -96,20 +98,15 @@ public class StorageEngineV2 implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
-  /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's
-   * TimestampPrecision
-   */
-  private static long timePartitionIntervalForStorage = -1;
-  /** whether enable data partition if disabled, all data belongs to partition 0 */
-  @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
+  /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
+  private static long timePartitionInterval = -1;
 
   /**
-   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
-   * will have a subfolder under the systemDir.
+   * a folder (system/databases/ by default) that persist system info. Each database will have a
+   * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -118,6 +115,9 @@ public class StorageEngineV2 implements IService {
   /** DataRegionId -> DataRegion which is being deleted */
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
+
+  /** Database name -> ttl, for region recovery only */
+  private final Map<String, Long> ttlMapForRecover = new ConcurrentHashMap<>();
 
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
@@ -145,31 +145,21 @@ public class StorageEngineV2 implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionIntervalForStorage =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
-  public static long getTimePartitionIntervalForStorage() {
-    if (timePartitionIntervalForStorage == -1) {
+  public static long getTimePartitionInterval() {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return timePartitionIntervalForStorage;
+    return timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
-    if (timePartitionIntervalForStorage == -1) {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return enablePartition ? time / timePartitionIntervalForStorage : 0;
-  }
-
-  public static boolean isEnablePartition() {
-    return enablePartition;
-  }
-
-  @TestOnly
-  public static void setEnablePartition(boolean enablePartition) {
-    StorageEngineV2.enablePartition = enablePartition;
+    return time / timePartitionInterval;
   }
 
   /** block insertion if the insertion is rejected by memory control */
@@ -189,6 +179,19 @@ public class StorageEngineV2 implements IService {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+    }
+  }
+
+  public void updateTTLInfo(byte[] allTTLInformation) {
+    if (allTTLInformation == null) {
+      return;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
+    int mapSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < mapSize; i++) {
+      ttlMapForRecover.put(
+          Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
+          ReadWriteIOUtils.readLong(buffer));
     }
   }
 
@@ -219,12 +222,13 @@ public class StorageEngineV2 implements IService {
       }
     }
 
-    // operations after all virtual storage groups are recovered
+    // operations after all data regions are recovered
     Thread recoverEndTrigger =
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
+              ttlMapForRecover.clear();
             });
     recoverEndTrigger.start();
   }
@@ -243,7 +247,11 @@ public class StorageEngineV2 implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
+                dataRegion =
+                    buildNewDataRegion(
+                        sgName,
+                        dataRegionId,
+                        ttlMapForRecover.getOrDefault(sgName, Long.MAX_VALUE));
               } catch (DataRegionException e) {
                 logger.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
@@ -288,12 +296,7 @@ public class StorageEngineV2 implements IService {
   @Override
   public void start() {
     // build time Interval to divide time partition
-    if (!enablePartition) {
-      timePartitionIntervalForStorage = Long.MAX_VALUE;
-    } else {
-      initTimePartition();
-    }
-
+    initTimePartition();
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
@@ -434,14 +437,14 @@ public class StorageEngineV2 implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param logicalStorageGroupName logical storage group name e.g. root.sg1
+   * @param logicalStorageGroupName database name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
       String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
       throws DataRegionException {
     DataRegion dataRegion;
     logger.info(
-        "construct a data region instance, the storage group is {}, Thread is {}",
+        "construct a data region instance, the database is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     dataRegion =
@@ -469,7 +472,7 @@ public class StorageEngineV2 implements IService {
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -485,7 +488,7 @@ public class StorageEngineV2 implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start force closing all storage group processor");
+    logger.info("Start force closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -525,7 +528,7 @@ public class StorageEngineV2 implements IService {
         }
       }
     }
-    checkResults(tasks, "Failed to close storage group processor.");
+    checkResults(tasks, "Failed to close database processor.");
   }
 
   private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
@@ -542,7 +545,7 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * merge all storage groups.
+   * merge all databases.
    *
    * @throws StorageEngineException StorageEngineException
    */
@@ -718,7 +721,7 @@ public class StorageEngineV2 implements IService {
               "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.TSFILE_RUNTIME_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     } catch (IOException e) {
@@ -727,7 +730,7 @@ public class StorageEngineV2 implements IService {
               "IO error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -766,11 +769,7 @@ public class StorageEngineV2 implements IService {
           status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
-    } catch (IOException e) {
-      logger.error(String.format("Execute load command %s error.", loadCommand), e);
-      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    } catch (LoadFileException e) {
+    } catch (IOException | LoadFileException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());

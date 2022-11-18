@@ -15,31 +15,22 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.confignode.exception;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-import java.util.Collections;
-import java.util.List;
+public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-public class DropPipeSinkPlan extends PhysicalPlan {
-  private String pipeSinkName;
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
+  private static final String DATA_REGION_GROUP = "DataRegionGroup";
 
-  public DropPipeSinkPlan(String pipeSinkName) {
-    super(Operator.OperatorType.DROP_PIPESINK);
-    this.pipeSinkName = pipeSinkName;
-  }
-
-  public String getPipeSinkName() {
-    return pipeSinkName;
-  }
-
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+  public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
+    super(
+        String.format(
+            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+                ? SCHEMA_REGION_GROUP
+                : DATA_REGION_GROUP));
   }
 }

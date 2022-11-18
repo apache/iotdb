@@ -244,7 +244,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -271,7 +271,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -336,7 +336,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -409,7 +409,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -539,10 +539,10 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-**Show devices with storage group**
+**Show devices with database**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 ```json
@@ -550,7 +550,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "expressions": null,
   "columnNames": [
     "devices",
-    "storage group",
+    "database",
     "isAligned"
   ],
   "timestamps": null,
@@ -784,7 +784,7 @@ Parameter Description:
 
 Example request:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
 Response parameters:
@@ -851,7 +851,7 @@ The configuration is located in 'iotdb-rest.properties'.
 
 
 
-* Set 'enable_REST_service' to 'true' to enable the module, and 'false' to disable the module. By default, this value is' false '.
+* Set 'enable_rest_service' to 'true' to enable the module, and 'false' to disable the module. By default, this value is' false '.
 
 ```properties
 enable_rest_service=true
@@ -861,6 +861,12 @@ enable_rest_service=true
 
 ```properties
 rest_service_port=18080
+```
+
+* Set 'enable_swagger' to 'true' to display rest service interface information through swagger, and 'false' to do not display the rest service interface information through the swagger. By default, this value is' false '.
+
+```properties
+enable_swagger=false
 ```
 
 * The maximum number of rows in the result set that can be returned by a query. When the number of rows in the returned result set exceeds the limit, the status code `411` is returned.

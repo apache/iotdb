@@ -629,7 +629,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         && !SESSION_MANAGER.checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
+              TSStatusCode.NO_PERMISSION,
               "No permissions for this operation, please add privilege "
                   + OperatorType.values()[
                       AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
@@ -733,7 +733,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         port);
     TSStatus status = new TSStatus();
     status.setRedirectNode(new TEndPoint(ip, port));
-    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    status.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());
     return resp;
@@ -1508,7 +1508,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

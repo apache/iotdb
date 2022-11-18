@@ -78,7 +78,7 @@ public class IoTDBFilterIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.vehicle");
+      statement.execute("CREATE DATABASE root.vehicle");
       statement.execute(
           "create TIMESERIES root.vehicle.testNaN.d1 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute(
