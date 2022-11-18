@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -249,33 +248,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  /** Write data point without checking page size. Used for inner space compaction. */
-  public void write(long timestamp, TsPrimitiveType value) {
-    switch (pageWriter.getStatistics().getType()) {
-      case TEXT:
-        pageWriter.write(timestamp, value.getBinary());
-        break;
-      case DOUBLE:
-        pageWriter.write(timestamp, value.getDouble());
-        break;
-      case BOOLEAN:
-        pageWriter.write(timestamp, value.getBoolean());
-        break;
-      case INT64:
-        pageWriter.write(timestamp, value.getLong());
-        break;
-      case INT32:
-        pageWriter.write(timestamp, value.getInt());
-        break;
-      case FLOAT:
-        pageWriter.write(timestamp, value.getFloat());
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            "Unknown data type " + pageWriter.getStatistics().getType());
-    }
-  }
-
   /**
    * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
    * to pageBuffer
@@ -384,11 +356,6 @@ public class ChunkWriterImpl implements IChunkWriter {
       return true;
     }
     return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
-  }
-
-  @Override
-  public long getPointNumOfUnsealedPage() {
-    return pageWriter.getPointNumber();
   }
 
   @Override

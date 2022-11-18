@@ -57,6 +57,4 @@ public interface IChunkWriter {
    * there is no unsealed page.
    */
   boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag);
-
-  long getPointNumOfUnsealedPage();
 }

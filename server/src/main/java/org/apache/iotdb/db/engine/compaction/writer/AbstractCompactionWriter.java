@@ -71,8 +71,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   // When num of points writing into target files reaches check point, then check chunk size
-  private final long checkPoint =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
+  private final long checkPoint = (targetChunkPointNum >= 10 ? targetChunkPointNum : 10) / 10;
 
   private long lastCheckIndex = 0;
 
@@ -157,7 +156,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
     } else {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
-      alignedChunkWriter.write(timestamp, value.getVector(), true);
+      alignedChunkWriter.write(timestamp, value.getVector());
     }
   }
 

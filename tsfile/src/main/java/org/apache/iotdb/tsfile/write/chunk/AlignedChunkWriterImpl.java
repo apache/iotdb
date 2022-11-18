@@ -152,7 +152,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList.get(valueIndex).write(time, value, isNull);
   }
 
-  public void write(long time, TsPrimitiveType[] points, boolean checkPageSize) {
+  public void write(long time, TsPrimitiveType[] points) {
     valueIndex = 0;
     for (TsPrimitiveType point : points) {
       ValueChunkWriter writer = valueChunkWriterList.get(valueIndex++);
@@ -180,11 +180,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
           break;
       }
     }
-    if (checkPageSize) {
-      write(time);
-    } else {
-      timeChunkWriter.getPageWriter().write(time);
-    }
+    write(time);
   }
 
   public void write(long time) {
@@ -391,11 +387,6 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       }
     }
     return false;
-  }
-
-  @Override
-  public long getPointNumOfUnsealedPage() {
-    return timeChunkWriter.getPageWriter().getPointNumber();
   }
 
   public ValueChunkWriter getValueChunkWriterByIndex(int valueIndex) {
