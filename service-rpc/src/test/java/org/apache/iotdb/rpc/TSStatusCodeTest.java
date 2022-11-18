@@ -26,6 +26,6 @@ public class TSStatusCodeTest {
 
   @Test
   public void testToString() {
-    Assert.assertEquals("SUCCESS_STATUS(200)", TSStatusCode.SUCCESS_STATUS.toString());
+    Assert.assertEquals(0, TSStatusCode.SUCCESS_STATUS.getValue());
   }
 }
