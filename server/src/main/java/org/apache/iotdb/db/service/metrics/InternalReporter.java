@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,16 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.db.service.metrics;
 
-public enum ReporterType {
-  JMX,
-  PROMETHEUS,
-  IOTDB,
-  INTERNAL;
+import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.utils.ReporterType;
+
+public class InternalReporter implements Reporter {
+  @Override
+  public boolean start() {
+    return false;
+  }
 
   @Override
-  public String toString() {
-    return name();
+  public boolean stop() {
+    return false;
+  }
+
+  @Override
+  public ReporterType getReporterType() {
+    return null;
+  }
+
+  @Override
+  public void setMetricManager(AbstractMetricManager metricManager) {
+
   }
 }
