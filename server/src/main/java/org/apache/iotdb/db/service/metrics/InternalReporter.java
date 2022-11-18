@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -29,17 +32,24 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.Rate;
-import org.apache.iotdb.metrics.type.Timer;
-
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class InternalReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalReporter.class);
@@ -61,13 +71,42 @@ public class InternalReporter {
     SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
   }
 
-  public void updateCounter(Counter counter) {}
+  public void updateValue(String name, Map<String, String> labels, Object value, TSDataType type, Long time) {
+    if (value != null) {
+      try {
+        TSInsertRecordReq request = new TSInsertRecordReq();
+        String prefix = IoTDBMetricsUtils.generatePath(name, labels);
+        List<String> measurements = Collections.singletonList("value");
+        List<TSDataType> types = Collections.singletonList(type);
+        List<Object> values = Collections.singletonList(value);
+        ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
 
-  public void updateGauge(Gauge gauge) {}
+        request.setPrefixPath(prefix);
+        request.setTimestamp(time);
+        request.setMeasurements(measurements);
+        request.setValues(buffer);
+        request.setIsAligned(false);
 
-  public void updateHistogram(Histogram histogram) {}
+        Statement s = StatementGenerator.createStatement(request);
+        final long queryId = SESSION_MANAGER.requestQueryId();
+        ExecutionResult result =
+            COORDINATOR.execute(s, queryId, SESSION_INFO, "", PARTITION_FETCHER, SCHEMA_FETCHER);
+        if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.error("Failed to update the value of metric with status {}", result.status);
+        }
+      } catch (IoTDBConnectionException e1) {
+        LOGGER.error("Failed to update the value of metric because of unknown type");
+      } catch (IllegalPathException | QueryProcessException e2) {
+        LOGGER.error("Failed to update the value of metric because of internal error");
+      }
+    }
+  }
 
-  public void updateTimer(Timer timer) {}
-
-  public void updateRate(Rate rate) {}
+  private void writeSnapshotAndCount(
+      String name, Map<String, String> labels, HistogramSnapshot snapshot, Long time) {
+    updateValue(name + "_max", labels, snapshot.max(), TSDataType.DOUBLE, time);
+    updateValue(name + "_mean", labels, snapshot.mean(), TSDataType.DOUBLE, time);
+    updateValue(name + "_total", labels, snapshot.total(), TSDataType.DOUBLE, time);
+    updateValue(name + "_count", labels, snapshot.count(), TSDataType.INT64, time);
+  }
 }
