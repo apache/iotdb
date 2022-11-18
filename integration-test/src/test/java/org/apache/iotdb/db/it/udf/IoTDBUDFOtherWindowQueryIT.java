@@ -219,7 +219,7 @@ public class IoTDBUDFOtherWindowQueryIT {
 
   @Test
   public void testSessionTimeWindowSS2() {
-    String sessionGap = "5";
+    String sessionGap = "4";
     long[] windowStart = new long[] {0, 55};
     long[] windowEnd = new long[] {50, 999};
     testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
@@ -245,7 +245,7 @@ public class IoTDBUDFOtherWindowQueryIT {
 
   @Test
   public void testSessionTimeWindowSS5() {
-    String sessionGap = "5";
+    String sessionGap = "4";
     Long displayBegin = 43L;
     Long displayEnd = 100L;
     long[] windowStart = new long[] {43, 55};
@@ -258,22 +258,9 @@ public class IoTDBUDFOtherWindowQueryIT {
     String sessionGap = "1";
     Long displayBegin = 2L;
     Long displayEnd = 20000L;
-    ArrayList<Long> windowStart = new ArrayList<>();
-    ArrayList<Long> windowEnd = new ArrayList<>();
-    for (long i = displayBegin; i < ITERATION_TIMES; i++) {
-      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
-          || i == 997 || i == 998) {
-        continue;
-      }
-      windowStart.add(i);
-      windowEnd.add(i);
-    }
-    testSessionTimeWindowSS(
-        sessionGap,
-        windowStart.stream().mapToLong(t -> t).toArray(),
-        windowEnd.stream().mapToLong(t -> t).toArray(),
-        displayBegin,
-        displayEnd);
+    long[] windowStart = new long[] {2, 8, 55, 999};
+    long[] windowEnd = new long[] {4, 50, 995, 999};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
   private void testSessionTimeWindowSSOutOfRange(
@@ -330,6 +317,29 @@ public class IoTDBUDFOtherWindowQueryIT {
     Long displayBegin = -2000000L;
     Long displayEnd = -100L;
     testSessionTimeWindowSSOutOfRange(sessionGap, displayBegin, displayEnd);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS9() {
+    String sessionGap = "0";
+    Long displayBegin = 2L;
+    Long displayEnd = 20000L;
+    ArrayList<Long> windowStart = new ArrayList<>();
+    ArrayList<Long> windowEnd = new ArrayList<>();
+    for (long i = displayBegin; i < ITERATION_TIMES; i++) {
+      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
+          || i == 997 || i == 998) {
+        continue;
+      }
+      windowStart.add(i);
+      windowEnd.add(i);
+    }
+    testSessionTimeWindowSS(
+        sessionGap,
+        windowStart.stream().mapToLong(t -> t).toArray(),
+        windowEnd.stream().mapToLong(t -> t).toArray(),
+        displayBegin,
+        displayEnd);
   }
 
   private void testStateWindowSS(
@@ -515,5 +525,31 @@ public class IoTDBUDFOtherWindowQueryIT {
     long[] windowStart = new long[] {0, 500, 993};
     long[] windowEnd = new long[] {499, 992, 999};
     testStateWindowSS("s6", null, windowStart, windowEnd, null, null);
+  }
+
+  @Test
+  public void testStateWindowSS10() {
+    String delta = "0";
+    Long displayBegin = 2L;
+    Long displayEnd = 20000L;
+    ArrayList<Long> windowStart = new ArrayList<>();
+    ArrayList<Long> windowEnd = new ArrayList<>();
+    for (long i = displayBegin; i < ITERATION_TIMES; i++) {
+      if (i == 500) {
+        windowStart.add(i);
+        windowEnd.add(i + 1);
+        i++;
+        continue;
+      }
+      windowStart.add(i);
+      windowEnd.add(i);
+    }
+    testStateWindowSS(
+        "s4",
+        delta,
+        windowStart.stream().mapToLong(t -> t).toArray(),
+        windowEnd.stream().mapToLong(t -> t).toArray(),
+        displayBegin,
+        displayEnd);
   }
 }
