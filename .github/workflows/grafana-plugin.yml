@@ -9,6 +9,9 @@ on:
     branches:
       - master
       - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

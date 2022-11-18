@@ -1,21 +1,17 @@
-# This workflow is just for checking whether modifications works for the Go client.
-
-name: Go Client
+name: Site Build
 
 on:
   push:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
-    paths-ignore:
+    paths:
       - 'docs/**'
       - 'site/**'
   # allow manually run the action:
@@ -54,9 +50,5 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Compile IoTDB Server
-        run: mvn clean package -pl distribution -am -DskipTests
-      - name: Integration test
-        shell: bash
-        run: |
-          cd client-go && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+      - name: Test compile website
+        run: mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile -pl site

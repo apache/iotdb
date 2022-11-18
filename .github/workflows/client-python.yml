@@ -17,6 +17,7 @@ on:
       - "new_*"
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
