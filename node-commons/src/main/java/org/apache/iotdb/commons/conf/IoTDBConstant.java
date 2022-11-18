@@ -261,4 +261,6 @@ public class IoTDBConstant {
   // select into
   public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
   public static final String DOUBLE_COLONS = "::";
+
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
 }
