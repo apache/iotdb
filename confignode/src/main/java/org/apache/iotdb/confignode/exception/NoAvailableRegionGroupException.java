@@ -15,26 +15,22 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.confignode.exception;
 
-package org.apache.iotdb.db.exception.metadata;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-public class DeleteFailedException extends MetadataException {
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
+  private static final String DATA_REGION_GROUP = "DataRegionGroup";
 
-  private String name;
-
-  public DeleteFailedException(String name) {
+  public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
     super(
-        String.format("Node [%s] is being used. Deletion failed.", name),
-        TSStatusCode.NODE_DELETE_ERROR.getStatusCode());
-    this.name = name;
-  }
-
-  public String getName() {
-    return name;
+        String.format(
+            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+                ? SCHEMA_REGION_GROUP
+                : DATA_REGION_GROUP));
   }
 }

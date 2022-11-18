@@ -737,7 +737,7 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
@@ -1112,7 +1112,11 @@ public class ConfigManager implements IManager {
 
     Map<PartialPath, List<Template>> templateSetInfo = templateSetInfoResp.getPatternTemplateMap();
     if (templateSetInfo.isEmpty()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return RpcUtils.getStatus(
+          TSStatusCode.TEMPLATE_NOT_SET,
+          String.format(
+              "Schema Template %s is not set on any prefix path of %s",
+              req.getTemplateName(), patternList));
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1127,7 +1131,11 @@ public class ConfigManager implements IManager {
       }
 
       if (filteredTemplateSetInfo.isEmpty()) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        return RpcUtils.getStatus(
+            TSStatusCode.TEMPLATE_NOT_SET,
+            String.format(
+                "Schema Template %s is not set on any prefix path of %s",
+                req.getTemplateName(), patternList));
       }
 
       templateSetInfo = filteredTemplateSetInfo;

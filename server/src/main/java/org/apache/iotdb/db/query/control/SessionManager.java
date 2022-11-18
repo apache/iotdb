@@ -129,7 +129,7 @@ public class SessionManager implements SessionManagerMBean {
       LOGGER.error("Failed to connect to ConfigNode, because ", e);
       openSessionResp
           .sessionId(-1)
-          .setCode(TSStatusCode.AUTHENTICATION_FAILED.getStatusCode())
+          .setCode(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
 

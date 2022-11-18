@@ -1011,7 +1011,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg, TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_RECORDS, deviceId)));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.INSERT_RECORDS, deviceId)));
       }
 
       try {
@@ -1023,7 +1023,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.INSERT_STRING_RECORDS,
                         deviceIds.get(0))));
       }
@@ -1036,7 +1036,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg, TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_RECORD, deviceId)));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.INSERT_RECORD, deviceId)));
       }
 
       try {
@@ -1048,7 +1048,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.INSERT_STRING_RECORD,
                         deviceId)));
       }
@@ -1063,7 +1063,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
                         deviceId)));
       }
@@ -1077,7 +1077,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.DELETE_DATA,
                         deviceId + ".s1")));
       }
@@ -1108,7 +1108,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg, TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_TABLET, deviceId)));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.INSERT_TABLET, deviceId)));
       }
 
       try {
@@ -1152,7 +1152,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg, TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_TABLETS, deviceId)));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.INSERT_TABLETS, deviceId)));
       }
 
       try {
@@ -1164,7 +1164,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.SET_STORAGE_GROUP,
                         "root..sg")));
       }
@@ -1179,7 +1179,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.CREATE_TIMESERIES,
                         "root.sg..d1.s1")));
       }
@@ -1202,7 +1202,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.CREATE_ALIGNED_TIMESERIES,
                         deviceId)));
       }
@@ -1224,7 +1224,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.CREATE_MULTI_TIMESERIES,
                         "root.sg.d1..s1")));
       }
@@ -1238,7 +1238,7 @@ public class IoTDBSessionSimpleIT {
                 .contains(
                     String.format(
                         msg,
-                        TSStatusCode.PATH_ILLEGAL,
+                        TSStatusCode.ILLEGAL_PATH,
                         OperationType.DELETE_TIMESERIES,
                         "root.sg.d1..s1")));
       }

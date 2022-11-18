@@ -68,6 +68,12 @@ public class ConfigNodeConfig {
   private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
       RegionBalancer.RegionAllocateStrategy.GREEDY;
 
+  /**
+   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
+   * previous TimePartitionSlot if set true
+   */
+  private boolean enableDataPartitionInheritPolicy = false;
+
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
 
@@ -418,6 +424,14 @@ public class ConfigNodeConfig {
   public void setRegionAllocateStrategy(
       RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
     this.regionAllocateStrategy = regionAllocateStrategy;
+  }
+
+  public boolean isEnableDataPartitionInheritPolicy() {
+    return enableDataPartitionInheritPolicy;
+  }
+
+  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

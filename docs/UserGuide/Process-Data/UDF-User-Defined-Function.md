@@ -201,7 +201,7 @@ The `SlidingSizeWindowAccessStrategy` is shown schematically below.
 
 The sliding step parameter is optional. If the parameter is not provided, the sliding step will be set to the same as the window size.
 
-The `SessionTimeWindowAccessStrategy` is shown schematically below.
+The `SessionTimeWindowAccessStrategy` is shown schematically below. **Time intervals less than or equal to the given minimum time interval `sessionGap` are assigned in one group**
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/sessionWindow.png">
 
 `SessionTimeWindowAccessStrategy`: `SessionTimeWindowAccessStrategy` has many constructors, you can pass 2 types of parameters to them:
@@ -209,7 +209,7 @@ The `SessionTimeWindowAccessStrategy` is shown schematically below.
 - Parameter 2: The minimum time interval `sessionGap` of two adjacent windows.
 
 
-The `StateWindowAccessStrategy` is shown schematically below.
+The `StateWindowAccessStrategy` is shown schematically below. **For numerical data, if the state difference is less than or equal to the given threshold `delta`, it will be assigned in one group. **
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
 
 `StateWindowAccessStrategy` has four constructors.

@@ -608,25 +608,27 @@ public class BufferedPipeDataQueueTest {
         List<PipeData> pipeDataTakeList = new ArrayList<>();
         ExecutorService es1 = Executors.newSingleThreadExecutor();
         es1.execute(
-            () -> {
-              while (true) {
-                try {
-                  PipeData pipeData = pipeDataQueue.take();
-                  logger.info(String.format("PipeData: %s", pipeData));
-                  pipeDataTakeList.add(pipeData);
-                  pipeDataQueue.commit();
-                } catch (InterruptedException e) {
-                  break;
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  break;
-                }
-              }
-            });
+                () -> {
+                  while (true) {
+                    try {
+                      PipeData pipeData = pipeDataQueue.take();
+                      logger.info(String.format("PipeData: %s", pipeData));
+                      pipeDataTakeList.add(pipeData);
+                      pipeDataQueue.commit();
+                    } catch (InterruptedException e) {
+                      break;
+                    } catch (Exception e) {
+                      e.printStackTrace();
+                      break;
+                    }
+                  }
+                });
         // offer
         for (int i = 16; i < 20; i++) {
-          pipeDataQueue.offer(
-              new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i));
+          if (!pipeDataQueue.offer(
+                  new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 0), i))) {
+            logger.info(String.format("Can not offer serialize number %d", i));
+          }
         }
         try {
           Thread.sleep(3000);
@@ -645,7 +647,7 @@ public class BufferedPipeDataQueueTest {
         for (int i = 0; i < 6; i++) {
           Assert.assertEquals(pipeDataList.get(i), pipeDataTakeList.get(i));
         }
-      } finally {
+      }finally {
         pipeDataQueue.clear();
       }
     } catch (Exception e) {
