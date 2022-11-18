@@ -1,23 +1,18 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: Main Mac and Linux
+name: Site Build
 
 on:
   push:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
-    paths-ignore:
+    paths:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
-    paths-ignore:
+    paths:
       - 'docs/**'
       - 'site/**'
   # allow manually run the action:
@@ -31,20 +26,20 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  unix:
+  test:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 17 ]
+        java: [ 11 ]
         os: [ ubuntu-latest ]
-        include:
-          - java: 8
-            os: macos-latest
     runs-on: ${{ matrix.os}}
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v3
         with:
@@ -56,9 +51,5 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P site -P code-coverage
-      - name: IT/UT Test
-        shell: bash
-        # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean test -Dtest.port.closed=true -P '!testcontainer' -P compile-library-udf
+      - name: Test compile website
+        run: mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile -pl site
