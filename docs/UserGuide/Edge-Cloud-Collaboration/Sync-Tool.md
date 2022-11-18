@@ -49,7 +49,7 @@ Two machines A and B, which are installed with iotdb, we want to continuously sy
 - When one or more senders send data to a receiver, there should be no intersection between the respective device path sets of these senders and receivers, otherwise unexpected errors may occur.
   - e.g. When sender A includes path `root.sg.d.s`, sender B also includes the path `root.sg.d.s`, sender A deletes database `root.sg` will also delete all data of B stored in the path `root.sg.d.s` at receiver.
 - The two "ends" do not support synchronization with each other.
-- The Sync Tool only synchronizes insertions, delete data, delete timeseires. If no database is created on the receiver, a database of the same level as the sender will be automatically created. Do not support TTL settings, trigger and other operations.
+- The Sync Tool only synchronizes insertions. If no database is created on the receiver, a database of the same level as the sender will be automatically created. Currently, deletion operation is not guaranteed to be synchronized and do not support TTL settings, trigger and other operations.
   - If TTL is set on the sender side, all unexpired data in the IoTDB and all future data writes and deletions will be synchronized to the receiver side when Pipe is started.
 - When operating a synchronization task, ensure that all DataNode nodes in `SHOW DATANODES` that are in the Running state are connected, otherwise the execution will fail.
 
@@ -105,7 +105,7 @@ IoTDB> DROP PIPE my_pipe
 
 ## 5.Parameter Configuration
 
-All parameters are in `$IOTDB_ HOME$/conf/iotdb-engine`, after all modifications are completed, execute `load configuration` and it will take effect immediately.
+All parameters are in `$IOTDB_ HOME$/conf/iotdb-common.properties`, after all modifications are completed, execute `load configuration` and it will take effect immediately.
 
 ### 5.1 Sender
 
@@ -146,7 +146,7 @@ IoTDB>
 * Create a PipeSink with IoTDB type, where IP and port are optional parameters.
 
 ```
-IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(ip='127.0.0.1',port=6670);]
+IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(ip='127.0.0.1',port=6667);]
 ```
 
 ### DROP PIPESINK
@@ -168,7 +168,7 @@ IoTDB>
 +-----------+-----+------------------------+
 |       name| type|              attributes|
 +-----------+-----+------------------------+
-|my_pipesink|IoTDB|ip='127.0.0.1',port=6670|
+|my_pipesink|IoTDB|ip='127.0.0.1',port=6667|
 +-----------+-----+------------------------+
 ```
 
@@ -177,12 +177,10 @@ IoTDB>
 - Create a pipe.
 
   - At present, the SELECT statement only supports `**` (i.e. data in all timeseries), the FROM statement only supports `root`, and the WHERE statement only supports the start time of the specified time. The start time can be specified in the form of yyyy-mm-dd HH:MM:SS or a timestamp.
-
-  - If the `SyncDelOp` parameter is true, the deletions of sender will not be synchronized to receiver. Default is false.
-
+  
 
 ```
-IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )] [WITH SyncDelOp=true]
+IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )]
 ```
 
 ### STOP PIPE
@@ -241,13 +239,13 @@ IoTDB> DROP PIPE <PipeName>
 ```
 IoTDB> SHOW PIPES
 IoTDB>
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
-|            create time|   name |    role|       remote|   status|                         attributes|message|
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
-|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|syncDelOp=true,dataStartTimestamp=0|       |
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+ 
-|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|        storageGroup='root.vehicle'|       |
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
+|            create time|   name |    role|       remote|   status|                          attributes|message|
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
+|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0|       |
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+ 
+|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'|       |
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 ```
 
 - Show the pipe status with PipeName. When the PipeName is empty，it is the same with `Show PIPES`.
@@ -267,7 +265,7 @@ IoTDB> SHOW PIPE [PipeName]
 
 ### Receiver
 
-- `vi conf/iotdb-datanode.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
+- `vi conf/iotdb-common.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
 
 ```
 ####################
@@ -283,16 +281,16 @@ ip_white_list=192.168.0.1/1
 
 ### Sender
 
-- Create PipeSink with IoTDB type, input ip address 192.168.0.1, port 6670.
+- Create PipeSink with IoTDB type, input ip address 192.168.0.1, port 6667.
 
 ```
-IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.2'，PORT=6670)
+IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.2'，PORT=6667)
 ```
 
-- Create Pipe connect to my_iotdb, input the start time 2022-03-30 00:00:00 in WHERE statments, set the `SyncDelOp` to false. The following two SQL statements are equivalent
+- Create Pipe connect to my_iotdb, input the start time 2022-03-30 00:00:00 in WHERE statments. The following two SQL statements are equivalent
 
 ```
-IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00') WITH SyncDelOp=false
+IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00')
 IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>= 1648569600000)
 ```
 
