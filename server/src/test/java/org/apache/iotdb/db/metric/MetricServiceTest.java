@@ -56,15 +56,12 @@ public class MetricServiceTest {
   public void testMetricService() {
     for (MonitorType type : MonitorType.values()) {
       // init metric service
-      metricConfig.setEnableMetric(true);
       metricConfig.setMonitorType(type);
       metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
       metricService = new DoNothingMetricService();
       metricService.startService();
 
       // test metric service
-      assertTrue(metricService.isEnable());
-      assertTrue(metricService.getMetricManager().isEnableMetric());
       assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
       assertTrue(
           metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));

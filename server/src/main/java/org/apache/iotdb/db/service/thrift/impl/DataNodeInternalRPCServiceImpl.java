@@ -116,7 +116,6 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
@@ -931,8 +930,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     // Sampling load if necessary
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
-        && req.isNeedSamplingLoad()) {
+    if (req.isNeedSamplingLoad()) {
       TLoadSample loadSample = new TLoadSample();
 
       // Sample cpu load

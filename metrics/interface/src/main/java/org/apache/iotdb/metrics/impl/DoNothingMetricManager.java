@@ -70,11 +70,6 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public boolean isEnableMetric() {
-    return false;
-  }
-
-  @Override
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
     return false;
   }

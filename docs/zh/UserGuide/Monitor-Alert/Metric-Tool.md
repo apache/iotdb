@@ -257,9 +257,6 @@ metric采集默认是关闭的，需要先到```conf/iotdb-{datanode/confignode}
 ### 1.4.1. 配置文件
 
 ```yaml
-# 是否启动监控模块，默认为false
-enableMetric: false
-
 # 是否启用操作延迟统计
 enablePerformanceStat: false
 

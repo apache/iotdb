@@ -28,8 +28,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
-  /** Is metric service enabled */
-  private Boolean enableMetric = true;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
@@ -152,7 +150,6 @@ public class MetricConfig {
   private Integer rpcPort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
-    enableMetric = newMetricConfig.getEnableMetric();
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
@@ -164,14 +161,6 @@ public class MetricConfig {
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
     this.rpcAddress = rpcAddress;
     this.rpcPort = rpcPort;
-  }
-
-  public Boolean getEnableMetric() {
-    return enableMetric;
-  }
-
-  public void setEnableMetric(Boolean enableMetric) {
-    this.enableMetric = enableMetric;
   }
 
   public Boolean getEnablePerformanceStat() {
@@ -244,8 +233,7 @@ public class MetricConfig {
       return false;
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
-    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && monitorType.equals(anotherMetricConfig.getMonitorType())
+    return monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())

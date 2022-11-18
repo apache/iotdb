@@ -257,9 +257,6 @@ The metrics collection switch is disabled by default，you need to enable it fro
 ### 1.4.1. Iotdb-metric.yml
 
 ```yaml
-# whether enable the module
-enableMetric: false
-
 # Is stat performance of operation latency
 enablePerformanceStat: false
 

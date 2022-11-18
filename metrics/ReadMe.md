@@ -100,7 +100,6 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 
 | properties                 | meaning                                                                                | example                             |
 | -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------- |
-| enableMetric               | whether enable the module                                                              | true                                |
 | enablePerformanceStat      | Is stat performance of operation latency                                               | true                                |
 | metricReporterList         | the list of reporter                                                                   | JMX, PROMETHEUS, IOTDB              |
 | monitorType                | The type of metric manager                                                             | DROPWIZARD, MICROMETER              |
@@ -109,7 +108,7 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | pushPeriodInSecond         | the period time of push(used for prometheus, unit: s)                                  | 5                                   |
 
 ## 3.2. Use Guide in IoTDB Server Module
-1. Now, MetricService is registered as IService in server and confignode module, you can simple set properties: `enableMetric: true` to use metric service.
+1. Now, MetricService is registered as IService in datanode and confignode module, and is activated by default. 
 2. In server module you can easily use these metric by `MetricService.getInstance()`, for example:
 
 ```java

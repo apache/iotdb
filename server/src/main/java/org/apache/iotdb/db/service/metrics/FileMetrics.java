@@ -100,7 +100,7 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture) {
+    if (null == currentServiceFuture) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,

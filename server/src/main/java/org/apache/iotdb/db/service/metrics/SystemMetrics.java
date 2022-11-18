@@ -66,7 +66,7 @@ public class SystemMetrics implements IMetricSet {
     collectSystemMemInfo(metricService);
 
     // register disk related metrics and start to collect the value of metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture && isDataNode) {
+    if (null == currentServiceFuture && isDataNode) {
       collectSystemDiskInfo(metricService);
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(

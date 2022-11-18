@@ -77,23 +77,15 @@ public class MetricConfigDescriptor {
     MetricConfig newMetricConfig = loadProps();
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
-        // start service or stop service.
-        reloadLevel =
-            (newMetricConfig.getEnableMetric())
-                ? ReloadLevel.START_METRIC
-                : ReloadLevel.STOP_METRIC;
-      } else if (metricConfig.getEnableMetric()) {
-        // restart reporters or restart service
-        if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig
-                .getAsyncCollectPeriodInSecond()
-                .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
-          reloadLevel = ReloadLevel.RESTART_METRIC;
-        } else {
-          reloadLevel = ReloadLevel.RESTART_REPORTER;
-        }
+      // restart reporters or restart service
+      if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
+          || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+          || !metricConfig
+              .getAsyncCollectPeriodInSecond()
+              .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
+        reloadLevel = ReloadLevel.RESTART_METRIC;
+      } else {
+        reloadLevel = ReloadLevel.RESTART_REPORTER;
       }
       metricConfig.copy(newMetricConfig);
     }

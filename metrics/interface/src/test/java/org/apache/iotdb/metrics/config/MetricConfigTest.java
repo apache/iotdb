@@ -27,9 +27,10 @@ import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,14 +45,13 @@ public class MetricConfigTest {
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
-      try (InputStream inputStream = new FileInputStream(url)) {
-        metricConfig = (MetricConfig) yaml.load(inputStream);
+      try (InputStream inputStream = Files.newInputStream(Paths.get(url))) {
+        metricConfig = yaml.load(inputStream);
       } catch (IOException e) {
         Assert.fail();
       }
     }
 
-    assertTrue(metricConfig.getEnableMetric());
     assertTrue(metricConfig.getEnablePerformanceStat());
     assertEquals(3, metricConfig.getMetricReporterList().size());
     assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());

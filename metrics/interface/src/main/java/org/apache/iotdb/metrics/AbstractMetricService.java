@@ -55,8 +55,6 @@ public abstract class AbstractMetricService {
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
-  /** Is metric service enabled */
-  protected boolean isEnableMetric = metricConfig.getEnableMetric();
   /** The list of metric sets */
   protected List<IMetricSet> metricSets = new ArrayList<>();
 
@@ -160,33 +158,21 @@ public abstract class AbstractMetricService {
 
   /** Start all reporters */
   public void startAllReporter() {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.startAll();
   }
 
   /** Stop all reporters */
   public void stopAllReporter() {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.stopAll();
   }
 
   /** Start reporter according to type */
   public void start(ReporterType type) {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.start(type);
   }
 
   /** Stop reporter according to type */
   public void stop(ReporterType type) {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.stop(type);
   }
 
@@ -272,10 +258,6 @@ public abstract class AbstractMetricService {
 
   public AbstractMetricManager getMetricManager() {
     return metricManager;
-  }
-
-  public boolean isEnable() {
-    return isEnableMetric;
   }
 
   /** bind metrics and store metric set */

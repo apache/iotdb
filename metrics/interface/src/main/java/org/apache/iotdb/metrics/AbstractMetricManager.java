@@ -44,15 +44,12 @@ import java.util.function.ToLongFunction;
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** Is metric service enabled */
-  protected static boolean isEnableMetric;
   /** metric name -> tag keys */
   protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
   /** metric type -> metric name -> metric info */
   protected Map<MetricInfo, IMetric> metrics;
 
   public AbstractMetricManager() {
-    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     nameToMetaInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
   }
@@ -413,17 +410,15 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public void remove(MetricType type, String name, String... tags) {
-    if (isEnableMetric()) {
-      MetricInfo metricInfo = new MetricInfo(type, name, tags);
-      if (metrics.containsKey(metricInfo)) {
-        if (type == metricInfo.getMetaInfo().getType()) {
-          nameToMetaInfo.remove(metricInfo.getName());
-          metrics.remove(metricInfo);
-          removeMetric(type, metricInfo);
-        } else {
-          throw new IllegalArgumentException(
-              metricInfo + " failed to remove because the mismatch of type. ");
-        }
+    MetricInfo metricInfo = new MetricInfo(type, name, tags);
+    if (metrics.containsKey(metricInfo)) {
+      if (type == metricInfo.getMetaInfo().getType()) {
+        nameToMetaInfo.remove(metricInfo.getName());
+        metrics.remove(metricInfo);
+        removeMetric(type, metricInfo);
+      } else {
+        throw new IllegalArgumentException(
+            metricInfo + " failed to remove because the mismatch of type. ");
       }
     }
   }
@@ -432,20 +427,13 @@ public abstract class AbstractMetricManager {
 
   // endregion
 
-  /** Is metric service enabled */
-  public boolean isEnableMetric() {
-    return isEnableMetric;
-  }
-
   /** Is metric service enabled in specific level */
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
-    return isEnableMetric()
-        && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+    return MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
   }
 
   /** Stop and clear metric manager */
   protected boolean stop() {
-    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     metrics = new ConcurrentHashMap<>();
     nameToMetaInfo = new ConcurrentHashMap<>();
     return stopFramework();

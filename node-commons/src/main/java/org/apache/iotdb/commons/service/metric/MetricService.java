@@ -41,12 +41,10 @@ public class MetricService extends AbstractMetricService implements MetricServic
   @Override
   public void start() throws StartupException {
     try {
-      if (isEnable()) {
-        logger.info("Start to start metric Service.");
-        JMXService.registerMBean(getInstance(), mbeanName);
-        startService();
-        logger.info("Finish start metric Service");
-      }
+      logger.info("Start to start metric Service.");
+      JMXService.registerMBean(getInstance(), mbeanName);
+      startService();
+      logger.info("Finish start metric Service");
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -61,46 +59,31 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   @Override
   public void stop() {
-    if (isEnable()) {
-      logger.info("Stop metric Service.");
-      stopService();
-      JMXService.deregisterMBean(mbeanName);
-      logger.info("Finish stop metric Service");
-    }
+    logger.info("Stop metric Service.");
+    stopService();
+    JMXService.deregisterMBean(mbeanName);
+    logger.info("Finish stop metric Service");
   }
 
   @Override
   public void reloadProperties(ReloadLevel reloadLevel) {
     logger.info("Reload properties of metric service");
     synchronized (this) {
-      try {
-        switch (reloadLevel) {
-          case START_METRIC:
-            isEnableMetric = true;
-            start();
-            break;
-          case STOP_METRIC:
-            stop();
-            isEnableMetric = false;
-            break;
-          case RESTART_METRIC:
-            isEnableMetric = true;
-            restart();
-            break;
-          case RESTART_REPORTER:
-            stopAllReporter();
-            loadReporter();
-            startAllReporter();
-            logger.info("Finish restart metric reporters.");
-            break;
-          case NOTHING:
-            logger.debug("There are nothing change in metric module.");
-            break;
-          default:
-            break;
-        }
-      } catch (StartupException startupException) {
-        logger.error("Failed to start metric when reload properties");
+      switch (reloadLevel) {
+        case RESTART_METRIC:
+          restart();
+          break;
+        case RESTART_REPORTER:
+          stopAllReporter();
+          loadReporter();
+          startAllReporter();
+          logger.info("Finish restart metric reporters.");
+          break;
+        case NOTHING:
+          logger.debug("There are nothing change in metric module.");
+          break;
+        default:
+          break;
       }
     }
   }
