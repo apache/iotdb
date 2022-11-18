@@ -20,19 +20,13 @@
 package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import org.junit.Test;
 
@@ -40,34 +34,15 @@ import static org.junit.Assert.assertEquals;
 
 public class NoDataRegionPlanningTest {
   @Test
-  public void testParallelPlan() throws IllegalPathException {
-    String d1s1 = "root.sg.d1.s1";
-    String d1s2 = "root.sg.d1.s2";
-    String d3s1 = "root.sg.d333.s1";
-    String d5s1 = "root.sg.d55555.s1";
+  public void testParallelPlan() {
 
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(), new MeasurementPath(d1s1, TSDataType.INT32), Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(), new MeasurementPath(d1s2, TSDataType.INT32), Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(), new MeasurementPath(d3s1, TSDataType.INT32), Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(), new MeasurementPath(d5s1, TSDataType.INT32), Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-
-    Analysis analysis = Util.constructAnalysis();
-
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+
+    String sql = "select d1.s1, d1.s2, d333.s1,d55555.s1 from root.sg limit 10";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();

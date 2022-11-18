@@ -268,7 +268,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
           if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
             throw new AlignedTimeseriesException(
-                "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
                 device.getFullPath());
           }
 

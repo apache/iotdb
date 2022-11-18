@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.cq;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -38,7 +39,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category(ClusterIT.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQIT {
 
   @BeforeClass
@@ -308,10 +309,14 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        assertEquals("932: CQ s1_count_cq has already been created.", e.getMessage());
+        assertEquals(
+            TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()
+                + ": CQ s1_count_cq has already been created.",
+            e.getMessage());
+      } finally {
+        statement.execute("DROP CQ s1_count_cq;");
       }
 
-      statement.execute("DROP CQ s1_count_cq;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
