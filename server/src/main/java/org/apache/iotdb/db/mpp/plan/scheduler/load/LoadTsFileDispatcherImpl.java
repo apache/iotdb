@@ -138,7 +138,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getValue());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -157,7 +157,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
       if (pieceNode == null) {
         throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getValue()));
       }
       TSStatus resultStatus =
           StorageEngineV2.getInstance()
@@ -176,7 +176,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       } catch (LoadFileException e) {
         logger.error(String.format("Load TsFile Node %s error.", planNode), e);
         TSStatus resultStatus = new TSStatus();
-        resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+        resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getValue());
         resultStatus.setMessage(e.getMessage());
         throw new FragmentInstanceDispatchException(resultStatus);
       }
@@ -226,7 +226,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getValue());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }

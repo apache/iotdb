@@ -124,9 +124,9 @@ public class ClusterSchemaManager {
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
+        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getValue());
       } else {
-        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getValue());
       }
       result.setMessage(metadataException.getMessage());
       return result;
@@ -144,7 +144,7 @@ public class ClusterSchemaManager {
   public TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
     TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
     // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
-    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       adjustMaxRegionGroupCount();
     }
     return result;
@@ -172,8 +172,7 @@ public class ClusterSchemaManager {
   public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
     StorageGroupSchemaResp storageGroupSchemaResp =
         (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (storageGroupSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       // Return immediately if some StorageGroups doesn't exist
       return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
     }
@@ -197,7 +196,7 @@ public class ClusterSchemaManager {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
             .setStatus(
-                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getValue())
                     .setMessage(e.getMessage()));
       }
 
@@ -212,8 +211,7 @@ public class ClusterSchemaManager {
         (StorageGroupSchemaResp)
             getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (storageGroupSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       // Return immediately if some StorageGroups doesn't exist
       return infoMap;
     }
@@ -441,7 +439,7 @@ public class ClusterSchemaManager {
         (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       if (templateResp.getTemplateList() != null) {
         List<ByteBuffer> list = new ArrayList<>();
         templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
@@ -457,7 +455,7 @@ public class ClusterSchemaManager {
     TemplateInfoResp templateResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
-    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
         ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
         resp.setTemplate(byteBuffer);
@@ -474,7 +472,7 @@ public class ClusterSchemaManager {
         new CheckTemplateSettablePlan(templateName, path);
     TemplateInfoResp resp =
         (TemplateInfoResp) getConsensusManager().read(checkTemplateSettablePlan).getDataset();
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.getStatus();
     }
 
@@ -496,7 +494,7 @@ public class ClusterSchemaManager {
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   req,
                   DataNodeRequestType.UPDATE_TEMPLATE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         // roll back the synced cache on dataNodes
         return status.setSubStatus(rollbackTemplateSetInfoSync(template.getId(), path));
       }
@@ -505,7 +503,7 @@ public class ClusterSchemaManager {
     // execute set operation on configNode
     SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
     status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return status;
     } else {
       // roll back the synced cache on dataNodes
@@ -534,7 +532,7 @@ public class ClusterSchemaManager {
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   rollbackReq,
                   DataNodeRequestType.UPDATE_TEMPLATE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failedRollbackStatusList.add(status);
       }
     }
@@ -546,7 +544,7 @@ public class ClusterSchemaManager {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =
         (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
-    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       TGetPathsSetTemplatesResp resp = new TGetPathsSetTemplatesResp();
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setPathList(pathInfoResp.getPathList());
@@ -575,11 +573,11 @@ public class ClusterSchemaManager {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
     TemplateInfoResp templateResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
-    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
         return new Pair<>(
             RpcUtils.getStatus(
-                TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                TSStatusCode.UNDEFINED_TEMPLATE.getValue(),
                 String.format("Undefined template name: %s", templateName)),
             null);
       }
@@ -590,15 +588,14 @@ public class ClusterSchemaManager {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =
         (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
-    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       List<String> templateSetPathList = pathInfoResp.getPathList();
       if (templateSetPathList == null
           || templateSetPathList.isEmpty()
           || !pathInfoResp.getPathList().contains(path)) {
         return new Pair<>(
             RpcUtils.getStatus(
-                TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-                String.format("No template on %s", path)),
+                TSStatusCode.TEMPLATE_NOT_SET.getValue(), String.format("No template on %s", path)),
             null);
       } else {
         return new Pair<>(templateResp.getStatus(), templateResp.getTemplateList().get(0));
@@ -630,12 +627,12 @@ public class ClusterSchemaManager {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
     TemplateInfoResp templateInfoResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
-    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return templateInfoResp.getStatus();
     } else if (templateInfoResp.getTemplateList() == null
         || templateInfoResp.getTemplateList().isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+          TSStatusCode.UNDEFINED_TEMPLATE.getValue(),
           String.format("Undefined template name: %s", templateName));
     }
 
@@ -643,11 +640,11 @@ public class ClusterSchemaManager {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =
         (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
-    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return pathInfoResp.getStatus();
     } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR.getStatusCode(),
+          TSStatusCode.METADATA_ERROR.getValue(),
           String.format(
               "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
     }

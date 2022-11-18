@@ -92,7 +92,7 @@ public class DataNodeInternalClient {
     try {
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, session);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 

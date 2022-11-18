@@ -26,14 +26,14 @@ public class SyncConnectionException extends IoTDBException {
   private static final long serialVersionUID = -6661904365503849681L;
 
   public SyncConnectionException(String message) {
-    super(message, TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+    super(message, TSStatusCode.SYNC_CONNECTION_ERROR.getValue());
   }
 
   public SyncConnectionException(String message, Throwable cause) {
-    super(message + cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+    super(message + cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getValue());
   }
 
   public SyncConnectionException(Throwable cause) {
-    super(cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+    super(cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getValue());
   }
 }

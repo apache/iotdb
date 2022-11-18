@@ -61,7 +61,7 @@ public class RpcUtils {
   }
 
   public static final TSStatus SUCCESS_STATUS =
-      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
 
   public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {
     return (IClientRPCService.Iface)
@@ -85,14 +85,14 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(TSStatus status) throws StatementExecutionException {
-    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
       verifySuccess(status.getSubStatus());
       return;
     }
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       return;
     }
-    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new StatementExecutionException(status);
     }
   }
@@ -103,10 +103,10 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       return;
     }
-    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new StatementExecutionException(status);
     }
   }
@@ -122,8 +122,8 @@ public class RpcUtils {
   public static void verifySuccessWithRedirectionForMultiDevices(
       TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
-    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
-        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
@@ -138,10 +138,10 @@ public class RpcUtils {
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
     StringBuilder errMsgs =
-        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
+        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getValue()).append(": ");
     for (TSStatus status : statuses) {
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
         errMsgs.append(status.getMessage()).append("; ");
       }
     }
@@ -152,11 +152,11 @@ public class RpcUtils {
 
   /** convert from TSStatusCode to TSStatus according to status code and status message */
   public static TSStatus getStatus(TSStatusCode tsStatusCode) {
-    return new TSStatus(tsStatusCode.getStatusCode());
+    return new TSStatus(tsStatusCode.getValue());
   }
 
   public static TSStatus getStatus(List<TSStatus> statusList) {
-    TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getValue());
     status.setSubStatus(statusList);
     return status;
   }
@@ -168,7 +168,7 @@ public class RpcUtils {
    * @param message appending message
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode, String message) {
-    TSStatus status = new TSStatus(tsStatusCode.getStatusCode());
+    TSStatus status = new TSStatus(tsStatusCode.getValue());
     status.setMessage(message);
     return status;
   }
@@ -180,7 +180,7 @@ public class RpcUtils {
   }
 
   public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
-    return new InfluxTSStatus(tsStatusCode.getStatusCode());
+    return new InfluxTSStatus(tsStatusCode.getValue());
   }
 
   public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
@@ -325,11 +325,11 @@ public class RpcUtils {
   public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
     final List<TSStatus> failedStatus =
         responseStatusList.stream()
-            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue())
             .collect(Collectors.toList());
     return failedStatus.isEmpty()
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())
+        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
             .setMessage(failedStatus.toString());
   }
 }

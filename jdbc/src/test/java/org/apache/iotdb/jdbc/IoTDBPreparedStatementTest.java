@@ -47,7 +47,7 @@ public class IoTDBPreparedStatementTest {
   private ZoneId zoneId = ZoneId.systemDefault();
   @Mock private IoTDBConnection connection;
   @Mock private Iface client;
-  @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private long queryId;
   private long sessionId;

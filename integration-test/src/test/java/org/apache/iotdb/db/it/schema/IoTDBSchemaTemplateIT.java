@@ -76,7 +76,7 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Duplicated template name: t1",
           e.getMessage());
     }
 
@@ -90,7 +90,7 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode()
+          TSStatusCode.METADATA_ERROR.getValue()
               + ": Template [t1] has been set on MTree, cannot be dropped now.",
           e.getMessage());
     }
@@ -151,7 +151,7 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          TSStatusCode.TEMPLATE_IS_IN_USE.getValue() + ": Template is in use on root.sg1.d1",
           e.getMessage());
     }
   }
@@ -165,7 +165,7 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Duplicated template name: t1",
           e.getMessage());
     }
 
@@ -229,7 +229,7 @@ public class IoTDBSchemaTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          TSStatusCode.TEMPLATE_IS_IN_USE.getValue() + ": Template is in use on root.sg1.d1",
           e.getMessage());
     }
   }

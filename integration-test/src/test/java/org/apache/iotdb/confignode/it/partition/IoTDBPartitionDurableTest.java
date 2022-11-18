@@ -136,10 +136,10 @@ public class IoTDBPartitionDurableTest {
       TSetStorageGroupReq setStorageGroupReq =
           new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
       TSStatus status = client.setStorageGroup(setStorageGroupReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
       status = client.setStorageGroup(setStorageGroupReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
@@ -168,8 +168,7 @@ public class IoTDBPartitionDurableTest {
       }
       Assert.assertNotNull(dataPartitionTableResp);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
           sg0,
@@ -185,7 +184,7 @@ public class IoTDBPartitionDurableTest {
       int unknownCnt = 0;
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), showRegionResp.getStatus().getCode());
       for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
           runningCnt += 1;
@@ -254,8 +253,7 @@ public class IoTDBPartitionDurableTest {
       }
       Assert.assertNotNull(dataPartitionTableResp);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
           sg1,
@@ -271,7 +269,7 @@ public class IoTDBPartitionDurableTest {
       unknownCnt = 0;
       showRegionResp = client.showRegion(new TShowRegionReq());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), showRegionResp.getStatus().getCode());
       for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         if (RegionStatus.Running.getStatus().equals(regionInfo.getStatus())) {
           runningCnt += 1;

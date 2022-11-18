@@ -92,10 +92,10 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
                   .write(new AddCQPlan(req, md5, firstExecutionTime));
           res = response.getStatus();
           if (res != null) {
-            if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            if (res.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
               LOGGER.debug("Finish init CQ {} successfully", req.cqId);
               setNextState(INACTIVE);
-            } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()) {
+            } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getValue()) {
               LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
               setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
               return Flow.HAS_MORE_STATE;
@@ -124,14 +124,14 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
               env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
           res = response.getStatus();
           if (res != null) {
-            if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            if (res.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
               LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
-            } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+            } else if (res.code == TSStatusCode.NO_SUCH_CQ.getValue()) {
               LOGGER.warn(
                   "Failed to active CQ {} because of no such cq, detailed error message is {}",
                   req.cqId,
                   res.message);
-            } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
+            } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getValue()) {
               LOGGER.warn(
                   "Failed to active CQ {} because this cq has already been active", req.cqId);
             } else {
@@ -183,9 +183,9 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
             env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
         TSStatus res = response.getStatus();
         if (res != null) {
-          if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (res.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
             LOGGER.info("Finish [INACTIVE] rollback of CQ {} successfully", req.cqId);
-          } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+          } else if (res.code == TSStatusCode.NO_SUCH_CQ.getValue()) {
             LOGGER.warn(
                 "Failed to do [INACTIVE] rollback of CQ {} because of no such cq, detailed error message is {}",
                 req.cqId,

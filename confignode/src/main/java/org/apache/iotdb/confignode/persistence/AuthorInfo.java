@@ -100,7 +100,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     if (!status) {
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getValue());
       result.setStatus(tsStatus);
     }
     return result;

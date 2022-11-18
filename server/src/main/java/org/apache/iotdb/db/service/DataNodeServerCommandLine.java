@@ -126,7 +126,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
       LOGGER.info("Remove result {} ", removeResp.toString());
-      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }

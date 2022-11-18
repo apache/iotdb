@@ -102,7 +102,7 @@ public class DeactivateTemplateProcedure
                 new ProcedureException(
                     new IoTDBException(
                         "Target schema Template is not activated on any path matched by given path pattern",
-                        TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
+                        TSStatusCode.TEMPLATE_NOT_ACTIVATED.getValue())));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
@@ -159,7 +159,7 @@ public class DeactivateTemplateProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -193,7 +193,7 @@ public class DeactivateTemplateProcedure
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         LOGGER.error("Failed to invalidate schema cache of template timeseries {}", requestMessage);
         setFailure(new ProcedureException(new MetadataException("Invalidate schema cache failed")));
         return;
@@ -234,7 +234,7 @@ public class DeactivateTemplateProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -267,7 +267,7 @@ public class DeactivateTemplateProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -303,7 +303,7 @@ public class DeactivateTemplateProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });

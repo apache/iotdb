@@ -130,7 +130,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
             AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
@@ -164,7 +164,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       // Send request to some API server
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != authorizerResp.getStatus().getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
             AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
@@ -224,7 +224,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           status = new TPermissionInfoResp();
         }
       }
-      if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         iAuthorCache.putUserCache(username, cacheUser(status));
         return status.getStatus();
       } else {
@@ -247,7 +247,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
     }
-    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
       return permissionInfoResp.getStatus();
     } else {

@@ -68,19 +68,19 @@ public class ExceptionHandler {
       responseResult.setCode(((IoTDBException) e).getErrorCode());
     } else if (e instanceof ParseCancellationException) {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(TSStatusCode.SQL_PARSE_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.SQL_PARSE_ERROR.getValue());
     } else if (e instanceof SQLParserException || e instanceof StatementAnalyzeException) {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(TSStatusCode.METADATA_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.METADATA_ERROR.getValue());
     } else if (e instanceof SemanticException) {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.SEMANTIC_ERROR.getValue());
     } else if (!(e instanceof IOException) && !(e instanceof RuntimeException)) {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue());
     } else {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
     LOGGER.warn(e.getMessage(), e);
     return responseResult;

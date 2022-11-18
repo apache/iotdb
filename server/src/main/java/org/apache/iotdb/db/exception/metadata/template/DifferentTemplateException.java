@@ -28,7 +28,7 @@ public class DifferentTemplateException extends MetadataException {
   public DifferentTemplateException(String path, String templateName) {
     super(
         String.format("The template on " + path + " is different from " + templateName),
-        TSStatusCode.DIFFERENT_TEMPLATE.getStatusCode(),
+        TSStatusCode.DIFFERENT_TEMPLATE.getValue(),
         true);
   }
 }

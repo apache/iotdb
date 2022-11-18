@@ -206,7 +206,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.setStorageGroup(req);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute create database {} in config node, status is {}.",
             setStorageGroupStatement.getStorageGroupPath(),
@@ -268,7 +268,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = client.deleteStorageGroups(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute delete database {} in config node, status is {}.",
             deleteStorageGroupStatement.getPrefixPath(),
@@ -302,7 +302,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "URI is empty, please specify the URI.",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getValue()));
           return future;
         }
         jarFileName = new File(createFunctionStatement.getUriString()).getName();
@@ -340,7 +340,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   "Failed to get executable for UDF '"
                       + createFunctionStatement.getUdfName()
                       + "', please check the URI.",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getValue()));
           return future;
         }
         // modify req
@@ -375,12 +375,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     + createFunctionStatement.getClassName()
                     + "', because it's not found in jar file: "
                     + createFunctionStatement.getUriString(),
-                TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+                TSStatusCode.UDF_LOAD_CLASS_ERROR.getValue()));
         return future;
       }
 
       final TSStatus executionStatus = client.createFunction(tCreateFunctionReq);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error(
             "Failed to create function {}({}) because {}",
             udfName,
@@ -403,7 +403,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropFunction(new TDropFunctionReq(udfName));
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error("[{}] Failed to drop function {}.", executionStatus, udfName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
@@ -421,7 +421,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetUDFTableResp getUDFTableResp = client.getUDFTable();
-      if (getUDFTableResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (getUDFTableResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(
                 getUDFTableResp.getStatus().message, getUDFTableResp.getStatus().code));
@@ -464,7 +464,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "URI is empty, please specify the URI.",
-                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.UDF_DOWNLOAD_ERROR.getValue()));
           return future;
         }
         jarFileName = new File(createTriggerStatement.getUriString()).getName();
@@ -504,7 +504,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   "Failed to get executable for Trigger '"
                       + createTriggerStatement.getUriString()
                       + "', please check the URI.",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getValue()));
           return future;
         }
         // modify req
@@ -540,13 +540,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
                     + createTriggerStatement.getUriString(),
-                TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
+                TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getValue()));
         return future;
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error(
             "[{}] Failed to create trigger {}. TSStatus is {}",
             executionStatus,
@@ -568,7 +568,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropTrigger(new TDropTriggerReq(triggerName));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error("[{}] Failed to drop trigger {}.", executionStatus, triggerName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
@@ -586,8 +586,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetTriggerTableResp getTriggerTableResp = client.getTriggerTable();
-      if (getTriggerTableResp.getStatus().getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (getTriggerTableResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(
                 getTriggerTableResp.getStatus().message, getTriggerTableResp.getStatus().code));
@@ -613,7 +612,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.setTTL(setTTLReq);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
@@ -644,7 +643,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
     }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -667,7 +666,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
     }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -690,7 +689,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
     }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -713,7 +712,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
     }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new StatementExecutionException(tsStatus));
@@ -736,7 +735,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       tsStatus = LocalConfigNode.getInstance().executeSetSystemStatus(status);
     }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new StatementExecutionException(tsStatus));
@@ -822,7 +821,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       showRegionResp = client.showRegion(showRegionReq);
-      if (showRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (showRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(
                 showRegionResp.getStatus().message, showRegionResp.getStatus().code));
@@ -844,7 +843,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       showDataNodesResp = client.showDataNodes();
-      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(
                 showDataNodesResp.getStatus().message, showDataNodesResp.getStatus().code));
@@ -865,8 +864,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       showConfigNodesResp = client.showConfigNodes();
-      if (showConfigNodesResp.getStatus().getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (showConfigNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(
                 showConfigNodesResp.getStatus().message, showConfigNodesResp.getStatus().code));
@@ -890,7 +888,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus =
           ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute create schema template {} in config node, status is {}.",
             createSchemaTemplateStatement.getName(),
@@ -1000,9 +998,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getValue() == tsStatus.getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute deactivate schema template {} from {} in config node, status is {}.",
             deactivateTemplateStatement.getTemplateName(),
@@ -1028,7 +1026,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus =
           configNodeClient.dropSchemaTemplate(dropSchemaTemplateStatement.getTemplateName());
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute drop schema template {} in config node, status is {}.",
             dropSchemaTemplateStatement.getTemplateName(),
@@ -1084,9 +1082,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getValue() == tsStatus.getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute unset schema template {} from {} in config node, status is {}.",
             unsetSchemaTemplateStatement.getTemplateName(),
@@ -1113,7 +1111,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       pipeSinkInfo.setPipeSinkType(createPipeSinkStatement.getPipeSinkType());
       pipeSinkInfo.setAttributes(createPipeSinkStatement.getAttributes());
       TSStatus tsStatus = configNodeClient.createPipeSink(pipeSinkInfo);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to create PIPESINK {} with type {} in config node, status is {}.",
             createPipeSinkStatement.getPipeSinkName(),
@@ -1138,7 +1136,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TDropPipeSinkReq req = new TDropPipeSinkReq();
       req.setPipeSinkName(dropPipeSinkStatement.getPipeSinkName());
       TSStatus tsStatus = configNodeClient.dropPipeSink(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to drop PIPESINK {} in config node, status is {}.",
             dropPipeSinkStatement.getPipeSinkName(),
@@ -1183,7 +1181,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setStartTime(createPipeStatement.getStartTime())
               .setAttributes(createPipeStatement.getPipeAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to create PIPE {} in config node, status is {}.",
             createPipeStatement.getPipeName(),
@@ -1204,7 +1202,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to start PIPE {}, status is {}.", startPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -1223,7 +1221,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.dropPipe(dropPipeStatement.getPipeName());
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to drop PIPE {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -1242,7 +1240,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.stopPipe(stopPipeStatement.getPipeName());
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to stop PIPE {}, status is {}.", stopPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -1300,9 +1298,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getValue() == tsStatus.getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute delete timeseries {} in config node, status is {}.",
             deleteTimeSeriesStatement.getPathPatternList(),
@@ -1332,7 +1330,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetRegionIdReq.setTimeSlotId(getRegionIdStatement.getTimeSlotId());
       }
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
@@ -1356,7 +1354,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetSeriesSlotListReq.setType(getSeriesSlotListStatement.getPartitionType());
       }
       resp = configNodeClient.getSeriesSlotList(tGetSeriesSlotListReq);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
@@ -1385,7 +1383,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetTimeSlotListReq.setEndTime(getTimeSlotListStatement.getEndTime());
       }
       resp = configNodeClient.getTimeSlotList(tGetTimeSlotListReq);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
         return future;
       }
@@ -1421,7 +1419,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getZoneId(),
               username);
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error(
             "[{}] Failed to create continuous query {}. TSStatus is {}",
             executionStatus,
@@ -1443,7 +1441,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropCQ(new TDropCQReq(cqId));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != executionStatus.getCode()) {
         LOGGER.error("[{}] Failed to drop continuous query {}.", executionStatus, cqId);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
@@ -1461,7 +1459,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TShowCQResp showCQResp = client.showCQ();
-      if (showCQResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (showCQResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         future.setException(
             new IoTDBException(showCQResp.getStatus().message, showCQResp.getStatus().code));
         return future;

@@ -112,7 +112,7 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
   @Override
   public InfluxTSStatus writePoints(InfluxWritePointsReq req) {
     List<InfluxTSStatus> tsStatusList = new ArrayList<>();
-    int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    int executeCode = TSStatusCode.SUCCESS_STATUS.getValue();
     for (Point point :
         InfluxLineParser.parserRecordsToPointsWithPrecision(req.lineProtocol, req.precision)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager, req.sessionId);
@@ -137,8 +137,8 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
   public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) {
     TSStatus tsStatus =
         clientRPCService.setStorageGroup(req.sessionId, "root." + req.getDatabase());
-    if (tsStatus.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-      tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (tsStatus.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getValue()) {
+      tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
       tsStatus.setMessage("Execute successfully");
     }
     return DataTypeUtils.RPCStatusToInfluxDBTSStatus(tsStatus);

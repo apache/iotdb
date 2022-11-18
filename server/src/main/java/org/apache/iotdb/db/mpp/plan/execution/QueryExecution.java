@@ -367,7 +367,7 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
             throw new IoTDBException(
-                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getValue());
           }
         } else if (resultHandle.isFinished()) {
           logger.debug("[ResultHandleFinished]");
@@ -395,11 +395,11 @@ public class QueryExecution implements IQueryExecution {
         }
         Throwable t = e.getCause() == null ? e : e.getCause();
         throwIfUnchecked(t);
-        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getValue());
       } catch (InterruptedException e) {
         stateMachine.transitionToFailed(e);
         Thread.currentThread().interrupt();
-        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getValue());
       } catch (Throwable t) {
         stateMachine.transitionToFailed(t);
         throw t;
@@ -550,7 +550,7 @@ public class QueryExecution implements IQueryExecution {
         // multiple devices
         if (statusCode == TSStatusCode.SUCCESS_STATUS) {
           List<TSStatus> subStatus = new ArrayList<>();
-          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getValue());
           for (TEndPoint endPoint : redirectNodeList) {
             subStatus.add(
                 StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)

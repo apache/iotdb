@@ -124,7 +124,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       for (int i = 0; i < storageGroupNum; i++) {
         TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
         status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       }
 
       // Create a DataRegionGroup for each StorageGroup through getOrCreateDataPartition
@@ -138,8 +138,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-            dataPartitionTableResp.getStatus().getCode());
+            TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp.getStatus().getCode());
       }
 
       // Check the number of Region-leader in each DataNode.
@@ -178,7 +177,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         // Set StorageGroups
         TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
         status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
         // TODO: Create a SchemaRegionGroup for each StorageGroup
         // TODO: (The Ratis protocol class is now hard to change leader)
@@ -201,8 +200,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-            dataPartitionTableResp.getStatus().getCode());
+            TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp.getStatus().getCode());
       }
 
       // Check leader distribution

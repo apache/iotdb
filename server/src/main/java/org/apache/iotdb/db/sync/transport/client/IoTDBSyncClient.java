@@ -133,7 +133,7 @@ public class IoTDBSyncClient implements ISyncClient {
               config.getIoTDBMajorVersion(),
               databaseName);
       TSStatus status = serviceClient.handshake(identityInfo);
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         logger.error("The receiver rejected the synchronization task because {}", status.message);
         return false;
       }
@@ -206,12 +206,12 @@ public class IoTDBSyncClient implements ISyncClient {
 
         TSStatus status = serviceClient.sendFile(metaInfo, buffToSend);
 
-        if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+        if ((status.code == TSStatusCode.SUCCESS_STATUS.getValue())) {
           // Success
           position += dataLength;
-        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getValue()) {
           position = Long.parseLong(status.message);
-        } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getValue()) {
           logger.error(
               "Receiver failed to receive data from {} because {}, abort.",
               file.getAbsoluteFile(),
@@ -251,9 +251,9 @@ public class IoTDBSyncClient implements ISyncClient {
       byte[] buffer = pipeData.serialize();
       ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
       TSStatus status = serviceClient.sendPipeData(buffToSend);
-      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
         logger.info("Transport PipeData {} Successfully", pipeData);
-      } else if (status.code == TSStatusCode.PIPESERVER_ERROR.getStatusCode()) {
+      } else if (status.code == TSStatusCode.PIPESERVER_ERROR.getValue()) {
         logger.error("Receiver failed to load PipeData {}, skip it.", pipeData);
         return false;
       }

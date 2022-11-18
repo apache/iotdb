@@ -52,10 +52,10 @@ public class FetchSchemaBlackListRPCHandler
   public void onComplete(TFetchSchemaBlackListResp tFetchSchemaBlackListResp) {
     TSStatus tsStatus = tFetchSchemaBlackListResp.getStatus();
     responseMap.put(requestId, tFetchSchemaBlackListResp);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully fetch schema black list on DataNode: {}", targetDataNode);
-    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.error(
           "Failed to fetch schema black list on DataNode {}, {}", targetDataNode, tsStatus);
@@ -81,7 +81,7 @@ public class FetchSchemaBlackListRPCHandler
     TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
     resp.setStatus(
         new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue(), errorMsg)));
     responseMap.put(requestId, resp);
   }
 }

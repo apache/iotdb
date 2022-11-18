@@ -97,12 +97,12 @@ public class SessionManager implements SessionManagerMBean {
 
     try {
       loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
-      if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         // check the version compatibility
         if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
           openSessionResp
               .sessionId(-1)
-              .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+              .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getValue())
               .setMessage(
                   "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
         } else {
@@ -110,7 +110,7 @@ public class SessionManager implements SessionManagerMBean {
 
           openSessionResp
               .sessionId(session.getId())
-              .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .setCode(TSStatusCode.SUCCESS_STATUS.getValue())
               .setMessage("Login successfully");
 
           LOGGER.info(
@@ -129,7 +129,7 @@ public class SessionManager implements SessionManagerMBean {
       LOGGER.error("Failed to connect to ConfigNode, because ", e);
       openSessionResp
           .sessionId(-1)
-          .setCode(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
+          .setCode(TSStatusCode.AUTHENTICATION_ERROR.getValue())
           .setMessage(e.getMessage());
     }
 

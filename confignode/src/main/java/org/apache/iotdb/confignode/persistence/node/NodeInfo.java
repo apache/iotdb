@@ -142,7 +142,7 @@ public class NodeInfo implements SnapshotProcessor {
       }
       registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
 
-      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
       if (nextNodeId.get() < minimumDataNode) {
         result.setMessage(
             String.format(
@@ -184,7 +184,7 @@ public class NodeInfo implements SnapshotProcessor {
         "{}, There are {} data node in cluster after executed RemoveDataNodePlan",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /**
@@ -203,7 +203,7 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /**
@@ -216,7 +216,7 @@ public class NodeInfo implements SnapshotProcessor {
   public DataNodeConfigurationResp getDataNodeConfiguration(
       GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
     DataNodeConfigurationResp result = new DataNodeConfigurationResp();
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
 
     int dataNodeId = getDataNodeConfigurationPlan.getDataNodeId();
     dataNodeInfoReadWriteLock.readLock().lock();
@@ -323,10 +323,10 @@ public class NodeInfo implements SnapshotProcessor {
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
           registeredConfigNodes);
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getValue());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
@@ -351,10 +351,10 @@ public class NodeInfo implements SnapshotProcessor {
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodePlan.getConfigNodeLocation(),
           registeredConfigNodes);
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getValue());
       status.setMessage(
           "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {

@@ -31,6 +31,6 @@ public class PipeException extends IoTDBException {
   }
 
   public PipeException(String message) {
-    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
+    super(message, TSStatusCode.PIPE_ERROR.getValue());
   }
 }

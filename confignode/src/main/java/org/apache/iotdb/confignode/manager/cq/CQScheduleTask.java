@@ -218,7 +218,7 @@ public class CQScheduleTask implements Runnable {
 
     @Override
     public void onComplete(TSStatus response) {
-      if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (response.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
 
         LOGGER.info(
             "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}",
@@ -242,7 +242,7 @@ public class CQScheduleTask implements Runnable {
               result.getErrorMessage());
           // no such cq, we don't need to submit it again
           if (result.getStatus() != null
-              && result.getStatus().code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+              && result.getStatus().code == TSStatusCode.NO_SUCH_CQ.getValue()) {
             LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getStatus().message);
             return;
           }

@@ -26,7 +26,7 @@ public class DuplicatedTemplateException extends MetadataException {
   public DuplicatedTemplateException(String path) {
     super(
         String.format("Failed to create duplicated template for path %s", path),
-        TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
+        TSStatusCode.DUPLICATED_TEMPLATE.getValue(),
         true);
   }
 }

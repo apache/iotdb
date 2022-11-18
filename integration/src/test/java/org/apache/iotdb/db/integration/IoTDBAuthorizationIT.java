@@ -204,7 +204,7 @@ public class IoTDBAuthorizationIT {
       try {
         userStmt.execute(statement);
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getStatusCode() + ""));
+        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getValue() + ""));
         continue;
       }
       fail();
@@ -230,7 +230,7 @@ public class IoTDBAuthorizationIT {
       try {
         userStmt.execute(statement);
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getStatusCode() + ""));
+        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getValue() + ""));
         continue;
       }
       fail();

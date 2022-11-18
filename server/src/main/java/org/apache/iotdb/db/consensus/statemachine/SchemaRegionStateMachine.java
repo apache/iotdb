@@ -73,7 +73,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       return getPlanNode(request).accept(new SchemaExecutionVisitor(), schemaRegion);
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
   }
 

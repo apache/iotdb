@@ -187,7 +187,7 @@ public class ConfigExecution implements IQueryExecution {
       try {
         return Optional.of(serde.serialize(resultSet));
       } catch (IOException e) {
-        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getValue());
       }
     }
     return Optional.empty();

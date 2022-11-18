@@ -74,7 +74,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode())
+                      .code(TSStatusCode.UNINITIALIZED_AUTH_ERROR.getValue())
                       .message(TSStatusCode.UNINITIALIZED_AUTH_ERROR.name()))
               .build();
       containerRequestContext.abortWith(resp);
@@ -108,7 +108,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
+                      .code(TSStatusCode.AUTHENTICATION_ERROR.getValue())
                       .message(TSStatusCode.AUTHENTICATION_ERROR.name()))
               .build();
       containerRequestContext.abortWith(resp);
@@ -126,7 +126,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
                     new ExecutionStatus()
-                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode())
+                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD.getValue())
                         .message(TSStatusCode.WRONG_LOGIN_PASSWORD.name()))
                 .build();
         containerRequestContext.abortWith(resp);
@@ -139,7 +139,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                      .code(TSStatusCode.INTERNAL_SERVER_ERROR.getValue())
                       .message(e.getMessage()))
               .build();
       containerRequestContext.abortWith(resp);

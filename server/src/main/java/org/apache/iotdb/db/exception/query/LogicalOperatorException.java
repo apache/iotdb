@@ -31,11 +31,11 @@ public class LogicalOperatorException extends QueryProcessException {
   public LogicalOperatorException() {
     super(
         "Error format in SQL statement, please check whether SQL statement is correct.",
-        TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
+        TSStatusCode.LOGICAL_OPERATOR_ERROR.getValue());
   }
 
   public LogicalOperatorException(String message) {
-    super(message, TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
+    super(message, TSStatusCode.LOGICAL_OPERATOR_ERROR.getValue());
   }
 
   public LogicalOperatorException(String message, int errorCode) {
@@ -45,7 +45,7 @@ public class LogicalOperatorException extends QueryProcessException {
   public LogicalOperatorException(String type, String message) {
     super(
         String.format("Unsupported type: [%s]. %s", type, message),
-        TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
+        TSStatusCode.LOGICAL_OPERATOR_ERROR.getValue());
   }
 
   public LogicalOperatorException(IoTDBException e) {

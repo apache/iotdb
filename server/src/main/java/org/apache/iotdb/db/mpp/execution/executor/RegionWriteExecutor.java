@@ -90,7 +90,7 @@ public class RegionWriteExecutor {
     // fire Trigger before the insertion
     TriggerFireResult result = visitor.process(planNode, TriggerEvent.BEFORE_INSERT);
     if (result.equals(TriggerFireResult.TERMINATION)) {
-      TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+      TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getValue());
       triggerError.setMessage(
           "Failed to complete the insertion because trigger error before the insertion.");
       writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
@@ -104,7 +104,7 @@ public class RegionWriteExecutor {
       if (writeResponse.isSuccessful()) {
         result = visitor.process(planNode, TriggerEvent.AFTER_INSERT);
         if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
-          TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+          TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getValue());
           triggerError.setMessage(
               "Meet trigger error before/after the insertion, the insertion itself is completed.");
           writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
@@ -128,7 +128,7 @@ public class RegionWriteExecutor {
       // TODO need consider more status
       if (writeResponse.getStatus() != null) {
         response.setAccepted(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+            TSStatusCode.SUCCESS_STATUS.getValue() == writeResponse.getStatus().getCode());
         response.setMessage(writeResponse.getStatus().message);
         response.setStatus(writeResponse.getStatus());
       } else {
@@ -218,16 +218,14 @@ public class RegionWriteExecutor {
         if (writeResponse.getStatus() != null) {
           response.setAccepted(
               !hasFailedMeasurement
-                  && TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      == writeResponse.getStatus().getCode());
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
+                  && TSStatusCode.SUCCESS_STATUS.getValue() == writeResponse.getStatus().getCode());
+          if (TSStatusCode.SUCCESS_STATUS.getValue() != writeResponse.getStatus().getCode()) {
             response.setMessage(writeResponse.getStatus().message);
             response.setStatus(writeResponse.getStatus());
           } else if (hasFailedMeasurement) {
             response.setMessage(partialInsertMessage);
             response.setStatus(
-                RpcUtils.getStatus(
-                    TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+                RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getValue(), partialInsertMessage));
           } else {
             response.setMessage(writeResponse.getStatus().message);
           }
@@ -374,9 +372,9 @@ public class RegionWriteExecutor {
             }
 
             TSStatus executionStatus = executionResult.getStatus();
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
               failingStatus.addAll(executionStatus.getSubStatus());
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
               failingStatus.add(executionStatus);
             }
           }
@@ -417,7 +415,7 @@ public class RegionWriteExecutor {
               failingMeasurementMap.entrySet()) {
             metadataException = failingMeasurement.getValue();
             if (metadataException.getErrorCode()
-                == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                == TSStatusCode.TIMESERIES_ALREADY_EXIST.getValue()) {
               LOGGER.info(
                   "There's no need to internal create timeseries. {}",
                   failingMeasurement.getValue().getMessage());
@@ -445,24 +443,24 @@ public class RegionWriteExecutor {
           // separate the measurement_already_exist exception and other exceptions process,
           // measurement_already_exist exception is acceptable due to concurrent timeseries creation
           if (failingStatus.isEmpty()) {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getValue()) {
                 // there's only measurement_already_exist exception
                 alreadyExistingStatus.addAll(executionStatus.getSubStatus());
               } else {
                 failingStatus.addAll(executionStatus.getSubStatus());
               }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
               failingStatus.add(executionStatus);
             }
           } else {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getValue()) {
                 failingStatus.addAll(executionStatus.getSubStatus());
               }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
               failingStatus.add(executionStatus);
             }
           }

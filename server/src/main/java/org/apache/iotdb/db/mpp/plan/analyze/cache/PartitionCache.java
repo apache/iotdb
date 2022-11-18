@@ -194,7 +194,7 @@ public class PartitionCache {
         TStorageGroupSchemaResp storageGroupSchemaResp =
             client.getMatchedStorageGroupSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           Set<String> storageGroupNames =
               storageGroupSchemaResp.getStorageGroupSchemaMap().keySet();
           // update all database into cache
@@ -240,7 +240,7 @@ public class PartitionCache {
           storageGroupSchema.setName(storageGroupName);
           TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
           TSStatus tsStatus = client.setStorageGroup(req);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+          if (TSStatusCode.SUCCESS_STATUS.getValue() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
           } else {
             // try to update cache by databases successfully created
@@ -412,7 +412,7 @@ public class PartitionCache {
           try (ConfigNodeClient client =
               configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-            if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+            if (TSStatusCode.SUCCESS_STATUS.getValue() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
             }
             // if confignode don't have then will throw RuntimeException

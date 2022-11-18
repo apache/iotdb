@@ -95,7 +95,7 @@ public class RegionMigrateProcedure
           break;
         case ADD_REGION_PEER:
           tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
+          if (tsStatus.getCode() == SUCCESS_STATUS.getValue()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
@@ -108,7 +108,7 @@ public class RegionMigrateProcedure
           break;
         case REMOVE_REGION_PEER:
           tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
+          if (tsStatus.getCode() == SUCCESS_STATUS.getValue()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
@@ -117,7 +117,7 @@ public class RegionMigrateProcedure
           break;
         case DELETE_OLD_REGION_PEER:
           tsStatus = handler.deleteOldRegionPeer(originalDataNode, consensusGroupId);
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
+          if (tsStatus.getCode() == SUCCESS_STATUS.getValue()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
           // Remove consensus group after a node stop, which will be failed, but we will
@@ -256,7 +256,7 @@ public class RegionMigrateProcedure
         state,
         consensusGroupId);
 
-    TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(SUCCESS_STATUS.getValue());
     synchronized (regionMigrateLock) {
       try {
         // TODO set timeOut?
@@ -269,7 +269,7 @@ public class RegionMigrateProcedure
       } catch (InterruptedException e) {
         LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
         status.setMessage("wait region migrate interrupt," + e.getMessage());
       }
     }
@@ -288,7 +288,7 @@ public class RegionMigrateProcedure
     synchronized (regionMigrateLock) {
       TSStatus migrateStatus = req.getMigrateResult();
       // migrate failed
-      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+      if (migrateStatus.getCode() != SUCCESS_STATUS.getValue()) {
         LOG.info(
             "{}, Region migrate failed in DataNode, migrateStatus: {}",
             REMOVE_DATANODE_PROCESS,

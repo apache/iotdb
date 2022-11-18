@@ -29,7 +29,7 @@ public class LogicalOptimizeException extends LogicalOperatorException {
   private static final long serialVersionUID = -7098092782689670064L;
 
   public LogicalOptimizeException(String message) {
-    super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+    super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getValue());
   }
 
   public LogicalOptimizeException(String filterOperator, FilterType filterType) {
@@ -37,7 +37,7 @@ public class LogicalOptimizeException extends LogicalOperatorException {
         String.format(
             "Unknown token in [%s]: [%s], [%s].",
             filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
-        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getValue());
   }
 
   public LogicalOptimizeException(IoTDBException e) {

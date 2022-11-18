@@ -64,7 +64,7 @@ public class DeletionLoader implements ILoader {
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         logger.error(String.format("Delete %s error, statement: %s.", deletion, statement));
         logger.error(String.format("Delete result status : %s.", result.status));
         throw new LoadFileException(

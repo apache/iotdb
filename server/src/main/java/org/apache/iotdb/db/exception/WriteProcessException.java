@@ -27,7 +27,7 @@ public class WriteProcessException extends IoTDBException {
   private static final long serialVersionUID = 7082567513626836322L;
 
   public WriteProcessException(String message) {
-    super(message, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    super(message, TSStatusCode.WRITE_PROCESS_ERROR.getValue());
   }
 
   public WriteProcessException(String message, int errorCode) {
@@ -39,10 +39,10 @@ public class WriteProcessException extends IoTDBException {
   }
 
   public WriteProcessException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    super(message, cause, TSStatusCode.WRITE_PROCESS_ERROR.getValue());
   }
 
   public WriteProcessException(Exception exception) {
-    super(exception, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    super(exception, TSStatusCode.WRITE_PROCESS_ERROR.getValue());
   }
 }

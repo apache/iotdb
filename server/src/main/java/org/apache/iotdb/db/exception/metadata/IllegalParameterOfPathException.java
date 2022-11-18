@@ -25,7 +25,7 @@ public class IllegalParameterOfPathException extends MetadataException {
 
   public IllegalParameterOfPathException(String msg, String path) {
     super(String.format("%s. Failed to create timeseries for path %s", msg, path));
-    errorCode = TSStatusCode.ILLEGAL_PARAMETER.getStatusCode();
+    errorCode = TSStatusCode.ILLEGAL_PARAMETER.getValue();
     this.isUserException = true;
   }
 }

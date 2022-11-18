@@ -144,15 +144,14 @@ public class TriggerInfo implements SnapshotProcessor {
               triggerInformation.getJarName());
         }
       }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
               "Failed to add trigger [%s] in TriggerTable on Config Nodes, because of %s",
               physicalPlan.getTriggerInformation().getTriggerName(), e);
       LOGGER.warn(errorMessage, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(errorMessage);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(errorMessage);
     }
   }
 
@@ -162,22 +161,22 @@ public class TriggerInfo implements SnapshotProcessor {
       existedJarToMD5.remove(triggerTable.getTriggerInformation(triggerName).getJarName());
       triggerTable.deleteTriggerInformation(triggerName);
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public TSStatus updateTriggerStateInTable(UpdateTriggerStateInTablePlan physicalPlan) {
     triggerTable.setTriggerState(physicalPlan.getTriggerName(), physicalPlan.getTriggerState());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public TriggerTableResp getTriggerTable(GetTriggerTablePlan req) {
     if (req.isOnlyStateful()) {
       return new TriggerTableResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
           triggerTable.getAllStatefulTriggerInformation());
     } else {
       return new TriggerTableResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
           triggerTable.getAllTriggerInformation());
     }
   }
@@ -186,10 +185,10 @@ public class TriggerInfo implements SnapshotProcessor {
     TDataNodeLocation dataNodeLocation = triggerTable.getTriggerLocation(req.getTriggerName());
     if (dataNodeLocation != null) {
       return new TriggerLocationResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), dataNodeLocation);
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), dataNodeLocation);
     } else {
       return new TriggerLocationResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
               .setMessage(String.format("Fail to get Location trigger[%s]", req.getTriggerName())),
           null);
     }
@@ -206,11 +205,11 @@ public class TriggerInfo implements SnapshotProcessor {
     } catch (Exception e) {
       LOGGER.error("Get TriggerJar failed", e);
       return new JarResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
               .setMessage("Get TriggerJar failed, because " + e.getMessage()),
           Collections.emptyList());
     }
-    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), jarList);
   }
 
   public TransferringTriggersResp getTransferringTriggers() {
@@ -219,14 +218,14 @@ public class TriggerInfo implements SnapshotProcessor {
 
   public TSStatus updateTriggersOnTransferNodes(UpdateTriggersOnTransferNodesPlan physicalPlan) {
     triggerTable.updateTriggersOnTransferNodes(physicalPlan.getDataNodeLocations());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public TSStatus updateTriggerLocation(UpdateTriggerLocationPlan physicalPlan) {
     triggerTable.updateTriggerLocation(
         physicalPlan.getTriggerName(), physicalPlan.getDataNodeLocation());
     triggerTable.setTriggerState(physicalPlan.getTriggerName(), TTriggerState.ACTIVE);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @TestOnly

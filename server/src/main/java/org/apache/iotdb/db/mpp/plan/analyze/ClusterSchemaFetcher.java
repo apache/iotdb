@@ -122,7 +122,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               ClusterPartitionFetcher.getInstance(),
               this,
               config.getQueryTimeoutThreshold());
-      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new RuntimeException(
             String.format(
                 "cannot fetch schema, status is: %s, msg is: %s",
@@ -481,11 +481,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult = executeStatement(statement);
 
     int statusCode = executionResult.status.getCode();
-    if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (statusCode == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return Collections.emptyList();
     }
 
-    if (statusCode != TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    if (statusCode != TSStatusCode.MULTIPLE_ERROR.getValue()) {
       throw new RuntimeException(
           new IoTDBException(executionResult.status.getMessage(), statusCode));
     }
@@ -493,7 +493,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<String> failedCreationList = new ArrayList<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
-      if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+      if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getValue()) {
         alreadyExistingMeasurements.add(
             MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {
@@ -516,8 +516,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   public void internalActivateTemplate(PartialPath devicePath) {
     ExecutionResult executionResult = executeStatement(new ActivateTemplateStatement(devicePath));
     TSStatus status = executionResult.status;
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()
+        && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getValue()) {
       throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
     }
   }

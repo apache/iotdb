@@ -121,18 +121,18 @@ public class DataNodeRegionManager {
       ConsensusGenericResponse consensusGenericResponse =
           SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getValue());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (IllegalPathException e1) {
       LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
-      tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getValue());
       tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
     } catch (MetadataException e2) {
       LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getValue());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
     }
@@ -157,21 +157,21 @@ public class DataNodeRegionManager {
       ConsensusGenericResponse consensusGenericResponse =
           DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getValue());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (DataRegionException e) {
       LOGGER.error("Create Data Region {} failed because {}", storageGroup, e.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getValue());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
   }
 
   public TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     LOGGER.info("start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
@@ -185,7 +185,7 @@ public class DataNodeRegionManager {
       }
     } catch (Exception e) {
       LOGGER.error("create new region {} error", regionId, e);
-      status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.CREATE_REGION_ERROR.getValue());
       status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
       return status;
     }

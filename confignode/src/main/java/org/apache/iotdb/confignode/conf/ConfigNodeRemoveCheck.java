@@ -108,17 +108,17 @@ public class ConfigNodeRemoveCheck {
                       configNodeLocation.getInternalEndPoint(),
                       removedNode,
                       ConfigNodeRequestType.REMOVE_CONFIG_NODE);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         break;
       }
 
-      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_ERROR.getValue()) {
         LOGGER.warn("Execute removeConfigNode failed for: {}", status.getMessage());
         break;
       }
     }
 
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       LOGGER.error(status.getMessage());
       throw new IOException("Remove ConfigNode failed: " + status.getMessage());
     }

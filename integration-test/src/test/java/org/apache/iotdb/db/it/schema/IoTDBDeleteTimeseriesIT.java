@@ -399,7 +399,7 @@ public class IoTDBDeleteTimeseriesIT {
       Assert.assertTrue(
           e.getMessage()
               .contains(
-                  TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                  TSStatusCode.PATH_NOT_EXIST.getValue()
                       + ": Timeseries [root.**] does not exist or is represented by schema template"));
     }
 
@@ -431,7 +431,7 @@ public class IoTDBDeleteTimeseriesIT {
       Assert.assertTrue(
           e.getMessage()
               .contains(
-                  TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                  TSStatusCode.PATH_NOT_EXIST.getValue()
                       + ": Timeseries [root.*.d1.s3] does not exist or is represented by schema template"));
     }
   }

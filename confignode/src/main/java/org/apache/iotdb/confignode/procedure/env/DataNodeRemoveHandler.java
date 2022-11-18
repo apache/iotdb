@@ -141,7 +141,7 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> regionReplicaNodes = findRegionLocations(regionId);
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn("Cannot find region replica nodes, region: {}", regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
       status.setMessage("Cannot find region replica nodes, region: " + regionId);
       return null;
     }
@@ -173,7 +173,7 @@ public class DataNodeRemoveHandler {
           "{}, Cannot find region replica nodes in createPeer, regionId: {}",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
       status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
       return status;
     }
@@ -232,7 +232,7 @@ public class DataNodeRemoveHandler {
               + "please check RegionGroup: {} by show regions sql command",
           REMOVE_DATANODE_PROCESS,
           regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
       status.setMessage(
           "There are no other DataNodes could be selected to perform the add peer process, "
               + "please check by show regions sql command");
@@ -385,7 +385,7 @@ public class DataNodeRemoveHandler {
   }
 
   private boolean isSucceed(TSStatus status) {
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue();
   }
 
   private boolean isFailed(TSStatus status) {
@@ -423,7 +423,7 @@ public class DataNodeRemoveHandler {
    */
   public DataNodeToStatusResp checkRemoveDataNodeRequest(RemoveDataNodePlan removeDataNodePlan) {
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    dataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    dataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
 
     TSStatus status = checkClusterProtocol();
     if (isFailed(status)) {
@@ -453,7 +453,7 @@ public class DataNodeRemoveHandler {
    *     otherwise
    */
   private TSStatus checkDataNodeExist(RemoveDataNodePlan removeDataNodePlan) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
 
     List<TDataNodeLocation> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes().stream()
@@ -463,7 +463,7 @@ public class DataNodeRemoveHandler {
         removeDataNodePlan.getDataNodeLocations().stream()
             .anyMatch(loc -> !allDataNodes.contains(loc));
     if (hasNotExistNode) {
-      status.setCode(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_NOT_EXIST.getValue());
       status.setMessage("there exist Data Node in request but not in cluster");
     }
     return status;
@@ -476,7 +476,7 @@ public class DataNodeRemoveHandler {
    * @return SUCCEED_STATUS if the number of DataNodes is enough, LACK_REPLICATION otherwise
    */
   private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
 
     int availableDatanodeSize =
@@ -498,7 +498,7 @@ public class DataNodeRemoveHandler {
               dataNodeLocation);
         }
         if (removedDataNodes.size() == 0) {
-          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getValue());
           status.setMessage("Failed to remove all requested data nodes");
           return status;
         }
@@ -507,7 +507,7 @@ public class DataNodeRemoveHandler {
 
     int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
-      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getValue());
       status.setMessage(
           String.format(
               "Can't remove datanode due to the limit of replication factor, "
@@ -635,10 +635,10 @@ public class DataNodeRemoveHandler {
    *     otherwise
    */
   private TSStatus checkClusterProtocol() {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
-      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getValue());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }
     return status;

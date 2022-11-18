@@ -79,7 +79,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
   void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("Start to pre-create PIPE [{}] on Config Nodes", pipeInfo.getPipeName());
     TSStatus status = env.getConfigManager().getSyncManager().preCreatePipe(pipeInfo);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -91,14 +91,14 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
         env.getConfigManager().getSyncManager().preCreatePipeOnDataNodes(pipeInfo);
     TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
     executedDataNodeIds.addAll(responseMap.keySet());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(
           String.format(
               "Fail to create PIPE [%s] because %s.",
               pipeInfo.getPipeName(),
               StringUtils.join(
                   responseMap.values().stream()
-                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getValue())
                       .map(TSStatus::getMessage)
                       .toArray(),
                   ", ")));
@@ -112,7 +112,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
         env.getConfigManager()
             .getSyncManager()
             .setPipeStatus(pipeInfo.getPipeName(), PipeStatus.STOP);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -143,7 +143,7 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
         break;
       case PRE_OPERATE_PIPE_CONFIGNODE:
         TSStatus status = env.getConfigManager().getSyncManager().dropPipe(pipeInfo.getPipeName());
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new ProcedureException(
               String.format(
                   "Failed to create pipe and failed to roll back because %s. Please execute [DROP PIPE %s] manually.",

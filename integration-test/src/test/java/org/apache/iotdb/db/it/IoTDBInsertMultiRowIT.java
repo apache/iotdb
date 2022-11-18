@@ -136,8 +136,7 @@ public class IoTDBInsertMultiRowIT {
       st1.execute("insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0), (2, 'hello')");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+      assertTrue(e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getValue())));
     }
   }
 
@@ -148,8 +147,7 @@ public class IoTDBInsertMultiRowIT {
           "insert into root.t1.d99.wt01(timestamp, s1, s2) values(100, null, 1), (101, null, 2)");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+      assertTrue(e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getValue())));
     }
     try (Statement st2 = connection.createStatement()) {
       st2.execute("CREATE TIMESERIES root.t1.d1.s1 WITH DATATYPE=double, ENCODING=PLAIN;");

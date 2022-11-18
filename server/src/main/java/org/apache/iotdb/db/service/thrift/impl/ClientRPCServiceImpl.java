@@ -202,7 +202,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
@@ -221,8 +221,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SCHEMA_FETCHER,
               req.getTimeout());
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -266,7 +266,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
@@ -284,7 +284,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SCHEMA_FETCHER,
               req.getTimeout());
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new RuntimeException("error code: " + result.status);
       }
 
@@ -327,7 +327,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createStatement(req, SESSION_MANAGER.getCurrSession().getZoneId());
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
@@ -344,7 +344,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SCHEMA_FETCHER,
               req.getTimeout());
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new RuntimeException("error code: " + result.status);
       }
 
@@ -562,7 +562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -607,7 +607,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -658,7 +658,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -707,7 +707,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -745,7 +745,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -791,7 +791,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -846,7 +846,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
         // permission check
         TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           return status;
         }
 
@@ -871,7 +871,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
         TSStatus status =
             onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
-        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getValue()) {
           isAllSuccessful = false;
         }
         results.add(status);
@@ -963,7 +963,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1019,7 +1019,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1075,7 +1075,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1130,7 +1130,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1177,7 +1177,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1224,7 +1224,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1278,7 +1278,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1357,7 +1357,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1415,7 +1415,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1497,7 +1497,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         resp.setStatus(status);
         return resp;
       }
@@ -1517,8 +1517,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
 
-      if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getValue()
+          && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
         resp.setStatus(executionResult.status);
         return resp;
       }
@@ -1577,7 +1577,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1623,7 +1623,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1668,7 +1668,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 
@@ -1733,7 +1733,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
 

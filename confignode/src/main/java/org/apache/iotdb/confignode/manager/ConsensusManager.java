@@ -326,9 +326,9 @@ public class ConsensusManager {
     TSStatus result = new TSStatus();
 
     if (isLeader()) {
-      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } else {
-      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getValue());
       result.setMessage(
           "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
 

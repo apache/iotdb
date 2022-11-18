@@ -67,7 +67,7 @@ public class SchemaNodeManagementResp implements DataSet {
       Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
     TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setMatchedNode(matchedNode);
 
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =

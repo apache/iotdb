@@ -151,7 +151,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         statement.setAligned(false);
 
         tsStatus = AuthorityChecker.checkAuthority(statement, session);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           LOG.warn(tsStatus.message);
         } else {
           long queryId = SESSION_MANAGER.requestQueryId();

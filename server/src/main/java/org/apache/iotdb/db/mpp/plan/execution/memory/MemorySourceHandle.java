@@ -77,7 +77,7 @@ public class MemorySourceHandle implements ISourceHandle {
       try {
         return serde.serialize(result);
       } catch (IOException e) {
-        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getValue());
       }
     }
   }

@@ -101,7 +101,7 @@ public class TriggerManager {
       if (targetDataNode.isPresent()) {
         dataNodeLocation = targetDataNode.get();
       } else {
-        return new TSStatus(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+        return new TSStatus(TSStatusCode.NO_ENOUGH_DATANODE.getValue());
       }
     }
     final String triggerName = req.getTriggerName();
@@ -141,8 +141,7 @@ public class TriggerManager {
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetTriggerTableResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(e.getMessage()),
           Collections.emptyList());
     }
   }
@@ -167,8 +166,7 @@ public class TriggerManager {
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerJar", e);
       return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(e.getMessage()),
           Collections.emptyList());
     }
   }
@@ -200,7 +198,7 @@ public class TriggerManager {
           consensusManager
               .write(new UpdateTriggersOnTransferNodesPlan(newUnknownDataNodeList))
               .getStatus();
-      if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return transferResult;
       }
 
@@ -216,7 +214,7 @@ public class TriggerManager {
         transferResult =
             RpcUtils.squashResponseStatusList(
                 updateTriggerLocation(trigger, newDataNodeLocation, dataNodeLocationMap));
-        if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           return transferResult;
         }
 
@@ -224,7 +222,7 @@ public class TriggerManager {
             consensusManager
                 .write(new UpdateTriggerLocationPlan(trigger, newDataNodeLocation))
                 .getStatus();
-        if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           return transferResult;
         }
       }
@@ -232,7 +230,7 @@ public class TriggerManager {
       triggerInfo.releaseTriggerTableLock();
     }
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public List<TSStatus> updateTriggerLocation(

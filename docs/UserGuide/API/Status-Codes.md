@@ -38,13 +38,14 @@ try {
 
 ```
 
-With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getErrorCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`.
+With Error Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, 
+we can simply use `e.getStatusCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getValue()`.
 
 Here is a list of Status Code and related message:
 
 |Status Code|Status Type|Meanings|
 |:--|:---|:---|
-|200|SUCCESS_STATUS||
+|0|SUCCESS_STATUS||
 |201|INCOMPATIBLE_VERSION|Incompatible version|
 |202|CONFIGURATION_ERROR|Configuration error|
 |203|START_UP_ERROR|Meet error while starting|

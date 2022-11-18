@@ -91,7 +91,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
       // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getValue() != tsStatus.getCode()) {
         LOGGER.error(
             "Failed to execute create schema template {} in config node, status is {}.",
             statement.getName(),
@@ -101,7 +101,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (TException | IOException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getValue()));
     }
   }
 
@@ -125,8 +125,7 @@ public class ClusterTemplateManager implements ITemplateManager {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetAllTemplatesResp tGetAllTemplatesResp = configNodeClient.getAllTemplates();
       // Get response or throw exception
-      if (tGetAllTemplatesResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (tGetAllTemplatesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         List<ByteBuffer> list = tGetAllTemplatesResp.getTemplateList();
         list.forEach(
             templateData -> {
@@ -143,7 +142,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (TException | IOException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getValue()));
     }
     return templatesList;
   }
@@ -153,7 +152,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         byte[] templateBytes = resp.getTemplate();
         Template template = new Template();
         template.deserialize(ByteBuffer.wrap(templateBytes));
@@ -165,7 +164,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (Exception e) {
       throw new RuntimeException(
           new IoTDBException(
-              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getValue()));
     }
   }
 
@@ -177,7 +176,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       req.setName(name);
       req.setPath(path.getFullPath());
       TSStatus tsStatus = configNodeClient.setSchemaTemplate(req);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new IoTDBException(tsStatus.getMessage(), tsStatus.getCode());
       }
     } catch (Exception e) {
@@ -191,7 +190,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         if (resp.getPathList() != null) {
           resp.getPathList()
               .forEach(

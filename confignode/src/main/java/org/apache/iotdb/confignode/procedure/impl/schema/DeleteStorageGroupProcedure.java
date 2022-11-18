@@ -121,7 +121,7 @@ public class DeleteStorageGroupProcedure
           // Delete StorageGroupPartitionTable
           TSStatus status = env.deleteConfig(deleteSgSchema.getName());
 
-          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(new ProcedureException("Delete config info id failed"));

@@ -76,7 +76,7 @@ public class IoTDBStorageGroupIT {
       // set StorageGroup0 by default values
       TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
       status = client.setStorageGroup(setReq0);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // set StorageGroup1 by specific values
       TSetStorageGroupReq setReq1 =
@@ -87,26 +87,23 @@ public class IoTDBStorageGroupIT {
                   .setDataReplicationFactor(5)
                   .setTimePartitionInterval(2048L));
       status = client.setStorageGroup(setReq1);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // test count all StorageGroups
       TCountStorageGroupResp countResp =
           client.countMatchedStorageGroups(Arrays.asList("root", "**"));
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
 
       // test count one StorageGroup
       countResp = client.countMatchedStorageGroups(Arrays.asList("root", "sg0"));
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
 
       // test query all StorageGroupSchemas
       TStorageGroupSchemaResp getResp =
           client.getMatchedStorageGroupSchemas(Arrays.asList("root", "**"));
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getResp.getStatus().getCode());
       Map<String, TStorageGroupSchema> schemaMap = getResp.getStorageGroupSchemaMap();
       Assert.assertEquals(2, schemaMap.size());
       TStorageGroupSchema storageGroupSchema = schemaMap.get(sg0);
@@ -126,23 +123,22 @@ public class IoTDBStorageGroupIT {
 
       // test fail by re-register
       status = client.setStorageGroup(setReq0);
-      Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getValue(), status.getCode());
 
       // test StorageGroup setter interfaces
       PartialPath patternPath = new PartialPath(sg1);
       status = client.setTTL(new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       status = client.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       status = client.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 1));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       status = client.setTimePartitionInterval(new TSetTimePartitionIntervalReq(sg1, 604800L));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // test setter results
       getResp = client.getMatchedStorageGroupSchemas(Arrays.asList("root", "sg1"));
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getResp.getStatus().getCode());
       schemaMap = getResp.getStorageGroupSchemaMap();
       Assert.assertEquals(1, schemaMap.size());
       storageGroupSchema = schemaMap.get(sg1);
@@ -166,11 +162,11 @@ public class IoTDBStorageGroupIT {
       TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
       // set StorageGroup0 by default values
       status = client.setStorageGroup(setReq0);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       // set StorageGroup1 by specific values
       TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
       status = client.setStorageGroup(setReq1);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
       List<String> sgs = Arrays.asList(sg0, sg1);
       deleteStorageGroupsReq.setPrefixPathList(sgs);
@@ -178,7 +174,7 @@ public class IoTDBStorageGroupIT {
       TStorageGroupSchemaResp root =
           client.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
       Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), deleteSgStatus.getCode());
     }
   }
 }

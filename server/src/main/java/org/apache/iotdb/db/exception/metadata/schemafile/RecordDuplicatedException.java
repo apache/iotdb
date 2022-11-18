@@ -28,7 +28,7 @@ public class RecordDuplicatedException extends MetadataException {
   public RecordDuplicatedException(String recordKey) {
     super(
         String.format("Segment has duplicated record key : " + recordKey),
-        TSStatusCode.RECORD_DUPLICATED.getStatusCode(),
+        TSStatusCode.RECORD_DUPLICATED.getValue(),
         true);
   }
 }

@@ -36,7 +36,7 @@ public class PingApiServiceImpl extends PingApiService {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity(
               new ExecutionStatus()
-                  .code(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .code(TSStatusCode.INTERNAL_SERVER_ERROR.getValue())
                   .message(UNAVAILABLE_SERVICE))
           .build();
     }
@@ -44,7 +44,7 @@ public class PingApiServiceImpl extends PingApiService {
     return Response.ok()
         .entity(
             new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                .code(TSStatusCode.SUCCESS_STATUS.getValue())
                 .message(TSStatusCode.SUCCESS_STATUS.name()))
         .build();
   }

@@ -545,7 +545,7 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
+              TSStatusCode.NO_PERMISSION.getValue()
                   + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
@@ -575,7 +575,7 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
+              TSStatusCode.NO_PERMISSION.getValue()
                   + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
@@ -607,7 +607,7 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
+              TSStatusCode.NO_PERMISSION.getValue()
                   + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }
@@ -619,7 +619,7 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
+              TSStatusCode.NO_PERMISSION.getValue()
                   + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }

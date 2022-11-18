@@ -83,7 +83,7 @@ public class CQManager {
       LOGGER.warn(
           "Unexpected error happened while dropping cq {}: ", req.cqId, response.getException());
       // consensus layer related errors
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue());
       res.setMessage(response.getErrorMessage());
       return res;
     }
@@ -96,7 +96,7 @@ public class CQManager {
     } else {
       LOGGER.warn("Unexpected error happened while showing cq: ", response.getException());
       // consensus layer related errors
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue());
       res.setMessage(response.getException().toString());
       return new TShowCQResp(res, Collections.emptyList());
     }

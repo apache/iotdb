@@ -83,7 +83,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           // TODO consider using reference counts to determine whether to remove jar
           if (RpcUtils.squashResponseStatusList(env.dropTriggerOnDataNodes(triggerName, false))
                   .getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              == TSStatusCode.SUCCESS_STATUS.getValue()) {
             setNextState(DropTriggerState.DATA_NODE_DROPPED);
           } else {
             throw new TriggerManagementException(

@@ -87,7 +87,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     LOGGER.info("Start to pre-stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
         env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_STOP);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -101,14 +101,14 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
             .operatePipeOnDataNodes(pipeName, SyncOperation.STOP_PIPE);
     TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
     executedDataNodeIds.addAll(responseMap.keySet());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(
           String.format(
               "Fail to stop PIPE [%s] because %s.",
               pipeName,
               StringUtils.join(
                   responseMap.values().stream()
-                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getValue())
                       .map(TSStatus::getMessage)
                       .toArray(),
                   ", ")));
@@ -120,7 +120,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
     LOGGER.info("Start to stop PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
         env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.STOP);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -152,7 +152,7 @@ public class StopPipeProcedure extends AbstractOperatePipeProcedure {
       case PRE_OPERATE_PIPE_CONFIGNODE:
         TSStatus status =
             env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new ProcedureException(
               String.format(
                   "Failed to stop pipe and failed to roll back because %s. Please execute [STOP PIPE %s] manually.",

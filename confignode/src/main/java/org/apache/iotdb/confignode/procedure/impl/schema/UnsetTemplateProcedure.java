@@ -138,7 +138,7 @@ public class UnsetTemplateProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .preUnsetSchemaTemplate(template.getId(), path);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -168,7 +168,7 @@ public class UnsetTemplateProcedure
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         LOGGER.error(
             "Failed to invalidate template cache of template {} set on {}",
             template.getName(),
@@ -213,7 +213,7 @@ public class UnsetTemplateProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                       statusMap.put(k, v.getStatus());
@@ -273,7 +273,7 @@ public class UnsetTemplateProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .unsetSchemaTemplateInBlackList(template.getId(), path);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -294,7 +294,7 @@ public class UnsetTemplateProcedure
           env.getConfigManager()
               .getClusterSchemaManager()
               .rollbackPreUnsetSchemaTemplate(template.getId(), path);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         return;
       } else {
         LOGGER.error(
@@ -335,7 +335,7 @@ public class UnsetTemplateProcedure
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         LOGGER.error(
             "Failed to rollback template cache of template {} set on {}", template.getName(), path);
         throw new ProcedureException(new MetadataException("Rollback template cache failed"));

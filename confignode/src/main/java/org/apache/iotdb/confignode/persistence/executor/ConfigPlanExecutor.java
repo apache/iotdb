@@ -264,7 +264,7 @@ public class ConfigPlanExecutor {
         return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
       case SetStorageGroup:
         TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           return status;
         }
         return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
@@ -466,8 +466,7 @@ public class ConfigPlanExecutor {
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
             partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
-    if (schemaNodeManagementResp.getStatus().getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (schemaNodeManagementResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       schemaNodeManagementResp.setMatchedNode(alreadyMatchedNode);
     }
     return schemaNodeManagementResp;

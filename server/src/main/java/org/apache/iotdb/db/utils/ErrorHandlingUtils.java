@@ -80,11 +80,11 @@ public class ErrorHandlingUtils {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getValue()) {
         String message =
             String.format(
                 "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
-        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getValue()) {
           LOGGER.error(message);
         } else {
           LOGGER.error(message, e);
@@ -159,7 +159,7 @@ public class ErrorHandlingUtils {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
       for (TSStatus status : batchException.getFailingStatus()) {
-        if (status.getCode() == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.STORAGE_ENGINE_NOT_READY.getValue()) {
           return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
         }
       }

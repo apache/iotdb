@@ -30,7 +30,7 @@ import java.util.Map;
  * <p>docs/zh/UserGuide/API/Status-Codes.md
  */
 public enum TSStatusCode {
-  SUCCESS_STATUS(200),
+  SUCCESS_STATUS(0),
 
   // System level
   INCOMPATIBLE_VERSION(201),
@@ -171,22 +171,22 @@ public enum TSStatusCode {
   CQ_AlREADY_EXIST(1402),
   CQ_UPDATE_LAST_EXEC_TIME_ERROR(1403);
 
-  private final int statusCode;
+  private final int value;
 
   private static final Map<Integer, TSStatusCode> CODE_MAP = new HashMap<>();
 
   static {
     for (TSStatusCode value : TSStatusCode.values()) {
-      CODE_MAP.put(value.getStatusCode(), value);
+      CODE_MAP.put(value.getValue(), value);
     }
   }
 
-  TSStatusCode(int statusCode) {
-    this.statusCode = statusCode;
+  TSStatusCode(int value) {
+    this.value = value;
   }
 
-  public int getStatusCode() {
-    return statusCode;
+  public int getValue() {
+    return value;
   }
 
   public static TSStatusCode representOf(int statusCode) {
@@ -195,6 +195,6 @@ public enum TSStatusCode {
 
   @Override
   public String toString() {
-    return String.format("%s(%d)", name(), getStatusCode());
+    return String.format("%s(%d)", name(), getValue());
   }
 }

@@ -33,21 +33,21 @@ public class ColossalRecordException extends MetadataException {
     super(
         String.format(
             "Record of key [%s] is too large for SchemaFile to store, content size:%d", key, size),
-        TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
+        TSStatusCode.OVERSIZE_RECORD.getValue(),
         true);
   }
 
   public ColossalRecordException(String key) {
     super(
         String.format("Key [%s] is too large to store in a InternalPage as index entry.", key),
-        TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
+        TSStatusCode.OVERSIZE_RECORD.getValue(),
         true);
   }
 
   public ColossalRecordException(String key, String alias) {
     super(
         String.format("Key-Alias pair (%s, %s) is too large for SchemaFile to store.", key, alias),
-        TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
+        TSStatusCode.OVERSIZE_RECORD.getValue(),
         true);
   }
 }

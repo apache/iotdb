@@ -29,8 +29,7 @@ public class PathAlreadyExistException extends MetadataException {
 
   public PathAlreadyExistException(String path) {
     super(
-        String.format("Path [%s] already exist", path),
-        TSStatusCode.PATH_ALREADY_EXIST.getStatusCode());
+        String.format("Path [%s] already exist", path), TSStatusCode.PATH_ALREADY_EXIST.getValue());
     this.isUserException = true;
   }
 }

@@ -128,21 +128,20 @@ public class UDFInfo implements SnapshotProcessor {
               ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
         }
       }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
               "Failed to add UDF [%s] in UDF_Table on Config Nodes, because of %s",
               physicalPlan.getUdfInformation().getFunctionName(), e);
       LOGGER.warn(errorMessage, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(errorMessage);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(errorMessage);
     }
   }
 
   public DataSet getUDFTable() {
     return new FunctionTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         udfTable.getAllNonBuiltInUDFInformation());
   }
 
@@ -157,11 +156,11 @@ public class UDFInfo implements SnapshotProcessor {
     } catch (Exception e) {
       LOGGER.error("Get UDF_Jar failed", e);
       return new JarResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
               .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
           Collections.emptyList());
     }
-    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
+    return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), jarList);
   }
 
   public TSStatus dropFunction(DropFunctionPlan req) {
@@ -170,7 +169,7 @@ public class UDFInfo implements SnapshotProcessor {
       existedJarToMD5.remove(udfTable.getUDFInformation(udfName).getJarName());
       udfTable.removeUDFInformation(udfName);
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @TestOnly

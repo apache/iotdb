@@ -57,7 +57,7 @@ public class ConfigExecutionTest {
     ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), result.status.code);
   }
 
   @Test
@@ -81,7 +81,7 @@ public class ConfigExecutionTest {
       assertTrue(optionalTsBlock.isPresent());
       tsBlockFromExecution = optionalTsBlock.get();
     }
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), result.status.code);
     assertEquals(tsBlock, tsBlockFromExecution);
   }
 
@@ -94,7 +94,7 @@ public class ConfigExecutionTest {
     ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
-    assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getValue(), result.status.code);
   }
 
   @Test
@@ -121,7 +121,7 @@ public class ConfigExecutionTest {
         new Thread(
             () -> {
               ExecutionResult result = execution.getStatus();
-              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getValue(), result.status.code);
             });
     resultThread.start();
     taskResult.cancel(true);
@@ -139,7 +139,7 @@ public class ConfigExecutionTest {
         new Thread(
             () -> {
               ExecutionResult result = execution.getStatus();
-              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getValue(), result.status.code);
             });
     resultThread.start();
     execution.start();
@@ -152,7 +152,7 @@ public class ConfigExecutionTest {
       // Assert.fail("InterruptedException should be threw here");
     } catch (InterruptedException e) {
       ExecutionResult result = execution.getStatus();
-      assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+      assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getValue(), result.status.code);
       execution.stop();
     }
   }

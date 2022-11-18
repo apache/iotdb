@@ -99,9 +99,9 @@ public class OperatePipeProcedureRollbackProcessor {
                   DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
           AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
           TSStatus tsStatus = clientHandler.getResponseList().get(0);
-          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
             entry.getValue().poll();
-          } else if (tsStatus.getCode() == TSStatusCode.PIPE_ERROR.getStatusCode()) {
+          } else if (tsStatus.getCode() == TSStatusCode.PIPE_ERROR.getValue()) {
             // skip
             LOGGER.warn(
                 String.format(

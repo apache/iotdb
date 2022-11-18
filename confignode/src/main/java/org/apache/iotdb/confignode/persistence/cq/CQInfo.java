@@ -81,7 +81,7 @@ public class CQInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       if (cqMap.containsKey(cqId)) {
-        res.code = TSStatusCode.CQ_AlREADY_EXIST.getStatusCode();
+        res.code = TSStatusCode.CQ_AlREADY_EXIST.getValue();
         res.message = String.format("CQ %s has already been created.", cqId);
       } else {
         CQEntry cqEntry =
@@ -90,7 +90,7 @@ public class CQInfo implements SnapshotProcessor {
                 plan.getMd5(),
                 plan.getFirstExecutionTime() - plan.getReq().everyInterval);
         cqMap.put(cqId, cqEntry);
-        res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        res.code = TSStatusCode.SUCCESS_STATUS.getValue();
       }
       return res;
     } finally {
@@ -112,16 +112,16 @@ public class CQInfo implements SnapshotProcessor {
     try {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("CQ %s doesn't exist.", cqId);
         LOGGER.warn("Drop CQ {} failed, because it doesn't exist.", cqId);
       } else if ((md5.isPresent() && !md5.get().equals(cqEntry.md5))) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("MD5 of CQ %s doesn't match", cqId);
         LOGGER.warn("Drop CQ {} failed, because its MD5 doesn't match.", cqId);
       } else {
         cqMap.remove(cqId);
-        res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        res.code = TSStatusCode.SUCCESS_STATUS.getValue();
         LOGGER.info("Drop CQ {} successfully.", cqId);
       }
       return res;
@@ -134,7 +134,7 @@ public class CQInfo implements SnapshotProcessor {
     lock.readLock().lock();
     try {
       return new ShowCQResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
           cqMap.values().stream().map(CQEntry::new).collect(Collectors.toList()));
     } finally {
       lock.readLock().unlock();
@@ -154,17 +154,17 @@ public class CQInfo implements SnapshotProcessor {
     try {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("CQ %s doesn't exist.", cqId);
       } else if (!md5.equals(cqEntry.md5)) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("MD5 of CQ %s doesn't match", cqId);
       } else if (cqEntry.state == CQState.ACTIVE) {
-        res.code = TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode();
+        res.code = TSStatusCode.CQ_ALREADY_ACTIVE.getValue();
         res.message = String.format("CQ %s has already been active", cqId);
       } else {
         cqEntry.state = CQState.ACTIVE;
-        res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        res.code = TSStatusCode.SUCCESS_STATUS.getValue();
       }
       return res;
     } finally {
@@ -187,20 +187,20 @@ public class CQInfo implements SnapshotProcessor {
     try {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("CQ %s doesn't exist.", cqId);
       } else if (!md5.equals(cqEntry.md5)) {
-        res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
+        res.code = TSStatusCode.NO_SUCH_CQ.getValue();
         res.message = String.format("MD5 of CQ %s doesn't match", cqId);
       } else if (cqEntry.lastExecutionTime >= plan.getExecutionTime()) {
-        res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode();
+        res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getValue();
         res.message =
             String.format(
                 "Update last execution time of CQ %s failed because its original last execution time(%d) is larger than the updated one(%d).",
                 cqId, cqEntry.lastExecutionTime, plan.getExecutionTime());
       } else {
         cqEntry.lastExecutionTime = plan.getExecutionTime();
-        res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+        res.code = TSStatusCode.SUCCESS_STATUS.getValue();
       }
       return res;
     } finally {

@@ -60,7 +60,7 @@ public class IoTDBEncodingIT {
       statement.execute("CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=REGULAR");
       fail();
     } catch (SQLException e) {
-      assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+      assertEquals(TSStatusCode.METADATA_ERROR.getValue(), e.getErrorCode());
     }
   }
 

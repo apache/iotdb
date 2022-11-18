@@ -64,7 +64,7 @@ public class PermissionManager {
       tsStatus = getConsensusManager().write(authorPlan).getStatus();
     } else {
       tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
-      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         tsStatus = getConsensusManager().write(authorPlan).getStatus();
       }
     }
@@ -112,7 +112,7 @@ public class PermissionManager {
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   req,
                   DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return status;
       }
     }

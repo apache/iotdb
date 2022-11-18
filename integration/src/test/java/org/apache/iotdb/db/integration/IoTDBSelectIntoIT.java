@@ -417,7 +417,7 @@ public class IoTDBSelectIntoIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
+              .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getValue())));
       assertTrue(throwable.getMessage().contains("not consistent"));
     }
   }

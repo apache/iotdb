@@ -351,7 +351,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return write(planNode);
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
   }
 

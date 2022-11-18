@@ -76,7 +76,7 @@ public class IoTDBSchemaTemplateIT {
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Duplicated template name: t1",
           e.getMessage());
     }
 
@@ -89,7 +89,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("DROP SCHEMA TEMPLATE t1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode()
+          TSStatusCode.METADATA_ERROR.getValue()
               + ": Template [t1] has been set on MTree, cannot be dropped now.",
           e.getMessage());
     }
@@ -151,7 +151,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          TSStatusCode.TEMPLATE_IS_IN_USE.getValue() + ": Template is in use on root.sg1.d1",
           e.getMessage());
     }
   }
@@ -164,7 +164,7 @@ public class IoTDBSchemaTemplateIT {
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Duplicated template name: t1",
           e.getMessage());
     }
 
@@ -229,7 +229,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          TSStatusCode.TEMPLATE_IS_IN_USE.getValue() + ": Template is in use on root.sg1.d1",
           e.getMessage());
     }
   }

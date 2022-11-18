@@ -79,10 +79,10 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     try {
       syncMetadata.addPipeSink(SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(plan.getPipeSinkInfo()));
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (PipeSinkException e) {
       LOGGER.error("failed to execute CreatePipeSinkPlan {} on ClusterSyncInfo", plan, e);
-      status.setCode(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.CREATE_PIPE_SINK_ERROR.getValue());
       LOGGER.error(e.getMessage());
     }
     return status;

@@ -24,6 +24,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class SeriesNumberOverflowException extends MetadataException {
 
   public SeriesNumberOverflowException() {
-    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getValue());
   }
 }

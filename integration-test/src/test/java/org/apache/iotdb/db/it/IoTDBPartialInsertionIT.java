@@ -75,7 +75,7 @@ public class IoTDBPartialInsertionIT {
         assertTrue(
             e.getMessage()
                 .contains(
-                    TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                    TSStatusCode.PATH_NOT_EXIST.getValue()
                         + ": Path [root.sg1.s0] does not exist"));
       }
     }

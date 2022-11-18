@@ -101,14 +101,14 @@ public class AuthorizerManagerTest {
 
     // User has permission
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        TSStatusCode.SUCCESS_STATUS.getValue(),
         authorityFetcher
             .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // User does not have permission
     Assert.assertEquals(
-        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        TSStatusCode.NO_PERMISSION.getValue(),
         authorityFetcher
             .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
@@ -142,14 +142,14 @@ public class AuthorizerManagerTest {
 
     // role has permission
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        TSStatusCode.SUCCESS_STATUS.getValue(),
         authorityFetcher
             .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // role does not have permission
     Assert.assertEquals(
-        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        TSStatusCode.NO_PERMISSION.getValue(),
         authorityFetcher
             .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())

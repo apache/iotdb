@@ -136,7 +136,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getStorageGroupNodeByStorageGroupPath(partialPathName)
           .setStorageGroupSchema(storageGroupSchema);
 
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
@@ -161,11 +161,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath partialPathName = new PartialPath(storageGroup);
       mTree.deleteStorageGroup(partialPathName);
 
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       LOGGER.warn("Database not exist", e);
       result
-          .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setCode(TSStatusCode.SUCCESS_STATUS.getValue())
           .setMessage("Database not exist: " + e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -180,11 +180,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
       result.setCount(mTree.getStorageGroupNum(patternPath, false));
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getValue())
               .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
@@ -206,11 +206,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getValue())
               .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
@@ -231,15 +231,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               .getStorageGroupSchema()
               .setTTL(plan.getTTL());
         }
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
         result.setMessage("StorageGroup does not exist");
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -257,14 +257,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(plan.getSchemaReplicationFactor());
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -282,14 +282,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(plan.getDataReplicationFactor());
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -307,14 +307,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(plan.getTimePartitionInterval());
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
       } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -340,10 +340,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         storageGroupSchema.setMaxSchemaRegionGroupCount(entry.getValue().getLeft());
         storageGroupSchema.setMaxDataRegionGroupCount(entry.getValue().getRight());
       }
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -577,7 +577,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       Template template = createSchemaTemplatePlan.getTemplate();
       templateTable.createTemplate(template);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -624,7 +624,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       mTree.checkTemplateOnPath(path);
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
       resp.setTemplateList(
           Collections.singletonList(
               templateTable.getTemplate(checkTemplateSettablePlan.getName())));
@@ -650,7 +650,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
       mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -668,7 +668,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         templateId = templateTable.getTemplate(templateName).getId();
       }
       pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, false));
-      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -782,7 +782,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public TSStatus dropSchemaTemplate(DropSchemaTemplatePlan dropSchemaTemplatePlan) {
     try {
       templateTable.dropTemplate(dropSchemaTemplatePlan.getTemplateName());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }

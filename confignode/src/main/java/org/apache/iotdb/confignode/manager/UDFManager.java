@@ -94,14 +94,14 @@ public class UDFManager {
       final TSStatus dataNodesStatus =
           RpcUtils.squashResponseStatusList(
               createFunctionOnDataNodes(udfInformation, needToSaveJar ? jarFile : null));
-      if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return dataNodesStatus;
       }
 
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
-        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
+        return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getValue())
             .setMessage(
                 String.format(
                     "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
@@ -113,7 +113,7 @@ public class UDFManager {
       return configManager.getConsensusManager().write(createFunctionPlan).getStatus();
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
           .setMessage(e.getMessage());
     } finally {
       udfInfo.releaseUDFTableLock();
@@ -139,7 +139,7 @@ public class UDFManager {
       udfInfo.validate(functionName);
 
       TSStatus result = RpcUtils.squashResponseStatusList(dropFunctionOnDataNodes(functionName));
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         return result;
       }
 
@@ -149,7 +149,7 @@ public class UDFManager {
           .getStatus();
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
           .setMessage(e.getMessage());
     } finally {
       udfInfo.releaseUDFTableLock();
@@ -176,8 +176,7 @@ public class UDFManager {
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetUDFTableResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(e.getMessage()),
           Collections.emptyList());
     }
   }
@@ -193,8 +192,7 @@ public class UDFManager {
     } catch (IOException e) {
       LOGGER.error("Fail to get TriggerJar", e);
       return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()).setMessage(e.getMessage()),
           Collections.emptyList());
     }
   }

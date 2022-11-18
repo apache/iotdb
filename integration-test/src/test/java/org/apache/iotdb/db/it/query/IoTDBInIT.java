@@ -105,24 +105,19 @@ public class IoTDBInIT {
   public void testCastException() {
     assertTestFail(
         "select * from root.** where s1 in (\"test\")",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": \"test\" cannot be cast to [INT32]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue() + ": \"test\" cannot be cast to [INT32]");
     assertTestFail(
         "select * from root.** where s2 in (\"test\")",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": \"test\" cannot be cast to [INT64]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue() + ": \"test\" cannot be cast to [INT64]");
     assertTestFail(
         "select * from root.** where s3 in (\"test\")",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": \"test\" cannot be cast to [FLOAT]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue() + ": \"test\" cannot be cast to [FLOAT]");
     assertTestFail(
         "select * from root.** where s4 in (\"test\")",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": \"test\" cannot be cast to [DOUBLE]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue() + ": \"test\" cannot be cast to [DOUBLE]");
     assertTestFail(
         "select * from root.** where s5 in (\"test\")",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": \"test\" cannot be cast to [BOOLEAN]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue() + ": \"test\" cannot be cast to [BOOLEAN]");
   }
 
   /** Test for IOTDB-1540 */

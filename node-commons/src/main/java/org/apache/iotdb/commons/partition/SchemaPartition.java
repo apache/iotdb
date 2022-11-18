@@ -69,7 +69,7 @@ public class SchemaPartition extends Partition {
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
-          new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
+          new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getValue()));
     }
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }

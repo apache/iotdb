@@ -159,7 +159,7 @@ public class MultiLeaderConsensus implements IConsensus {
 
     TSStatus status;
     if (impl.isReadOnly()) {
-      status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+      status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getValue());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else if (!impl.isActive()) {
       // TODO: (xingtanzjr) whether we need to define a new status to indicate the inactive status ?

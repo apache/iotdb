@@ -91,7 +91,7 @@ public class RestApiServiceImpl extends RestApiService {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
@@ -112,10 +112,10 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getValue()
+                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getValue())
                   ? new ExecutionStatus()
-                      .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .code(TSStatusCode.SUCCESS_STATUS.getValue())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
                       .code(result.status.getCode())
@@ -138,7 +138,7 @@ public class RestApiServiceImpl extends RestApiService {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
@@ -159,8 +159,8 @@ public class RestApiServiceImpl extends RestApiService {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -207,10 +207,10 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+              (result.status.code == TSStatusCode.SUCCESS_STATUS.getValue()
+                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getValue())
                   ? new ExecutionStatus()
-                      .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .code(TSStatusCode.SUCCESS_STATUS.getValue())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
                   : new ExecutionStatus()
                       .code(result.status.getCode())

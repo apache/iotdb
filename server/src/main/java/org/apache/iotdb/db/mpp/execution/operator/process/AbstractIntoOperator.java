@@ -114,8 +114,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       client = new DataNodeInternalClient(operatorContext.getSessionInfo());
     }
     TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
-    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()
+        && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       String message =
           String.format(
               "Error occurred while inserting tablets in SELECT INTO: %s",

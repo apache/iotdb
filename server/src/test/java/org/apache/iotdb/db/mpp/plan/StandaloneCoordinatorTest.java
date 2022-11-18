@@ -147,7 +147,7 @@ public class StandaloneCoordinatorTest {
             conf.getQueryTimeoutThreshold());
     try {
       int statusCode = executionResult.status.getCode();
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), statusCode);
     } finally {
       coordinator.cleanupQueryExecution(queryId);
     }

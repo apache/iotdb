@@ -50,7 +50,7 @@ public class StorageGroupSchemaResp implements DataSet {
   public TStorageGroupSchemaResp convertToRPCStorageGroupSchemaResp() {
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setStorageGroupSchemaMap(schemaMap);
     }
     return resp;

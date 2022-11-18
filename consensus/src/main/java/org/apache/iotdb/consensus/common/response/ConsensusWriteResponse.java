@@ -42,7 +42,7 @@ public class ConsensusWriteResponse extends ConsensusResponse {
   }
 
   public boolean isSuccessful() {
-    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue();
   }
 
   public String getErrorMessage() {

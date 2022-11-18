@@ -47,7 +47,7 @@ public class CountStorageGroupResp implements DataSet {
 
   public void convertToRPCCountStorageGroupResp(TCountStorageGroupResp resp) {
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setCount(count);
     }
   }

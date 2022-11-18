@@ -26,10 +26,10 @@ public class TsFileProcessorException extends IoTDBException {
   private static final long serialVersionUID = 3749107630243950925L;
 
   public TsFileProcessorException(String message) {
-    super(message, TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
+    super(message, TSStatusCode.TSFILE_PROCESSOR_ERROR.getValue());
   }
 
   public TsFileProcessorException(Exception exception) {
-    super(exception, TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
+    super(exception, TSStatusCode.TSFILE_PROCESSOR_ERROR.getValue());
   }
 }

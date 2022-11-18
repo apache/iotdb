@@ -130,7 +130,7 @@ public class LocalExecutionPlanner {
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
+            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getValue());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
         LOGGER.debug(

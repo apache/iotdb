@@ -198,14 +198,14 @@ public class PartitionManager {
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedSchemaPartitionSlotsCountMap, TConsensusGroupType.SchemaRegion);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         // Return an error code if Region extension failed
         resp.setStatus(status);
         return resp;
       }
 
       status = getConsensusManager().confirmLeader();
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         // Here we check the leadership second time
         // since the RegionGroup creating process might take some time
         resp.setStatus(status);
@@ -220,7 +220,7 @@ public class PartitionManager {
         } catch (NoAvailableRegionGroupException e) {
           LOGGER.error("Create SchemaPartition failed because: ", e);
           resp.setStatus(
-              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getValue())
                   .setMessage(e.getMessage()));
           return resp;
         }
@@ -275,14 +275,14 @@ public class PartitionManager {
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         // Return an error code if Region extension failed
         resp.setStatus(status);
         return resp;
       }
 
       status = getConsensusManager().confirmLeader();
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         // Here we check the leadership second time
         // since the RegionGroup creating process might take some time
         resp.setStatus(status);
@@ -297,7 +297,7 @@ public class PartitionManager {
         } catch (NoAvailableRegionGroupException e) {
           LOGGER.error("Create DataPartition failed because: ", e);
           resp.setStatus(
-              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getValue())
                   .setMessage(e.getMessage()));
           return resp;
         }
@@ -397,12 +397,12 @@ public class PartitionManager {
     } catch (NotEnoughDataNodeException e) {
       String prompt = "ConfigNode failed to extend Region because there are not enough DataNodes";
       LOGGER.error(prompt);
-      result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+      result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getValue());
       result.setMessage(prompt);
     } catch (StorageGroupNotExistsException e) {
       String prompt = "ConfigNode failed to extend Region because some StorageGroup doesn't exist.";
       LOGGER.error(prompt);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getValue());
       result.setMessage(prompt);
     }
 
@@ -704,7 +704,7 @@ public class PartitionManager {
                                     DataNodeRequestType.DELETE_REGION);
                     }
 
-                    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                       // Poll the head entry if success
                       getConsensusManager().write(new PollRegionMaintainTaskPlan());
                     } else {

@@ -102,7 +102,7 @@ public class IoTDBPartitionInheritPolicyTest {
       for (int i = 0; i < storageGroupNum; i++) {
         TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
         TSStatus status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       }
     }
   }

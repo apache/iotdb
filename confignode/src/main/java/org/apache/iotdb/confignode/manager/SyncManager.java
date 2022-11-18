@@ -95,7 +95,7 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getValue())
           .setMessage(e.getMessage());
     }
   }
@@ -106,7 +106,7 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getValue())
           .setMessage(e.getMessage());
     }
   }
@@ -117,7 +117,7 @@ public class SyncManager {
         (PipeSinkResp) getConsensusManager().read(getPipeSinkPlan).getDataset();
     TGetPipeSinkResp resp = new TGetPipeSinkResp();
     resp.setStatus(pipeSinkResp.getStatus());
-    if (pipeSinkResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (pipeSinkResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setPipeSinkInfoList(
           pipeSinkResp.getPipeSinkList().stream()
               .map(PipeSink::getTPipeSinkInfo)
@@ -154,7 +154,7 @@ public class SyncManager {
     PipeResp pipeResp = (PipeResp) getConsensusManager().read(showPipePlan).getDataset();
     TShowPipeResp resp = new TShowPipeResp();
     resp.setStatus(pipeResp.getStatus());
-    if (pipeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (pipeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setPipeInfoList(
           pipeResp.getPipeInfoList().stream()
               .map(PipeInfo::getTShowPipeInfo)
@@ -245,7 +245,7 @@ public class SyncManager {
 
     List<Integer> failedRollbackDataNodeId = new ArrayList<>();
     for (Map.Entry<Integer, TSStatus> responseEntry : clientHandler.getResponseMap().entrySet()) {
-      if (responseEntry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (responseEntry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failedRollbackDataNodeId.add(responseEntry.getKey());
       }
     }

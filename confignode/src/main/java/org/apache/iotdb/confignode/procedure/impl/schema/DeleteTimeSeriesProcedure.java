@@ -159,7 +159,7 @@ public class DeleteTimeSeriesProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -193,7 +193,7 @@ public class DeleteTimeSeriesProcedure
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         LOGGER.error("Failed to invalidate schema cache of timeseries {}", requestMessage);
         setFailure(new ProcedureException(new MetadataException("Invalidate schema cache failed")));
         return;
@@ -293,7 +293,7 @@ public class DeleteTimeSeriesProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -326,7 +326,7 @@ public class DeleteTimeSeriesProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                       statusMap.put(k, v.getStatus());
@@ -377,7 +377,7 @@ public class DeleteTimeSeriesProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });
@@ -412,7 +412,7 @@ public class DeleteTimeSeriesProcedure
                 .getResponseMap()
                 .forEach(
                     (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
                         saveDataNodeResponse(k, v);
                       }
                     });

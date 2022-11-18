@@ -126,7 +126,7 @@ public class AuthorityChecker {
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue();
   }
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)

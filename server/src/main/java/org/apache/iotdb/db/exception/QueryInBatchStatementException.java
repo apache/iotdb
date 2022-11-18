@@ -29,6 +29,6 @@ public class QueryInBatchStatementException extends IoTDBException {
   public QueryInBatchStatementException(String statement) {
     super(
         String.format("Query statement not allowed in batch: [%s]", statement),
-        TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode());
+        TSStatusCode.QUERY_NOT_ALLOWED.getValue());
   }
 }

@@ -71,7 +71,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: Specifying time range in GROUP BY TIME clause is prohibited.",
             e.getMessage());
       }
@@ -91,7 +91,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: Specifying time filters in the query body is prohibited.",
             e.getMessage());
       }
@@ -109,7 +109,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            TSStatusCode.SEMANTIC_ERROR.getValue()
                 + ": CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.",
             e.getMessage());
       }
@@ -127,7 +127,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: The query body misses an INTO clause.",
             e.getMessage());
       }
@@ -148,7 +148,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: Every interval [50] should not be lower than the `continuous_query_minimum_every_interval` [1000] configured.",
             e.getMessage());
       }
@@ -168,7 +168,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            TSStatusCode.SQL_PARSE_ERROR.getValue()
                 + ": Error occurred while parsing SQL to physical plan: line 2:15 extraneous input '-' expecting DURATION_LITERAL",
             e.getMessage());
       }
@@ -188,7 +188,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: The start time offset should be greater than 0.",
             e.getMessage());
       }
@@ -208,7 +208,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            TSStatusCode.SQL_PARSE_ERROR.getValue()
                 + ": Error occurred while parsing SQL to physical plan: line 2:20 extraneous input '-' expecting DURATION_LITERAL",
             e.getMessage());
       }
@@ -228,7 +228,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: The start time offset should be greater than end time offset.",
             e.getMessage());
       }
@@ -248,7 +248,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: The start time offset should be greater than end time offset.",
             e.getMessage());
       }
@@ -268,7 +268,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+            TSStatusCode.INTERNAL_SERVER_ERROR.getValue()
                 + ": CQ: The start time offset should be greater than or equal to every interval.",
             e.getMessage());
       }
@@ -289,7 +289,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            TSStatusCode.SQL_PARSE_ERROR.getValue()
                 + ": Error occurred while parsing SQL to physical plan: line 3:15 mismatched input 'UNKNOWN' expecting {BLOCKED, DISCARD}",
             e.getMessage());
       }

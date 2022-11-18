@@ -92,7 +92,7 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()
+            TSStatusCode.ILLEGAL_PARAMETER.getValue()
                 + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
             e.getMessage());
       }
@@ -930,8 +930,7 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
-            TSStatusCode.METADATA_ERROR.getStatusCode()
-                + ": encoding TS_2DIFF does not support BOOLEAN",
+            TSStatusCode.METADATA_ERROR.getValue() + ": encoding TS_2DIFF does not support BOOLEAN",
             e.getMessage());
       }
 
@@ -941,8 +940,7 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
-            TSStatusCode.METADATA_ERROR.getStatusCode()
-                + ": encoding REGULAR does not support DOUBLE",
+            TSStatusCode.METADATA_ERROR.getValue() + ": encoding REGULAR does not support DOUBLE",
             e.getMessage());
       }
 
@@ -951,8 +949,7 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
-            TSStatusCode.METADATA_ERROR.getStatusCode()
-                + ": encoding TS_2DIFF does not support TEXT",
+            TSStatusCode.METADATA_ERROR.getValue() + ": encoding TS_2DIFF does not support TEXT",
             e.getMessage());
       }
 

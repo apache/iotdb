@@ -103,7 +103,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
@@ -135,7 +135,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
@@ -180,7 +180,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
@@ -207,7 +207,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
@@ -237,7 +237,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 constructDataPartitionReq(splitDataPartitionQueryParams));
 
         if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getValue()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {

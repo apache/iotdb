@@ -28,25 +28,25 @@ public class SegmentNotFoundException extends MetadataException {
   public SegmentNotFoundException(int pageIndex, short segIndex) {
     super(
         String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        TSStatusCode.SEGMENT_NOT_FOUND.getValue(),
         true);
   }
 
   public SegmentNotFoundException(short segIndex) {
     super(
         String.format("Segment(index:%d) is not the last segment within the page", segIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        TSStatusCode.SEGMENT_NOT_FOUND.getValue(),
         true);
   }
 
   public SegmentNotFoundException(String reason) {
-    super(reason, TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(), true);
+    super(reason, TSStatusCode.SEGMENT_NOT_FOUND.getValue(), true);
   }
 
   public SegmentNotFoundException(int pid) {
     super(
         String.format("No splittable segment found in page [%s]", pid),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        TSStatusCode.SEGMENT_NOT_FOUND.getValue(),
         true);
   }
 }

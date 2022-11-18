@@ -115,17 +115,17 @@ public class AuthorInfoTest {
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertNull(status.getMessage());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     authorPlan.setUserName("user1");
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // check user privileges
     status =
         authorInfo
             .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
             .getStatus();
-    Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.NO_PERMISSION.getValue(), status.getCode());
 
     // drop user
     authorPlan =
@@ -138,7 +138,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // list user
     authorPlan =
@@ -146,7 +146,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), new ArrayList<>());
     PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     userList.remove("user1");
     Assert.assertEquals(
         userList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_USER));
@@ -162,10 +162,10 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     authorPlan.setRoleName("role1");
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // drop role
     authorPlan =
@@ -178,7 +178,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // list role
     authorPlan =
@@ -186,7 +186,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), new ArrayList<>());
     permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     roleList.remove("role1");
     Assert.assertEquals(
         roleList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_ROLE));
@@ -202,7 +202,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant user
     List<String> nodeNameList = new ArrayList<>();
@@ -211,21 +211,21 @@ public class AuthorInfoTest {
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", privilegeList, nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // check user privileges
     status =
         authorInfo
             .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
             .getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant role
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantRole, "", "role0", "", "", privilegeList, nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant role to user
     authorPlan =
@@ -238,21 +238,21 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // revoke user
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.RevokeUser, "user0", "", "", "", revokePrivilege, nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // revoke role
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.RevokeRole, "", "role0", "", "", revokePrivilege, nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // list privileges user on root.ln.**
     authorPlan =
@@ -266,7 +266,7 @@ public class AuthorInfoTest {
             nodeNameList);
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 
@@ -282,7 +282,7 @@ public class AuthorInfoTest {
             Collections.singletonList("root.**"));
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -298,7 +298,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -314,7 +314,7 @@ public class AuthorInfoTest {
             nodeNameList);
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     privilege.remove(0);
     Assert.assertEquals(
         0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
@@ -331,7 +331,7 @@ public class AuthorInfoTest {
             Collections.singletonList("root.**"));
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -347,7 +347,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -363,7 +363,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     roleList.remove("role1");
     Assert.assertEquals(
         roleList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_ROLE));
@@ -380,7 +380,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     userList.remove("user1");
     userList.remove("root");
     Assert.assertEquals(
@@ -397,7 +397,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // list root privileges
     authorPlan =
@@ -411,7 +411,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     for (int i = 0; i < PrivilegeType.values().length; i++) {
       Assert.assertEquals(
           PrivilegeType.values()[i].toString(),
@@ -428,7 +428,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), new ArrayList<>());
     PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     List<String> allUsers = permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_USER);
     for (String user : allUsers) {
@@ -443,7 +443,7 @@ public class AuthorInfoTest {
                 new HashSet<>(),
                 new ArrayList<>());
         status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       }
     }
 
@@ -453,7 +453,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), new ArrayList<>());
     permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     List<String> roleList = permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_ROLE);
     for (String roleN : roleList) {
@@ -467,7 +467,7 @@ public class AuthorInfoTest {
               new HashSet<>(),
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     }
   }
 
@@ -478,12 +478,12 @@ public class AuthorInfoTest {
     AuthorPlan createRoleReq = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
     createRoleReq.setRoleName("testRole");
     TSStatus status = authorInfo.authorNonQuery(createRoleReq);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     AuthorPlan createUserReq = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
     createUserReq.setUserName("testUser");
     createUserReq.setPassword("testPassword");
     status = authorInfo.authorNonQuery(createUserReq);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     AuthorPlan listUserPlan =
         new AuthorPlan(
@@ -552,7 +552,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertNull(status.getMessage());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // create role
     authorPlan =
@@ -565,28 +565,28 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant user
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", privilegeList, userPaths);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // check user privileges
     status =
         authorInfo
             .checkUserPrivileges("user0", userPaths, PrivilegeType.INSERT_TIMESERIES.ordinal())
             .getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant role
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantRole, "", "role0", "", "", privilegeList, rolePaths);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // grant role to user
     authorPlan =
@@ -599,7 +599,7 @@ public class AuthorInfoTest {
             new HashSet<>(),
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     // list privileges user
     authorPlan =
@@ -614,7 +614,7 @@ public class AuthorInfoTest {
     PermissionInfoResp permissionInfoResp;
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         userPrivilege,
         permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).stream()
@@ -633,7 +633,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         allPrivilege,
         permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).stream()
@@ -652,7 +652,7 @@ public class AuthorInfoTest {
             rolePaths);
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         rolePrivilege,
         permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).stream()
@@ -671,7 +671,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     Assert.assertEquals(
         rolePrivilege,
         permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).stream()

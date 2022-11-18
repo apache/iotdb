@@ -82,7 +82,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
                 "unexpected consensusGroupId %s for TSyncLogReq which size is %s",
                 groupId, req.getBatches().size());
         logger.error(message);
-        TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
@@ -90,13 +90,13 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       if (impl.isReadOnly()) {
         String message = "fail to sync log because system is read-only.";
         logger.error(message);
-        TSStatus status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+        TSStatus status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getValue());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
       if (!impl.isActive()) {
-        TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
+        TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getValue());
         status.setMessage("peer is inactive and not ready to receive sync log request");
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
@@ -149,14 +149,14 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TInactivatePeerRes(status));
       return;
     }
     impl.setActive(false);
     resultHandler.onComplete(
-        new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+        new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())));
   }
 
   @Override
@@ -169,14 +169,14 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TActivatePeerRes(status));
       return;
     }
     impl.setActive(true);
     resultHandler.onComplete(
-        new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+        new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())));
   }
 
   @Override
@@ -190,7 +190,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TBuildSyncLogChannelRes(status));
       return;
@@ -198,9 +198,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     TSStatus responseStatus;
     try {
       impl.buildSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
-      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (ConsensusGroupModifyPeerException e) {
-      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TBuildSyncLogChannelRes(responseStatus));
@@ -217,7 +217,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TRemoveSyncLogChannelRes(status));
       return;
@@ -225,9 +225,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     TSStatus responseStatus;
     try {
       impl.removeSyncLogChannel(new Peer(groupId, req.nodeId, req.endPoint));
-      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (ConsensusGroupModifyPeerException e) {
-      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TRemoveSyncLogChannelRes(responseStatus));
@@ -244,7 +244,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for waitSyncLogComplete request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TWaitSyncLogCompleteRes(true, 0, 0));
       return;
@@ -266,7 +266,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TSendSnapshotFragmentRes(status));
       return;
@@ -274,9 +274,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     TSStatus responseStatus;
     try {
       impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk);
-      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (ConsensusGroupModifyPeerException e) {
-      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TSendSnapshotFragmentRes(responseStatus));
@@ -293,14 +293,14 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TTriggerSnapshotLoadRes(status));
       return;
     }
     impl.loadSnapshot(req.snapshotId);
     resultHandler.onComplete(
-        new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+        new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())));
   }
 
   @Override
@@ -315,7 +315,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
       logger.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       status.setMessage(message);
       resultHandler.onComplete(new TCleanupTransferredSnapshotRes(status));
       return;
@@ -323,10 +323,10 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     TSStatus responseStatus;
     try {
       impl.cleanupTransferredSnapshot(req.snapshotId);
-      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (ConsensusGroupModifyPeerException e) {
       logger.error(String.format("failed to cleanup transferred snapshot %s", req.snapshotId), e);
-      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TCleanupTransferredSnapshotRes(responseStatus));

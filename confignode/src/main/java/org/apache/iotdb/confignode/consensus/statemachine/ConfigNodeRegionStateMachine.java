@@ -106,7 +106,7 @@ public class ConfigNodeRegionStateMachine
             request,
             request.serializeToByteBuffer(),
             e);
-        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
@@ -115,7 +115,7 @@ public class ConfigNodeRegionStateMachine
           "Unexpected write plan, request: {}, bytebuffer: {}",
           request,
           request.serializeToByteBuffer());
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
     return write(plan);
   }
@@ -127,7 +127,7 @@ public class ConfigNodeRegionStateMachine
       result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
-      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
 
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {

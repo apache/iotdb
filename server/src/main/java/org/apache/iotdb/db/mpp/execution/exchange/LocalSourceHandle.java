@@ -117,7 +117,7 @@ public class LocalSourceHandle implements ISourceHandle {
       try {
         return serde.serialize(tsBlock);
       } catch (Exception e) {
-        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getValue());
       }
     } else {
       return null;

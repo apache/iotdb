@@ -94,7 +94,7 @@ public class IoTDBAlignedDataDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
 
       String errorMsg =
-          TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+          TSStatusCode.SEMANTIC_ERROR.getValue()
               + ": For delete statement, where clause can only"
               + " contain time expressions, value filter is not currently supported.";
 

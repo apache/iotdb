@@ -106,8 +106,8 @@ abstract class DataNodeRegionTask<T> {
       // process response
       Map<Integer, TSStatus> dataNodeResponseMap = sendRequest(entry.getKey(), entry.getValue());
       TSStatus currentDataNodeResponse = dataNodeResponseMap.get(entry.getKey().getDataNodeId());
-      if (currentDataNodeResponse.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (currentDataNodeResponse.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      if (currentDataNodeResponse.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
+        if (currentDataNodeResponse.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
           // dataNode execution error
           onExecutionFailure(entry.getKey());
           break;

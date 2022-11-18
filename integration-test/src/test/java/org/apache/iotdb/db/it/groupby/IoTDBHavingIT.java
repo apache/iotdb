@@ -128,22 +128,22 @@ public class IoTDBHavingIT {
   public void testUnsatisfiedRuleQuery() {
     assertTestFail(
         "select count(s1) from root.** group by ([1,3),1ms), level=1 having sum(d1.s1) > 1",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getValue()
             + ": When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) > 1",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getValue()
             + ": When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) + s1 > 1",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getValue()
             + ": Raw data and aggregation result hybrid calculation is not supported");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having s1 + 1 > 1",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getValue()
             + ": Expression of HAVING clause must to be an Aggregation");
   }
 

@@ -109,7 +109,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           if (RpcUtils.squashResponseStatusList(
                       env.createTriggerOnDataNodes(triggerInformation, jarFile))
                   .getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              == TSStatusCode.SUCCESS_STATUS.getValue()) {
             setNextState(CreateTriggerState.DATA_NODE_INACTIVE);
           } else {
             throw new TriggerManagementException(
@@ -126,7 +126,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           if (RpcUtils.squashResponseStatusList(
                       env.activeTriggerOnDataNodes(triggerInformation.getTriggerName()))
                   .getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              == TSStatusCode.SUCCESS_STATUS.getValue()) {
             setNextState(CreateTriggerState.DATA_NODE_ACTIVE);
           } else {
             throw new TriggerManagementException(
@@ -199,7 +199,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         if (RpcUtils.squashResponseStatusList(
                     env.dropTriggerOnDataNodes(triggerInformation.getTriggerName(), false))
                 .getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new TriggerManagementException(
               String.format(
                   "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [%s]",
@@ -215,7 +215,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         if (RpcUtils.squashResponseStatusList(
                     env.inactiveTriggerOnDataNodes(triggerInformation.getTriggerName()))
                 .getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new TriggerManagementException(
               String.format(
                   "Fail to [DATA_NODE_INACTIVE] rollback of trigger [%s]",

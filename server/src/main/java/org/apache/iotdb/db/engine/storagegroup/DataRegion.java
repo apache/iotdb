@@ -3070,7 +3070,7 @@ public class DataRegion {
               .put(
                   i,
                   RpcUtils.getStatus(
-                      TSStatusCode.OUT_OF_TTL.getStatusCode(),
+                      TSStatusCode.OUT_OF_TTL.getValue(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),

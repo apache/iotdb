@@ -62,7 +62,7 @@ public class QueryDataSetHandler {
     return Response.ok()
         .entity(
             new ExecutionStatus()
-                .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                .code(TSStatusCode.QUERY_PROCESS_ERROR.getValue())
                 .message(
                     String.format(
                         "unsupported query data type: %s", statement.getType().toString())))
@@ -152,7 +152,7 @@ public class QueryDataSetHandler {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getValue())
                     .message(
                         String.format(
                             "Dataset row size exceeded the given max row size (%d)",
@@ -211,7 +211,7 @@ public class QueryDataSetHandler {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
-                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getValue())
                     .message(
                         String.format(
                             "Dataset row size exceeded the given max row size (%d)",

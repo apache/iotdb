@@ -37,7 +37,7 @@ public class DataNodeToStatusResp implements DataSet {
   public TDataNodeRemoveResp convertToRpCDataNodeRemoveResp() {
     TDataNodeRemoveResp resp = new TDataNodeRemoveResp();
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setNodeToStatus(dataNodeLocationToStatus);
     }
 

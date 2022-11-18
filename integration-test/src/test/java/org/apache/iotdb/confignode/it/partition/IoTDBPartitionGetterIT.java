@@ -124,7 +124,7 @@ public class IoTDBPartitionGetterIT {
       for (int i = 0; i < storageGroupNum; i++) {
         TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
         TSStatus status = client.setStorageGroup(setReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       }
 
       /* Create SchemaPartitions */
@@ -145,8 +145,7 @@ public class IoTDBPartitionGetterIT {
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
@@ -189,7 +188,7 @@ public class IoTDBPartitionGetterIT {
             }
             Assert.assertNotNull(dataPartitionTableResp);
             Assert.assertEquals(
-                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                TSStatusCode.SUCCESS_STATUS.getValue(),
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
             ConfigNodeTestUtils.checkDataPartitionTable(
@@ -249,8 +248,7 @@ public class IoTDBPartitionGetterIT {
       schemaPartitionReq = new TSchemaPartitionReq(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(0, schemaPartitionTableResp.getSchemaPartitionTableSize());
 
       // Test getSchemaPartition, when a device path doesn't match any StorageGroup and including
@@ -259,8 +257,7 @@ public class IoTDBPartitionGetterIT {
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
@@ -274,8 +271,7 @@ public class IoTDBPartitionGetterIT {
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       // Check "root.sg0"
@@ -306,8 +302,7 @@ public class IoTDBPartitionGetterIT {
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       dataPartitionTableResp = client.getDataPartitionTable(dataPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       Assert.assertEquals(0, dataPartitionTableResp.getDataPartitionTableSize());
 
@@ -328,7 +323,7 @@ public class IoTDBPartitionGetterIT {
             dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
             dataPartitionTableResp = client.getDataPartitionTable(dataPartitionReq);
             Assert.assertEquals(
-                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                TSStatusCode.SUCCESS_STATUS.getValue(),
                 dataPartitionTableResp.getStatus().getCode());
             Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
             ConfigNodeTestUtils.checkDataPartitionTable(
@@ -365,25 +360,23 @@ public class IoTDBPartitionGetterIT {
           new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion, seriesPartitionSlot);
       getRegionIdReq.setTimeSlotId(timePartitionSlot);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
-          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
+          TSStatusCode.ILLEGAL_PARAMETER.getValue(), getRegionIdResp.status.getCode());
 
       getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
-          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
+          TSStatusCode.ILLEGAL_PARAMETER.getValue(), getRegionIdResp.status.getCode());
 
       getRegionIdReq.unsetTimeSlotId();
       getRegionIdReq.setType(TConsensusGroupType.DataRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
       final String d00 = sg0 + ".d0.s";
@@ -399,14 +392,12 @@ public class IoTDBPartitionGetterIT {
               .get(0));
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
       getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), getRegionIdResp.status.getCode());
       Assert.assertEquals(0, getRegionIdResp.getDataRegionIdListSize());
 
       // Test GetTimeSlotList api
@@ -418,7 +409,7 @@ public class IoTDBPartitionGetterIT {
       getTimeSlotListReq = new TGetTimeSlotListReq(sg0, seriesPartitionSlot);
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getTimeSlotListResp.status.getCode());
       Assert.assertEquals(timePartitionBatchSize, getTimeSlotListResp.getTimeSlotListSize());
 
       long startTime = 5;
@@ -426,7 +417,7 @@ public class IoTDBPartitionGetterIT {
 
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getTimeSlotListResp.status.getCode());
       Assert.assertEquals(
           timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
 
@@ -435,7 +426,7 @@ public class IoTDBPartitionGetterIT {
 
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getTimeSlotListResp.status.getCode());
       Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
 
       // Test GetSeriesSlotList api
@@ -445,28 +436,28 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListReq = new TGetSeriesSlotListReq(sg0);
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.DataRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
     }
   }
@@ -486,7 +477,7 @@ public class IoTDBPartitionGetterIT {
       nodeManagementReq.setLevel(-1);
       nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), nodeManagementResp.getStatus().getCode());
       Assert.assertEquals(5, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
       Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());

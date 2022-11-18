@@ -192,7 +192,7 @@ public class ConfigNodeProcedureEnv {
 
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
-        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public boolean doubleCheckReplica() {
@@ -227,7 +227,7 @@ public class ConfigNodeProcedureEnv {
                       newConfigNode.getInternalEndPoint(),
                       null,
                       ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER_STATUS);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         break;
       }
 
@@ -262,11 +262,11 @@ public class ConfigNodeProcedureEnv {
             getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
       } else {
         tsStatus =
-            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getValue())
                 .setMessage(
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new ProcedureException(tsStatus.getMessage());
       }
     } finally {
@@ -289,7 +289,7 @@ public class ConfigNodeProcedureEnv {
                     removedConfigNode.getInternalEndPoint(),
                     removedConfigNode,
                     ConfigNodeRequestType.DELETE_CONFIG_NODE_PEER);
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
   }
@@ -311,7 +311,7 @@ public class ConfigNodeProcedureEnv {
                     tConfigNodeLocation,
                     ConfigNodeRequestType.STOP_CONFIG_NODE);
 
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
   }
@@ -412,7 +412,7 @@ public class ConfigNodeProcedureEnv {
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-          if (responseMap.get(requestId).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (responseMap.get(requestId).getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
             failedRegions
                 .computeIfAbsent(
                     regionReplicaSet.getRegionId(),

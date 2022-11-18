@@ -26,9 +26,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class NoTemplateOnMNodeException extends MetadataException {
 
   public NoTemplateOnMNodeException(String path) {
-    super(
-        String.format("NO template on " + path),
-        TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
-        true);
+    super(String.format("NO template on " + path), TSStatusCode.TEMPLATE_NOT_SET.getValue(), true);
   }
 }

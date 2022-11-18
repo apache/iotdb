@@ -52,10 +52,10 @@ public class CountPathsUsingTemplateRPCHandler
   public void onComplete(TCountPathsUsingTemplateResp response) {
     TSStatus tsStatus = response.getStatus();
     responseMap.put(requestId, response);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully count paths using template on DataNode: {}", targetDataNode);
-    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.error(
           "Failed to count paths using template on DataNode {}, {}", targetDataNode, tsStatus);
@@ -81,7 +81,7 @@ public class CountPathsUsingTemplateRPCHandler
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
     resp.setStatus(
         new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue(), errorMsg)));
     responseMap.put(requestId, resp);
   }
 }

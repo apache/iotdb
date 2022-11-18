@@ -90,7 +90,7 @@ public class IoTDBSessionSchemaTemplateIT {
       fail();
     } catch (StatementExecutionException e) {
       assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Template already exists on root.sg.d0",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Template already exists on root.sg.d0",
           e.getMessage());
     }
   }
@@ -188,7 +188,7 @@ public class IoTDBSessionSchemaTemplateIT {
       fail();
     } catch (Exception e) {
       assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: template1",
+          TSStatusCode.METADATA_ERROR.getValue() + ": Duplicated template name: template1",
           e.getMessage());
     }
 
@@ -202,7 +202,7 @@ public class IoTDBSessionSchemaTemplateIT {
       fail();
     } catch (Exception e) {
       assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode()
+          TSStatusCode.METADATA_ERROR.getValue()
               + ": Template [template1] has been set on MTree, cannot be dropped now.",
           e.getMessage());
     }

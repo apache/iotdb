@@ -58,7 +58,7 @@ public class IoTDBDatabaseMetadataTest {
   @Mock private IClientRPCService.Iface client;
   @Mock private Statement statement;
   @Mock private DatabaseMetaData databaseMetaData;
-  @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   @Mock private ServerProperties properties;
 
   private ZoneId zoneID = ZoneId.systemDefault();

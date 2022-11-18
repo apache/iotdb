@@ -269,7 +269,7 @@ public class ConfigNodeClient
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       if (status.isSetRedirectNode()) {
         configLeader =
             new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());

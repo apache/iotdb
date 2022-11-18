@@ -50,7 +50,7 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
     // Put response
     responseMap.put(requestId, response);
 
-    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       // Remove only if success
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
@@ -80,7 +80,7 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
     responseMap.put(
         requestId,
         new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue(), errorMsg)));
 
     // Always CountDown
     countDownLatch.countDown();

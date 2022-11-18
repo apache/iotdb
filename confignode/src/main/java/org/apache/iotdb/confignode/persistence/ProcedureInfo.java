@@ -82,9 +82,9 @@ public class ProcedureInfo {
       procedureWAL.save(procedure);
     } catch (IOException e) {
       LOG.error("Update Procedure (pid={}) wal failed", procedure.getProcId(), e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   public TSStatus deleteProcedure(DeleteProcedurePlan deleteProcedurePlan) {
@@ -94,6 +94,6 @@ public class ProcedureInfo {
       procedureWAL.delete();
     }
     procWALMap.remove(procId);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 }

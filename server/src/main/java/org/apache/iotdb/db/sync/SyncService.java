@@ -136,7 +136,7 @@ public class SyncService implements IService {
       throws PipeSinkException {
     logger.info("Add PIPESINK {}", createPipeSinkStatement);
     TSStatus status = syncInfoFetcher.addPipeSink(createPipeSinkStatement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeSinkException(status.message);
     }
   }
@@ -144,7 +144,7 @@ public class SyncService implements IService {
   public void dropPipeSink(String name) throws PipeSinkException {
     logger.info("Execute DROP PIPESINK {}", name);
     TSStatus status = syncInfoFetcher.dropPipeSink(name);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeSinkException(status.message);
     }
   }
@@ -174,7 +174,7 @@ public class SyncService implements IService {
     }
     // add pipe
     TSStatus status = syncInfoFetcher.addPipe(pipeInfo);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.message);
     }
     PipeSink runningPipeSink;
@@ -213,7 +213,7 @@ public class SyncService implements IService {
       runningPipe.stop();
     }
     TSStatus status = syncInfoFetcher.stopPipe(pipeName);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.message);
     }
   }
@@ -252,7 +252,7 @@ public class SyncService implements IService {
       }
     }
     TSStatus status = syncInfoFetcher.startPipe(pipeName);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.message);
     }
   }
@@ -301,7 +301,7 @@ public class SyncService implements IService {
     TSStatus status = syncInfoFetcher.dropPipe(pipeName);
     // remove dropped pipe from map
     pipes.remove(pipeName);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.message);
     }
   }
@@ -364,7 +364,7 @@ public class SyncService implements IService {
       default:
         logger.error(String.format("Unknown message type: %s", message));
     }
-    if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       logger.error(String.format("Failed to record message: %s", message));
     }
   }

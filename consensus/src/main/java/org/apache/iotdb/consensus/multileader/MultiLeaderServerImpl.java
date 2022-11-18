@@ -230,7 +230,7 @@ public class MultiLeaderServerImpl {
               Tag.REGION.toString(),
               this.consensusGroupId)
           .update(writeToStateMachineEndTime - writeToStateMachineStartTime);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
         // the queue, the dispatcher will try to find the request in WAL. This behavior
@@ -533,7 +533,7 @@ public class MultiLeaderServerImpl {
   }
 
   private boolean isSuccess(TSStatus status) {
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue();
   }
 
   /** build SyncLog channel with safeIndex as the default initial sync index */

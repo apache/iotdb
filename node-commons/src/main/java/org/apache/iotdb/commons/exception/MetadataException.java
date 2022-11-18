@@ -29,7 +29,7 @@ public class MetadataException extends IoTDBException {
   private static final long serialVersionUID = 3415275599091623570L;
 
   public MetadataException(Throwable cause) {
-    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
+    super(cause, TSStatusCode.METADATA_ERROR.getValue());
   }
 
   public MetadataException(Throwable cause, int errorCode) {
@@ -37,15 +37,15 @@ public class MetadataException extends IoTDBException {
   }
 
   public MetadataException(String msg) {
-    super(msg, TSStatusCode.METADATA_ERROR.getStatusCode());
+    super(msg, TSStatusCode.METADATA_ERROR.getValue());
   }
 
   public MetadataException(String msg, boolean isUserException) {
-    super(msg, TSStatusCode.METADATA_ERROR.getStatusCode(), isUserException);
+    super(msg, TSStatusCode.METADATA_ERROR.getValue(), isUserException);
   }
 
   public MetadataException(String message, Throwable cause) {
-    super(message + cause.getMessage(), TSStatusCode.METADATA_ERROR.getStatusCode());
+    super(message + cause.getMessage(), TSStatusCode.METADATA_ERROR.getValue());
   }
 
   public MetadataException(IoTDBException exception) {

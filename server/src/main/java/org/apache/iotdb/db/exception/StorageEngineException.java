@@ -26,15 +26,15 @@ public class StorageEngineException extends IoTDBException {
   private static final long serialVersionUID = 9001649171768311032L;
 
   public StorageEngineException(Throwable cause) {
-    super(cause, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+    super(cause, TSStatusCode.STORAGE_ENGINE_ERROR.getValue());
   }
 
   public StorageEngineException(String message) {
-    super(message, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+    super(message, TSStatusCode.STORAGE_ENGINE_ERROR.getValue());
   }
 
   public StorageEngineException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+    super(message, cause, TSStatusCode.STORAGE_ENGINE_ERROR.getValue());
   }
 
   public StorageEngineException(String message, int errorCode) {

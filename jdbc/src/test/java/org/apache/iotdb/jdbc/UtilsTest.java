@@ -119,7 +119,7 @@ public class UtilsTest {
     }
 
     try {
-      TSStatus errorStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus errorStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getValue());
       RpcUtils.verifySuccess(errorStatus);
     } catch (Exception e) {
       return;

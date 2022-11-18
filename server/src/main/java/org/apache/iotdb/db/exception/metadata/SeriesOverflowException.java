@@ -29,6 +29,6 @@ public class SeriesOverflowException extends MetadataException {
     super(
         "There are too many timeseries in memory, "
             + "please increase MAX_HEAP_SIZE in datanode-env.sh/bat, restart and create timeseries again.",
-        TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+        TSStatusCode.SERIES_OVERFLOW.getValue());
   }
 }

@@ -141,7 +141,7 @@ public class PartitionInfo implements SnapshotProcessor {
     MetricService.getInstance()
         .addMetricSet(
             new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /**
@@ -173,7 +173,7 @@ public class PartitionInfo implements SnapshotProcessor {
       }
     }
 
-    result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     return result;
   }
 
@@ -227,7 +227,7 @@ public class PartitionInfo implements SnapshotProcessor {
     StorageGroupPartitionTable storageGroupPartitionTable =
         storageGroupPartitionTables.get(storageGroup);
     if (storageGroupPartitionTable == null) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     }
     switch (preDeleteType) {
       case EXECUTE:
@@ -237,7 +237,7 @@ public class PartitionInfo implements SnapshotProcessor {
         storageGroupPartitionTable.setPredeleted(false);
         break;
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /**
@@ -302,7 +302,7 @@ public class PartitionInfo implements SnapshotProcessor {
     }
 
     return new SchemaPartitionResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         isAllPartitionsExist.get(),
         schemaPartition);
   }
@@ -340,7 +340,7 @@ public class PartitionInfo implements SnapshotProcessor {
             });
 
     return new DataPartitionResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         isAllPartitionsExist.get(),
         dataPartition);
   }
@@ -391,7 +391,7 @@ public class PartitionInfo implements SnapshotProcessor {
               }
             });
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /**
@@ -411,7 +411,7 @@ public class PartitionInfo implements SnapshotProcessor {
               }
             });
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   /** Get SchemaNodeManagementPartition through matched storageGroup */
@@ -436,7 +436,7 @@ public class PartitionInfo implements SnapshotProcessor {
             });
 
     schemaNodeManagementResp.setSchemaPartition(schemaPartitionMap);
-    schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()));
     return schemaNodeManagementResp;
   }
 
@@ -476,7 +476,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     TConsensusGroupId regionId = req.getRegionId();
     TDataNodeLocation oldNode = req.getOldNode();
     TDataNodeLocation newNode = req.getNewNode();
@@ -799,12 +799,12 @@ public class PartitionInfo implements SnapshotProcessor {
   public DataSet getRegionId(GetRegionIdPlan plan) {
     if (!isStorageGroupExisted(plan.getStorageGroup())) {
       return new GetRegionIdResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), new ArrayList<>());
     }
     StorageGroupPartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetRegionIdResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         sgPartitionTable.getRegionId(
             plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId()));
   }
@@ -812,12 +812,12 @@ public class PartitionInfo implements SnapshotProcessor {
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
     if (!isStorageGroupExisted(plan.getStorageGroup())) {
       return new GetTimeSlotListResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), new ArrayList<>());
     }
     StorageGroupPartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetTimeSlotListResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         sgPartitionTable.getTimeSlotList(
             plan.getSeriesSlotId(), plan.getStartTime(), plan.getEndTime()));
   }
@@ -825,12 +825,12 @@ public class PartitionInfo implements SnapshotProcessor {
   public DataSet getSeriesSlotList(GetSeriesSlotListPlan plan) {
     if (!isStorageGroupExisted(plan.getStorageGroup())) {
       return new GetSeriesSlotListResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()), new ArrayList<>());
     }
     StorageGroupPartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetSeriesSlotListResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue()),
         sgPartitionTable.getSeriesSlotList(plan.getPartitionType()));
   }
 

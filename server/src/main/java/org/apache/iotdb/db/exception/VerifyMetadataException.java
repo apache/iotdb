@@ -29,10 +29,10 @@ public class VerifyMetadataException extends IoTDBException {
         String.format(
             "%s %s mismatch, %s in tsfile %s, but %s in IoTDB.",
             path, compareInfo, tsFileInfo, tsFilePath, IoTDBInfo),
-        TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+        TSStatusCode.VERIFY_METADATA_ERROR.getValue());
   }
 
   public VerifyMetadataException(String message) {
-    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getValue());
   }
 }

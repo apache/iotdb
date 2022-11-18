@@ -39,13 +39,13 @@ try {
 ```
 
 利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，
-只需要使用`e.getStatusType().getCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getStatusCode()`。
+只需要使用`e.getStatusCode() == TSStatusCode.TIME_SERIES_NOT_EXIST_ERROR.getValue()`。
 
 这里是状态码和相对应信息的列表：
 
 |状态码|状态类型|状态信息|
 |:--|:---|:---|
-|200|SUCCESS_STATUS|成功状态|
+|0|SUCCESS_STATUS|成功状态|
 |201|INCOMPATIBLE_VERSION|版本不兼容|
 |202|CONFIGURATION_ERROR|配置文件有错误项|
 |203|START_UP_ERROR|启动错误|

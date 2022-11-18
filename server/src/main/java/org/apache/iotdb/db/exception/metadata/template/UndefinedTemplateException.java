@@ -26,7 +26,7 @@ public class UndefinedTemplateException extends MetadataException {
   public UndefinedTemplateException(String path) {
     super(
         String.format("Undefined template name: " + path),
-        TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+        TSStatusCode.UNDEFINED_TEMPLATE.getValue(),
         true);
   }
 }

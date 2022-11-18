@@ -27,7 +27,7 @@ public class ShutdownException extends IoTDBException {
   }
 
   public ShutdownException(Throwable cause) {
-    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getStatusCode());
+    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getValue());
   }
 
   public ShutdownException(String message, Throwable cause, int errorCode) {

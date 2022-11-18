@@ -213,10 +213,9 @@ public class DataNode implements DataNodeMBean {
         // store ttl information
         StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
-        if (dataNodeRegisterResp.getStatus().getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
             || dataNodeRegisterResp.getStatus().getCode()
-                == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+                == TSStatusCode.DATANODE_ALREADY_REGISTERED.getValue()) {
           logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
@@ -483,7 +482,7 @@ public class DataNode implements DataNodeMBean {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
-      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()) {
         throw new StartupException("Failed to get UDF jar from config node.");
       }
       List<ByteBuffer> jarList = resp.getJarList();
@@ -594,7 +593,7 @@ public class DataNode implements DataNodeMBean {
               .map(TriggerInformation::getJarName)
               .collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getTriggerJar(new TGetJarInListReq(jarNameList));
-      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()) {
         throw new StartupException("Failed to get trigger jar from config node.");
       }
       List<ByteBuffer> jarList = resp.getJarList();

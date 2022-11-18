@@ -136,9 +136,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Set StorageGroups
       status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // Create SchemaRegionGroups through getOrCreateSchemaPartition and record
       // SchemaPartitionTable
@@ -148,8 +148,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           client.getOrCreateSchemaPartitionTable(
               new TSchemaPartitionReq().setPathPatternTree(buffer));
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp0.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp0.getStatus().getCode());
 
       // Create DataRegionGroups through getOrCreateDataPartition and record DataPartitionTable
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
@@ -161,8 +160,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       dataPartitionTableResp0 =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp0.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataPartitionTableResp0.getStatus().getCode());
     }
 
     // Switch the current ConfigNode-Leader

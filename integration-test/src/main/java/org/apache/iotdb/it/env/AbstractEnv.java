@@ -218,7 +218,7 @@ public abstract class AbstractEnv implements BaseEnv {
         showClusterResp = client.showCluster();
 
         // Check resp status
-        if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           flag = false;
         }
 
@@ -431,7 +431,7 @@ public abstract class AbstractEnv implements BaseEnv {
                   new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
           TShowClusterResp resp = client.showCluster();
 
-          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
             // Only the ConfigNodeClient who connects to the ConfigNode-leader
             // will respond the SUCCESS_STATUS
             logger.info(
@@ -470,7 +470,7 @@ public abstract class AbstractEnv implements BaseEnv {
           TShowClusterResp resp = client.showCluster();
           // Only the ConfigNodeClient who connects to the ConfigNode-leader
           // will respond the SUCCESS_STATUS
-          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
             return configNodeId;
           }
         } catch (TException | IOException e) {

@@ -117,8 +117,8 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   @Override
   public void setStorageGroup(String database, long sessionID) {
     TSStatus status = clientRPCService.setStorageGroup(sessionID, "root." + database);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
+        || status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getValue()) {
       return;
     }
     throw new InfluxDBException(status.getMessage());
@@ -136,7 +136,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
       List<TSInsertRecordReq> reqs = tagInfoRecords.convertToInsertRecordsReq(sessionID);
       for (TSInsertRecordReq tsInsertRecordReq : reqs) {
         TSStatus tsStatus = clientRPCService.insertRecord(tsInsertRecordReq);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new InfluxDBException(tsStatus.getMessage());
         }
       }

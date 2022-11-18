@@ -52,7 +52,7 @@ public class StatusUtils {
 
   public static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatus status = new TSStatus();
-    status.setCode(statusCode.getStatusCode());
+    status.setCode(statusCode.getValue());
     switch (statusCode) {
       case SUCCESS_STATUS:
         status.setMessage("Executed successfully.");

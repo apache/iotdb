@@ -27,11 +27,11 @@ public class QueryProcessException extends IoTDBException {
   private static final long serialVersionUID = -683191083844850054L;
 
   public QueryProcessException(String message) {
-    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getValue());
   }
 
   public QueryProcessException(String message, boolean isUserException) {
-    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), isUserException);
+    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getValue(), isUserException);
   }
 
   public QueryProcessException(String message, int errorCode) {
@@ -39,7 +39,7 @@ public class QueryProcessException extends IoTDBException {
   }
 
   public QueryProcessException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+    super(message, cause, TSStatusCode.QUERY_PROCESS_ERROR.getValue());
   }
 
   public QueryProcessException(IoTDBException e) {

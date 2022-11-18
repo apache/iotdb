@@ -30,7 +30,7 @@ public class AlignedTimeseriesException extends MetadataException {
    */
   public AlignedTimeseriesException(String message, String path) {
     super(String.format("%s (Path: %s)", message, path));
-    errorCode = TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode();
+    errorCode = TSStatusCode.ALIGNED_TIMESERIES_ERROR.getValue();
     this.isUserException = true;
   }
 }

@@ -49,10 +49,10 @@ public class DeleteSchemaRPCHandler extends AsyncTSStatusRPCHandler {
   public void onComplete(TSStatus tsStatus) {
     responseMap.put(requestId, tsStatus);
     LOGGER.info("{} for {} receives: {}", requestType, requestId, tsStatus);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
-    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getValue()) {
       dataNodeLocationMap.remove(requestId);
       LOGGER.error(
           "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
@@ -79,6 +79,6 @@ public class DeleteSchemaRPCHandler extends AsyncTSStatusRPCHandler {
     responseMap.put(
         requestId,
         new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue(), errorMsg)));
   }
 }

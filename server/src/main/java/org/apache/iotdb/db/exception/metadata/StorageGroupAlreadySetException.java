@@ -31,13 +31,13 @@ public class StorageGroupAlreadySetException extends MetadataException {
   private final String storageGroupPath;
 
   public StorageGroupAlreadySetException(String path) {
-    super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getValue());
     storageGroupPath = path;
     hasChild = false;
   }
 
   public StorageGroupAlreadySetException(String path, boolean hasChild) {
-    super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getValue());
     this.hasChild = hasChild;
     storageGroupPath = path;
   }

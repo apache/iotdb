@@ -83,7 +83,7 @@ public class TriggerInformationUpdater {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetTriggerTableResp getStatefulTriggerTableResp = client.getStatefulTriggerTable();
       if (getStatefulTriggerTableResp.getStatus().getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          != TSStatusCode.SUCCESS_STATUS.getValue()) {
         throw new IoTDBException(
             getStatefulTriggerTableResp.getStatus().getMessage(),
             getStatefulTriggerTableResp.getStatus().getCode());

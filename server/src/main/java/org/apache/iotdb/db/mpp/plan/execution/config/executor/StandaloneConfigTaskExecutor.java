@@ -192,7 +192,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format(
                     "Path %s does not exist",
                     Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
-                TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
+                TSStatusCode.PATH_NOT_EXIST.getValue()));
         return future;
       } else {
         LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
@@ -219,7 +219,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
           String.format("Failed to create function %s(%s), because %s.", udfName, className, e);
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -235,7 +235,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
           String.format("Failed to drop function %s, because %s.", udfName, e.getMessage());
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -246,7 +246,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show functions in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -264,7 +264,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
               createTriggerStatement.getTriggerName(), e.getMessage());
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -280,7 +280,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
           String.format("Failed to drop trigger %s, because %s.", triggerName, e.getMessage());
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -291,7 +291,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show triggers in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -312,7 +312,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> merge(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -324,7 +324,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -336,7 +336,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -348,7 +348,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new StatementExecutionException(tsStatus));
@@ -360,7 +360,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeSetSystemStatus(status);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new StatementExecutionException(tsStatus));
@@ -374,7 +374,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show cluster in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -415,7 +415,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show regions in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -426,7 +426,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show datanodes in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -436,7 +436,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show confignodes in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -447,7 +447,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing create schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -458,7 +458,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -469,7 +469,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show nodes in schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -480,7 +480,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing set schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -491,7 +491,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show path set template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -502,7 +502,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing deactivate schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -513,7 +513,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing drop schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -524,7 +524,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing unset schema template is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -533,7 +533,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       CreatePipeSinkStatement createPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().createPipeSink(createPipeSinkStatement);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -547,7 +547,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus =
         LocalConfigNode.getInstance().dropPipeSink(dropPipeSinkStatement.getPipeSinkName());
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -573,7 +573,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().createPipe(createPipeStatement);
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -585,7 +585,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().startPipe(startPipeStatement.getPipeName());
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -597,7 +597,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().stopPipe(stopPipeStatement.getPipeName());
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -609,7 +609,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().dropPipe(dropPipeStatement.getPipeName());
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -633,7 +633,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing delete timeseries is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -643,7 +643,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing getRegion is not supported in standalone mode",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -654,7 +654,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing getSeriesSlotList is not supported in standalone mode",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -665,7 +665,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing getTimeSlotList is not supported in standalone mode",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 
@@ -683,7 +683,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getCqId(), e.getMessage());
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -699,7 +699,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
           String.format("Failed to continuous query trigger %s, because %s.", cqId, e.getMessage());
       LOGGER.error(message, e);
       future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     }
     return future;
   }
@@ -710,7 +710,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show continuous queries in standalone mode is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue()));
     return future;
   }
 }

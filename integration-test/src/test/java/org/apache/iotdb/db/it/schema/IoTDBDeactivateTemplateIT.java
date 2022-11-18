@@ -204,7 +204,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()
+          TSStatusCode.TEMPLATE_NOT_SET.getValue()
               + ": Schema Template t1 is not set on any prefix path of [root.sg5.d1]",
           e.getMessage());
     }
@@ -216,7 +216,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
+          TSStatusCode.TEMPLATE_NOT_ACTIVATED.getValue()
               + ": Target schema Template is not activated on any path matched by given path pattern",
           e.getMessage());
     }

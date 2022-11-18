@@ -194,13 +194,13 @@ public class IoTDBClusterNodeIT {
       showClusterResp = client.showCluster();
       TConfigNodeLocation removedConfigNodeLocation = showClusterResp.getConfigNodeList().get(1);
       status = client.removeConfigNode(removedConfigNodeLocation);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // Waiting for RemoveConfigNodeProcedure
       boolean isRemoved = false;
       for (int retry = 0; retry < 10; retry++) {
         showClusterResp = client.showCluster();
-        if (showClusterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        if (showClusterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
             && showClusterResp.getConfigNodeListSize() == testConfigNodeNum - 1) {
           isRemoved = true;
           break;
@@ -214,7 +214,7 @@ public class IoTDBClusterNodeIT {
 
       // Test stop ConfigNode
       status = client.stopConfigNode(removedConfigNodeLocation);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
     }
   }
 
@@ -251,7 +251,7 @@ public class IoTDBClusterNodeIT {
       dataNodeRegisterReq.setDataNodeConfiguration(dataNodeConfiguration);
       TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
       assertEquals(
-          TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(),
+          TSStatusCode.DATANODE_ALREADY_REGISTERED.getValue(),
           dataNodeRegisterResp.getStatus().getCode());
 
       /* Test query one DataNodeInfo */
@@ -265,8 +265,7 @@ public class IoTDBClusterNodeIT {
               .get(dataNodeLocation.getDataNodeId())
               .getLocation();
       assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataNodeConfigurationResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataNodeConfigurationResp.getStatus().getCode());
       assertEquals(1, configurationMap.size());
       assertEquals(dataNodeLocation, dnLocation);
 
@@ -274,8 +273,7 @@ public class IoTDBClusterNodeIT {
       dataNodeConfigurationResp = client.getDataNodeConfiguration(-1);
       configurationMap = dataNodeConfigurationResp.getDataNodeConfigurationMap();
       assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataNodeConfigurationResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataNodeConfigurationResp.getStatus().getCode());
       assertEquals(testDataNodeNum, configurationMap.size());
 
       /* Test remove DataNode */
@@ -290,12 +288,12 @@ public class IoTDBClusterNodeIT {
           new TDataNodeRemoveReq(Collections.singletonList(dataNodeLocation));
       TDataNodeRemoveResp dataNodeRemoveResp = client.removeDataNode(dataNodeRemoveReq);
       assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataNodeRemoveResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), dataNodeRemoveResp.getStatus().getCode());
 
       // Waiting for RemoveDataNodeProcedure
       for (int retry = 0; retry < 10; retry++) {
         showDataNodesResp = client.showDataNodes();
-        if (showDataNodesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        if (showDataNodesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
             && showDataNodesResp.getDataNodesInfoListSize() == testDataNodeNum - 1) {
           return;
         }

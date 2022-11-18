@@ -255,7 +255,7 @@ public class ConfigManager implements IManager {
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       triggerManager.getTriggerInfo().acquireTriggerTableLock();
       udfManager.getUdfInfo().acquireUDFTableLock();
       try {
@@ -280,7 +280,7 @@ public class ConfigManager implements IManager {
   @Override
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return nodeManager.removeDataNode(removeDataNodePlan);
     } else {
       DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
@@ -293,7 +293,7 @@ public class ConfigManager implements IManager {
   public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       triggerManager.getTriggerInfo().acquireTriggerTableLock();
       try {
         dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
@@ -314,7 +314,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       procedureManager.reportRegionMigrateResult(req);
     }
     return status;
@@ -324,7 +324,7 @@ public class ConfigManager implements IManager {
   public DataSet getDataNodeConfiguration(
       GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return nodeManager.getDataNodeConfiguration(getDataNodeConfigurationPlan);
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
@@ -336,7 +336,7 @@ public class ConfigManager implements IManager {
   @Override
   public TShowClusterResp showCluster() {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       configNodeLocations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
       List<TDataNodeLocation> dataNodeInfoLocations =
@@ -359,7 +359,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setTTL(setTTLPlan);
     } else {
       return status;
@@ -370,7 +370,7 @@ public class ConfigManager implements IManager {
   public TSStatus setSchemaReplicationFactor(
       SetSchemaReplicationFactorPlan setSchemaReplicationFactorPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorPlan);
     } else {
       return status;
@@ -381,7 +381,7 @@ public class ConfigManager implements IManager {
   public TSStatus setDataReplicationFactor(
       SetDataReplicationFactorPlan setDataReplicationFactorPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorPlan);
     } else {
       return status;
@@ -392,7 +392,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTimePartitionInterval(
       SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalPlan);
     } else {
       return status;
@@ -403,7 +403,7 @@ public class ConfigManager implements IManager {
   public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
     TSStatus status = confirmLeader();
     CountStorageGroupResp result = new CountStorageGroupResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.countMatchedStorageGroups(countStorageGroupPlan);
     } else {
       result.setStatus(status);
@@ -414,7 +414,7 @@ public class ConfigManager implements IManager {
   @Override
   public DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getStorageGroupReq) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
     } else {
       StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
@@ -426,7 +426,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setStorageGroup(setStorageGroupPlan);
     } else {
       return status;
@@ -436,13 +436,13 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus deleteStorageGroups(List<String> deletedPaths) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getValue(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
@@ -475,7 +475,7 @@ public class ConfigManager implements IManager {
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setStatus(status);
     }
 
@@ -531,7 +531,7 @@ public class ConfigManager implements IManager {
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setStatus(status);
     }
 
@@ -571,7 +571,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
       if (null != level) {
@@ -601,7 +601,7 @@ public class ConfigManager implements IManager {
     TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setStatus(status);
     }
     DataPartitionResp queryResult =
@@ -624,7 +624,7 @@ public class ConfigManager implements IManager {
     TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setStatus(status);
     }
 
@@ -683,7 +683,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return permissionManager.operatePermission(authorPlan);
     } else {
       return status;
@@ -693,7 +693,7 @@ public class ConfigManager implements IManager {
   @Override
   public DataSet queryPermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return permissionManager.queryPermission(authorPlan);
     } else {
       PermissionInfoResp dataSet = new PermissionInfoResp();
@@ -705,7 +705,7 @@ public class ConfigManager implements IManager {
   @Override
   public TPermissionInfoResp login(String username, String password) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return permissionManager.login(username, password);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
@@ -718,7 +718,7 @@ public class ConfigManager implements IManager {
   public TPermissionInfoResp checkUserPrivileges(
       String username, List<String> paths, int permission) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
@@ -737,7 +737,7 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getValue());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
@@ -807,9 +807,9 @@ public class ConfigManager implements IManager {
   public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     TSStatus status = confirmLeader();
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       status = nodeManager.checkConfigNodeBeforeRemove(removeConfigNodePlan);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
         procedureManager.removeConfigNode(removeConfigNodePlan);
       }
     }
@@ -820,7 +820,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? udfManager.createFunction(req)
         : status;
   }
@@ -828,7 +828,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropFunction(String udfName) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? udfManager.dropFunction(udfName)
         : status;
   }
@@ -836,7 +836,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetUDFTableResp getUDFTable() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? udfManager.getUDFTable()
         : new TGetUDFTableResp(status, Collections.emptyList());
   }
@@ -844,7 +844,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? udfManager.getUDFJar(req)
         : new TGetJarInListResp(status, Collections.emptyList());
   }
@@ -852,7 +852,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.createTrigger(req)
         : status;
   }
@@ -860,7 +860,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropTrigger(TDropTriggerReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.dropTrigger(req)
         : status;
   }
@@ -868,7 +868,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetTriggerTableResp getTriggerTable() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.getTriggerTable(false)
         : new TGetTriggerTableResp(status, Collections.emptyList());
   }
@@ -876,7 +876,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetTriggerTableResp getStatefulTriggerTable() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.getTriggerTable(true)
         : new TGetTriggerTableResp(status, Collections.emptyList());
   }
@@ -884,7 +884,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.getLocationOfStatefulTrigger(triggerName)
         : new TGetLocationForTriggerResp(status);
   }
@@ -892,7 +892,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? triggerManager.getTriggerJar(req)
         : new TGetJarInListResp(status, Collections.emptyList());
   }
@@ -900,7 +900,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus merge() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? RpcUtils.squashResponseStatusList(nodeManager.merge())
         : status;
   }
@@ -908,7 +908,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus flush(TFlushReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
         : status;
   }
@@ -916,7 +916,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus clearCache() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
         : status;
   }
@@ -924,7 +924,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus loadConfiguration() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
         : status;
   }
@@ -932,7 +932,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setSystemStatus(String systemStatus) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? RpcUtils.squashResponseStatusList(nodeManager.setSystemStatus(systemStatus))
         : status;
   }
@@ -940,7 +940,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? nodeManager.setDataNodeStatus(req)
         : status;
   }
@@ -950,7 +950,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       resp.setTimestamp(System.currentTimeMillis());
       resp.setRegionRouteMap(getLoadManager().getLatestRegionRouteMap());
     }
@@ -966,7 +966,7 @@ public class ConfigManager implements IManager {
   @Override
   public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
@@ -979,7 +979,7 @@ public class ConfigManager implements IManager {
   public TShowDataNodesResp showDataNodes() {
     TSStatus status = confirmLeader();
     TShowDataNodesResp resp = new TShowDataNodesResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setDataNodesInfoList(nodeManager.getRegisteredDataNodeInfoList())
           .setStatus(StatusUtils.OK);
     } else {
@@ -991,7 +991,7 @@ public class ConfigManager implements IManager {
   public TShowConfigNodesResp showConfigNodes() {
     TSStatus status = confirmLeader();
     TShowConfigNodesResp resp = new TShowConfigNodesResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return resp.setConfigNodesInfoList(nodeManager.getRegisteredConfigNodeInfoList())
           .setStatus(StatusUtils.OK);
     } else {
@@ -1002,7 +1002,7 @@ public class ConfigManager implements IManager {
   @Override
   public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return getClusterSchemaManager().showStorageGroup(getStorageGroupPlan);
     } else {
       return new TShowStorageGroupResp().setStatus(status);
@@ -1045,7 +1045,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       CreateSchemaTemplatePlan createSchemaTemplatePlan =
           new CreateSchemaTemplatePlan(req.getSerializedTemplate());
       return clusterSchemaManager.createTemplate(createSchemaTemplatePlan);
@@ -1057,7 +1057,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetAllTemplatesResp getAllTemplates() {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.getAllTemplates();
     } else {
       return new TGetAllTemplatesResp().setStatus(status);
@@ -1067,7 +1067,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetTemplateResp getTemplate(String req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.getTemplate(req);
     } else {
       return new TGetTemplateResp().setStatus(status);
@@ -1077,7 +1077,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.setSchemaTemplate(req.getName(), req.getPath());
     } else {
       return status;
@@ -1087,7 +1087,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.getPathsSetTemplate(req);
     } else {
       return new TGetPathsSetTemplatesResp(status);
@@ -1097,7 +1097,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return status;
     }
 
@@ -1106,7 +1106,7 @@ public class ConfigManager implements IManager {
 
     List<PartialPath> patternList = patternTree.getAllPathPatterns();
     TemplateSetInfoResp templateSetInfoResp = clusterSchemaManager.getTemplateSetInfo(patternList);
-    if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (templateSetInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return templateSetInfoResp.getStatus();
     }
 
@@ -1147,12 +1147,12 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       return status;
     }
     Pair<TSStatus, Template> checkResult =
         clusterSchemaManager.checkIsTemplateSetOnPath(req.getTemplateName(), req.getPath());
-    if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       try {
         return procedureManager.unsetSchemaTemplate(
             req.getQueryId(), checkResult.right, new PartialPath(req.getPath()));
@@ -1167,7 +1167,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropSchemaTemplate(String templateName) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return clusterSchemaManager.dropSchemaTemplate(templateName);
     } else {
       return status;
@@ -1177,7 +1177,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return procedureManager.deleteTimeSeries(req);
     } else {
       return status;
@@ -1187,7 +1187,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return syncManager.createPipeSink(plan);
     } else {
       return status;
@@ -1197,7 +1197,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return syncManager.dropPipeSink(plan);
     } else {
       return status;
@@ -1208,7 +1208,7 @@ public class ConfigManager implements IManager {
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
     TSStatus status = confirmLeader();
     TGetPipeSinkResp resp = new TGetPipeSinkResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return syncManager.getPipeSink(req.getPipeSinkName());
     } else {
       return resp.setStatus(status);
@@ -1218,7 +1218,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return procedureManager.createPipe(req);
     } else {
       return status;
@@ -1228,7 +1228,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus startPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return procedureManager.startPipe(pipeName);
     } else {
       return status;
@@ -1238,7 +1238,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus stopPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return procedureManager.stopPipe(pipeName);
     } else {
       return status;
@@ -1248,7 +1248,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return procedureManager.dropPipe(pipeName);
     } else {
       return status;
@@ -1259,7 +1259,7 @@ public class ConfigManager implements IManager {
   public TShowPipeResp showPipe(TShowPipeReq req) {
     TSStatus status = confirmLeader();
     TShowPipeResp resp = new TShowPipeResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return syncManager.showPipe(req.getPipeName());
     } else {
       return resp.setStatus(status);
@@ -1269,7 +1269,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()) {
       return syncManager.getAllPipeInfo();
     } else {
       return new TGetAllPipeInfoResp().setStatus(status);
@@ -1279,7 +1279,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetRegionIdResp getRegionId(GetRegionIdPlan plan) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? partitionManager.getRegionId(plan).convertToRpcGetRegionIdResp()
         : new TGetRegionIdResp(status);
   }
@@ -1287,7 +1287,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
         : new TGetTimeSlotListResp(status);
   }
@@ -1295,7 +1295,7 @@ public class ConfigManager implements IManager {
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
   }
@@ -1303,7 +1303,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createCQ(TCreateCQReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? cqManager.createCQ(req)
         : status;
   }
@@ -1311,7 +1311,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropCQ(TDropCQReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? cqManager.dropCQ(req)
         : status;
   }
@@ -1319,7 +1319,7 @@ public class ConfigManager implements IManager {
   @Override
   public TShowCQResp showCQ() {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue()
         ? cqManager.showCQ()
         : new TShowCQResp(status, Collections.emptyList());
   }
@@ -1411,7 +1411,7 @@ public class ConfigManager implements IManager {
                     dataNodeConfiguration.getLocation()));
     if (runningDataNodeLocationMap.isEmpty()) {
       // no running DataNode, will not transfer and print log
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue());
     }
 
     newUnknownDataList.forEach(
@@ -1421,7 +1421,7 @@ public class ConfigManager implements IManager {
     // transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
-    if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       LOGGER.warn("Fail to transfer because {}, will retry", transferResult.getMessage());
     }
 

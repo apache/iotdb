@@ -79,7 +79,7 @@ public class IoTDBClusterAuthorityIT {
             Collections.singletonList(""));
     TAuthorizerResp authorizerResp = client.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
     List<String> allUsers = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER);
     for (String user : allUsers) {
@@ -94,7 +94,7 @@ public class IoTDBClusterAuthorityIT {
                 new HashSet<>(),
                 Collections.singletonList(""));
         status = client.operatePermission(authorizerReq);
-        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       }
     }
   }
@@ -144,16 +144,16 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       authorizerReq.setUserName("tempuser1");
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
-      assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.NO_PERMISSION.getValue(), status.getCode());
 
       // drop user
       authorizerReq =
@@ -166,7 +166,7 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // list user
       authorizerReq =
@@ -180,7 +180,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       userList.remove("tempuser1");
       assertEquals(userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
 
@@ -195,10 +195,10 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       authorizerReq.setRoleName("temprole1");
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // drop role
       authorizerReq =
@@ -211,7 +211,7 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // list role
       authorizerReq =
@@ -225,7 +225,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       roleList.remove("temprole1");
       assertEquals(roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
 
@@ -240,7 +240,7 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // grant user
       List<String> nodeNameList = new ArrayList<>();
@@ -255,13 +255,13 @@ public class IoTDBClusterAuthorityIT {
               privilegeList,
               nodeNameList);
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // grant role
       authorizerReq =
@@ -274,7 +274,7 @@ public class IoTDBClusterAuthorityIT {
               privilegeList,
               nodeNameList);
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // grant role to user
       authorizerReq =
@@ -287,7 +287,7 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               nodeNameList);
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // revoke user
       authorizerReq =
@@ -300,7 +300,7 @@ public class IoTDBClusterAuthorityIT {
               revokePrivilege,
               nodeNameList);
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // revoke role
       authorizerReq =
@@ -313,7 +313,7 @@ public class IoTDBClusterAuthorityIT {
               revokePrivilege,
               nodeNameList);
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // list privileges user on root.ln.**
       authorizerReq =
@@ -327,7 +327,7 @@ public class IoTDBClusterAuthorityIT {
               nodeNameList);
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       Assert.assertEquals(
           0, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 
@@ -343,7 +343,7 @@ public class IoTDBClusterAuthorityIT {
               Collections.singletonList("root.**"));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       Assert.assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -359,7 +359,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       Assert.assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -375,7 +375,7 @@ public class IoTDBClusterAuthorityIT {
               nodeNameList);
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       privilege.remove(0);
       assertEquals(
           0, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
@@ -392,7 +392,7 @@ public class IoTDBClusterAuthorityIT {
               Collections.singletonList("root.**"));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -408,7 +408,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       Assert.assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -424,7 +424,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       roleList.remove("temprole1");
       assertEquals(roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
 
@@ -440,7 +440,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       userList.remove("tempuser1");
       userList.remove("root");
       assertEquals(userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
@@ -456,7 +456,7 @@ public class IoTDBClusterAuthorityIT {
               new HashSet<>(),
               new ArrayList<>());
       status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // list root privileges
       authorizerReq =
@@ -470,7 +470,7 @@ public class IoTDBClusterAuthorityIT {
               new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
       for (int i = 0; i < PrivilegeType.values().length; i++) {
         assertEquals(
             PrivilegeType.values()[i].toString(),

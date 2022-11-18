@@ -76,7 +76,7 @@ public class SessionExample {
     try {
       session.createDatabase("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getValue()) {
         throw e;
       }
     }

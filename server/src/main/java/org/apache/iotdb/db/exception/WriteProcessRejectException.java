@@ -25,7 +25,7 @@ public class WriteProcessRejectException extends WriteProcessException {
   private static final long serialVersionUID = -4217324287547595610L;
 
   public WriteProcessRejectException(String message) {
-    super(message, TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
+    super(message, TSStatusCode.WRITE_PROCESS_REJECT.getValue());
   }
 
   public WriteProcessRejectException(String message, int errorCode) {

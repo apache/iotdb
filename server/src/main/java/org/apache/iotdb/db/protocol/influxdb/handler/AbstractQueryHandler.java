@@ -130,7 +130,7 @@ public abstract class AbstractQueryHandler {
     } catch (AuthException e) {
       return tsQueryResultRsp.setStatus(
           RpcUtils.getInfluxDBStatus(
-              TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode(), e.getMessage()));
+              TSStatusCode.UNINITIALIZED_AUTH_ERROR.getValue(), e.getMessage()));
     }
   }
 

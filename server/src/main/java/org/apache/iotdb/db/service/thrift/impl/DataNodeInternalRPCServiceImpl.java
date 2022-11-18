@@ -348,7 +348,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
-          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getValue()));
     }
 
     TSStatus resultStatus =
@@ -392,13 +392,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidatePartitionCache(TInvalidateCacheReq req) {
     ClusterPartitionFetcher.getInstance().invalidAllCache();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().cleanUp();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -424,7 +424,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
-      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
         preDeletedNum += Integer.parseInt(status.getMessage());
       } else {
         failureList.add(status);
@@ -460,7 +460,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   new RollbackSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failureList.add(status);
       }
     }
@@ -539,7 +539,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new DataRegionId(consensusGroupId.getId()),
                   new DeleteDataNode(new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failureList.add(status);
       }
     }
@@ -573,7 +573,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failureList.add(status);
       }
     }
@@ -607,7 +607,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   new PreDeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
-      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getValue()) {
         preDeactivateTemplateNum += Integer.parseInt(status.getMessage());
       } else {
         failureList.add(status);
@@ -687,7 +687,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new RollbackPreDeactivateTemplateNode(
                       new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failureList.add(status);
       }
     }
@@ -719,7 +719,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getValue()) {
         failureList.add(status);
       }
     }
@@ -772,7 +772,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       SyncService.getInstance().addPipe(pipeInfo);
       return RpcUtils.SUCCESS_STATUS;
     } catch (PipeException e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getValue()).setMessage(e.getMessage());
     }
   }
 
@@ -790,12 +790,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SyncService.getInstance().dropPipe(req.getPipeName());
           break;
         default:
-          return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          return new TSStatus(TSStatusCode.PIPE_ERROR.getValue())
               .setMessage("Unsupported operation.");
       }
       return RpcUtils.SUCCESS_STATUS;
     } catch (PipeException e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getValue()).setMessage(e.getMessage());
     }
   }
 
@@ -813,7 +813,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         SyncService.getInstance().dropPipe(req.getPipeName(), req.getCreateTime());
         break;
       default:
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getValue())
             .setMessage("Unsupported operation.");
     }
     return RpcUtils.SUCCESS_STATUS;
@@ -878,8 +878,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               SCHEMA_FETCHER,
               req.getTimeout());
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getValue()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
         return result.status;
       }
 
@@ -1168,7 +1168,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) throws TException {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
@@ -1182,20 +1182,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus transferLeader(ConsensusGroupId regionId, Peer newLeaderPeer) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
       resp = DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
     } else if (regionId instanceof SchemaRegionId) {
       resp = SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
     } else {
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getValue());
       status.setMessage("Error Region type. region: " + regionId);
       return status;
     }
     if (!resp.isSuccess()) {
       LOGGER.error("change region {} leader failed", regionId, resp.getException());
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getValue());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
@@ -1239,7 +1239,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     if (submitSucceed) {
       LOGGER.info(
           "Successfully submit addRegionPeer task for region: {} on DataNode: {}",
@@ -1247,7 +1247,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
     status.setMessage("Submit addRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1257,7 +1257,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     if (submitSucceed) {
       LOGGER.info(
           "Successfully submit removeRegionPeer task for region: {} on DataNode: {}",
@@ -1265,7 +1265,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
     status.setMessage("Submit removeRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1275,7 +1275,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitDeleteOldRegionPeerTask(req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     if (submitSucceed) {
       LOGGER.info(
           "Successfully submit deleteOldRegionPeer task for region: {} on DataNode: {}",
@@ -1283,7 +1283,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           selectedDataNodeIP);
       return status;
     }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
     status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
   }
@@ -1297,9 +1297,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       UDFInformation udfInformation = UDFInformation.deserialize(req.udfInformation);
       UDFManagementService.getInstance().register(udfInformation, req.jarFile);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.CREATE_UDF_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_UDF_ON_DATANODE_ERROR.getValue())
           .setMessage(e.getMessage());
     }
   }
@@ -1308,9 +1308,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus dropFunction(TDropFunctionInstanceReq req) {
     try {
       UDFManagementService.getInstance().deregister(req.getFunctionName(), req.isNeedToDeleteJar());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.DROP_UDF_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_UDF_ON_DATANODE_ERROR.getValue())
           .setMessage(e.getMessage());
     }
   }
@@ -1327,10 +1327,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
           triggerInformation.getTriggerName(),
           e);
-      return new TSStatus(TSStatusCode.CREATE_TRIGGER_INSTANCE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_INSTANCE_ERROR.getValue())
           .setMessage(e.getMessage());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -1342,10 +1342,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
-      return new TSStatus(TSStatusCode.ACTIVE_TRIGGER_INSTANCE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.ACTIVE_TRIGGER_INSTANCE_ERROR.getValue())
           .setMessage(e.getMessage());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -1357,11 +1357,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
           req.triggerName,
           e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue())
           .setMessage(e.getMessage());
     }
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -1373,10 +1373,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred when dropping trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
-      return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getValue())
           .setMessage(e.getMessage());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -1389,10 +1389,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred when updating Location for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
-      return new TSStatus(TSStatusCode.UPDATE_TRIGGER_LOCATION_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.UPDATE_TRIGGER_LOCATION_ERROR.getValue())
           .setMessage(e.getMessage());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
   }
 
   @Override
@@ -1432,12 +1432,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private boolean isSucceed(TSStatus status) {
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getValue();
   }
 
   private TSStatus createNewRegionPeer(ConsensusGroupId regionId, List<Peer> peers) {
     LOGGER.info("Start to createNewRegionPeer {} to region {}", peers, regionId);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
       resp = DataRegionConsensusImpl.getInstance().createPeer(regionId, peers);
@@ -1450,7 +1450,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           peers,
           regionId,
           resp.getException());
-      status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getValue());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
@@ -1462,7 +1462,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus disableDataNode(TDisableDataNodeReq req) throws TException {
     LOGGER.info("start disable data node in the request: {}", req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     status.setMessage("disable datanode succeed");
     // TODO what need to clean?
     ClusterPartitionFetcher.getInstance().invalidAllCache();
@@ -1472,7 +1472,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus stopDataNode() {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     LOGGER.info("Execute stopDataNode RPC method");
 
     // kill the datanode process 20 seconds later
@@ -1495,7 +1495,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage("stop datanode succeed");
     } catch (Exception e) {
       LOGGER.error("Stop Data Node error", e);
-      status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getValue());
       status.setMessage(e.getMessage());
     }
     return status;

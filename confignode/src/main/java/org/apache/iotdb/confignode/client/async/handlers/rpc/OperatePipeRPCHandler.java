@@ -52,7 +52,7 @@ public class OperatePipeRPCHandler extends AsyncTSStatusRPCHandler {
     responseMap.put(
         requestId,
         new TSStatus(
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getValue(), errorMsg)));
 
     // Always CountDown
     countDownLatch.countDown();

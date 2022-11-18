@@ -116,7 +116,7 @@ public class SyncConfigNodeClientPool {
       TConfigNodeLocation configNodeLocation, SyncConfigNodeIServiceClient client)
       throws TException, IOException, InterruptedException {
     TSStatus status = client.removeConfigNode(configNodeLocation);
-    while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getValue()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
       try (SyncConfigNodeIServiceClient clientLeader =

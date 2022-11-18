@@ -445,7 +445,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       SystemPropertiesUtils.storeSystemParameters();
     } catch (IOException e) {
       LOGGER.error("Write confignode-system.properties failed", e);
-      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getValue());
     }
 
     // The initial startup of Non-Seed-ConfigNode finished
@@ -457,9 +457,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus isConsensusInitialized() throws TException {
     if (configManager.getConsensusManager() != null) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue());
     }
-    return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+    return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getValue());
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */
@@ -476,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getValue())
           .setMessage(
               "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
     }
@@ -485,12 +485,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     ConsensusGenericResponse resp =
         configManager.getConsensusManager().getConsensusImpl().deletePeer(groupId);
     if (!resp.isSuccess()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getValue())
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
 
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())
         .setMessage("remove ConsensusGroup success.");
   }
 
@@ -508,7 +508,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               }
             })
         .start();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getValue())
         .setMessage("Stop ConfigNode success.");
   }
 
@@ -732,7 +732,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
+      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getValue()));
     }
     TTimePartitionSlot timePartitionSlot =
         req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);

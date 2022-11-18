@@ -721,7 +721,7 @@ public class StorageEngineV2 implements IService {
               "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getValue());
       status.setMessage(e.getMessage());
       return status;
     } catch (IOException e) {
@@ -730,7 +730,7 @@ public class StorageEngineV2 implements IService {
               "IO error when writing piece node of TsFile %s to DataRegion %s.",
               pieceNode.getTsFile(), dataRegionId),
           e);
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getValue());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -747,7 +747,7 @@ public class StorageEngineV2 implements IService {
           if (loadTsFileManager.loadAll(uuid)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getValue());
             status.setMessage(
                 String.format(
                     "No load TsFile uuid %s recorded for execute load command %s.",
@@ -758,7 +758,7 @@ public class StorageEngineV2 implements IService {
           if (loadTsFileManager.deleteAll(uuid)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getValue());
             status.setMessage(
                 String.format(
                     "No load TsFile uuid %s recorded for execute load command %s.",
@@ -766,12 +766,12 @@ public class StorageEngineV2 implements IService {
           }
           break;
         default:
-          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getValue());
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
     } catch (IOException | LoadFileException e) {
       logger.error(String.format("Execute load command %s error.", loadCommand), e);
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getValue());
       status.setMessage(e.getMessage());
     }
 

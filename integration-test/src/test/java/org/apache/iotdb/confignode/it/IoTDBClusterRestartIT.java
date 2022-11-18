@@ -181,7 +181,7 @@ public class IoTDBClusterRestartIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // check the number and status of nodes
       clusterNodes = getClusterNodeInfos(client, testConfigNodeNum, testDataNodeNum);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), clusterNodes.getStatus().getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), clusterNodes.getStatus().getCode());
 
       // check the configuration of nodes
       List<TConfigNodeLocation> configNodeLocationList = clusterNodes.getConfigNodeList();
@@ -201,15 +201,14 @@ public class IoTDBClusterRestartIT {
 
       // Set StorageGroups
       status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getValue(), status.getCode());
 
       // Test getSchemaPartition, the result should be empty
       buffer = generatePatternTreeBuffer(new String[] {d00, d01});
       schemaPartitionReq = new TSchemaPartitionReq(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(0, schemaPartitionTableResp.getSchemaPartitionTableSize());
 
       // Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartitions and return
@@ -217,8 +216,7 @@ public class IoTDBClusterRestartIT {
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
+          TSStatusCode.SUCCESS_STATUS.getValue(), schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       Assert.assertTrue(schemaPartitionTable.containsKey(sg0));

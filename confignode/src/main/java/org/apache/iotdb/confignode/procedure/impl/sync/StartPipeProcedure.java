@@ -87,7 +87,7 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
     LOGGER.info("Start to pre-start PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
         env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_START);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -101,14 +101,14 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
             .operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE);
     TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
     executedDataNodeIds.addAll(responseMap.keySet());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(
           String.format(
               "Fail to start PIPE [%s] because %s.",
               pipeName,
               StringUtils.join(
                   responseMap.values().stream()
-                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getValue())
                       .map(TSStatus::getMessage)
                       .toArray(),
                   ", ")));
@@ -120,7 +120,7 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
     LOGGER.info("Start to start PIPE [{}] on Config Nodes", pipeName);
     TSStatus status =
         env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
       throw new PipeException(status.getMessage());
     }
   }
@@ -152,7 +152,7 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
       case PRE_OPERATE_PIPE_CONFIGNODE:
         TSStatus status =
             env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.STOP);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getValue()) {
           throw new ProcedureException(
               String.format(
                   "Failed to start pipe and failed to roll back because %s. Please execute [STOP PIPE %s] manually.",
