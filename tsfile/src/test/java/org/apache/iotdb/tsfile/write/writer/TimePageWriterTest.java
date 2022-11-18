@@ -45,7 +45,7 @@ public class TimePageWriterTest {
   public void testWrite() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor);
+    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor, "");
     try {
       pageWriter.write(1L);
       assertEquals(8, pageWriter.estimateMaxMemSize());
@@ -68,7 +68,7 @@ public class TimePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithoutCompress1() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor);
+    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       pageWriter.write(1L);
@@ -99,7 +99,7 @@ public class TimePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithoutCompress2() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor);
+    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       pageWriter.write(1L);
@@ -135,7 +135,7 @@ public class TimePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithSnappy() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
-    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor);
+    TimePageWriter pageWriter = new TimePageWriter(timeEncoder, compressor, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       pageWriter.write(1L);

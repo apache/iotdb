@@ -94,7 +94,8 @@ public class TimeChunkWriter {
     // init statistics for this chunk and page
     this.statistics = new TimeStatistics();
 
-    this.pageWriter = new TimePageWriter(timeEncoder, ICompressor.getCompressor(compressionType));
+    this.pageWriter =
+        new TimePageWriter(timeEncoder, ICompressor.getCompressor(compressionType), measurementId);
   }
 
   public void write(long time) {

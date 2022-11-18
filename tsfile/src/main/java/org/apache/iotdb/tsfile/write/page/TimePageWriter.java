@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.write.monitor.WriteStatistics;
+import org.apache.iotdb.tsfile.write.monitor.WriteStatistics.StatisticType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This writer is used to write time into a page. It consists of a time encoder and respective
@@ -41,10 +42,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TimePageWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(TimePageWriter.class);
-  public static final AtomicLong timeRawSize = new AtomicLong();
-  public static final AtomicLong timeEncodedSize = new AtomicLong();
-  public static final AtomicLong timeCompressedSize = new AtomicLong();
 
+  private final String measurementId;
   private final ICompressor compressor;
 
   // time
@@ -57,18 +56,19 @@ public class TimePageWriter {
    */
   private TimeStatistics statistics;
 
-  public TimePageWriter(Encoder timeEncoder, ICompressor compressor) {
+  public TimePageWriter(Encoder timeEncoder, ICompressor compressor, String measurementId) {
     this.timeOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;
     this.statistics = new TimeStatistics();
     this.compressor = compressor;
+    this.measurementId = measurementId;
   }
 
   /** write a time into encoder */
   public void write(long time) {
     timeEncoder.encode(time, timeOut);
     statistics.update(time);
-    timeRawSize.addAndGet(Long.BYTES);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, 0, StatisticType.rawSize);
   }
 
   /** write time series into encoder */
@@ -76,7 +76,8 @@ public class TimePageWriter {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
     }
-    timeRawSize.addAndGet(batchSize * Long.BYTES);
+    WriteStatistics.INSTANCE.update(
+        measurementId, (long) Long.BYTES * batchSize, 0, StatisticType.rawSize);
     statistics.update(timestamps, batchSize);
   }
 
@@ -96,7 +97,7 @@ public class TimePageWriter {
     ByteBuffer buffer = ByteBuffer.allocate(timeOut.size());
     buffer.put(timeOut.getBuf(), 0, timeOut.size());
     buffer.flip();
-    timeEncodedSize.addAndGet(timeOut.size());
+    WriteStatistics.INSTANCE.update(measurementId, timeOut.size(), 0, StatisticType.encodedSize);
     return buffer;
   }
 
@@ -125,7 +126,7 @@ public class TimePageWriter {
           compressor.compress(
               pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
     }
-    timeCompressedSize.addAndGet(compressedSize);
+    WriteStatistics.INSTANCE.update(measurementId, compressedSize, 0, StatisticType.compressedSize);
 
     // write the page header to IOWriter
     int sizeWithoutStatistic = 0;

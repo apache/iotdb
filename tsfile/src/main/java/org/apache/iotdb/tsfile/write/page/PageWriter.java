@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.write.monitor.WriteStatistics;
+import org.apache.iotdb.tsfile.write.monitor.WriteStatistics.StatisticType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -36,7 +38,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This writer is used to write time-value into a page. It consists of a time encoder, a value
@@ -44,15 +45,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PageWriter {
 
-  public static final AtomicLong timeRawSize = new AtomicLong();
-  public static final AtomicLong timeEncodedSize = new AtomicLong();
-  public static final AtomicLong valueRawSize = new AtomicLong();
-  public static final AtomicLong valueEncodedSize = new AtomicLong();
-  public static final AtomicLong compressedSize = new AtomicLong();
-
   private static final Logger logger = LoggerFactory.getLogger(PageWriter.class);
 
   private ICompressor compressor;
+  private String measurementId;
 
   // time
   private Encoder timeEncoder;
@@ -75,6 +71,7 @@ public class PageWriter {
     this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
+    this.measurementId = measurementSchema.getMeasurementId();
   }
 
   private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
@@ -89,8 +86,7 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(1);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, Byte.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -98,8 +94,7 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(Short.BYTES);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, Short.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -107,8 +102,8 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(Integer.BYTES);
+    WriteStatistics.INSTANCE.update(
+        measurementId, Long.BYTES, Integer.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -116,8 +111,7 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(Long.BYTES);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, Long.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -125,8 +119,7 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(Float.BYTES);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, Float.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -134,8 +127,7 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(Double.BYTES);
+    WriteStatistics.INSTANCE.update(measurementId, Long.BYTES, Double.BYTES, StatisticType.rawSize);
   }
 
   /** write a time value pair into encoder */
@@ -143,8 +135,8 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
-    timeRawSize.addAndGet(Long.BYTES);
-    valueRawSize.addAndGet(value.getLength());
+    WriteStatistics.INSTANCE.update(
+        measurementId, Long.BYTES, value.getLength(), StatisticType.rawSize);
   }
 
   /** write time series into encoder */
@@ -153,8 +145,8 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    timeRawSize.addAndGet(Long.BYTES * batchSize);
-    valueRawSize.addAndGet(batchSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId, (long) Long.BYTES * batchSize, batchSize, StatisticType.rawSize);
     statistics.update(timestamps, values, batchSize);
   }
 
@@ -164,8 +156,11 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    timeRawSize.addAndGet(Long.BYTES * batchSize);
-    valueRawSize.addAndGet(Integer.BYTES * batchSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId,
+        (long) Long.BYTES * batchSize,
+        (long) Integer.BYTES * batchSize,
+        StatisticType.rawSize);
     statistics.update(timestamps, values, batchSize);
   }
 
@@ -175,8 +170,11 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    timeRawSize.addAndGet(Long.BYTES * batchSize);
-    valueRawSize.addAndGet(Long.BYTES * batchSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId,
+        (long) Long.BYTES * batchSize,
+        (long) Long.BYTES * batchSize,
+        StatisticType.rawSize);
     statistics.update(timestamps, values, batchSize);
   }
 
@@ -186,8 +184,11 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    timeRawSize.addAndGet(Long.BYTES * batchSize);
-    valueRawSize.addAndGet(Float.BYTES * batchSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId,
+        (long) Long.BYTES * batchSize,
+        (long) Float.BYTES * batchSize,
+        StatisticType.rawSize);
     statistics.update(timestamps, values, batchSize);
   }
 
@@ -197,8 +198,11 @@ public class PageWriter {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
-    timeRawSize.addAndGet(Long.BYTES * batchSize);
-    valueRawSize.addAndGet(Double.BYTES * batchSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId,
+        (long) Long.BYTES * batchSize,
+        (long) Double.BYTES * batchSize,
+        StatisticType.rawSize);
     statistics.update(timestamps, values, batchSize);
   }
 
@@ -207,8 +211,8 @@ public class PageWriter {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
-      timeRawSize.addAndGet(Long.BYTES);
-      valueRawSize.addAndGet(values[i].getLength());
+      WriteStatistics.INSTANCE.update(
+          measurementId, Long.BYTES, values[i].getLength(), StatisticType.rawSize);
     }
     statistics.update(timestamps, values, batchSize);
   }
@@ -220,8 +224,8 @@ public class PageWriter {
   }
 
   /**
-   * getUncompressedBytes return data what it has been written in form of <code>
-   * size of time list, time list, value list</code>
+   * getUncompressedBytes return data what it has been written in form of <code> size of time list,
+   * time list, value list</code>
    *
    * @return a new readable ByteBuffer whose position is 0.
    */
@@ -232,8 +236,8 @@ public class PageWriter {
     buffer.put(timeOut.getBuf(), 0, timeOut.size());
     buffer.put(valueOut.getBuf(), 0, valueOut.size());
     buffer.flip();
-    timeEncodedSize.addAndGet(timeOut.size());
-    valueEncodedSize.addAndGet(valueOut.size());
+    WriteStatistics.INSTANCE.update(
+        measurementId, timeOut.size(), valueOut.size(), StatisticType.encodedSize);
     return buffer;
   }
 
@@ -262,7 +266,8 @@ public class PageWriter {
           compressor.compress(
               pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
     }
-    PageWriter.compressedSize.addAndGet(compressedSize);
+    WriteStatistics.INSTANCE.update(
+        measurementId, compressedSize, compressedSize, StatisticType.compressedSize);
 
     // write the page header to IOWriter
     int sizeWithoutStatistic = 0;

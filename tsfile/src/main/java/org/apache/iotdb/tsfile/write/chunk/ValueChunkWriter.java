@@ -98,7 +98,8 @@ public class ValueChunkWriter {
     this.statistics = Statistics.getStatsByType(dataType);
 
     this.pageWriter =
-        new ValuePageWriter(valueEncoder, ICompressor.getCompressor(compressionType), dataType);
+        new ValuePageWriter(
+            valueEncoder, ICompressor.getCompressor(compressionType), dataType, measurementId);
   }
 
   public void write(long time, long value, boolean isNull) {

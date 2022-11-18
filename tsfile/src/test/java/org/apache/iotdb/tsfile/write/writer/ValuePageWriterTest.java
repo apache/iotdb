@@ -46,7 +46,8 @@ public class ValuePageWriterTest {
   public void testWrite1() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     try {
       pageWriter.write(1L, 1.0f, false);
       assertEquals(9, pageWriter.estimateMaxMemSize());
@@ -69,7 +70,8 @@ public class ValuePageWriterTest {
   public void testWrite2() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     try {
       for (int time = 1; time <= 16; time++) {
         pageWriter.write(time, (float) time, time % 4 == 0);
@@ -99,7 +101,8 @@ public class ValuePageWriterTest {
   public void testWrite3() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     try {
       for (int time = 1; time <= 20; time++) {
         pageWriter.write(time, (float) time, time % 4 == 0);
@@ -130,7 +133,8 @@ public class ValuePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithoutCompress1() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       for (int time = 1; time <= 20; time++) {
@@ -178,7 +182,8 @@ public class ValuePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithoutCompress2() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.UNCOMPRESSED);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       for (int time = 1; time <= 20; time++) {
@@ -237,7 +242,8 @@ public class ValuePageWriterTest {
   public void testWritePageHeaderAndDataIntoBuffWithSnappy() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
     ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
-    ValuePageWriter pageWriter = new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT);
+    ValuePageWriter pageWriter =
+        new ValuePageWriter(valueEncoder, compressor, TSDataType.FLOAT, "");
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       for (int time = 1; time <= 20; time++) {
