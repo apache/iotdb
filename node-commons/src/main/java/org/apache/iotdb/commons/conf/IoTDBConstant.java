@@ -175,6 +175,8 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+  public static final String[] SDT_PARAMETERS =
+      new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
 
   // default base dir, stores all IoTDB runtime files
   public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
@@ -259,4 +261,6 @@ public class IoTDBConstant {
   // select into
   public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
   public static final String DOUBLE_COLONS = "::";
+
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
 }

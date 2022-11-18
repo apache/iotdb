@@ -177,6 +177,27 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
+  public void abort(Throwable t) {
+    if (aborted || closed) {
+      return;
+    }
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.debug("[StartAbortLocalSourceHandle]");
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          queue.abort(t);
+          aborted = true;
+          sourceHandleListener.onAborted(this);
+        }
+      }
+      logger.debug("[EndAbortLocalSourceHandle]");
+    }
+  }
+
+  @Override
   public void close() {
     if (aborted || closed) {
       return;

@@ -154,7 +154,7 @@ public class NonAlignedChunkData implements ChunkData {
       throws IOException {
     pageNumber += 1;
     long startTime = timePartitionSlot.getStartTime();
-    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
@@ -261,7 +261,7 @@ public class NonAlignedChunkData implements ChunkData {
   public static NonAlignedChunkData deserialize(InputStream stream)
       throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionForRouting(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     byte chunkType = ReadWriteIOUtils.readByte(stream);

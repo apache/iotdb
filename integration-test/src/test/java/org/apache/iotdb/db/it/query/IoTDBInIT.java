@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -103,16 +104,25 @@ public class IoTDBInIT {
   @Test
   public void testCastException() {
     assertTestFail(
-        "select * from root.** where s1 in (\"test\")", "400: \"test\" cannot be cast to [INT32]");
+        "select * from root.** where s1 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [INT32]");
     assertTestFail(
-        "select * from root.** where s2 in (\"test\")", "400: \"test\" cannot be cast to [INT64]");
+        "select * from root.** where s2 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [INT64]");
     assertTestFail(
-        "select * from root.** where s3 in (\"test\")", "400: \"test\" cannot be cast to [FLOAT]");
+        "select * from root.** where s3 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [FLOAT]");
     assertTestFail(
-        "select * from root.** where s4 in (\"test\")", "400: \"test\" cannot be cast to [DOUBLE]");
+        "select * from root.** where s4 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [DOUBLE]");
     assertTestFail(
         "select * from root.** where s5 in (\"test\")",
-        "400: \"test\" cannot be cast to [BOOLEAN]");
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [BOOLEAN]");
   }
 
   /** Test for IOTDB-1540 */

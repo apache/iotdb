@@ -39,6 +39,7 @@ struct TDataNodeRegisterResp {
   7: optional list<binary> allTriggerInformation
   8: optional TCQConfig cqConfig
   9: optional list<binary> allUDFInformation
+  10: optional binary allTTLInformation
 }
 
 struct TGlobalConfig {
@@ -264,6 +265,7 @@ struct TUserResp {
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
+  5: required bool isOpenIdUser
 }
 
 struct TRoleResp {

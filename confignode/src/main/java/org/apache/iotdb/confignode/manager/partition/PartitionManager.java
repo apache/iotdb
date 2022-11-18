@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
+import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -218,10 +218,10 @@ public class PartitionManager {
         try {
           assignedSchemaPartition =
               getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
-        } catch (NotAvailableRegionGroupException e) {
-          LOGGER.error(e.getMessage());
+        } catch (NoAvailableRegionGroupException e) {
+          LOGGER.error("Create SchemaPartition failed because: ", e);
           resp.setStatus(
-              new TSStatus(TSStatusCode.NOT_AVAILABLE_REGION_GROUP.getStatusCode())
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                   .setMessage(e.getMessage()));
           return resp;
         }
@@ -295,10 +295,10 @@ public class PartitionManager {
         try {
           assignedDataPartition =
               getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-        } catch (NotAvailableRegionGroupException e) {
-          LOGGER.error(e.getMessage());
+        } catch (NoAvailableRegionGroupException e) {
+          LOGGER.error("Create DataPartition failed because: ", e);
           resp.setStatus(
-              new TSStatus(TSStatusCode.NOT_AVAILABLE_REGION_GROUP.getStatusCode())
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                   .setMessage(e.getMessage()));
           return resp;
         }
@@ -406,12 +406,12 @@ public class PartitionManager {
     } catch (NotEnoughDataNodeException e) {
       String prompt = "ConfigNode failed to extend Region because there are not enough DataNodes";
       LOGGER.error(prompt);
-      result.setCode(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
+      result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(prompt);
     } catch (StorageGroupNotExistsException e) {
       String prompt = "ConfigNode failed to extend Region because some StorageGroup doesn't exist.";
       LOGGER.error(prompt);
-      result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(prompt);
     }
 
@@ -510,11 +510,11 @@ public class PartitionManager {
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
    * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
-   * @throws NotAvailableRegionGroupException When all RegionGroups within the specified
-   *     StorageGroup are unavailable currently
+   * @throws NoAvailableRegionGroupException When all RegionGroups within the specified StorageGroup
+   *     are unavailable currently
    */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) throws NotAvailableRegionGroupException {
+      String storageGroup, TConsensusGroupType type) throws NoAvailableRegionGroupException {
     // Collect static data
     List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
         partitionInfo.getRegionGroupSlotsCounter(storageGroup, type);
@@ -530,7 +530,7 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
-      throw new NotAvailableRegionGroupException();
+      throw new NoAvailableRegionGroupException(type);
     }
 
     result.sort(Comparator.comparingLong(Pair::getLeft));

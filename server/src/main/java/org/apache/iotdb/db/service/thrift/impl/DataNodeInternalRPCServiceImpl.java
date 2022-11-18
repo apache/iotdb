@@ -347,7 +347,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
-      return createTLoadResp(new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+      return createTLoadResp(
+          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
 
     TSStatus resultStatus =
@@ -878,7 +879,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result.status;
       }
 
@@ -971,7 +972,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (result) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return RpcUtils.getStatus(TSStatusCode.CACHE_UPDATE_FAIL);
+      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);
     }
   }
 
@@ -1063,7 +1064,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
-    return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+    return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
   }
 
   @Override
@@ -1188,13 +1189,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } else if (regionId instanceof SchemaRegionId) {
       resp = SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
     } else {
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage("Error Region type. region: " + regionId);
       return status;
     }
     if (!resp.isSuccess()) {
       LOGGER.error("change region {} leader failed", regionId, resp.getException());
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
@@ -1298,7 +1299,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       UDFManagementService.getInstance().register(udfInformation, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.CREATE_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_UDF_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -1309,7 +1310,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       UDFManagementService.getInstance().deregister(req.getFunctionName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.DROP_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_UDF_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -1449,7 +1450,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           peers,
           regionId,
           resp.getException());
-      status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(resp.getException().getMessage());
       return status;
     }

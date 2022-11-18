@@ -16,23 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.confignode.exception;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public class PathException extends QueryProcessException {
+public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
+  private static final String DATA_REGION_GROUP = "DataRegionGroup";
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message, int errorCode) {
-    super(message, errorCode);
+  public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
+    super(
+        String.format(
+            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+                ? SCHEMA_REGION_GROUP
+                : DATA_REGION_GROUP));
   }
 }

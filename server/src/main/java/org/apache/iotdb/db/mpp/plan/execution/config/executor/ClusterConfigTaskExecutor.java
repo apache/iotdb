@@ -138,6 +138,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.udf.api.UDTF;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -356,9 +357,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       // try to create instance, this request will fail if creation is not successful
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
-        // Ensure that jar file contains the class
-        Class.forName(createFunctionStatement.getClassName(), true, classLoader);
-      } catch (ClassNotFoundException e) {
+        // ensure that jar file contains the class and the class is a UDF
+        Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
+        UDTF udtf = (UDTF) clazz.getDeclaredConstructor().newInstance();
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException e) {
         LOGGER.warn(
             "Failed to create function when try to create UDF({}) instance first, the cause is: {}",
             createFunctionStatement.getUdfName(),
@@ -534,7 +540,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     + createTriggerStatement.getClassName()
                     + "', because it's not found in jar file: "
                     + createTriggerStatement.getUriString(),
-                TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
+                TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
       }
 
@@ -988,13 +994,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
@@ -1072,13 +1078,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
@@ -1288,13 +1294,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS);
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
         // keep waiting until task ends
-      } while (TSStatusCode.STILL_EXECUTING_STATUS.getStatusCode() == tsStatus.getCode());
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(

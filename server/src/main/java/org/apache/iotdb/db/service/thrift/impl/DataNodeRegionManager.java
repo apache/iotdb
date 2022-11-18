@@ -128,7 +128,7 @@ public class DataNodeRegionManager {
       }
     } catch (IllegalPathException e1) {
       LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
-      tsStatus = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
     } catch (MetadataException e2) {
       LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());

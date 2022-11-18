@@ -227,6 +227,12 @@ public class ConfigNodeDescriptor {
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
 
+    conf.setEnableDataPartitionInheritPolicy(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_data_partition_inherit_policy",
+                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
+
     conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
             properties
@@ -270,8 +276,7 @@ public class ConfigNodeDescriptor {
         Long.parseLong(
             properties
                 .getProperty(
-                    "time_partition_interval_for_routing",
-                    String.valueOf(conf.getTimePartitionInterval()))
+                    "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
                 .trim()));
 
     conf.setSchemaReplicationFactor(

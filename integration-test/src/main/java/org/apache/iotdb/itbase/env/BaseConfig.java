@@ -70,15 +70,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default boolean isEnablePartition() {
-    return false;
-  }
-
   default BaseConfig setPartitionInterval(long partitionInterval) {
-    return this;
-  }
-
-  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
     return this;
   }
 
@@ -99,10 +91,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 
@@ -235,6 +223,14 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
@@ -251,7 +247,7 @@ public interface BaseConfig {
     return 1;
   }
 
-  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 

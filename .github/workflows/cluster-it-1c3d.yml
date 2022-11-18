@@ -6,11 +6,13 @@ on:
       - master
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - master
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 

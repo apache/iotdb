@@ -89,7 +89,7 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -103,7 +103,7 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -123,7 +123,7 @@ public class RpcUtils {
       TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
-        || status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
@@ -141,7 +141,7 @@ public class RpcUtils {
         new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         errMsgs.append(status.getMessage()).append("; ");
       }
     }

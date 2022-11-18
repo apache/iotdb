@@ -83,10 +83,13 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -120,14 +123,22 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus result;
+    if (setStorageGroupPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
+      IllegalPathException illegalPathException =
+          new IllegalPathException(
+              setStorageGroupPlan.getSchema().getName(),
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      return RpcUtils.getStatus(
+          illegalPathException.getErrorCode(), illegalPathException.getMessage());
+    }
     try {
       clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
       return result;
@@ -198,7 +209,7 @@ public class ClusterSchemaManager {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
             .setStatus(
-                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
       }
 
@@ -206,6 +217,22 @@ public class ClusterSchemaManager {
     }
 
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+  }
+
+  public Map<String, Long> getAllTTLInfo() {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp)
+            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return infoMap;
+    }
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
+    }
+    return infoMap;
   }
 
   /**
@@ -223,7 +250,7 @@ public class ClusterSchemaManager {
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          TSStatusCode.DATABASE_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
 
@@ -591,7 +618,7 @@ public class ClusterSchemaManager {
           || !pathInfoResp.getPathList().contains(path)) {
         return new Pair<>(
             RpcUtils.getStatus(
-                TSStatusCode.NO_TEMPLATE_ON_MNODE.getStatusCode(),
+                TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
                 String.format("No template on %s", path)),
             null);
       } else {

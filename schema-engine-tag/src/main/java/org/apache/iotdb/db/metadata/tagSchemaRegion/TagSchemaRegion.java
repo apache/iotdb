@@ -278,7 +278,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     if (deviceEntry != null) {
       if (!deviceEntry.isAligned()) {
         throw new AlignedTimeseriesException(
-            "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+            "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
             devicePath.getFullPath());
       } else {
         filterExistingMeasurements(plan, deviceEntry.getMeasurementMap().keySet());
