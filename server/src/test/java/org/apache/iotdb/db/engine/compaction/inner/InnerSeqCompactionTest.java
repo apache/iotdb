@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -240,8 +240,9 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              ICompactionPerformer performer =
-                  new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource);
+              ICompactionPerformer performer = new FastCompactionPerformer(false);
+              performer.setSourceFiles(sourceResources);
+              performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
@@ -469,8 +470,9 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            ICompactionPerformer performer =
-                new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+            ICompactionPerformer performer = new FastCompactionPerformer(false);
+            performer.setSourceFiles(toMergeResources);
+            performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
             performer.setSummary(new CompactionTaskSummary());
             performer.perform();
             CompactionUtils.moveTargetFile(
@@ -747,8 +749,9 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              ICompactionPerformer performer =
-                  new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+              ICompactionPerformer performer = new FastCompactionPerformer(false);
+              performer.setSourceFiles(toMergeResources);
+              performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
@@ -1010,13 +1013,14 @@ public class InnerSeqCompactionTest {
     // delete data before compaction
     vsgp.delete(new PartialPath(fullPaths[0]), 0, 1000, 0, null);
 
+    ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0,
             vsgp.getTsFileResourceManager(),
             sourceResources,
             true,
-            new ReadChunkCompactionPerformer(),
+            performer,
             new AtomicInteger(0),
             0);
     task.setSourceFilesToCompactionCandidate();

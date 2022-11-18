@@ -33,7 +33,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -819,13 +820,15 @@ public class DataRegionTest {
         dataRegion.asyncCloseAllWorkingTsFileProcessors();
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
+      ICompactionPerformer performer = new FastCompactionPerformer(false);
+      performer.setSourceFiles(dataRegion.getSequenceFileList());
       InnerSpaceCompactionTask task =
           new InnerSpaceCompactionTask(
               0,
               dataRegion.getTsFileManager(),
               dataRegion.getSequenceFileList(),
               true,
-              new ReadChunkCompactionPerformer(dataRegion.getSequenceFileList()),
+              performer,
               new AtomicInteger(0),
               0);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);

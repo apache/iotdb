@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -56,10 +56,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class ReadChunkCompactionPerformerAlignedTest {
+public class FastCompactionPerformerAlignedTest {
   private static final String storageGroup = "root.testAlignedCompaction";
 
-  private final ICompactionPerformer performer = new ReadChunkCompactionPerformer();
+  private final ICompactionPerformer performer = new FastCompactionPerformer(false);
   private static File dataDirectory =
       new File(
           TestConstant.BASE_OUTPUT_PATH

@@ -40,7 +40,7 @@ public enum InnerSeqCompactionPerformer {
       case READ_CHUNK:
         return new ReadChunkCompactionPerformer();
       case FAST:
-        return new FastCompactionPerformer(true);
+        return new FastCompactionPerformer(false);
       default:
         throw new RuntimeException("Illegal compaction performer for seq inner compaction " + this);
     }

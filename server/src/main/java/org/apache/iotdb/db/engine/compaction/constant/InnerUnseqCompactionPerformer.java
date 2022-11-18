@@ -40,7 +40,7 @@ public enum InnerUnseqCompactionPerformer {
       case READ_POINT:
         return new ReadPointCompactionPerformer();
       case FAST:
-        return new FastCompactionPerformer(true);
+        return new FastCompactionPerformer(false);
       default:
         throw new RuntimeException(
             "Illegal compaction performer for unseq inner compaction " + this);

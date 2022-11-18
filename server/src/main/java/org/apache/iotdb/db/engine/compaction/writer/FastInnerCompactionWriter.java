@@ -34,7 +34,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (isAlign) {
       ((AlignedChunkWriterImpl) chunkWriters[subTaskId])
           .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector(), false);
-      ;
     } else {
       ((ChunkWriterImpl) chunkWriters[subTaskId])
           .write(timeValuePair.getTimestamp(), timeValuePair.getValue());
@@ -147,8 +146,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * exceeds the end time of file, else return true.
    */
   public boolean flushNonAlignedPage(
-      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
-      throws IOException, PageException {
+      ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) throws PageException {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             targetPageSize, targetPagePointNum, true);
@@ -206,7 +204,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   private boolean checkIsPageLargeEnough(PageHeader pageHeader) {
-    return pageHeader.getStatistics().getCount() >= pagePointNumLowerBoundInCompaction
-        || pageHeader.getSerializedPageSize() >= pageSizeLowerBoundInCompaction;
+    return pageHeader.getStatistics().getCount() >= targetPagePointNum
+        || pageHeader.getSerializedPageSize() >= targetPageSize;
   }
 }

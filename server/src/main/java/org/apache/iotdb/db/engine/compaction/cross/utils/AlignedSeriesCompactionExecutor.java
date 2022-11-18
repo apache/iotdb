@@ -149,8 +149,6 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
           AlignedChunkMetadata alignedChunkMetadata =
               new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
 
-          // set file path
-          alignedChunkMetadata.setFilePath(resource.getTsFilePath());
           alignedChunkMetadataList.add(alignedChunkMetadata);
         }
 

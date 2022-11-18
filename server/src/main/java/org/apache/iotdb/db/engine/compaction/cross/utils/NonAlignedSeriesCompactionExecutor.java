@@ -129,8 +129,6 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
       for (int i = 0; i < iChunkMetadataList.size(); i++) {
         IChunkMetadata chunkMetadata = iChunkMetadataList.get(i);
-        // set file path
-        chunkMetadata.setFilePath(resource.getTsFilePath());
 
         // add into queue
         chunkMetadataQueue.add(
