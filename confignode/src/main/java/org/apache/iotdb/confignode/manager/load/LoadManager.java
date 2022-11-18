@@ -284,8 +284,9 @@ public class LoadManager {
   public void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = getLatestRegionRouteMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
     getNodeManager()
-        .filterDataNodeThroughStatus(NodeStatus.Running)
+        .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Removing, NodeStatus.ReadOnly)
         .forEach(
             onlineDataNode ->
                 dataNodeLocationMap.put(
