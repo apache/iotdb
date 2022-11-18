@@ -22,8 +22,7 @@ package org.apache.iotdb.metrics.utils;
 public enum ReporterType {
   JMX,
   PROMETHEUS,
-  IOTDB,
-  INTERNAL;
+  IOTDB;
 
   @Override
   public String toString() {

@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Rate;
 
-public class DoNothingRate implements Rate {
+public class DoNothingRate extends Rate {
   @Override
   public long getCount() {
     return 0;

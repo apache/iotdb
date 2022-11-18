@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.ref.WeakReference;
 import java.util.function.ToLongFunction;
 
-public class MicrometerAutoGauge<T> implements Gauge {
+public class MicrometerAutoGauge<T> extends Gauge {
   private final WeakReference<T> refObject;
   private final ToLongFunction<T> mapper;
 

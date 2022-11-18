@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.metrics.type;
 
-import org.apache.iotdb.metrics.utils.OutPutFormat;
+public abstract class IMetric {
+  protected boolean internalReport = false;
 
-public interface IMetric {
+  public IMetric() {}
 
-  /** format metric into string */
-  default StringBuffer toString(OutPutFormat format) {
-    return new StringBuffer();
+  public IMetric(boolean internalReport) {
+    this.internalReport = internalReport;
+  }
+
+  /** whether internal reporter to IoTDB */
+  boolean isInternalReport() {
+    return internalReport;
   }
 }

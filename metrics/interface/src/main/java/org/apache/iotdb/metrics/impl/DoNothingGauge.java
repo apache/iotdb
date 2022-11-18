@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Gauge;
 
-public class DoNothingGauge implements Gauge {
+public class DoNothingGauge extends Gauge {
   @Override
   public long value() {
     return 0;

@@ -19,26 +19,26 @@
 
 package org.apache.iotdb.metrics.type;
 
-public interface Rate extends IMetric {
+public abstract class Rate extends IMetric {
 
   /** get the value of rate */
-  long getCount();
+  public abstract long getCount();
 
   /** get one minute rate */
-  double getOneMinuteRate();
+  public abstract double getOneMinuteRate();
 
   /** get mean rate */
-  double getMeanRate();
+  public abstract double getMeanRate();
 
   /** get five minute rate */
-  double getFiveMinuteRate();
+  public abstract double getFiveMinuteRate();
 
   /** get fifteen minute rate */
-  double getFifteenMinuteRate();
+  public abstract double getFifteenMinuteRate();
 
   /** mark in rate */
-  void mark();
+  public abstract void mark();
 
   /** mark n in rate */
-  void mark(long n);
+  public abstract void mark(long n);
 }

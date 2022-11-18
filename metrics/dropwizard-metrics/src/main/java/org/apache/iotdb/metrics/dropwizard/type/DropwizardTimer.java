@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public class DropwizardTimer implements Timer {
+public class DropwizardTimer extends Timer {
   com.codahale.metrics.Timer timer;
 
   public DropwizardTimer(com.codahale.metrics.Timer timer) {

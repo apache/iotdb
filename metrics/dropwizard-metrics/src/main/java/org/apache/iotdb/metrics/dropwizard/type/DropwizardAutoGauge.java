@@ -24,7 +24,7 @@ import org.apache.iotdb.metrics.type.Gauge;
 import java.lang.ref.WeakReference;
 import java.util.function.ToLongFunction;
 
-public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge<Long> {
+public class DropwizardAutoGauge<T> extends Gauge implements com.codahale.metrics.Gauge<Long> {
 
   private final WeakReference<T> refObject;
   private final ToLongFunction<T> mapper;

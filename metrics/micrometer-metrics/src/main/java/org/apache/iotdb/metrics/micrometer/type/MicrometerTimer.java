@@ -26,7 +26,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MicrometerTimer implements Timer {
+public class MicrometerTimer extends Timer {
 
   io.micrometer.core.instrument.Timer timer;
   MicrometerRate micrometerRate;

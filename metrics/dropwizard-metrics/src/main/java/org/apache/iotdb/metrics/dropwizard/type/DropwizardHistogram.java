@@ -22,7 +22,7 @@ package org.apache.iotdb.metrics.dropwizard.type;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-public class DropwizardHistogram implements Histogram {
+public class DropwizardHistogram extends Histogram {
 
   com.codahale.metrics.Histogram histogram;
 

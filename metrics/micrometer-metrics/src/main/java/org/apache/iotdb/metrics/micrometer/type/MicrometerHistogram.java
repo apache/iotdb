@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.Histogram;
 
-public class MicrometerHistogram implements Histogram {
+public class MicrometerHistogram extends Histogram {
 
   io.micrometer.core.instrument.DistributionSummary distributionSummary;
 

@@ -25,7 +25,7 @@ import io.micrometer.core.instrument.Tags;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MicrometerGauge implements Gauge {
+public class MicrometerGauge extends Gauge {
   private final AtomicLong atomicLong;
 
   public MicrometerGauge(

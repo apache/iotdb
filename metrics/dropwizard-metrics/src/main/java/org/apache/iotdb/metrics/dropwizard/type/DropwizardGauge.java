@@ -24,7 +24,7 @@ import org.apache.iotdb.metrics.type.Gauge;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DropwizardGauge implements Gauge {
+public class DropwizardGauge extends Gauge {
 
   AtomicLong atomicLong;
   DropwizardCachedGauge dropwizardCachedGauge;

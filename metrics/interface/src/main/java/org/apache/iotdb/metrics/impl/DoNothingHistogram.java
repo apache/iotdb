@@ -22,7 +22,7 @@ package org.apache.iotdb.metrics.impl;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-public class DoNothingHistogram implements Histogram {
+public class DoNothingHistogram extends Histogram {
 
   @Override
   public void update(long value) {

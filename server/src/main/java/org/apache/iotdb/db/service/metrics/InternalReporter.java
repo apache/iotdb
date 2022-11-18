@@ -19,28 +19,55 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 
-public class InternalReporter implements Reporter {
-  @Override
-  public boolean start() {
-    return false;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.ZoneId;
+
+public class InternalReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InternalReporter.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private static final Coordinator COORDINATOR = Coordinator.getInstance();
+  private final SessionInfo SESSION_INFO;
+  public final IPartitionFetcher PARTITION_FETCHER;
+  public final ISchemaFetcher SCHEMA_FETCHER;
+
+  public InternalReporter() {
+    if (config.isClusterMode()) {
+      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    } else {
+      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
+      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
+    }
+    SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
   }
 
-  @Override
-  public boolean stop() {
-    return false;
-  }
+  public void updateCounter(Counter counter) {}
 
-  @Override
-  public ReporterType getReporterType() {
-    return null;
-  }
+  public void updateGauge(Gauge gauge) {}
 
-  @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
+  public void updateHistogram(Histogram histogram) {}
 
-  }
+  public void updateTimer(Timer timer) {}
+
+  public void updateRate(Rate rate) {}
 }
