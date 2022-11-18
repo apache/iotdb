@@ -45,6 +45,17 @@ In order to support users' storage requirements such as disk space expansion bet
 1. {TsFileName}.tsfile.resource
     + descriptor and statistic file of a TsFile
   
+### 与合并相关的数据文件
+> under directory basedir/data/sequence or unsequence/{DatabaseName}/
+
+1. file suffixe with `.cross ` or `.inner`
+    + modification file generated during a merge
+2. file suffixe with `.inner-compaction.log` or `.cross-compaction.log`
+    + record the progress of a merge
+3. file suffixe with `.compaction.mods`
+    + temporary files, for storing temporary data
+4. file suffixe with `.meta`
+    + temporary files of metadata generated during a merge
 
 ## System files
 
@@ -78,16 +89,6 @@ System files include schema files, which store metadata information of data in I
 
 1. upgrade.txt
     + record which files have been upgraded
-
-#### Merge
-> under directory basedir/system/database/{Database}/
-
-1. merge.mods
-    + modification file generated during a merge
-2. merge.log
-    + record the progress of a merge
-3. tsfile.merge
-    + temporary merge result file, an involved sequence tsfile may have one during a merge
 
 #### Authority
 > under directory basedir/system/users/
