@@ -243,21 +243,24 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean isAligned) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
       List<Integer> indexOfMissingMeasurements =
           checkMissingMeasurements(schemaTree, devicePath, measurements);
 
+      // all schema can be taken from cache
       if (indexOfMissingMeasurements.isEmpty()) {
         return schemaTree;
       }
 
+      // try fetch the missing schema from remote and cache fetched schema
       PathPatternTree patternTree = new PathPatternTree();
       for (int index : indexOfMissingMeasurements) {
         patternTree.appendFullPath(devicePath, measurements[index]);
       }
-
       ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
@@ -268,6 +271,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
+      // auto create the still missing schema and merge them into schemaTree
       checkAndAutoCreateMissingMeasurements(
           schemaTree,
           devicePath,
@@ -302,8 +306,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
-
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       PathPatternTree patternTree = new PathPatternTree();
@@ -318,10 +323,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
 
+      // all schema can be taken from cache
       if (patternTree.isEmpty()) {
         return schemaTree;
       }
 
+      // try fetch the missing schema from remote and cache fetched schema
       ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
@@ -332,6 +339,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
+      // auto create the still missing schema and merge them into schemaTree
       for (int i = 0; i < devicePathList.size(); i++) {
         int finalI = i;
         checkAndAutoCreateMissingMeasurements(
