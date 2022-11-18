@@ -109,7 +109,8 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            "416: CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.",
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+                + ": CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.",
             e.getMessage());
       }
 
