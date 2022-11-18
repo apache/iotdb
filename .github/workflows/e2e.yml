@@ -9,6 +9,7 @@ on:
       - test/e2e
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - cluster_new

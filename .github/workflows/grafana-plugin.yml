@@ -5,6 +5,9 @@ on:
     branches:
       - master
       - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - master

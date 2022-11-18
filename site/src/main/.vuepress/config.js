@@ -964,7 +964,7 @@ var config = {
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Sync-Tool','Sync Tool'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
 						]
 					},
 					{
