@@ -308,10 +308,14 @@ public class IoTDBCQIT {
         statement.execute(sql);
         fail();
       } catch (Exception e) {
-        assertEquals("932: CQ s1_count_cq has already been created.", e.getMessage());
+        assertEquals(
+            TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()
+                + ": CQ s1_count_cq has already been created.",
+            e.getMessage());
+      } finally {
+        statement.execute("DROP CQ s1_count_cq;");
       }
 
-      statement.execute("DROP CQ s1_count_cq;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
