@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
@@ -92,9 +93,11 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
+    
+
     // The routing policy is limited
-    if (!CONF.getRoutePriorityPolicy().equals(RouteBalancer.LEADER_POLICY)
-        && !CONF.getRoutePriorityPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
+    if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
+        && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
           "routing_policy", CONF.getRoutePriorityPolicy(), "leader or greedy");
     }
