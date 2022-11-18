@@ -37,6 +37,8 @@ public class WriteStatistics {
 
   public void dump(String filePath) throws IOException {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+      writer.write("measurementId, rawSize, encodedSize, compressedSize");
+      writer.newLine();
       for (Entry<String, Statistic> entry : statisticMap.entrySet()) {
         String label = entry.getKey();
         Statistic statistic = entry.getValue();
