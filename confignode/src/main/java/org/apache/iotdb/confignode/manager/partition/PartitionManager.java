@@ -218,7 +218,7 @@ public class PartitionManager {
           assignedSchemaPartition =
               getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
         } catch (NoAvailableRegionGroupException e) {
-          LOGGER.error(e.getMessage());
+          LOGGER.error("Create SchemaPartition failed because: ", e);
           resp.setStatus(
               new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                   .setMessage(e.getMessage()));
@@ -295,7 +295,7 @@ public class PartitionManager {
           assignedDataPartition =
               getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
         } catch (NoAvailableRegionGroupException e) {
-          LOGGER.error(e.getMessage());
+          LOGGER.error("Create DataPartition failed because: ", e);
           resp.setStatus(
               new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                   .setMessage(e.getMessage()));
@@ -521,7 +521,7 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
-      throw new NoAvailableRegionGroupException();
+      throw new NoAvailableRegionGroupException(type);
     }
 
     result.sort(Comparator.comparingLong(Pair::getLeft));
