@@ -182,9 +182,10 @@ public class ConsensusManager {
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
       try {
-        // Create ConsensusGroup from confignode-system.properties file when restart
         // TODO: Check and notify if current ConfigNode's ip or port has changed
-        createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
+        LOGGER.info(
+            "Init ConsensusManager successfully when restarted, configNodeList: {}",
+            SystemPropertiesUtils.loadConfigNodeList());
       } catch (BadNodeUrlException e) {
         throw new IOException(e);
       }
