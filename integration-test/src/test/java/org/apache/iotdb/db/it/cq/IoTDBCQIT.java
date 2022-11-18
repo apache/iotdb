@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.cq;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -38,7 +39,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category(ClusterIT.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQIT {
 
   @BeforeClass
