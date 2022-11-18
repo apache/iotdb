@@ -963,7 +963,7 @@ public abstract class SchemaBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.GZIP));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -1095,7 +1095,7 @@ public abstract class SchemaBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.GZIP));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 

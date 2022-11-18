@@ -173,6 +173,10 @@ public class IoTDBResultSetIT {
             + ColumnHeaderConstant.TAGS
             + ","
             + ColumnHeaderConstant.ATTRIBUTES
+            + ","
+            + ColumnHeaderConstant.DEADBAND
+            + ","
+            + ColumnHeaderConstant.DEADBAND_PARAMETERS
             + ",";
     resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
   }

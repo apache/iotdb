@@ -98,7 +98,7 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(2, 2);
@@ -112,7 +112,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

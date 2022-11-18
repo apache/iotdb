@@ -64,13 +64,13 @@ public class IoTDBInsertAlignedValuesIT {
   public void testInsertAlignedValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (5000, true, 20.1)");
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (6000, true, 22)");
+      statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());
@@ -109,12 +109,12 @@ public class IoTDBInsertAlignedValuesIT {
   public void testInsertAlignedNullableValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
-      statement.execute("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
-      statement.execute(
+      statement.addBatch("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, temperature) aligned values (6000, 22)");
+      statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());
@@ -151,14 +151,14 @@ public class IoTDBInsertAlignedValuesIT {
   public void testUpdatingAlignedValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values (4000, true, 17.1)");
-      statement.execute("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
-      statement.execute(
+      statement.addBatch("insert into root.t1.wf01.wt01(time, status) aligned values (5000, true)");
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, temperature) aligned values (5000, 20.1)");
-      statement.execute(
+      statement.addBatch(
           "insert into root.t1.wf01.wt01(time, temperature) aligned values (6000, 22)");
+      statement.executeBatch();
 
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());

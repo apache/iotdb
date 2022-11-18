@@ -91,11 +91,12 @@ public class SyncManager {
 
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
     try {
-      clusterSyncInfo.checkAddPipeSink(plan.getPipeSinkInfo().getPipeSinkName());
+      clusterSyncInfo.checkAddPipeSink(plan);
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 
@@ -105,7 +106,8 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 

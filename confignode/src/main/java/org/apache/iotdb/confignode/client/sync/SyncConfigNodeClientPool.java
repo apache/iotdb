@@ -102,7 +102,8 @@ public class SyncConfigNodeClientPool {
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
     return RpcUtils.getStatus(
-        TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to: " + lastException.getMessage());
+        TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR,
+        "All retry failed due to: " + lastException.getMessage());
   }
 
   /**
@@ -115,7 +116,7 @@ public class SyncConfigNodeClientPool {
       TConfigNodeLocation configNodeLocation, SyncConfigNodeIServiceClient client)
       throws TException, IOException, InterruptedException {
     TSStatus status = client.removeConfigNode(configNodeLocation);
-    while (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
       try (SyncConfigNodeIServiceClient clientLeader =

@@ -71,8 +71,7 @@ public class ClusterEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty(
-        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
+    engineProperties.setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -96,11 +95,6 @@ public class ClusterEnvConfig implements BaseConfig {
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
         "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
-    return this;
-  }
-
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
     return this;
   }
 

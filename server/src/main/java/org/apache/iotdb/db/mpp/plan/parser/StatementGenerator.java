@@ -546,9 +546,10 @@ public class StatementGenerator {
       String prefix = ReadWriteIOUtils.readString(buffer);
       isAlign = ReadWriteIOUtils.readBool(buffer);
       String measurementName = ReadWriteIOUtils.readString(buffer);
-      TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readByte(buffer)];
-      TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
-      CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
+      TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readByte(buffer));
+      TSEncoding encoding = TSEncoding.deserialize(ReadWriteIOUtils.readByte(buffer));
+      CompressionType compressionType =
+          CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);

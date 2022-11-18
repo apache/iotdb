@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -36,8 +37,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -50,12 +55,20 @@ public class SenderManager {
   // <DataRegionId, ISyncClient>
   private final Map<String, ISyncClient> clientMap;
   // <DataRegionId, ISyncClient>
-  private final Map<String, Future> transportFutureMap;
+  private final Map<String, Future<?>> transportFutureMap;
+  private ScheduledFuture<?> heartbeatFuture;
   private final Pipe pipe;
   private final PipeSink pipeSink;
 
+  // store lock object for each waiting transport task thread
+  private final BlockingQueue<Object> blockingQueue = new LinkedBlockingQueue<>();
+
   // Thread pool that send PipeData in parallel by DataRegion
   protected ExecutorService transportExecutorService;
+  protected ScheduledExecutorService heartbeatExecutorService;
+
+  protected long lastReportTime = 0;
+  protected long lostConnectionTime = Long.MAX_VALUE;
 
   private boolean isRunning;
 
@@ -65,12 +78,18 @@ public class SenderManager {
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
+    this.heartbeatExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipe.getName());
     this.clientMap = new HashMap<>();
     this.transportFutureMap = new HashMap<>();
     this.isRunning = false;
   }
 
   public void start() {
+    blockingQueue.clear();
+    lastReportTime = System.currentTimeMillis();
+    lostConnectionTime = Long.MAX_VALUE;
     for (Map.Entry<String, ISyncClient> entry : clientMap.entrySet()) {
       String dataRegionId = entry.getKey();
       ISyncClient syncClient = entry.getValue();
@@ -79,13 +98,24 @@ public class SenderManager {
           transportExecutorService.submit(
               () -> takePipeDataAndTransport(syncClient, dataRegionId)));
     }
+    heartbeatFuture =
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            heartbeatExecutorService,
+            this::heartbeat,
+            0,
+            SyncConstant.HEARTBEAT_INTERVAL_MILLISECONDS,
+            TimeUnit.MILLISECONDS);
     isRunning = true;
   }
 
   public void stop() {
-    for (Future future : transportFutureMap.values()) {
+    if (heartbeatFuture != null) {
+      heartbeatFuture.cancel(true);
+    }
+    for (Future<?> future : transportFutureMap.values()) {
       future.cancel(true);
     }
+    blockingQueue.clear();
     isRunning = false;
   }
 
@@ -95,6 +125,10 @@ public class SenderManager {
       transportExecutorService.shutdownNow();
       isClosed =
           transportExecutorService.awaitTermination(
+              SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
+      heartbeatExecutorService.shutdownNow();
+      isClosed &=
+          heartbeatExecutorService.awaitTermination(
               SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
       if (!isClosed) {
         throw new PipeException(
@@ -111,36 +145,87 @@ public class SenderManager {
     }
   }
 
+  /**
+   * heartbeat will be executed with delay time {@link SyncConstant#HEARTBEAT_INTERVAL_MILLISECONDS}
+   * only if there are transport threads being blocked. It will notify all blocked transport thread
+   * if successfully reconnect to receiver.
+   *
+   * <p>It will print warn log per {@link SyncConstant#LOST_CONNECT_REPORT_MILLISECONDS} ms.
+   */
+  private void heartbeat() {
+    try {
+      Object object = blockingQueue.take();
+      ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
+      try {
+        client.handshake();
+        lostConnectionTime = Long.MAX_VALUE;
+        logger.info("Reconnect to {} successfully.", pipeSink);
+        synchronized (object) {
+          object.notify();
+        }
+        while (!blockingQueue.isEmpty()) {
+          object = blockingQueue.take();
+          synchronized (object) {
+            object.notify();
+          }
+        }
+      } catch (SyncConnectionException e) {
+        blockingQueue.offer(object);
+        long reportInterval = System.currentTimeMillis() - lastReportTime;
+        if (reportInterval > SyncConstant.LOST_CONNECT_REPORT_MILLISECONDS) {
+          logger.warn(
+              "Connection error because {}, lost contact with the receiver {} for {} milliseconds.",
+              e.getMessage(),
+              pipeSink,
+              System.currentTimeMillis() - lostConnectionTime);
+          lastReportTime = System.currentTimeMillis();
+        }
+      } finally {
+        client.close();
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
   private void takePipeDataAndTransport(ISyncClient syncClient, String dataRegionId) {
     try {
-      while (!Thread.currentThread().isInterrupted()) {
-        try {
-          if (!syncClient.handshake()) {
-            SyncService.getInstance()
-                .recordMessage(
-                    pipe.getName(),
-                    new PipeMessage(
-                        PipeMessage.PipeMessageType.ERROR,
-                        String.format("Can not handshake with %s", pipeSink)));
-          }
-          while (!Thread.currentThread().isInterrupted()) {
-            PipeData pipeData = pipe.take(dataRegionId);
-            if (!syncClient.send(pipeData)) {
-              logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
-              // can do something.
+      Object lock = new Object();
+      synchronized (lock) {
+        while (!Thread.currentThread().isInterrupted()) {
+          try {
+            if (!syncClient.handshake()) {
               SyncService.getInstance()
                   .recordMessage(
                       pipe.getName(),
                       new PipeMessage(
-                          PipeMessage.PipeMessageType.WARN,
-                          String.format(
-                              "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
+                          PipeMessage.PipeMessageType.ERROR,
+                          String.format("Can not handshake with %s", pipeSink)));
             }
-            pipe.commit(dataRegionId);
+            while (!Thread.currentThread().isInterrupted()) {
+              PipeData pipeData = pipe.take(dataRegionId);
+              if (!syncClient.send(pipeData)) {
+                logger.error(String.format("Can not transfer PipeData %s, skip it.", pipeData));
+                // can do something.
+                SyncService.getInstance()
+                    .recordMessage(
+                        pipe.getName(),
+                        new PipeMessage(
+                            PipeMessage.PipeMessageType.WARN,
+                            String.format(
+                                "Transfer PipeData %s error, skip it.",
+                                pipeData.getSerialNumber())));
+              }
+              pipe.commit(dataRegionId);
+            }
+          } catch (SyncConnectionException e) {
+            // If failed to connect to receiver, it will hang up until scheduled heartbeat task
+            // successfully reconnect to receiver.
+            logger.error("Connect to receiver {} error, because {}.", pipeSink, e.getMessage(), e);
+            lostConnectionTime = Math.min(lostConnectionTime, System.currentTimeMillis());
+            blockingQueue.offer(lock);
+            lock.wait();
           }
-        } catch (SyncConnectionException e) {
-          logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
-          // TODO: wait and retry
         }
       }
     } catch (InterruptedException e) {
@@ -162,7 +247,7 @@ public class SenderManager {
   }
 
   public void unregisterDataRegion(String dataRegionId) {
-    Future future = transportFutureMap.remove(dataRegionId);
+    Future<?> future = transportFutureMap.remove(dataRegionId);
     if (future != null) {
       future.cancel(true);
       clientMap.remove(dataRegionId);

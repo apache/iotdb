@@ -190,7 +190,7 @@ public class AlignedChunkData implements ChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     satisfiedLengthQueue.offer(satisfiedLength);
     long startTime = timePartitionSlot.getStartTime();
-    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
@@ -208,7 +208,7 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     long startTime = timePartitionSlot.getStartTime();
-    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     int satisfiedLength = satisfiedLengthQueue.poll();
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
@@ -377,7 +377,7 @@ public class AlignedChunkData implements ChunkData {
 
   public static AlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionForRouting(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);

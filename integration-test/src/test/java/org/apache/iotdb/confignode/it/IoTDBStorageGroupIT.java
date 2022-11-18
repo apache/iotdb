@@ -126,8 +126,7 @@ public class IoTDBStorageGroupIT {
 
       // test fail by re-register
       status = client.setStorageGroup(setReq0);
-      Assert.assertEquals(
-          TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(), status.getCode());
 
       // test StorageGroup setter interfaces
       PartialPath patternPath = new PartialPath(sg1);

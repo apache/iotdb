@@ -272,8 +272,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecords(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartitionForRouting =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -285,7 +284,7 @@ public class IoTDBSessionComplexIT {
     List<Long> timestamps = new ArrayList<>();
     List<List<TSDataType>> typesList = new ArrayList<>();
 
-    for (long time = 0; time < 10 * timePartitionForRouting; time += timePartitionForRouting / 10) {
+    for (long time = 0; time < 10 * timePartition; time += timePartition / 10) {
       List<Object> values = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
       values.add(1L);
@@ -307,7 +306,7 @@ public class IoTDBSessionComplexIT {
       timestamps.add(time);
       timestamps.add(time);
 
-      if (time != 0 && time % (5 * timePartitionForRouting) == 0) {
+      if (time != 0 && time % (5 * timePartition) == 0) {
         session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
@@ -322,8 +321,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertMultiTablets(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartitionForRouting =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -334,7 +332,7 @@ public class IoTDBSessionComplexIT {
       tabletMap.put(device, new Tablet(device, schemaList, 100));
     }
 
-    for (long time = 0; time < 10 * timePartitionForRouting; time += timePartitionForRouting / 10) {
+    for (long time = 0; time < 10 * timePartition; time += timePartition / 10) {
       for (Tablet tablet : tabletMap.values()) {
         long value = 0;
         tablet.addTimestamp(tablet.rowSize, time);
@@ -351,8 +349,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecordsOfOneDevice(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartitionForRouting =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -363,7 +360,7 @@ public class IoTDBSessionComplexIT {
     List<Long> timestamps = new ArrayList<>();
     List<List<TSDataType>> typesList = new ArrayList<>();
 
-    for (long time = 0; time < 10 * timePartitionForRouting; time += timePartitionForRouting / 10) {
+    for (long time = 0; time < 10 * timePartition; time += timePartition / 10) {
       List<Object> values = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
       values.add(1L);
@@ -378,7 +375,7 @@ public class IoTDBSessionComplexIT {
       typesList.add(types);
       timestamps.add(time);
 
-      if (time != 0 && time % (5 * timePartitionForRouting) == 0) {
+      if (time != 0 && time % (5 * timePartition) == 0) {
         session.insertRecordsOfOneDevice(
             deviceId, timestamps, measurementsList, typesList, valuesList);
         measurementsList.clear();
