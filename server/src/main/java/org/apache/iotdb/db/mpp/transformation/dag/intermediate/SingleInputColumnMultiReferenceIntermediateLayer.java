@@ -595,7 +595,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
           if (yieldableState == YieldableState.YIELDABLE) {
             if (tvList.getTime(tvList.size() - 2) >= displayWindowBegin
                 && tvList.getTime(tvList.size() - 1) - tvList.getTime(tvList.size() - 2)
-                    >= sessionTimeGap) {
+                    > sessionTimeGap) {
               nextIndexEnd = tvList.size() - 1;
               break;
             } else {
