@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
@@ -167,7 +166,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.db.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
@@ -199,13 +197,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setStorageGroup(
       SetStorageGroupStatement setStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String storageGroupPath = setStorageGroupStatement.getStorageGroupPath().getFullPath();
-    if (storageGroupPath.length() > MAX_DATABASE_NAME_LENGTH) {
-      future.setException(
-          new IllegalPathException(
-              storageGroupPath, "the length of database name shall not exceed 64."));
-      return future;
-    }
     // Construct request using statement
     TStorageGroupSchema storageGroupSchema =
         SetStorageGroupTask.constructStorageGroupSchema(setStorageGroupStatement);
