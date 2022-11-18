@@ -77,7 +77,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName fragmentInstanceName =
               new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
-            logger.error("[ExecuteFailed]", t);
+            logger.warn("[ExecuteFailed]", t);
             next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
             scheduler.toAborted(next);
           }
