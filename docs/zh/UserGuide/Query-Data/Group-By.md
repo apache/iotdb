@@ -312,7 +312,7 @@ It costs 0.004s
 - 使用 `GROUP BY LEVEL = INT` 来指定需要聚合的层级，并约定 `ROOT` 为第 0 层。若统计 "root.ln" 下所有序列则需指定 level 为 1。
 - 分层聚合查询支持使用所有内置聚合函数。对于 `sum`，`avg`，`min_value`， `max_value`， `extreme` 五种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
-**示例1：** 不同存储组下均存在名为 status 的序列， 如 "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", 以及 "root.sgcc.wf03.wt01.status", 如果需要统计不同存储组下 status 序列的数据点个数，使用以下查询：
+**示例1：** 不同 database 下均存在名为 status 的序列， 如 "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", 以及 "root.sgcc.wf03.wt01.status", 如果需要统计不同 database 下 status 序列的数据点个数，使用以下查询：
 
 ```sql
 select count(status) from root.** group by level = 1
@@ -348,9 +348,9 @@ Total line number = 1
 It costs 0.003s
 ```
 
-注意，这时会将存储组 `ln` 和 `sgcc` 下名为 `wt01` 的设备视为同名设备聚合在一起。
+注意，这时会将 database `ln` 和 `sgcc` 下名为 `wt01` 的设备视为同名设备聚合在一起。
 
-**示例3：** 统计不同存储组下的不同设备中 status 序列的数据点个数，可以使用以下查询：
+**示例3：** 统计不同 database 下的不同设备中 status 序列的数据点个数，可以使用以下查询：
 
 ```sql
 select count(status) from root.** group by level = 1, 3
@@ -417,7 +417,7 @@ IoTDB 支持通过 `GROUP BY TAGS` 语句根据时间序列中定义的标签的
 `d8` 和 `d9` 设备目前处于调试阶段，还未被分配到具体的城市和车间，所以其相应的标签值为空值。
 
 ```SQL
-set storage group to root.factory1;
+create database root.factory1;
 create timeseries root.factory1.d1.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d2.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d3.temperature with datatype=FLOAT tags(city=Beijing, workshop=w2);

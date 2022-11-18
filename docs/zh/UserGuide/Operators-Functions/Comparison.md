@@ -210,6 +210,13 @@ select code from root.sg1.d1 where temperature is not null;
 
 返回类型 `BOOLEAN`
 
+**注意：请确保集合中的值可以被转为输入数据的类型。**
+> 例如：
+>
+>`s1 in (1, 2, 3, 'test')`，`s1`的数据类型是`INT32`
+>
+> 我们将会抛出异常，因为`'test'`不能被转为`INT32`类型
+
 **示例 1：** 选择值在特定范围内的数据：
 
 ```sql
