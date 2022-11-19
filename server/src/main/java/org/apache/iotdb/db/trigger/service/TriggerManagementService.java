@@ -133,7 +133,7 @@ public class TriggerManagementService {
         TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
       }
     } catch (TriggerExecutionException ignored) {
-      // ignore exception thrown by onDrop for now
+      // Drop trigger can success even onDrop throw an exception for now
     } finally {
       releaseLock();
     }
