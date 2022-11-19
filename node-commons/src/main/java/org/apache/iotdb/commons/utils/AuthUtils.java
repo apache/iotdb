@@ -373,6 +373,12 @@ public class AuthUtils {
     for (String s : authorizationList) {
       PrivilegeType[] types = PrivilegeType.values();
       boolean legal = false;
+      if ("SET_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.CREATE_DATABASE.name();
+      }
+      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.DELETE_DATABASE.name();
+      }
       for (PrivilegeType privilegeType : types) {
         if (s.equalsIgnoreCase(privilegeType.name())) {
           result.add(privilegeType.ordinal());
