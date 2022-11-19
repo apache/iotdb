@@ -25,26 +25,35 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // TODO: Store quota information of each sg
 public class QuotaInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(QuotaInfo.class);
+
+  private final ReentrantReadWriteLock spaceQuotaReadWriteLock;
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
   private final Map<String, TSpaceQuota> useSpaceQuota;
   private final Map<Integer, Integer> regionDisk;
   private final SpaceQuotaPersistence spaceQuotaPersistence;
 
+  private final String snapshotFileName = "quota_info.bin";
+
   public QuotaInfo() {
+    spaceQuotaReadWriteLock = new ReentrantReadWriteLock();
     spaceQuotaLimit = new HashMap<>();
     useSpaceQuota = new HashMap<>();
     regionDisk = new HashMap<>();
@@ -82,12 +91,71 @@ public class QuotaInfo implements SnapshotProcessor {
     spaceQuotaPersistence.init(spaceQuotaLimit);
   }
 
+  public Map<String, TSpaceQuota> getSpaceQuotaLimit() {
+    return spaceQuotaLimit;
+  }
+
   // TODO: add Snapshot
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return false;
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      logger.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    spaceQuotaReadWriteLock.writeLock().lock();
+    try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+      serializeSpaceQuotaLimit(fileOutputStream);
+    } finally {
+      spaceQuotaReadWriteLock.writeLock().unlock();
+    }
+    return true;
+  }
+
+  private void serializeSpaceQuotaLimit(FileOutputStream fileOutputStream) throws IOException {
+    ReadWriteIOUtils.write(spaceQuotaLimit.size(), fileOutputStream);
+    for (Map.Entry<String, TSpaceQuota> spaceQuotaEntry : spaceQuotaLimit.entrySet()) {
+      ReadWriteIOUtils.write(spaceQuotaEntry.getKey(), fileOutputStream);
+      ReadWriteIOUtils.write(spaceQuotaEntry.getValue().getDeviceNum(), fileOutputStream);
+      ReadWriteIOUtils.write(spaceQuotaEntry.getValue().getTimeserieNum(), fileOutputStream);
+      ReadWriteIOUtils.write(spaceQuotaEntry.getValue().getDiskSize(), fileOutputStream);
+    }
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      logger.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
+      clear();
+      deserializeSpaceQuotaLimit(fileInputStream);
+    }
+
+    spaceQuotaReadWriteLock.writeLock().lock();
+  }
+
+  private void deserializeSpaceQuotaLimit(FileInputStream fileInputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(fileInputStream);
+    while (size > 0) {
+      String path = ReadWriteIOUtils.readString(fileInputStream);
+      TSpaceQuota spaceQuota = new TSpaceQuota();
+      spaceQuota.setDeviceNum(ReadWriteIOUtils.readInt(fileInputStream));
+      spaceQuota.setTimeserieNum(ReadWriteIOUtils.readInt(fileInputStream));
+      spaceQuota.setDiskSize(ReadWriteIOUtils.readLong(fileInputStream));
+      spaceQuotaLimit.put(path, spaceQuota);
+      size--;
+    }
+  }
+
+  public void clear() {
+    spaceQuotaLimit.clear();
+  }
 }

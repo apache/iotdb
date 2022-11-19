@@ -68,19 +68,21 @@ public class SpaceQuotaPersistence {
     File quotaProfile =
         SystemFileFactory.INSTANCE.getFile(
             spaceQuotaDirPath + File.separator + path + SUFFIX + TEMP_SUFFIX);
-    try (OutputStream out = new FileOutputStream(quotaProfile);
-        DataOutputStream outputStream = new DataOutputStream(out)) {
-      BasicStructureSerDeUtil.write(path, outputStream);
-      BasicStructureSerDeUtil.write(spaceQuota.getDeviceNum(), outputStream);
-      BasicStructureSerDeUtil.write(spaceQuota.getTimeserieNum(), outputStream);
-      BasicStructureSerDeUtil.write(spaceQuota.getDiskSize(), outputStream);
-      outputStream.flush();
-    } catch (FileNotFoundException e) {
-      logger.error("file {} not found.", quotaProfile, e);
+    if (quotaProfile.exists()) {
+      try (OutputStream out = new FileOutputStream(quotaProfile);
+          DataOutputStream outputStream = new DataOutputStream(out)) {
+        BasicStructureSerDeUtil.write(path, outputStream);
+        BasicStructureSerDeUtil.write(spaceQuota.getDeviceNum(), outputStream);
+        BasicStructureSerDeUtil.write(spaceQuota.getTimeserieNum(), outputStream);
+        BasicStructureSerDeUtil.write(spaceQuota.getDiskSize(), outputStream);
+        outputStream.flush();
+      } catch (FileNotFoundException e) {
+        logger.error("file {} not found.", quotaProfile, e);
+      }
+      File oldFile =
+          SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path + SUFFIX);
+      IOUtils.replaceFile(quotaProfile, oldFile);
     }
-    File oldFile =
-        SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path + SUFFIX);
-    IOUtils.replaceFile(quotaProfile, oldFile);
   }
 
   public Map<String, TSpaceQuota> loadSpaceQuota(String path) throws IOException {
@@ -127,7 +129,7 @@ public class SpaceQuotaPersistence {
   public void init(Map<String, TSpaceQuota> spaceQuotaLimit) {
     File file = new File(spaceQuotaDirPath);
     String[] paths = file.list();
-    if (paths.length != 0) {
+    if (paths != null) {
       for (String path : paths) {
         try {
           spaceQuotaLimit.putAll(loadSpaceQuota(path));
