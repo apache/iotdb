@@ -21,29 +21,29 @@ package org.apache.iotdb.metrics.type;
 
 import java.util.concurrent.TimeUnit;
 
-public abstract class Timer extends IMetric {
+public interface Timer extends IMetric {
 
   /** update time of timer */
-  public abstract void update(long duration, TimeUnit unit);
+  void update(long duration, TimeUnit unit);
 
   /** update timer by millisecond */
-  public void updateMillis(long durationMillis) {
+  default void updateMillis(long durationMillis) {
     update(durationMillis, TimeUnit.MILLISECONDS);
   }
 
   /** update timer by microseconds */
-  public void updateMicros(long durationMicros) {
+  default void updateMicros(long durationMicros) {
     update(durationMicros, TimeUnit.MICROSECONDS);
   }
 
   /** update timer by nanoseconds */
-  public void updateNanos(long durationNanos) {
+  default void updateNanos(long durationNanos) {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
   /** take snapshot of timer */
-  public abstract HistogramSnapshot takeSnapshot();
+  HistogramSnapshot takeSnapshot();
 
   /** It's not safe to use the update interface of this rate */
-  public abstract Rate getImmutableRate();
+  Rate getImmutableRate();
 }

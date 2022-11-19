@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.type.Rate;
 
 import com.codahale.metrics.Meter;
 
-public class DropwizardRate extends Rate {
+public class DropwizardRate implements Rate {
   Meter meter;
   /** read-only meter */
   com.codahale.metrics.Timer timer;

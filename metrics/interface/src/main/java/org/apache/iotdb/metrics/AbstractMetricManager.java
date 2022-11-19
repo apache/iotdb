@@ -248,9 +248,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void count(long delta, String name, MetricLevel metricLevel, String... tags) {
+  public Counter count(long delta, String name, MetricLevel metricLevel, String... tags) {
     Counter counter = getOrCreateCounter(name, metricLevel, tags);
     counter.inc(delta);
+    return counter;
   }
 
   /**
@@ -261,9 +262,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void gauge(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Gauge gauge(long value, String name, MetricLevel metricLevel, String... tags) {
     Gauge gauge = getOrCreateGauge(name, metricLevel, tags);
     gauge.set(value);
+    return gauge;
   }
 
   /**
@@ -274,9 +276,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void rate(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Rate rate(long value, String name, MetricLevel metricLevel, String... tags) {
     Rate rate = getOrCreateRate(name, metricLevel, tags);
     rate.mark(value);
+    return rate;
   }
 
   /**
@@ -287,9 +290,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void histogram(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Histogram histogram(long value, String name, MetricLevel metricLevel, String... tags) {
     Histogram histogram = getOrCreateHistogram(name, metricLevel, tags);
     histogram.update(value);
+    return histogram;
   }
 
   /**
@@ -302,10 +306,11 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void timer(
+  public Timer timer(
       long delta, TimeUnit timeUnit, String name, MetricLevel metricLevel, String... tags) {
     Timer timer = getOrCreateTimer(name, metricLevel, tags);
     timer.update(delta, timeUnit);
+    return timer;
   }
 
   // endregion

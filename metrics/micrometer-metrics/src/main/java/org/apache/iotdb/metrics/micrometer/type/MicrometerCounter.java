@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.Counter;
 
-public class MicrometerCounter extends Counter {
+public class MicrometerCounter implements Counter {
   io.micrometer.core.instrument.Counter counter;
 
   public MicrometerCounter(io.micrometer.core.instrument.Counter counter) {

@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.metrics.type;
 
-public abstract class Histogram extends IMetric {
+public interface Histogram extends IMetric {
 
   /** update histogram by value */
-  public abstract void update(long value);
+  void update(long value);
 
   /** get the value of histogram */
-  public abstract long count();
+  long count();
 
   /** take snapshot of histogram */
-  public abstract HistogramSnapshot takeSnapshot();
+  HistogramSnapshot takeSnapshot();
 }

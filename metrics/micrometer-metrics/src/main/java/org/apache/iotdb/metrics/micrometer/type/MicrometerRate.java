@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>Now, we only record a gauge for the rate record in micrometer, and we use dropwizard meter to
  * calculate the meter.
  */
-public class MicrometerRate extends Rate {
+public class MicrometerRate implements Rate {
   AtomicLong atomicLong;
   Meter meter;
 

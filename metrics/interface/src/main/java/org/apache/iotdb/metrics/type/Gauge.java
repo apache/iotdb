@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.metrics.type;
 
-public abstract class Gauge extends IMetric {
+public interface Gauge extends IMetric {
 
   /** set value */
-  public abstract void set(long value);
+  void set(long value);
 
   /** get value stored in gauge */
-  public abstract long value();
+  long value();
 
   /** increase the value stored in gauge */
-  public abstract void incr(long value);
+  void incr(long value);
 
   /** decrease the value stored in gauge */
-  public abstract void decr(long value);
+  void decr(long value);
 }

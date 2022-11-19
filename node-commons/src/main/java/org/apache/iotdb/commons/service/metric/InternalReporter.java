@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,25 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.impl;
+package org.apache.iotdb.commons.service.metric;
 
-import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class DoNothingHistogram implements Histogram, DoNothingMetric {
+public interface InternalReporter {
+  void addAutoGauge(Gauge gauge, String name, String... tags);
 
-  @Override
-  public void update(long value) {
-    // do nothing
-  }
+  void updateValue(String name, Object value, TSDataType type, String... tags);
 
-  @Override
-  public long count() {
-    return 0;
-  }
+  void updateValue(String name, Object value, TSDataType type, Long time, String... tags);
 
-  @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new DoNothingHistogramSnapshot();
-  }
+  void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags);
 }

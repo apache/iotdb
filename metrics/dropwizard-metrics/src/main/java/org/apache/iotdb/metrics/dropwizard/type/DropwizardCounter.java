@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.dropwizard.type;
 
 import org.apache.iotdb.metrics.type.Counter;
 
-public class DropwizardCounter extends Counter {
+public class DropwizardCounter implements Counter {
   com.codahale.metrics.Counter counter;
 
   public DropwizardCounter(com.codahale.metrics.Counter counter) {

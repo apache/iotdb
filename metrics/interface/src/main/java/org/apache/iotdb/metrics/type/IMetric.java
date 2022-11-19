@@ -19,17 +19,4 @@
 
 package org.apache.iotdb.metrics.type;
 
-public abstract class IMetric {
-  protected boolean internalReport = false;
-
-  public IMetric() {}
-
-  public IMetric(boolean internalReport) {
-    this.internalReport = internalReport;
-  }
-
-  /** whether internal reporter to IoTDB */
-  boolean isInternalReport() {
-    return internalReport;
-  }
-}
+public interface IMetric {}
