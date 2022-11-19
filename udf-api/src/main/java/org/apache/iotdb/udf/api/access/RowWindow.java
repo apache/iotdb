@@ -42,8 +42,8 @@ public interface RowWindow {
    * will not generate a new Row instance.
    *
    * @param rowIndex index of the row to return
-   * @return the row at the specified position in this window, null if rowIndex is not in the
-   *     window.
+   * @return the row at the specified position in this window, throw IndexOutOfBoundException if
+   *     call this method on an empty RowWindow.
    * @throws IOException if any I/O errors occur
    */
   Row getRow(int rowIndex) throws IOException;

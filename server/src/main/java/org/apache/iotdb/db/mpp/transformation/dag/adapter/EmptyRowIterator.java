@@ -32,7 +32,7 @@ public class EmptyRowIterator implements RowIterator {
 
   @Override
   public Row next() throws IOException {
-    return null;
+    throw new UnsupportedOperationException("Can not call next on EmptyRowIterator");
   }
 
   @Override

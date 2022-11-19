@@ -57,7 +57,7 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
   @Override
   public Row getRow(int rowIndex) {
     if (this.size == 0) {
-      return null;
+      throw new IndexOutOfBoundsException("Size is 0");
     }
     return row.seek(beginIndex + rowIndex);
   }

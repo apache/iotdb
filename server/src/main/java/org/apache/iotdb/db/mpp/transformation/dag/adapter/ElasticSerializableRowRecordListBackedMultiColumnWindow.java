@@ -64,7 +64,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   @Override
   public Row getRow(int rowIndex) throws IOException {
     if (this.size == 0) {
-      return null;
+      throw new IndexOutOfBoundsException("Size is 0");
     }
     return row.setRowRecord(rowRecordList.getRowRecord(beginIndex + rowIndex));
   }
