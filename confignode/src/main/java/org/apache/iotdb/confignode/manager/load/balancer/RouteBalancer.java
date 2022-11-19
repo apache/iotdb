@@ -309,9 +309,14 @@ public class RouteBalancer {
                 regionGroupId,
                 newLeaderId);
             changeRegionLeader(
-                consensusProtocolClass, requestId, clientHandler, regionGroupId, newLeaderId);
+                consensusProtocolClass,
+                requestId,
+                clientHandler,
+                regionGroupId,
+                getNodeManager().getRegisteredDataNode(newLeaderId).getLocation());
           }
         });
+
     if (requestId.get() > 0) {
       AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     }
@@ -327,12 +332,12 @@ public class RouteBalancer {
       AtomicInteger requestId,
       AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler,
       TConsensusGroupId regionGroupId,
-      int newLeaderId) {
+      TDataNodeLocation newLeader) {
     switch (consensusProtocolClass) {
       case ConsensusFactory.MULTI_LEADER_CONSENSUS:
         // For multi-leader protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
-        regionRouteMap.setLeader(regionGroupId, newLeaderId);
+        regionRouteMap.setLeader(regionGroupId, newLeader.getDataNodeId());
         break;
       case ConsensusFactory.RATIS_CONSENSUS:
       default:
@@ -341,9 +346,11 @@ public class RouteBalancer {
         // And the RegionRouteMap will be updated by Cluster-Heartbeat-Service later if change
         // leader success.
         TRegionLeaderChangeReq regionLeaderChangeReq =
-            new TRegionLeaderChangeReq(
-                regionGroupId, getNodeManager().getRegisteredDataNode(newLeaderId).getLocation());
-        clientHandler.putRequest(requestId.getAndIncrement(), regionLeaderChangeReq);
+            new TRegionLeaderChangeReq(regionGroupId, newLeader);
+        int requestIndex = requestId.getAndIncrement();
+        clientHandler.putRequest(requestIndex, regionLeaderChangeReq);
+        clientHandler.putDataNodeLocation(requestIndex, newLeader);
+        break;
     }
   }
 
