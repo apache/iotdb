@@ -193,7 +193,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
+      status.setMessage("can't connect to node " + endPoint);
       // If the DataNode cannot be connected, its endPoint will be put into black list
       // so that the following retry will avoid dispatching instance towards this DataNode.
       queryContext.addFailedEndPoint(endPoint);

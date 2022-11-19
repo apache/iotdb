@@ -707,7 +707,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             if (rowRecordList.getTime(rowRecordList.size() - 2) >= displayWindowBegin
                 && rowRecordList.getTime(rowRecordList.size() - 1)
                         - rowRecordList.getTime(rowRecordList.size() - 2)
-                    >= sessionTimeGap) {
+                    > sessionTimeGap) {
               nextIndexEnd = rowRecordList.size() - 1;
               break;
             } else {

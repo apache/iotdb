@@ -148,11 +148,6 @@ public class EnvironmentUtils {
     WALRecoverManager.getInstance().clear();
 
     StorageEngineV2.getInstance().stop();
-    // clean database manager
-    //    if (!StorageEngine.getInstance().deleteAll()) {
-    //      logger.error("Can't close the database manager in EnvironmentUtils");
-    //      fail();
-    //    }
 
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our

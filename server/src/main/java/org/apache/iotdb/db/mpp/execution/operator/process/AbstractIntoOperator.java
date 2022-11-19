@@ -120,7 +120,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
           String.format(
               "Error occurred while inserting tablets in SELECT INTO: %s",
               executionStatus.getMessage());
-      LOGGER.error(message);
       throw new IntoProcessException(message);
     }
 
