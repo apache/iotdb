@@ -383,7 +383,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     }
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[buffer.get()]);
+      compressors.add(CompressionType.deserialize(buffer.get()));
     }
     if (!isOldVersion) {
       tagOffsets = new ArrayList<>();

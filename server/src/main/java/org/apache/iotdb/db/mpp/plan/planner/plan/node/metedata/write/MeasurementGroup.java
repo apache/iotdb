@@ -372,7 +372,7 @@ public class MeasurementGroup {
 
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[byteBuffer.get()]);
+      compressors.add(CompressionType.deserialize(byteBuffer.get()));
     }
 
     byte label = byteBuffer.get();

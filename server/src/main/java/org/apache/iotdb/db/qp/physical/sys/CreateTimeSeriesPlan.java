@@ -272,7 +272,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan implements ICreateTimeSer
     path = new PartialPath(new String(bytes));
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
-    compressor = CompressionType.values()[buffer.get()];
+    compressor = CompressionType.deserialize(buffer.get());
     tagOffset = buffer.getLong();
 
     // alias

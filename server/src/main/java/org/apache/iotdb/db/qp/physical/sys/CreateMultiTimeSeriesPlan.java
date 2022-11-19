@@ -298,7 +298,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     }
     compressors = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
-      compressors.add(CompressionType.values()[buffer.get()]);
+      compressors.add(CompressionType.deserialize(buffer.get()));
     }
 
     deserializeOptional(buffer, totalSize);

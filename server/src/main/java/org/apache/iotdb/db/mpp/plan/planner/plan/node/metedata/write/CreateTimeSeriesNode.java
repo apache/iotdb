@@ -204,7 +204,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     }
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
-    compressor = CompressionType.values()[byteBuffer.get()];
+    compressor = CompressionType.deserialize(byteBuffer.get());
 
     // alias
     if (byteBuffer.get() == 1) {
