@@ -275,7 +275,7 @@ public class Util {
     d6.addChild("s2", s2);
 
     ClusterSchemaTree tree = new ClusterSchemaTree(root);
-    tree.setStorageGroups(Collections.singletonList("root.sg"));
+    tree.setDatabases(Collections.singleton("root.sg"));
 
     return tree;
   }
