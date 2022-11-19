@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -181,13 +180,8 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      try {
-        // Create ConsensusGroup from confignode-system.properties file when restart
-        // TODO: Check and notify if current ConfigNode's ip or port has changed
-        createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
-      } catch (BadNodeUrlException e) {
-        throw new IOException(e);
-      }
+      // TODO: Check and notify if current ConfigNode's ip or port has changed
+      LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
@@ -328,7 +322,7 @@ public class ConsensusManager {
     if (isLeader()) {
       return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       result.setMessage(
           "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
 

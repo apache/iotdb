@@ -46,4 +46,16 @@ public class SyncClientFactory {
         throw new UnsupportedOperationException();
     }
   }
+
+  public static ISyncClient createHeartbeatClient(Pipe pipe, PipeSink pipeSink) {
+    switch (pipeSink.getType()) {
+      case IoTDB:
+        IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
+        return new IoTDBSyncClient(
+            pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort());
+      case ExternalPipe:
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
 }

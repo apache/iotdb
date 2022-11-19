@@ -102,7 +102,8 @@ public class DeleteTimeSeriesProcedure
                     new PathNotExistException(
                         patternTree.getAllPathPatterns().stream()
                             .map(PartialPath::getFullPath)
-                            .collect(Collectors.toList()))));
+                            .collect(Collectors.toList()),
+                        false)));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:

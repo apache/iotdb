@@ -46,7 +46,9 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getCompressionType(),
         schemaEntry.getLastTime(),
         new HashMap<>(),
-        new HashMap<>());
+        new HashMap<>(),
+        null,
+        null);
   }
 
   /**
@@ -68,6 +70,8 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getCompressionType(),
         schemaEntry.getLastTime(),
         new HashMap<>(),
-        new HashMap<>());
+        new HashMap<>(),
+        null,
+        null);
   }
 }

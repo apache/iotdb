@@ -73,6 +73,8 @@ public class IoTDBSyncClient implements ISyncClient {
   private final Pipe pipe;
 
   /**
+   * Create IoTDBSyncClient only for data transfer
+   *
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
@@ -84,6 +86,18 @@ public class IoTDBSyncClient implements ISyncClient {
     this.ipAddress = remoteAddress;
     this.port = port;
     this.databaseName = databaseName;
+  }
+
+  /**
+   * Create IoTDBSyncClient only for heartbeat
+   *
+   * @param pipe sync task
+   * @param remoteAddress remote ip address
+   * @param port remote port
+   * @param localAddress local ip address
+   */
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
+    this(pipe, remoteAddress, port, localAddress, "");
   }
 
   /**
@@ -129,7 +143,6 @@ public class IoTDBSyncClient implements ISyncClient {
         return false;
       }
     } catch (TException e) {
-      logger.warn("Cannot connect to the receiver because {}", e.getMessage());
       throw new SyncConnectionException(
           String.format("Cannot connect to the receiver because %s.", e.getMessage()));
     }

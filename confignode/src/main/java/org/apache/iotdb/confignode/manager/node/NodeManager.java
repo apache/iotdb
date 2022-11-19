@@ -290,7 +290,7 @@ public class NodeManager {
     if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataSet.setStatus(
-          new TSStatus(TSStatusCode.NODE_DELETE_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
               .setMessage("Fail to do transfer of the DataNodes"));
       return dataSet;
     }
@@ -303,7 +303,7 @@ public class NodeManager {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("Server accepted the request");
     } else {
-      status = new TSStatus(TSStatusCode.NODE_DELETE_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);
@@ -612,7 +612,7 @@ public class NodeManager {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
     }
-    return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+    return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
         .setMessage(
             "The ConfigNode to be removed is leader, already transfer Leader to "
