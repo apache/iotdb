@@ -827,16 +827,6 @@ public class LocalSchemaProcessor {
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return getMeasurementMNode(fullPath).getSchema();
   }
-
-  // attention: this path must be a device node
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    try {
-      return getBelongedSchemaRegion(devicePath).getAllMeasurementByDevicePath(devicePath);
-    } catch (MetadataException e) {
-      throw new PathNotExistException(devicePath.getFullPath());
-    }
-  }
   // endregion
   // endregion
 

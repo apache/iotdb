@@ -188,8 +188,9 @@ public class SchemaFile implements ISchemaFile {
   public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    this.templateHash =
-        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
+    // todo record the templateId generated in configNode
+    //    this.templateHash =
+    //        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
     updateHeader();
     return true;
   }

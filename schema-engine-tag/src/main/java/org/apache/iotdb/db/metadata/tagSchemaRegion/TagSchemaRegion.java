@@ -670,12 +670,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    throw new UnsupportedOperationException("getAllMeasurementByDevicePath");
-  }
-
-  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path.getFullPath());
     if (deviceEntry == null) throw new PathNotExistException(path.getFullPath());

@@ -1313,29 +1313,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    List<MeasurementPath> result = new ArrayList<>();
-    String nextLevelPathName =
-        RSchemaUtils.convertPartialPathToInner(
-            devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
-    Map<byte[], byte[]> allMeasurementPath =
-        readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
-    for (Map.Entry<byte[], byte[]> entry : allMeasurementPath.entrySet()) {
-      PartialPath pathName;
-      try {
-        pathName = new PartialPath(new String(entry.getKey()));
-      } catch (IllegalPathException e) {
-        throw new PathNotExistException(e.getMessage());
-      }
-      MeasurementSchema measurementSchema =
-          (MeasurementSchema) RSchemaUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
-      result.add(new MeasurementPath(pathName, measurementSchema));
-    }
-    return result;
-  }
-
-  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);

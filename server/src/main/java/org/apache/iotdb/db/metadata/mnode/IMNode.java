@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -71,12 +70,6 @@ public interface IMNode extends Serializable {
   boolean isUseTemplate();
 
   void setUseTemplate(boolean useTemplate);
-
-  Template getUpperTemplate();
-
-  Template getSchemaTemplate();
-
-  void setSchemaTemplate(Template schemaTemplate);
 
   int getSchemaTemplateId();
 
