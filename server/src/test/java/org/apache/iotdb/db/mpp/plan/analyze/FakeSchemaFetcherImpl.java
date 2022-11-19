@@ -45,7 +45,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
-    schemaTree.setStorageGroups(Collections.singletonList("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 

@@ -126,7 +126,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_ERROR, e.getMessage()));
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage()));
       }
     } else {
       result = AuthUtils.generateEmptyPermissionInfoResp();
@@ -210,7 +210,7 @@ public class AuthorInfo implements SnapshotProcessor {
           throw new AuthException("unknown type: " + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

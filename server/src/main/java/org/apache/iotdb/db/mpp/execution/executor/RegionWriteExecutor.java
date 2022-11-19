@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -423,7 +425,10 @@ public class RegionWriteExecutor {
                   failingMeasurement.getValue().getMessage());
               alreadyExistingStatus.add(
                   RpcUtils.getStatus(
-                      metadataException.getErrorCode(), metadataException.getMessage()));
+                      metadataException.getErrorCode(),
+                      MeasurementPath.transformDataToString(
+                          ((MeasurementAlreadyExistException) metadataException)
+                              .getMeasurementPath())));
             } else {
               LOGGER.error("Metadata error: ", metadataException);
               failingStatus.add(
@@ -469,9 +474,9 @@ public class RegionWriteExecutor {
 
           TSStatus status;
           if (failingStatus.isEmpty()) {
-            status = RpcUtils.getStatus(failingStatus);
-          } else {
             status = RpcUtils.getStatus(alreadyExistingStatus);
+          } else {
+            status = RpcUtils.getStatus(failingStatus);
           }
 
           RegionExecutionResult result = new RegionExecutionResult();

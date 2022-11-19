@@ -196,6 +196,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     }
     synchronized (waitLock) {
       if (!inputDeque.offer(pipeData)) {
+        waitLock.notifyAll();
         return false;
       }
       waitLock.notifyAll();
