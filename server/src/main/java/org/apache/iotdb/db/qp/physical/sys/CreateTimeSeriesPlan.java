@@ -180,7 +180,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan implements ICreateTimeSer
     stream.write(bytes);
     stream.write(dataType.ordinal());
     stream.write(encoding.ordinal());
-    stream.write(compressor.ordinal());
+    stream.write(compressor.serialize());
     stream.writeLong(tagOffset);
 
     // alias
@@ -226,7 +226,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan implements ICreateTimeSer
     buffer.put(bytes);
     buffer.put((byte) dataType.ordinal());
     buffer.put((byte) encoding.ordinal());
-    buffer.put((byte) compressor.ordinal());
+    buffer.put(compressor.serialize());
     buffer.putLong(tagOffset);
 
     // alias

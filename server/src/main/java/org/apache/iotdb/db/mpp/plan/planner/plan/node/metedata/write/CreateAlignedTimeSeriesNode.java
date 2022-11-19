@@ -321,7 +321,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     // compressors
     for (CompressionType compressor : compressors) {
-      byteBuffer.put((byte) compressor.ordinal());
+      byteBuffer.put(compressor.serialize());
     }
 
     // alias
@@ -386,7 +386,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
     // compressors
     for (CompressionType compressor : compressors) {
-      stream.write((byte) compressor.ordinal());
+      stream.write(compressor.serialize());
     }
 
     // alias
