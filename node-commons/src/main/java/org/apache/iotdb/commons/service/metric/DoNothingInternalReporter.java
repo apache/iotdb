@@ -28,6 +28,9 @@ public class DoNothingInternalReporter implements InternalReporter {
   public void addAutoGauge(Gauge gauge, String name, String... tags) {}
 
   @Override
+  public void clear() {}
+
+  @Override
   public void updateValue(String name, Object value, TSDataType type, String... tags) {}
 
   @Override
@@ -35,4 +38,7 @@ public class DoNothingInternalReporter implements InternalReporter {
 
   @Override
   public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {}
+
+  @Override
+  public void stop() {}
 }

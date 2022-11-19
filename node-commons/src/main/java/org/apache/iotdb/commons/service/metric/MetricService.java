@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -71,9 +72,24 @@ public class MetricService extends AbstractMetricService implements MetricServic
     logger.info("Finish restart metric Service");
   }
 
+  /** restart metric service */
+  public void restartService() {
+    logger.info("Restart Core Module");
+    stopCoreModule();
+    internalReporter.clear();
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+  }
+
   @Override
   public void stop() {
     logger.info("Stop metric Service.");
+    internalReporter.stop();
+    internalReporter = new DoNothingInternalReporter();
     stopService();
     JMXService.deregisterMBean(mbeanName);
     logger.info("Finish stop metric Service");

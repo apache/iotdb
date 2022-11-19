@@ -68,18 +68,6 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** restart metric service */
-  public void restartService() {
-    logger.info("Restart Core Module");
-    stopCoreModule();
-    startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
-      metricSet.unbindFrom(this);
-      metricSet.bindTo(this);
-    }
-  }
-
   /** stop metric service */
   public void stopService() {
     for (IMetricSet metricSet : metricSets) {
@@ -87,8 +75,9 @@ public abstract class AbstractMetricService {
     }
     stopCoreModule();
   }
+
   /** start metric core module */
-  private void startCoreModule() {
+  protected void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
     loadManager();
@@ -99,7 +88,7 @@ public abstract class AbstractMetricService {
   }
 
   /** stop metric core module */
-  private void stopCoreModule() {
+  protected void stopCoreModule() {
     stopAllReporter();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
@@ -222,6 +211,61 @@ public abstract class AbstractMetricService {
   }
 
   public void timer(
+      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
+  }
+
+  public Counter getOrCreateCounterWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateCounter(metric, metricLevel, tags);
+  }
+
+  public <T> Gauge getOrCreateAutoGaugeWithInternalReport(
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+    return metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+  }
+
+  public Gauge getOrCreateGaugeWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateGauge(metric, metricLevel, tags);
+  }
+
+  public Rate getOrCreateRateWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateRate(metric, metricLevel, tags);
+  }
+
+  public Histogram getOrCreateHistogramWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateHistogram(metric, metricLevel, tags);
+  }
+
+  public Timer getOrCreateTimerWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateTimer(metric, metricLevel, tags);
+  }
+
+  public void countWithInternalReport(
+      long delta, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.count(delta, metric, metricLevel, tags);
+  }
+
+  public void gaugeWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.gauge(value, metric, metricLevel, tags);
+  }
+
+  public void rateWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.rate(value, metric, metricLevel, tags);
+  }
+
+  public void histogramWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.histogram(value, metric, metricLevel, tags);
+  }
+
+  public void timerWithInternalReport(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
     metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
   }

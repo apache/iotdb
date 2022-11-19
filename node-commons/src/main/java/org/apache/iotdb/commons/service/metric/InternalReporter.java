@@ -26,9 +26,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public interface InternalReporter {
   void addAutoGauge(Gauge gauge, String name, String... tags);
 
+  void clear();
+
   void updateValue(String name, Object value, TSDataType type, String... tags);
 
   void updateValue(String name, Object value, TSDataType type, Long time, String... tags);
 
   void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags);
+
+  void stop();
 }

@@ -202,14 +202,14 @@ public class SystemMetrics implements IMetricSet {
       }
     }
 
-    metricService.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGaugeWithInternalReport(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
         SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
-    metricService.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGaugeWithInternalReport(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,
