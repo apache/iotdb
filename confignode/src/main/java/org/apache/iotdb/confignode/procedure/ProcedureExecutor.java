@@ -865,10 +865,9 @@ public class ProcedureExecutor<Env> {
     try {
       threadGroup.destroy();
     } catch (IllegalThreadStateException e) {
-      LOG.error(
-          "ThreadGroup {} contains running threads; {}: See STDOUT",
-          this.threadGroup,
-          e.getMessage());
+      LOG.warn(
+          "ProcedureExecutor threadGroup {} contains running threads which are used by non-procedure module.",
+          this.threadGroup);
       this.threadGroup.list();
     }
   }
