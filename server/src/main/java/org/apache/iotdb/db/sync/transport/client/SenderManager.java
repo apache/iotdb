@@ -184,7 +184,7 @@ public class SenderManager {
         client.close();
       }
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.info("Interrupted by PIPE operation, exit heartbeat.");
     }
   }
 
@@ -229,7 +229,7 @@ public class SenderManager {
         }
       }
     } catch (InterruptedException e) {
-      logger.info("Interrupted by pipe, exit transport.");
+      logger.info("Interrupted by PIPE operation, exit transport.");
     } finally {
       syncClient.close();
     }

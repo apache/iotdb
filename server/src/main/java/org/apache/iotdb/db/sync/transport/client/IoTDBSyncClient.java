@@ -94,10 +94,9 @@ public class IoTDBSyncClient implements ISyncClient {
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
-   * @param localAddress local ip address
    */
-  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
-    this(pipe, remoteAddress, port, localAddress, "");
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port) {
+    this(pipe, remoteAddress, port, "");
   }
 
   /**
