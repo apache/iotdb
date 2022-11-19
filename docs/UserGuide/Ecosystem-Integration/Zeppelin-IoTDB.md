@@ -118,7 +118,7 @@ Now you are ready to use your interpreter.
 We provide some simple SQL to show the use of Zeppelin-IoTDB interpreter:
 
 ```sql
- SET STORAGE GROUP TO root.ln.wf01.wt01;
+ CREATE DATABASE root.ln.wf01.wt01;
  CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;
  CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;
  CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;

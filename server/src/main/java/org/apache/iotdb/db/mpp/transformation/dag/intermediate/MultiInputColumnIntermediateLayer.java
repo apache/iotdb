@@ -707,7 +707,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             if (rowRecordList.getTime(rowRecordList.size() - 2) >= displayWindowBegin
                 && rowRecordList.getTime(rowRecordList.size() - 1)
                         - rowRecordList.getTime(rowRecordList.size() - 2)
-                    >= sessionTimeGap) {
+                    > sessionTimeGap) {
               nextIndexEnd = rowRecordList.size() - 1;
               break;
             } else {
@@ -777,6 +777,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   @Override
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(
+        "StateWindowAccessStrategy only support one input series for now.");
   }
 }

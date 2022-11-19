@@ -61,45 +61,45 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
+      statement.execute("CREATE DATABASE root.TTL_SG1");
       statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG2");
+      statement.execute("CREATE DATABASE root.TTL_SG2");
       statement.execute("CREATE TIMESERIES root.TTL_SG2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       try {
         statement.execute("SET TTL TO root.** 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.**");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.PATH_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       try {
         statement.execute("SET TTL TO root.**.s1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       long now = System.currentTimeMillis();
@@ -137,7 +137,7 @@ public class IoTDBTtlIT {
               String.format(
                   "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+          if (TSStatusCode.OUT_OF_TTL.getStatusCode() == e.getErrorCode()) {
             caught = true;
           }
         }
@@ -166,8 +166,8 @@ public class IoTDBTtlIT {
         }
         assertTrue(cnt >= 200);
       }
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG3");
-      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG4");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG3");
+      statement.execute("CREATE DATABASE root.sg.TTL_SG4");
       // SG2
       for (int i = 0; i < 100; i++) {
         statement.execute(
@@ -223,7 +223,7 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
                   now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+          if (TSStatusCode.OUT_OF_TTL.getStatusCode() == e.getErrorCode()) {
             caught = true;
           }
         }
@@ -237,7 +237,7 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
                   now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+          if (TSStatusCode.OUT_OF_TTL.getStatusCode() == e.getErrorCode()) {
             caught = true;
           }
         }
@@ -279,8 +279,8 @@ public class IoTDBTtlIT {
   public void testShowTTL() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2");
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
           result.equals("root.group1,null\n" + "root.group2,null\n")
@@ -325,8 +325,8 @@ public class IoTDBTtlIT {
     CommonDescriptor.getInstance().getConfig().setDefaultTTLInMs(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2");
 
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
@@ -342,8 +342,8 @@ public class IoTDBTtlIT {
   public void testTTLOnAnyPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2.sgroup1");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2.sgroup1");
       statement.execute("SET TTL TO root.group2.** 10000");
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(

@@ -71,6 +71,7 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -169,17 +170,7 @@ public class IoTDB implements IoTDBMBean {
     }
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
-
-    while (!StorageEngine.getInstance().isAllSgReady()) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up.", e);
-        Thread.currentThread().interrupt();
-        return;
-      }
-    }
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
@@ -221,10 +212,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

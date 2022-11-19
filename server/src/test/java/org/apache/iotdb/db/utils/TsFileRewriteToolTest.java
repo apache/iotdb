@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -79,25 +78,17 @@ public class TsFileRewriteToolTest {
   private final Planner processor = new Planner();
   private String path = null;
   private IoTDBConfig config;
-  private boolean originEnablePartition;
+
   private long originPartitionInterval;
 
   public TsFileRewriteToolTest() throws QueryProcessException {}
 
   @Before
   public void setUp() {
-    EnvironmentUtils.envSetUp();
-
     config = IoTDBDescriptor.getInstance().getConfig();
-    originEnablePartition = config.isEnablePartition();
-    originPartitionInterval = config.getTimePartitionIntervalForStorage();
-
-    boolean newEnablePartition = true;
-    config.setEnablePartition(newEnablePartition);
-    config.setTimePartitionIntervalForStorage(newPartitionInterval);
-
-    StorageEngine.setEnablePartition(newEnablePartition);
-    StorageEngine.setTimePartitionInterval(newPartitionInterval);
+    originPartitionInterval = config.getTimePartitionInterval();
+    config.setTimePartitionInterval(newPartitionInterval);
+    EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
     if (!f.exists()) {
@@ -114,11 +105,7 @@ public class TsFileRewriteToolTest {
       boolean deleteSuccess = f.delete();
       Assert.assertTrue(deleteSuccess);
     }
-    config.setEnablePartition(originEnablePartition);
-    config.setTimePartitionIntervalForStorage(originPartitionInterval);
-
-    StorageEngine.setEnablePartition(originEnablePartition);
-    StorageEngine.setTimePartitionInterval(originPartitionInterval);
+    config.setTimePartitionInterval(originPartitionInterval);
 
     File directory = new File(folder);
     try {

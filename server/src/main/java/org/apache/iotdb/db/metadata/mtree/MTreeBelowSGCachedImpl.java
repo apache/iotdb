@@ -55,6 +55,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -66,6 +67,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -81,6 +83,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -117,10 +120,10 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  */
 public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
-  private CachedMTreeStore store;
+  private final CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
-  private int levelOfSG;
+  private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
@@ -136,11 +139,58 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     levelOfSG = storageGroup.getNodeLength() - 1;
   }
 
+  /** Only used for load snapshot */
+  private MTreeBelowSGCachedImpl(
+      CachedMTreeStore store,
+      IStorageGroupMNode storageGroupMNode,
+      Consumer<IMeasurementMNode> measurementProcess,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter)
+      throws MetadataException {
+    this.store = store;
+    this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    this.tagGetter = tagGetter;
+
+    // recover measurement
+    MeasurementCollector<?> collector =
+        new MeasurementCollector<Void>(
+            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            measurementProcess.accept(node);
+          }
+        };
+    collector.setPrefixMatch(true);
+    collector.traverse();
+  }
+
   @Override
   public void clear() {
     store.clear();
     storageGroupMNode = null;
   }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    return store.createSnapshot(snapshotDir);
+  }
+
+  public static MTreeBelowSGCachedImpl loadFromSnapshot(
+      File snapshotDir,
+      IStorageGroupMNode storageGroupMNode,
+      int schemaRegionId,
+      Consumer<IMeasurementMNode> measurementProcess,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter)
+      throws IOException, MetadataException {
+    return new MTreeBelowSGCachedImpl(
+        CachedMTreeStore.loadFromSnapshot(
+            snapshotDir, storageGroupMNode.getFullPath(), schemaRegionId),
+        storageGroupMNode,
+        measurementProcess,
+        tagGetter);
+  }
+
   // endregion
 
   // region Timeseries operation, including create and delete
@@ -162,7 +212,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   /**
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
-   * storage group should be set first, throw exception otherwise
+   * database should be set first, throw exception otherwise
    *
    * @param path timeseries path
    * @param dataType data type
@@ -218,7 +268,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
           if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
             throw new AlignedTimeseriesException(
-                "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
                 device.getFullPath());
           }
 
@@ -258,7 +308,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   /**
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
-   * timeseries, the * storage group should be set first, throw exception otherwise
+   * timeseries, the * database should be set first, throw exception otherwise
    *
    * @param devicePath device path
    * @param measurements measurements list
@@ -553,9 +603,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
     }
 
-    // delete all empty ancestors except storage group and MeasurementMNode
+    // delete all empty ancestors except database and MeasurementMNode
     while (isEmptyInternalMNode(curNode)) {
-      // if current storage group has no time series, return the storage group name
+      // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
         return curNode.getPartialPath();
       }
@@ -860,17 +910,17 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   /**
    * Get all measurement schema matching the given path pattern
    *
-   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset] and the
-   * current offset
+   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
+   * offset
    */
   @Override
   public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     /*
      There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each storage group
+     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
      2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
-     3. isOrderByHeat = true && limit = 0 : collect all result from each storage group and then sort
+     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
      4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
      The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
     */
@@ -885,7 +935,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             IMeasurementSchema measurementSchema = node.getSchema();
-            String[] tsRow = new String[7];
+            Pair<String, String> deadbandInfo =
+                MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
+            String[] tsRow = new String[9];
             tsRow[0] = node.getAlias();
             tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
@@ -893,6 +945,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            tsRow[7] = deadbandInfo.left;
+            tsRow[8] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             resultSet.add(temp);
           }
@@ -1236,7 +1290,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException {
     IMNode cur = storageGroupMNode;
-    // collect all the LeafMNode in this storage group
+    // collect all the LeafMNode in this database
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
     try {

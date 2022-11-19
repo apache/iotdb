@@ -384,7 +384,7 @@ BEGIN
 END
 ```
 
-`cq5` calculates the `temperature + 1` under the `root.ln` prefix path and stores the results in the `root.precalculated_sg` storage group. Sensors use the same prefix path as the corresponding sensor.
+`cq5` calculates the `temperature + 1` under the `root.ln` prefix path and stores the results in the `root.precalculated_sg` database. Sensors use the same prefix path as the corresponding sensor.
 
 `cq5` executes at 20-second intervals, the same interval as the `EVERY` interval. Every 20 seconds, `cq5` runs a single query that covers the time range for the current time bucket, that is, the 20-second time bucket that intersects with `now()`.
 
@@ -527,7 +527,7 @@ CQs can't be altered once they're created. To change a CQ, you must `DROP` and r
 
 ### Downsampling and Data Retention
 
-Use CQs with `TTL` set on storage group in IoTDB to mitigate storage concerns. Combine CQs and `TTL` to automatically downsample high precision data to a lower precision and remove the dispensable, high precision data from the database.
+Use CQs with `TTL` set on database in IoTDB to mitigate storage concerns. Combine CQs and `TTL` to automatically downsample high precision data to a lower precision and remove the dispensable, high precision data from the database.
 
 ### Recalculating expensive queries
 

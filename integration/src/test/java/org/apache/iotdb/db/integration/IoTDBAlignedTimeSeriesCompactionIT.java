@@ -43,7 +43,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
     EnvFactory.getEnv().initBeforeClass();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + storageGroup);
+      statement.execute("CREATE DATABASE " + storageGroup);
     }
   }
 
@@ -51,7 +51,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
   public void tearDown() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete storage group " + storageGroup);
+      statement.execute("delete database " + storageGroup);
     }
     EnvFactory.getEnv().cleanAfterClass();
   }

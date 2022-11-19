@@ -76,8 +76,8 @@ public class IoTDBFloatPrecisionIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.vehicle.f0");
-    sqls.add("SET STORAGE GROUP TO root.vehicle.d0");
+    sqls.add("CREATE DATABASE root.vehicle.f0");
+    sqls.add("CREATE DATABASE root.vehicle.d0");
     for (int i = 0; i < 10; i++) {
       sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "rle", "FLOAT", "RLE", i));
       sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "2f", "FLOAT", "TS_2DIFF", i));

@@ -32,8 +32,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
-import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -150,15 +150,15 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportion = 0.8;
+  private double writeProportionForMemtable = 0.8;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain IoTDBConfig#getWriteProportion()},
-   * report to system.
+   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
+   * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -233,7 +233,7 @@ public class IoTDBConfig {
    */
   private int tlogBufferSize = 1024 * 1024;
 
-  /** System directory, including version file for each storage group and metadata */
+  /** System directory, including version file for each database and metadata */
   private String systemDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
@@ -261,8 +261,7 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
   /** External temporary lib directory for storing downloaded udf JAR files */
-  private String udfTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+  private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
@@ -270,7 +269,7 @@ public class IoTDBConfig {
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
+      triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -308,7 +307,7 @@ public class IoTDBConfig {
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
+  private int queryThreadCount = Math.max(4, Runtime.getRuntime().availableProcessors());
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -466,7 +465,7 @@ public class IoTDBConfig {
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
-  /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
+  /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
@@ -502,6 +501,8 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
+  /** Memory allocated proportion for time partition info */
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -553,10 +554,7 @@ public class IoTDBConfig {
   private int sessionTimeoutThreshold = 0;
 
   /** Replace implementation class of JDBC service */
-  private String rpcImplClassName = TSServiceImpl.class.getName();
-
-  /** indicate whether current mode is mpp */
-  private boolean mppMode = false;
+  private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
@@ -608,7 +606,7 @@ public class IoTDBConfig {
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
-  /** Storage group level when creating schema automatically is enabled */
+  /** Database level when creating schema automatically is enabled */
   private int defaultStorageGroupLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
@@ -643,8 +641,8 @@ public class IoTDBConfig {
   private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * A global merge will be performed each such interval, that is, each storage group will be merged
-   * (if proper merge candidates can be found). Unit: second.
+   * A global merge will be performed each such interval, that is, each database will be merged (if
+   * proper merge candidates can be found). Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
@@ -736,7 +734,7 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the num of memtable in each storage group */
+  /** the num of memtable in each database */
   private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
@@ -745,14 +743,8 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
-  /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = true;
-
-  /** Time partition interval for storage in milliseconds */
-  private long timePartitionIntervalForStorage = 604_800_000;
-
-  /** Time partition interval for routing in milliseconds */
-  private long timePartitionIntervalForRouting = 604_800_000;
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -830,7 +822,7 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
-  /** the number of data regions per user-defined storage group */
+  /** the number of data regions per user-defined database */
   private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
@@ -911,7 +903,7 @@ public class IoTDBConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
 
-  /** The number of series partitions in a storage group */
+  /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */
@@ -1124,28 +1116,12 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public boolean isEnablePartition() {
-    return enablePartition;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
-  public void setEnablePartition(boolean enablePartition) {
-    this.enablePartition = enablePartition;
-  }
-
-  public long getTimePartitionIntervalForStorage() {
-    return timePartitionIntervalForStorage;
-  }
-
-  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
-    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
-  }
-
-  public long getTimePartitionIntervalForRouting() {
-    return timePartitionIntervalForRouting;
-  }
-
-  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
@@ -1411,10 +1387,15 @@ public class IoTDBConfig {
 
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+    updateUdfTemporaryLibDir();
   }
 
   public String getUdfTemporaryLibDir() {
     return udfTemporaryLibDir;
+  }
+
+  public void updateUdfTemporaryLibDir() {
+    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getTriggerDir() {
@@ -1423,14 +1404,15 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
-  }
-
-  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
-    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
+    updateTriggerTemporaryLibDir();
   }
 
   public String getTriggerTemporaryLibDir() {
     return triggerTemporaryLibDir;
+  }
+
+  public void updateTriggerTemporaryLibDir() {
+    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getMqttDir() {
@@ -2101,6 +2083,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
     this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
+  }
+
+  public long getAllocateMemoryForTimePartitionInfo() {
+    return allocateMemoryForTimePartitionInfo;
+  }
+
+  public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
@@ -3075,14 +3065,6 @@ public class IoTDBConfig {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isMppMode() {
-    return mppMode;
-  }
-
-  public void setMppMode(boolean mppMode) {
-    this.mppMode = mppMode;
-  }
-
   public boolean isClusterMode() {
     return isClusterMode;
   }
@@ -3264,12 +3246,12 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public double getWriteProportion() {
-    return writeProportion;
+  public double getWriteProportionForMemtable() {
+    return writeProportionForMemtable;
   }
 
-  public void setWriteProportion(double writeProportion) {
-    this.writeProportion = writeProportion;
+  public void setWriteProportionForMemtable(double writeProportionForMemtable) {
+    this.writeProportionForMemtable = writeProportionForMemtable;
   }
 
   public double getCompactionProportion() {

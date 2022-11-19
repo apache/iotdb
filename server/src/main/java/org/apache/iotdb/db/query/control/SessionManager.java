@@ -181,7 +181,7 @@ public class SessionManager implements SessionManagerMBean {
       Consumer<Long> releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
-          TSStatusCode.NOT_LOGIN_ERROR,
+          TSStatusCode.NOT_LOGIN,
           "Log in failed. Either you are not authorized or the session has timed out.");
     }
 
@@ -271,7 +271,7 @@ public class SessionManager implements SessionManagerMBean {
     try {
       if (!checkAuthorization(plan, session.getUsername())) {
         return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION_ERROR,
+            TSStatusCode.NO_PERMISSION,
             "No permissions for this operation, please add privilege "
                 + PrivilegeType.values()[
                     AuthorityChecker.translateToPermissionId(plan.getOperatorType())]);

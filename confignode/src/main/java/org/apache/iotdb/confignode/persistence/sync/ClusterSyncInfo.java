@@ -68,11 +68,15 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   /**
    * Check PipeSink before create operation
    *
-   * @param pipeSinkName name
-   * @throws PipeSinkException if there is PipeSink with the same name exists
+   * @param createPipeSinkPlan createPipeSinkPlan
+   * @throws PipeSinkException if there is PipeSink with the same name exists or attributes is
+   *     unsupported
    */
-  public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
-    syncMetadata.checkAddPipeSink(pipeSinkName);
+  public void checkAddPipeSink(CreatePipeSinkPlan createPipeSinkPlan) throws PipeSinkException {
+    // check no exist
+    syncMetadata.checkPipeSinkNoExist(createPipeSinkPlan.getPipeSinkInfo().getPipeSinkName());
+    // check attributes
+    SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(createPipeSinkPlan.getPipeSinkInfo());
   }
 
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
@@ -82,7 +86,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (PipeSinkException e) {
       LOGGER.error("failed to execute CreatePipeSinkPlan {} on ClusterSyncInfo", plan, e);
-      status.setCode(TSStatusCode.PIPESINK_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode());
       LOGGER.error(e.getMessage());
     }
     return status;

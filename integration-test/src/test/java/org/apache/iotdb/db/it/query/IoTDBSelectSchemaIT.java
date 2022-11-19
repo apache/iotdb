@@ -47,7 +47,7 @@ public class IoTDBSelectSchemaIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=DOUBLE,encoding=PLAIN");

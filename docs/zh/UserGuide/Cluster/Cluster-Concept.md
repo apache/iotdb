@@ -55,9 +55,9 @@ Client 只能通过 DataNode 进行数据读写。
 
 分区策略将数据和元数据划分到不同的 Region 中，并把 Region 分配到不同的 DataNode。
 
-推荐设置 1 个存储组（无需像 0.13 版本根据核数设置存储组），当做 database 概念使用，集群会根据节点数和核数动态分配资源。
+推荐设置 1 个 database（无需像 0.13 版本根据核数设置存储组），当做 database 概念使用，集群会根据节点数和核数动态分配资源。
 
-存储组包含多个 SchemaRegion（元数据分片） 和 DataRegion（数据分片），由 DataNode 管理。
+Database 包含多个 SchemaRegion（元数据分片） 和 DataRegion（数据分片），由 DataNode 管理。
 
 * 元数据分区策略 
     * 对于一条未使用模板的时间序列的元数据，ConfigNode 会根据设备 ID （从 root 到倒数第二层节点的全路径）映射到一个序列分区槽内，并将此分区槽分配到一个 SchemaRegion 组中。

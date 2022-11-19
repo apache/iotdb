@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.sync.common.LocalSyncInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -35,6 +35,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LocalSyncInfoTest {
   private static final String pipe1 = "pipe1";
@@ -56,9 +58,13 @@ public class LocalSyncInfoTest {
   public void testOperatePipe() throws Exception {
     LocalSyncInfo localSyncInfo = new LocalSyncInfo();
     try {
-      CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
-      createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
-      createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
+      CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
+      createPipeSinkStatement.setPipeSinkName("demo");
+      createPipeSinkStatement.setPipeSinkType("IoTDB");
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("ip", "127.0.0.1");
+      attributes.put("port", "6667");
+      createPipeSinkStatement.setAttributes(attributes);
       try {
         localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
         Assert.fail();
@@ -66,7 +72,7 @@ public class LocalSyncInfoTest {
         Assert.assertTrue(e instanceof PipeSinkNotExistException);
         // throw exception because can not find pipeSink
       }
-      localSyncInfo.addPipeSink(createPipeSinkPlan);
+      localSyncInfo.addPipeSink(createPipeSinkStatement);
       localSyncInfo.addPipe(new TsFilePipeInfo(pipe1, "demo", createdTime1, 0, true));
       localSyncInfo.addPipe(new TsFilePipeInfo(pipe2, "demo", createdTime2, 0, true));
       try {

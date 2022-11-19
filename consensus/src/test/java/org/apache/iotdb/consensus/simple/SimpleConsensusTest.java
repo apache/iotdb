@@ -21,9 +21,9 @@ package org.apache.iotdb.consensus.simple;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.EmptyStateMachine;
@@ -65,7 +65,7 @@ public class SimpleConsensusTest {
       new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
   private final ConsensusGroupId dataRegionId = new DataRegionId(0);
   private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
-  private final ConsensusGroupId configId = new PartitionRegionId(2);
+  private final ConsensusGroupId configId = new ConfigNodeRegionId(2);
 
   private static class TestEntry implements IConsensusRequest {
 

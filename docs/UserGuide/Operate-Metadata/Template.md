@@ -51,9 +51,9 @@ The` lat` and `lon` measurements are aligned.
 
 After a schema template is created, it should be set to specific path before creating related timeseries or insert data.
 
-**It should be ensured that the related storage group has been set before setting template.**
+**It should be ensured that the related database has been set before setting template.**
 
-**It is recommended to set schema template to storage group path. It is not suggested to set schema template to some path above storage group**
+**It is recommended to set schema template to database path. It is not suggested to set schema template to some path above database**
 
 
 The SQL Statement for setting schema template is as follow:
@@ -64,7 +64,7 @@ IoTDB> set schema template t1 to root.sg1.d1
 
 ## Activate Schema Template
 
-After setting the schema template, with the system enabled to auto create schema, you can insert data into the timeseries. For example, suppose there's a storage group root.sg1 and t1 has been set to root.sg1.d1, then timeseries like root.sg1.d1.temperature and root.sg1.d1.status are available and data points can be inserted.
+After setting the schema template, with the system enabled to auto create schema, you can insert data into the timeseries. For example, suppose there's a database root.sg1 and t1 has been set to root.sg1.d1, then timeseries like root.sg1.d1.temperature and root.sg1.d1.status are available and data points can be inserted.
 
 
 **Attention**: Before inserting data or the system not enabled to auto create schema, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries or activate the schema template, act before inserting data:
@@ -87,14 +87,14 @@ show timeseries root.sg1.**
 ````
 
 ```shell
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+
-|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+
-|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
-|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
-|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+
++-----------------------+-----+--------+--------+--------+-----------+----+----------+
+|             timeseries|alias|database|dataType|encoding|compression|tags|attributes|
++-----------------------+-----+--------+--------+--------+-----------+----+----------+
+|root.sg1.d1.temperature| null|root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.sg1.d1.status| null|root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|        root.sg1.d2.lon| null|root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|        root.sg1.d2.lat| null|root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
++-----------------------+-----+--------+--------+--------+-----------+----+----------+
 ```
 
 Show the devices:

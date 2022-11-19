@@ -82,13 +82,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 #### 1.3.3.1. API
 
 | Metric                | Tag                      | level     | Description                              | Sample                                       |
-| --------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
+| --------------------- | ------------------------ |-----------| ---------------------------------------- | -------------------------------------------- |
 | entry_seconds_count   | name="{{interface}}"     | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
 | entry_seconds_sum     | name="{{interface}}"     | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
 | entry_seconds_max     | name="{{interface}}"     | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total        | name="pointsIn"          | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections    | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
-| thrift_active_threads | name="{{thriftThread}}"  | core      | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
+| thrift_connections    | name="{{thriftService}}" | important | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | important | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 1.3.3.2. Task
 | Metric                      | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
@@ -134,8 +134,8 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | The number of registered/online/offline datanodes                                            | data_node{name="total",status="Registered",} 3.0                             |
 | partition_table           | name="number"                                                      | core      | The number of partition table                                                                | partition_table{name="number",} 2.0                                          |
 | region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in database                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in database                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ##### 1.3.3.6.2. MultiLeader
 | Metric       | Tag                                                                                          | level     | 说明                                                                          | 示例                                                                                                             |
@@ -143,13 +143,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core      | The searchIndex and safeIndex of region in multiLeader                        | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | important | The currentSyncIndex of LogDispatcherThread of related region                 | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[7]",type="currentSyncIndex",} 1945.0        |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | important | The total size of queues that buffers requests in LogDispatcher               | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[9]",type="cachedRequestInMemoryQueue",} 0.0 |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | core      | The time consumed to get lock of statemachine in multiLeader                  | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | core      | The time consumed to check before write in multiLeader                        | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | core      | The time consumed to write consensus request into statemachine in multiLeader | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | core      | The time consumed to try to offer request into queue in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | core      | The total time consumed to write a consensus request in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | core      | The time consumed to construct batch in LogDispatcher per request             | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | core      | The time consumed to sync one request in multiLeader                          | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | important | The time consumed to get lock of statemachine in multiLeader                  | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | important | The time consumed to check before write in multiLeader                        | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | important | The time consumed to write consensus request into statemachine in multiLeader | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | important | The time consumed to try to offer request into queue in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | important | The total time consumed to write a consensus request in multiLeader           | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | important | The time consumed to construct batch in LogDispatcher per request             | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | important | The time consumed to sync one request in multiLeader                          | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
 
 ### 1.3.4. IoTDB PreDefined Metrics Set
 
@@ -209,17 +209,17 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | logback_events_total | {level="trace/debug/info/warn/error",} | Important | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
 #### 1.3.4.4. Process
-| Metric                | Tag            | level | Description                                                                   | 示例                                            |
-| --------------------- | -------------- | ----- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
-| process_cpu_load      | name="cpu"     | core  | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
-| process_cpu_time      | name="cpu"     | core  | total Process CPU Time Occupied (ns)                                          | process_cpu_time{name="process",} 3.265625E9    |
-| process_max_mem       | name="memory"  | core  | The maximum available memory for the JVM                                      | process_max_mem{name="process",} 3.545759744E9  |
-| process_used_mem      | name="memory"  | core  | The current available memory for the JVM                                      | process_used_mem{name="process",} 4.6065456E7   |
-| process_total_mem     | name="memory"  | core  | The current requested memory for the JVM                                      | process_total_mem{name="process",} 2.39599616E8 |
-| process_free_mem      | name="memory"  | core  | The free available memory for the JVM                                         | process_free_mem{name="process",} 1.94035584E8  |
-| process_mem_ratio     | name="memory"  | core  | Memory footprint ratio of process                                             | process_mem_ratio{name="process",} 0.0          |
-| process_threads_count | name="process" | core  | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
-| process_status        | name="process" | core  | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
+| Metric                | Tag            | level     | Description                                                                   | 示例                                            |
+| --------------------- | -------------- |-----------| ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| process_cpu_load      | name="cpu"     | core      | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
+| process_cpu_time      | name="cpu"     | core      | total Process CPU Time Occupied (ns)                                          | process_cpu_time{name="process",} 3.265625E9    |
+| process_max_mem       | name="memory"  | core      | The maximum available memory for the JVM                                      | process_max_mem{name="process",} 3.545759744E9  |
+| process_used_mem      | name="memory"  | important | The current available memory for the JVM                                      | process_used_mem{name="process",} 4.6065456E7   |
+| process_total_mem     | name="memory"  | core      | The current requested memory for the JVM                                      | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem      | name="memory"  | core      | The free available memory for the JVM                                         | process_free_mem{name="process",} 1.94035584E8  |
+| process_mem_ratio     | name="memory"  | important | Memory footprint ratio of process                                             | process_mem_ratio{name="process",} 0.0          |
+| process_threads_count | name="process" | important | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
+| process_status        | name="process" | important | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
 
 #### 1.3.4.5. System
 | Metric                         | Tag           | level     | Description                                                 | 示例                                                           |
@@ -389,7 +389,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 1. `Overview`:
    1. `The number of entity`: The number of entities, currently including the number of timeseries
    2. `write point per minute`: the cumulative number of write points per minute
-   3. `storage group used memory`: The memory size used by each storage group
+   3. `database used memory`: The memory size used by each database
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second
    2. `The time consumed of Interface`: The average time consumed by the system interface
@@ -425,8 +425,8 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 3. `Region`:
    1. `Total Region in Node`: The total number of Regions in different Nodes
    2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
-   3. `Region in Storage Group` (Normal level): The number of Regions in different storage groups, including SchemaRegion, DataRegion
-   4. `Slot in Storage Group` (Normal level): The number of Slots in different storage groups, including the number of DataSlots and the number of SchemaSlots
+   3. `Region in Database` (Normal level): The number of Regions in different databases, including SchemaRegion, DataRegion
+   4. `Slot in Database` (Normal level): The number of Slots in different databases, including the number of DataSlots and the number of SchemaSlots
 4. `System`:
    1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
    2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
@@ -443,7 +443,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 1. `Overview`:
    1. `The number of entity`: The number of entities, currently including the number of timeseries
    2. `write point per minute`: the cumulative number of write points per minute
-   3. `storage group used memory`: The memory size used by each storage group
+   3. `database used memory`: The memory size used by each database
    4. `Memory`：The size of system memory and used system memory
 2. `Interface`:
    1. `The QPS of Interface`: The number of times the system interface is accessed per second

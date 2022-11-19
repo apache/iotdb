@@ -165,7 +165,7 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
     LOGGER.info(
-        "{}, There are {} data node in cluster before executed remove-datanode.sh",
+        "{}, There are {} data node in cluster before executed RemoveDataNodePlan",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
 
@@ -181,7 +181,7 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
-        "{}, There are {} data node in cluster after executed remove-datanode.sh",
+        "{}, There are {} data node in cluster after executed RemoveDataNodePlan",
         REMOVE_DATANODE_PROCESS,
         registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -326,7 +326,7 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
@@ -354,7 +354,7 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
           "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {

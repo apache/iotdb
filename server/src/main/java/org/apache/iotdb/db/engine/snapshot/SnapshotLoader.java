@@ -62,7 +62,7 @@ public class SnapshotLoader {
       return new DataRegion(
           IoTDBDescriptor.getInstance().getConfig().getSystemDir()
               + File.separator
-              + "storage_groups"
+              + "databases"
               + File.separator
               + storageGroupName,
           dataRegionId,

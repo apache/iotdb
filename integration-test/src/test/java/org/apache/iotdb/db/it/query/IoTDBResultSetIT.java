@@ -50,7 +50,7 @@ public class IoTDBResultSetIT {
 
   private static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.t1",
+        "CREATE DATABASE root.t1",
         "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",
@@ -139,14 +139,14 @@ public class IoTDBResultSetIT {
 
   @Test
   public void emptyQueryTest1() {
-    String expectedHeader = ColumnHeaderConstant.COLUMN_TIME + ",";
+    String expectedHeader = ColumnHeaderConstant.TIME + ",";
     resultSetEqualTest("select * from root.sg1.d1", expectedHeader, emptyResultSet);
   }
 
   @Test
   public void emptyQueryTest2() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIME
+        ColumnHeaderConstant.TIME
             + ","
             + "root.t1.wf01.wt02.grade,"
             + "root.t1.wf01.wt02.temperature,"
@@ -158,21 +158,25 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowTimeseriesTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIMESERIES
+        ColumnHeaderConstant.TIMESERIES
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS
+            + ColumnHeaderConstant.ALIAS
             + ","
-            + ColumnHeaderConstant.COLUMN_STORAGE_GROUP
+            + ColumnHeaderConstant.DATABASE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ColumnHeaderConstant.DATATYPE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING
+            + ColumnHeaderConstant.ENCODING
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION
+            + ColumnHeaderConstant.COMPRESSION
             + ","
-            + ColumnHeaderConstant.COLUMN_TAGS
+            + ColumnHeaderConstant.TAGS
             + ","
-            + ColumnHeaderConstant.COLUMN_ATTRIBUTES
+            + ColumnHeaderConstant.ATTRIBUTES
+            + ","
+            + ColumnHeaderConstant.DEADBAND
+            + ","
+            + ColumnHeaderConstant.DEADBAND_PARAMETERS
             + ",";
     resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
   }
@@ -180,7 +184,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowDeviceTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_DEVICES + "," + ColumnHeaderConstant.COLUMN_IS_ALIGNED + ",";
+        ColumnHeaderConstant.DEVICE + "," + ColumnHeaderConstant.IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 
@@ -226,13 +230,13 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyLastQueryTest() {
     String expectedHeader =
-        ColumnHeaderConstant.COLUMN_TIME
+        ColumnHeaderConstant.TIME
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ColumnHeaderConstant.TIMESERIES
             + ","
-            + ColumnHeaderConstant.COLUMN_VALUE
+            + ColumnHeaderConstant.VALUE
             + ","
-            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ColumnHeaderConstant.DATATYPE
             + ",";
     resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
   }

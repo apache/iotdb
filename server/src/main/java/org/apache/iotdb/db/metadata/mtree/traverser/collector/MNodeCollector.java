@@ -37,7 +37,7 @@ import java.util.Set;
  */
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
-  // traverse for specific storage group
+  // traverse for specific database
   protected StorageGroupFilter storageGroupFilter = null;
 
   // level query option

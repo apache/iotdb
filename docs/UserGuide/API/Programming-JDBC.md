@@ -82,16 +82,16 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
-      statement.execute("SET STORAGE GROUP TO root.demo");
+      statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
 
 
-    //Show storage group
-    statement.execute("SHOW STORAGE GROUP");
+    //SHOW DATABASES
+    statement.execute("SHOW DATABASES");
     outputResult(statement.getResultSet());
 
     //Create time series

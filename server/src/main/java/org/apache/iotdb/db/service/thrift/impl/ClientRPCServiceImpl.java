@@ -230,7 +230,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -485,7 +485,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return new TSStatus(
         !SESSION_MANAGER.closeSession(
                 SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
@@ -568,7 +568,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create storage group {}", SESSION_MANAGER.getCurrSession(), storageGroup);
+            "Session-{} create database {}", SESSION_MANAGER.getCurrSession(), storageGroup);
       }
 
       // Step 1: Create SetStorageGroupStatement
@@ -793,7 +793,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} delete {} storage groups, the first is {}",
+            "Session-{} delete {} databases, the first is {}",
             SESSION_MANAGER.getCurrSession(),
             storageGroups.size(),
             storageGroups.get(0));
@@ -968,7 +968,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
-      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      // Step 1:  transfer from TSInsertRecordsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
@@ -1023,7 +1023,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
-      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      // Step 1: transfer from TSInsertRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1079,7 +1079,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
-      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      // Step 1: transfer from TSInsertStringRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1181,7 +1181,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
-      // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
+      // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
           (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1228,7 +1228,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
-      // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
+      // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1533,7 +1533,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               config.getQueryTimeoutThreshold());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionResult.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         resp.setStatus(executionResult.status);
         return resp;
       }
@@ -1789,7 +1789,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

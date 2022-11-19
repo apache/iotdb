@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -64,7 +63,7 @@ public class IoTDBAggregationSmallDataIT {
 
   private static String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -369,8 +368,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void lastValueWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,22222,55555"};
@@ -399,8 +396,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void firstValueWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,99,180"};
@@ -429,8 +424,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void sumWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,22321.0,55934.0,1029"};
@@ -461,8 +454,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void avgWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,11160.5,18645,206"};
@@ -493,8 +484,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void countWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,2,3,5,1,0"};
@@ -531,8 +520,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void minTimeWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,104,1,2,101,100"};
@@ -569,8 +556,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void maxTimeWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,105,105,105,102,100"};
@@ -607,8 +592,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void minValueWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,90,180,2.22"};
@@ -642,8 +625,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void maxValueWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,99,40000,11.11"};
@@ -676,8 +657,6 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void extremeWithMultiValueFiltersTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,99,40000,11.11"};

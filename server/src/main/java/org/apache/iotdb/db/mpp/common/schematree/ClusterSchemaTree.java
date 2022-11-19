@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -50,7 +51,7 @@ import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_M
 
 public class ClusterSchemaTree implements ISchemaTree {
 
-  private List<String> storageGroups;
+  private Set<String> databases;
 
   private final SchemaNode root;
 
@@ -284,35 +285,35 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param pathName only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   @Override
-  public String getBelongedStorageGroup(String pathName) {
-    for (String storageGroup : storageGroups) {
-      if (PathUtils.isStartWith(pathName, storageGroup)) {
-        return storageGroup;
+  public String getBelongedDatabase(String pathName) {
+    for (String database : databases) {
+      if (PathUtils.isStartWith(pathName, database)) {
+        return database;
       }
     }
-    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+    throw new RuntimeException("No matched database. Please check the path " + pathName);
   }
 
   @Override
-  public String getBelongedStorageGroup(PartialPath path) {
-    return getBelongedStorageGroup(path.getFullPath());
+  public String getBelongedDatabase(PartialPath path) {
+    return getBelongedDatabase(path.getFullPath());
   }
 
   @Override
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public Set<String> getDatabases() {
+    return databases;
   }
 
-  public void setStorageGroups(List<String> storageGroups) {
-    this.storageGroups = storageGroups;
+  public void setDatabases(Set<String> databases) {
+    this.databases = databases;
   }
 
   @TestOnly

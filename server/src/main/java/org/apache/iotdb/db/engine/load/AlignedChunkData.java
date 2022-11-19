@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -85,6 +87,17 @@ public class AlignedChunkData implements ChunkData {
 
     chunkHeaderList.add(chunkHeader);
     pageNumbers.add(0);
+    addAttrDataSize();
+  }
+
+  private void addAttrDataSize() { // should be init before serialize, corresponding serializeAttr
+    dataSize += 2 * Byte.BYTES; // isModification and isAligned
+    dataSize += Long.BYTES; // timePartitionSlot
+    int deviceLength = device.getBytes(TSFileConfig.STRING_CHARSET).length;
+    dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
+    dataSize += deviceLength; // device
+    dataSize += Integer.BYTES; // chunkHeaderListSize
+    dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
   }
 
   @Override
@@ -126,6 +139,10 @@ public class AlignedChunkData implements ChunkData {
   public void addValueChunk(ChunkHeader chunkHeader) {
     this.chunkHeaderList.add(chunkHeader);
     this.pageNumbers.add(0);
+    dataSize += chunkHeader.getSerializedSize();
+    if (needDecodeChunk) {
+      dataSize += Integer.BYTES; // pageNumber
+    }
   }
 
   @Override
@@ -156,14 +173,14 @@ public class AlignedChunkData implements ChunkData {
   public void writeEntireChunk(ByteBuffer chunkData, IChunkMetadata chunkMetadata)
       throws IOException {
     dataSize += ReadWriteIOUtils.write(chunkData, stream);
-    chunkMetadata.getStatistics().serialize(stream);
+    dataSize += chunkMetadata.getStatistics().serialize(stream);
   }
 
   @Override
   public void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     dataSize += ReadWriteIOUtils.write(false, stream);
-    pageHeader.serializeTo(stream);
+    dataSize += pageHeader.serializeTo(stream);
     dataSize += ReadWriteIOUtils.write(pageData, stream);
   }
 
@@ -173,7 +190,7 @@ public class AlignedChunkData implements ChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     satisfiedLengthQueue.offer(satisfiedLength);
     long startTime = timePartitionSlot.getStartTime();
-    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
@@ -191,7 +208,7 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     long startTime = timePartitionSlot.getStartTime();
-    long endTime = startTime + TimePartitionUtils.getTimePartitionIntervalForRouting();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     int satisfiedLength = satisfiedLengthQueue.poll();
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
@@ -360,7 +377,7 @@ public class AlignedChunkData implements ChunkData {
 
   public static AlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionForRouting(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);

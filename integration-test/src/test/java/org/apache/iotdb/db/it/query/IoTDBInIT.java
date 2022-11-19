@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -42,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -50,8 +52,8 @@ public class IoTDBInIT {
 
   private static String[] sqls =
       new String[] {
-        "set storage group to root.ln",
-        "set storage group to root.sg",
+        "CREATE DATABASE root.ln",
+        "CREATE DATABASE root.sg",
         "create timeseries root.sg.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
         "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,'qrcode001')",
         "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,'qrcode002')",
@@ -66,7 +68,12 @@ public class IoTDBInIT {
         "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465780000,'qrcode002')",
         "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465840000,'qrcode003')",
         "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465900000,'qrcode004')",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,'qrcode005')"
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,'qrcode005')",
+        "create timeseries root.test.s1 with datatype=INT32,encoding=PLAIN",
+        "create timeseries root.test.s2 with datatype=INT64,encoding=PLAIN",
+        "create timeseries root.test.s3 with datatype=FLOAT,encoding=PLAIN",
+        "create timeseries root.test.s4 with datatype=DOUBLE,encoding=PLAIN",
+        "create timeseries root.test.s5 with datatype=BOOLEAN,encoding=PLAIN",
       };
 
   @BeforeClass
@@ -92,6 +99,30 @@ public class IoTDBInIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testCastException() {
+    assertTestFail(
+        "select * from root.** where s1 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [INT32]");
+    assertTestFail(
+        "select * from root.** where s2 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [INT64]");
+    assertTestFail(
+        "select * from root.** where s3 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [FLOAT]");
+    assertTestFail(
+        "select * from root.** where s4 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [DOUBLE]");
+    assertTestFail(
+        "select * from root.** where s5 in (\"test\")",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": \"test\" cannot be cast to [BOOLEAN]");
   }
 
   /** Test for IOTDB-1540 */

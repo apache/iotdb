@@ -116,7 +116,7 @@ public class IoTDBDatetimeFormatIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
 
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
 

@@ -454,6 +454,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return StatusUtils.OK;
   }
 
+  @Override
+  public TSStatus isConsensusInitialized() throws TException {
+    if (configManager.getConsensusManager() != null) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+  }
+
   /** For leader to remove ConfigNode configuration in consensus layer */
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
@@ -468,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
               "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
     }
@@ -477,7 +485,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     ConsensusGenericResponse resp =
         configManager.getConsensusManager().getConsensusImpl().deletePeer(groupId);
     if (!resp.isSuccess()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
@@ -568,7 +576,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         return RpcUtils.getStatus(
-            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            TSStatusCode.DATABASE_NOT_EXIST,
             "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }
@@ -746,7 +754,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     TConsensusGroupType type =
-        req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
+        req.isSetType() ? req.getType() : TConsensusGroupType.ConfigNodeRegion;
     GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getStorageGroup(), type);
     return configManager.getSeriesSlotList(plan);
   }

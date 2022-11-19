@@ -326,7 +326,7 @@ public class ProcedureManager {
         .forEach(
             tDataNodeLocation -> {
               this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
-              LOGGER.info("Submit to remove data node procedure, {}", tDataNodeLocation);
+              LOGGER.info("Submit RemoveDataNodeProcedure successfully, {}", tDataNodeLocation);
             });
     return true;
   }
@@ -501,7 +501,7 @@ public class ProcedureManager {
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
-        statusList.add(RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS));
+        statusList.add(RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
         isSucceed = false;
         continue;
       }

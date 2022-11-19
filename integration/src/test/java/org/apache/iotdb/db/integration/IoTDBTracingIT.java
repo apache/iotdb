@@ -47,7 +47,7 @@ public class IoTDBTracingIT {
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg_tracing");
+      statement.execute("CREATE DATABASE root.sg_tracing");
       statement.execute(
           "CREATE TIMESERIES root.sg_tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 

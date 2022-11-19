@@ -242,7 +242,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -270,7 +270,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -337,7 +337,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -411,7 +411,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -544,9 +544,9 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show devices with storage group:
+请求示例 show devices with database:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 响应示例:
@@ -556,7 +556,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "expressions": null,
   "columnNames": [
     "devices",
-    "storage group",
+    "database",
     "isAligned"
   ],
   "timestamps": null,
@@ -798,7 +798,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
 响应参数:
@@ -875,6 +875,12 @@ enable_rest_service=true
 
 ```properties
 rest_service_port=18080
+```
+
+* 将 'enable_swagger' 设置 'true' 启用swagger来展示rest接口信息, 而设置为 'false' 关闭该功能. 默认情况下，该值为 `false`。
+
+```properties
+enable_swagger=false
 ```
 
 * 一次查询能返回的结果集最大行数。当返回结果集的行数超出参数限制时，您只会得到在行数范围内的结果集，且将得到状态码`411`。

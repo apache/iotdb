@@ -222,6 +222,12 @@ public class ConfigNodeDescriptor {
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
 
+    conf.setEnableDataPartitionInheritPolicy(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_data_partition_inherit_policy",
+                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
+
     conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
             properties
@@ -257,20 +263,15 @@ public class ConfigNodeDescriptor {
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()).trim());
 
-    conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()).trim());
+    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
 
-    conf.setTemporaryLibDir(
-        properties.getProperty("udf_temporary_lib_dir", conf.getTemporaryLibDir()).trim());
-
-    conf.setTriggerLibDir(
-        properties.getProperty("trigger_lib_dir", conf.getTriggerLibDir()).trim());
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
 
     conf.setTimePartitionInterval(
         Long.parseLong(
             properties
                 .getProperty(
-                    "time_partition_interval_for_routing",
-                    String.valueOf(conf.getTimePartitionInterval()))
+                    "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
                 .trim()));
 
     conf.setSchemaReplicationFactor(

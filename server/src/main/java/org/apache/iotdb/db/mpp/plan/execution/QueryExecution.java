@@ -158,15 +158,16 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
-            this.stop();
             // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
             // invoked
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
               logger.debug("[ReleaseQueryResource] state is: {}", state);
-              releaseResource();
+              Throwable cause = stateMachine.getFailureException();
+              releaseResource(cause);
             }
+            this.stop();
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -218,7 +219,7 @@ public class QueryExecution implements IQueryExecution {
     }
     logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
-    this.stopAndCleanup();
+    this.stopAndCleanup(stateMachine.getFailureException());
     logger.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
@@ -357,6 +358,26 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
+  // Stop the query and clean up all the resources this query occupied
+  public void stopAndCleanup(Throwable t) {
+    stop();
+    releaseResource(t);
+  }
+
+  /** Release the resources that current QueryExecution hold with a specified exception */
+  private void releaseResource(Throwable t) {
+    // close ResultHandle to unblock client's getResult request
+    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
+    // There are only two scenarios where the ResultHandle should be closed:
+    //   1. The client fetch all the result and the ResultHandle is finished.
+    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
+    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
+    // waiting it to be finished.
+    if (resultHandle != null) {
+      resultHandle.abort(t);
+    }
+  }
+
   /**
    * This method will be called by the request thread from client connection. This method will block
    * until one of these conditions occurs: 1. There is a batch of result 2. There is no more result
@@ -377,7 +398,8 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
             throw new IoTDBException(
-                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+                stateMachine.getFailureMessage(),
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
           logger.debug("[ResultHandleFinished]");
@@ -404,22 +426,27 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
       } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
-        if (stateMachine.getFailureStatus() != null) {
-          throw new IoTDBException(
-              stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-        }
-        Throwable t = e.getCause() == null ? e : e.getCause();
-        throwIfUnchecked(t);
-        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        dealWithException(e.getCause() != null ? e.getCause() : e);
       } catch (InterruptedException e) {
-        stateMachine.transitionToFailed(e);
         Thread.currentThread().interrupt();
-        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+        dealWithException(e);
       } catch (Throwable t) {
-        stateMachine.transitionToFailed(t);
-        throw t;
+        dealWithException(t);
       }
+    }
+  }
+
+  private void dealWithException(Throwable t) throws IoTDBException {
+    stateMachine.transitionToFailed(t);
+    if (stateMachine.getFailureStatus() != null) {
+      throw new IoTDBException(
+          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+    } else if (stateMachine.getFailureException() != null) {
+      Throwable rootCause = stateMachine.getFailureException();
+      throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    } else {
+      throwIfUnchecked(t);
+      throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
     }
   }
 
@@ -540,7 +567,7 @@ public class QueryExecution implements IQueryExecution {
       statusCode =
           state == QueryState.FINISHED || state == QueryState.RUNNING
               ? TSStatusCode.SUCCESS_STATUS
-              : TSStatusCode.QUERY_PROCESS_ERROR;
+              : TSStatusCode.EXECUTE_STATEMENT_ERROR;
     }
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
@@ -566,10 +593,11 @@ public class QueryExecution implements IQueryExecution {
         // multiple devices
         if (statusCode == TSStatusCode.SUCCESS_STATUS) {
           List<TSStatus> subStatus = new ArrayList<>();
-          tsstatus.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           for (TEndPoint endPoint : redirectNodeList) {
             subStatus.add(
-                StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION).setRedirectNode(endPoint));
+                StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+                    .setRedirectNode(endPoint));
           }
           tsstatus.setSubStatus(subStatus);
         }
