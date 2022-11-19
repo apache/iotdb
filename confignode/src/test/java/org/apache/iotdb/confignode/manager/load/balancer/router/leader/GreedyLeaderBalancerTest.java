@@ -61,7 +61,7 @@ public class GreedyLeaderBalancerTest {
     }
 
     // Build 9 RegionGroups in DataNodes 3~5
-    for (int i = 10; i < 18; i++) {
+    for (int i = 9; i < 18; i++) {
       TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, i);
       TRegionReplicaSet regionReplicaSet =
           new TRegionReplicaSet(

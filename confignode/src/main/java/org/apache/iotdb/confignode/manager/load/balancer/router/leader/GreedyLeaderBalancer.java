@@ -143,7 +143,9 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
           regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
         int candidateId = candidate.getDataNodeId();
         int candidateWeight = leaderCounter.get(candidateId).get();
-        if (candidateId != leaderId && candidateWeight < newLeaderWeight) {
+        if (!disabledDataNodeSet.contains(candidateId)
+            && candidateId != leaderId
+            && candidateWeight < newLeaderWeight) {
           newLeaderId = candidateId;
           newLeaderWeight = candidateWeight;
         }
