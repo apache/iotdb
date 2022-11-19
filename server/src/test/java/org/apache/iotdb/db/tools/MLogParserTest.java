@@ -21,10 +21,8 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.schema.MLogParser;
@@ -43,7 +41,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,15 +54,13 @@ public class MLogParserTest {
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
    * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
    * For root.sgcc, we prepare 0 plans on timeseries or device or template.
-   * For root.sg, we prepare 1 SetTemplatePlan, 1 AutoCreateDevicePlan and 1 ActivateTemplatePlan.
+   * For root.sg, we prepare none schema plan.
    *
    * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
    * There' still 1 CreateTemplatePlan in template_log.bin
    *
    * */
-  private int[] mlogLineNum = new int[] {50, 53, 0, 3};
-
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private int[] mlogLineNum = new int[] {50, 53, 0, 0};
 
   @Before
   public void setUp() {
@@ -121,31 +116,6 @@ public class MLogParserTest {
     } catch (MetadataException e) {
       e.printStackTrace();
     }
-  }
-
-  private CreateTemplatePlan genCreateSchemaTemplatePlan() {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s11"));
-    measurementList.add(Collections.singletonList("s12"));
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.DOUBLE));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
-    schemaNames.add("s12");
-
-    return new CreateTemplatePlan(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
   @Test
