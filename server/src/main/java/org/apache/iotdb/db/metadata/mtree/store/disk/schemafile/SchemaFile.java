@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -178,7 +177,9 @@ public class SchemaFile implements ISchemaFile {
     }
     resNode.setFullPath(storageGroupName);
     if (templateHash != 0) {
-      resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      //
+      // resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      // todo record the templateId generated in configNode
     }
     return resNode;
   }

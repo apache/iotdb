@@ -44,15 +44,12 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
@@ -813,37 +810,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       List<CompressionType> compressors)
       throws MetadataException {
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
-  }
-
-  @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsSetTemplate");
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsUsingTemplate");
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException {
-    throw new UnsupportedOperationException("isTemplateAppendable");
-  }
-
-  @Override
-  public void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setSchemaTemplate");
-  }
-
-  @Override
-  public void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("unsetSchemaTemplate");
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setUsingSchemaTemplate");
   }
 
   @Override

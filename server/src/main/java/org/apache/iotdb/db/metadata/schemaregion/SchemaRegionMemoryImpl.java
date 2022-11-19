@@ -36,9 +36,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
-import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -58,7 +55,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeser
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -70,13 +66,10 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
@@ -1719,137 +1712,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces and Implementation for Template operations
-  /**
-   * Get all paths set designated template
-   *
-   * @param templateName designated template name, blank string for any template exists
-   * @return paths set
-   */
-  @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    return new HashSet<>(mtree.getPathsSetOnTemplate(templateName));
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException {
-    return mtree.isTemplateAppendable(template, measurements);
-  }
-
-  @Override
-  public synchronized void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
-    // get mnode and update template should be atomic
-    Template template = TemplateManager.getInstance().getTemplate(plan.getTemplateName());
-
-    try {
-      PartialPath path = new PartialPath(plan.getPrefixPath());
-
-      mtree.checkTemplateOnPath(path);
-
-      IMNode node = getDeviceNodeWithAutoCreate(path);
-
-      TemplateManager.getInstance().checkIsTemplateCompatible(template, node);
-      mtree.checkIsTemplateCompatibleWithChild(node, template);
-      node.setSchemaTemplate(template);
-
-      TemplateManager.getInstance()
-          .markSchemaRegion(template, storageGroupFullPath, schemaRegionId);
-
-      // write wal
-      writeToMLog(plan);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  @Override
-  public synchronized void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
-    // get mnode should be atomic
-    try {
-      PartialPath path = new PartialPath(plan.getPrefixPath());
-      IMNode node = mtree.getNodeByPath(path);
-      if (node.getSchemaTemplate() == null) {
-        throw new NoTemplateOnMNodeException(plan.getPrefixPath());
-      } else if (!node.getSchemaTemplate().getName().equals(plan.getTemplateName())) {
-        throw new DifferentTemplateException(plan.getPrefixPath(), plan.getTemplateName());
-      } else if (node.isUseTemplate()) {
-        throw new TemplateIsInUseException(plan.getPrefixPath());
-      }
-      mtree.checkTemplateInUseOnLowerNode(node);
-      Template template = node.getSchemaTemplate();
-      node.setSchemaTemplate(null);
-      TemplateManager.getInstance()
-          .unmarkSchemaRegion(template, storageGroupFullPath, schemaRegionId);
-      // write wal
-      writeToMLog(plan);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
-    // check whether any template has been set on designated path
-    if (mtree.getTemplateOnPath(plan.getPrefixPath()) == null) {
-      throw new MetadataException(
-          String.format(
-              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
-    }
-
-    IMNode node;
-    // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
-    // when writing concurrently, so we need a auto-create mechanism here
-    try {
-      node = getDeviceNodeWithAutoCreate(plan.getPrefixPath());
-    } catch (IOException ioException) {
-      throw new MetadataException(ioException);
-    }
-    node = setUsingSchemaTemplate(node);
-  }
-
-  public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
-    // check whether any template has been set on designated path
-    if (node.getUpperTemplate() == null) {
-      throw new MetadataException(
-          String.format("Path [%s] has not been set any template.", node.getFullPath()));
-    }
-
-    // this operation may change mtree structure and node type
-    // invoke mnode.setUseTemplate is invalid
-
-    // check alignment of template and mounted node
-    // if direct measurement exists, node will be replaced
-    IMNode mountedMNode =
-        mtree.checkTemplateAlignmentWithMountedNode(node, node.getUpperTemplate());
-
-    // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
-    // template
-    if (mountedMNode.isEntity()) {
-      mountedMNode
-          .getAsEntityMNode()
-          .setAligned(
-              node.isEntity()
-                  ? node.getAsEntityMNode().isAligned()
-                  : node.getUpperTemplate().isDirectAligned());
-    }
-    mountedMNode.setUseTemplate(true);
-
-    if (node != mountedMNode) {
-      mNodeCache.invalidate(mountedMNode.getPartialPath());
-    }
-    try {
-      writeToMLog(SchemaRegionPlanFactory.getActivateTemplatePlan(node.getPartialPath()));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-    return mountedMNode;
-  }
-
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
@@ -2095,39 +1957,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         SchemaRegionMemoryImpl context) {
       try {
         recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
-        return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
-        return new RecoverOperationResult(e);
-      }
-    }
-
-    @Override
-    public RecoverOperationResult visitSetTemplate(
-        ISetTemplatePlan setTemplatePlan, SchemaRegionMemoryImpl context) {
-      try {
-        setSchemaTemplate(setTemplatePlan);
-        return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
-        return new RecoverOperationResult(e);
-      }
-    }
-
-    @Override
-    public RecoverOperationResult visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, SchemaRegionMemoryImpl context) {
-      try {
-        unsetSchemaTemplate(unsetTemplatePlan);
-        return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
-        return new RecoverOperationResult(e);
-      }
-    }
-
-    @Override
-    public RecoverOperationResult visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, SchemaRegionMemoryImpl context) {
-      try {
-        setUsingSchemaTemplate(activateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);
