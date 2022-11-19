@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
-import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -294,7 +293,6 @@ public class IoTDBStartCheck {
     } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
       checkWALNotExists();
       upgradePropertiesFile();
-      MetadataUpgrader.upgrade();
     }
     checkProperties();
   }
