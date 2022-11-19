@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
@@ -61,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,10 +106,69 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
-    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+
+    if (withTags) {
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    }
+
+    List<PartialPath> fullPathList = new ArrayList<>();
+    for (PartialPath pattern : pathPatternList) {
+      if (!pattern.hasWildcard()) {
+        fullPathList.add(pattern);
+      }
+    }
+
+    if (fullPathList.isEmpty()) {
+      return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    }
+
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree schemaTree;
+      if (fullPathList.size() == pathPatternList.size()) {
+        boolean isAllCached = true;
+        schemaTree = new ClusterSchemaTree();
+        ClusterSchemaTree cachedSchema;
+        Set<String> storageGroupSet = new HashSet<>();
+        for (PartialPath fullPath : fullPathList) {
+          cachedSchema = schemaCache.get(fullPath);
+          if (cachedSchema.isEmpty()) {
+            isAllCached = false;
+            break;
+          } else {
+            schemaTree.mergeSchemaTree(cachedSchema);
+            storageGroupSet.addAll(cachedSchema.getDatabases());
+          }
+        }
+        if (isAllCached) {
+          schemaTree.setDatabases(storageGroupSet);
+          return schemaTree;
+        }
+      }
+
+      schemaTree =
+          executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+
+      // only cache the schema fetched by full path
+      List<MeasurementPath> measurementPathList;
+      for (PartialPath fullPath : fullPathList) {
+        measurementPathList = schemaTree.searchMeasurementPaths(fullPath).left;
+        if (measurementPathList.isEmpty()) {
+          continue;
+        }
+        schemaCache.put(
+            schemaTree.getBelongedDatabase(measurementPathList.get(0)), measurementPathList.get(0));
+      }
+      return schemaTree;
+    } finally {
+      schemaCache.releaseReadLock();
+    }
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
@@ -130,7 +191,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
-        List<String> storageGroupList = new ArrayList<>();
+        Set<String> databaseSet = new HashSet<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
           // So we don't need to clean up it manually
@@ -145,10 +206,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, storageGroupList);
+            parseFetchedData(column.getBinary(i), result, databaseSet);
           }
         }
-        result.setStorageGroups(storageGroupList);
+        result.setDatabases(databaseSet);
         return result;
       }
     } finally {
@@ -157,14 +218,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, List<String> storageGroupList) {
+      Binary data, ClusterSchemaTree resultSchemaTree, Set<String> databaseSet) {
     InputStream inputStream = new ByteArrayInputStream(data.getValues());
     try {
       byte type = ReadWriteIOUtils.readByte(inputStream);
       if (type == 0) {
         int size = ReadWriteIOUtils.readInt(inputStream);
         for (int i = 0; i < size; i++) {
-          storageGroupList.add(ReadWriteIOUtils.readString(inputStream));
+          databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
       } else if (type == 1) {
         resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
@@ -183,21 +244,24 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean isAligned) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
       List<Integer> indexOfMissingMeasurements =
           checkMissingMeasurements(schemaTree, devicePath, measurements);
 
+      // all schema can be taken from cache
       if (indexOfMissingMeasurements.isEmpty()) {
         return schemaTree;
       }
 
+      // try fetch the missing schema from remote and cache fetched schema
       PathPatternTree patternTree = new PathPatternTree();
       for (int index : indexOfMissingMeasurements) {
         patternTree.appendFullPath(devicePath, measurements[index]);
       }
-
       ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
@@ -208,19 +272,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
-      ClusterSchemaTree missingSchemaTree =
-          checkAndAutoCreateMissingMeasurements(
-              remoteSchemaTree,
-              devicePath,
-              indexOfMissingMeasurements,
-              measurements,
-              getDataType,
-              null,
-              null,
-              isAligned);
-
-      schemaTree.mergeSchemaTree(missingSchemaTree);
-      schemaCache.put(missingSchemaTree);
+      // auto create the still missing schema and merge them into schemaTree
+      checkAndAutoCreateMissingMeasurements(
+          schemaTree,
+          devicePath,
+          indexOfMissingMeasurements,
+          measurements,
+          getDataType,
+          null,
+          null,
+          isAligned);
 
       return schemaTree;
     } finally {
@@ -246,8 +307,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
-
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       PathPatternTree patternTree = new PathPatternTree();
@@ -262,10 +324,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
 
+      // all schema can be taken from cache
       if (patternTree.isEmpty()) {
         return schemaTree;
       }
 
+      // try fetch the missing schema from remote and cache fetched schema
       ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
@@ -276,21 +340,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
-      ClusterSchemaTree missingSchemaTree;
+      // auto create the still missing schema and merge them into schemaTree
       for (int i = 0; i < devicePathList.size(); i++) {
         int finalI = i;
-        missingSchemaTree =
-            checkAndAutoCreateMissingMeasurements(
-                schemaTree,
-                devicePathList.get(i),
-                indexOfMissingMeasurementsList.get(i),
-                measurementsList.get(i),
-                index -> tsDataTypesList.get(finalI)[index],
-                encodingsList == null ? null : encodingsList.get(i),
-                compressionTypesList == null ? null : compressionTypesList.get(i),
-                isAlignedList.get(i));
-        schemaTree.mergeSchemaTree(missingSchemaTree);
-        schemaCache.put(missingSchemaTree);
+        checkAndAutoCreateMissingMeasurements(
+            schemaTree,
+            devicePathList.get(i),
+            indexOfMissingMeasurementsList.get(i),
+            measurementsList.get(i),
+            index -> tsDataTypesList.get(finalI)[index],
+            encodingsList == null ? null : encodingsList.get(i),
+            compressionTypesList == null ? null : compressionTypesList.get(i),
+            isAlignedList.get(i));
       }
       return schemaTree;
     } finally {
@@ -313,7 +374,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return templateManager.getAllPathsSetTemplate(templateName);
   }
 
-  private ClusterSchemaTree checkAndAutoCreateMissingMeasurements(
+  // check which measurements are missing and auto create the missing measurements and merge them
+  // into given schemaTree
+  private void checkAndAutoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
       List<Integer> indexOfMissingMeasurements,
@@ -322,6 +385,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       TSEncoding[] encodings,
       CompressionType[] compressionTypes,
       boolean isAligned) {
+    // check missing measurements
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
             devicePath,
@@ -338,13 +402,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
     }
-
-    ClusterSchemaTree reFetchedSchemaTree = new ClusterSchemaTree();
-
     if (indexOfMissingMeasurements.isEmpty()) {
-      return reFetchedSchemaTree;
+      return;
     }
 
+    // check whether there is template should be activated
     Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
     if (templateInfo != null) {
       Template template = templateInfo.left;
@@ -375,11 +437,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
 
         if (indexOfMissingMeasurements.isEmpty()) {
-          return schemaTree;
+          return;
         }
       }
     }
 
+    // auto create the rest missing timeseries
     List<String> missingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfMissingMeasurements.size());
@@ -414,7 +477,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               compressionTypesOfMissingMeasurement,
               isAligned));
     }
-    return schemaTree;
   }
 
   private List<Integer> checkMissingMeasurements(
@@ -436,6 +498,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return indexOfMissingMeasurements;
   }
 
+  // try to create the target timeseries and return schemaTree involving successfully created
+  // timeseries and existing timeseries
   private ClusterSchemaTree internalCreateTimeseries(
       PartialPath devicePath,
       List<String> measurements,
@@ -470,11 +534,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           isAligned);
     }
 
-    schemaCache.put(schemaTree);
-
     return schemaTree;
   }
 
+  // auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       InternalCreateTimeSeriesStatement statement) {
 
@@ -490,24 +553,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           new IoTDBException(executionResult.status.getMessage(), statusCode));
     }
 
-    List<String> failedCreationList = new ArrayList<>();
+    Set<String> failedCreationSet = new HashSet<>();
     List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
             MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {
-        failedCreationList.add(subStatus.message);
+        failedCreationSet.add(subStatus.message);
       }
     }
 
-    if (!failedCreationList.isEmpty()) {
-      StringBuilder stringBuilder = new StringBuilder();
-      for (String message : failedCreationList) {
-        stringBuilder.append(message).append("\n");
-      }
-      throw new RuntimeException(
-          new MetadataException(String.format("Failed to auto create schema\n %s", stringBuilder)));
+    if (!failedCreationSet.isEmpty()) {
+      throw new SemanticException(new MetadataException(String.join("; ", failedCreationSet)));
     }
 
     return alreadyExistingMeasurements;

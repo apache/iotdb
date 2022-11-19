@@ -101,5 +101,10 @@ public class MemorySourceHandle implements ISourceHandle {
   public void abort() {}
 
   @Override
+  public void abort(Throwable t) {
+    abort();
+  }
+
+  @Override
   public void close() {}
 }

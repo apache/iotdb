@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -203,7 +204,9 @@ public class IoTDBDeactivateTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          "324: Schema Template t1 is not set on any prefix path of [root.sg5.d1]", e.getMessage());
+          TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()
+              + ": Schema Template t1 is not set on any prefix path of [root.sg5.d1]",
+          e.getMessage());
     }
 
     statement.execute("CREATE DATABASE root.sg5");
@@ -213,7 +216,8 @@ public class IoTDBDeactivateTemplateIT {
       Assert.fail();
     } catch (SQLException e) {
       Assert.assertEquals(
-          "366: Target schema Template is not activated on any path matched by given path pattern",
+          TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
+              + ": Target schema Template is not activated on any path matched by given path pattern",
           e.getMessage());
     }
   }

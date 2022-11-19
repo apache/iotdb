@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
@@ -57,6 +58,8 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   private final boolean needUpdateCache;
 
   private final TsBlockBuilder tsBlockBuilder;
+
+  private String databaseName;
 
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
@@ -106,7 +109,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
 
     if (needUpdateCache) {
       TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
-      lastCache.updateLastCache(fullPath, timeValuePair, false, Long.MIN_VALUE);
+      lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
     }
 
     tsBlockBuilder.reset();
@@ -115,6 +118,16 @@ public class UpdateLastCacheOperator implements ProcessOperator {
         tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
 
     return tsBlockBuilder.build();
+  }
+
+  private String getDatabaseName() {
+    if (databaseName == null) {
+      databaseName =
+          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getDataRegion()
+              .getStorageGroupName();
+    }
+    return databaseName;
   }
 
   @Override

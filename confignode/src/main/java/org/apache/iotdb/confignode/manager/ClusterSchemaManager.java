@@ -88,6 +88,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
+
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
 
@@ -119,12 +121,20 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus result;
+    if (setStorageGroupPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
+      IllegalPathException illegalPathException =
+          new IllegalPathException(
+              setStorageGroupPlan.getSchema().getName(),
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      return RpcUtils.getStatus(
+          illegalPathException.getErrorCode(), illegalPathException.getMessage());
+    }
     try {
       clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       } else {
         result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }

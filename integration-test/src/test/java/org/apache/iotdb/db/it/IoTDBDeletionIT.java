@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -97,7 +98,8 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) values (10,true)");
 
       String errorMsg =
-          "416: For delete statement, where clause can only contain time expressions, value filter is not currently supported.";
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+              + ": For delete statement, where clause can only contain time expressions, value filter is not currently supported.";
 
       try {
         statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND s0 > 0");
