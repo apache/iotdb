@@ -85,11 +85,8 @@ public class SchemaRegionPlanCompatibilityTest {
           "DELETE_TIMESERIES",
           "CHANGE_TAG_OFFSET",
           "CHANGE_ALIAS",
-          "SET_TEMPLATE",
-          "ACTIVATE_TEMPLATE",
           "AUTO_CREATE_DEVICE_MNODE",
           "CREATE_ALIGNED_TIMESERIES",
-          "UNSET_TEMPLATE",
           "ACTIVATE_TEMPLATE_IN_CLUSTER",
           "PRE_DELETE_TIMESERIES_IN_CLUSTER",
           "ROLLBACK_PRE_DELETE_TIMESERIES"
