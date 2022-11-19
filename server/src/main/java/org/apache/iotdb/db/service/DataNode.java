@@ -67,6 +67,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
+import org.apache.iotdb.db.service.metrics.InternalReporterImpl;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
@@ -368,8 +369,9 @@ public class DataNode implements DataNodeMBean {
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
-    registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
+    registerManager.register(MetricService.getInstance());
+    MetricService.getInstance().updateInternalReporter(new InternalReporterImpl());
     // bind predefined metrics
     DataNodeMetricsHelper.bind();
   }

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
+import org.apache.iotdb.db.service.metrics.InternalReporterImpl;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 
@@ -176,6 +177,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(MetricService.getInstance());
+    MetricService.getInstance().updateInternalReporter(new InternalReporterImpl());
     // bind predefined metrics
     DataNodeMetricsHelper.bind();
 
