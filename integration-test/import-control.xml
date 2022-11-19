@@ -85,8 +85,6 @@
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
     <allow class="org.apache.iotdb.db.conf.OperationType" />
-    <allow class="org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService" />
-    <allow class="org.apache.iotdb.db.exception.TriggerManagementException" />
     <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />

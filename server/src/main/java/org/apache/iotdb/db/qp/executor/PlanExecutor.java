@@ -39,7 +39,6 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -269,8 +268,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowQueryProcesslist();
       case FUNCTIONS:
         return processShowFunctions();
-      case TRIGGERS:
-        return processShowTriggers();
       case CONTINUOUS_QUERY:
         throw new UnsupportedOperationException();
       case SCHEMA_TEMPLATE:
@@ -729,10 +726,6 @@ public class PlanExecutor implements IPlanExecutor {
       rowRecord.addField(className, TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
-  }
-
-  private QueryDataSet processShowTriggers() {
-    return TriggerRegistrationService.getInstance().show();
   }
 
   private void addRowRecordForShowQuery(

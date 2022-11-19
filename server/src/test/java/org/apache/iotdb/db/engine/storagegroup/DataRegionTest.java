@@ -41,7 +41,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -140,7 +139,7 @@ public class DataRegionTest {
 
   @Test
   public void testUnseqUnsealedDelete()
-      throws WriteProcessException, IOException, MetadataException, TriggerExecutionException {
+      throws WriteProcessException, IOException, MetadataException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
@@ -197,8 +196,7 @@ public class DataRegionTest {
 
   @Test
   public void testSequenceSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -227,8 +225,7 @@ public class DataRegionTest {
 
   @Test
   public void testInsertDataAndRemovePartitionAndInsert()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 0; j < 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -259,8 +256,7 @@ public class DataRegionTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws QueryProcessException, IllegalPathException, TriggerExecutionException,
-          WriteProcessException {
+      throws QueryProcessException, IllegalPathException, WriteProcessException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -339,8 +335,7 @@ public class DataRegionTest {
 
   @Test
   public void testSeqAndUnSeqSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -377,8 +372,7 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
-      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
 
@@ -424,8 +418,7 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
-          WriteProcessException {
+      throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
@@ -514,8 +507,7 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
-          WriteProcessException {
+      throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
@@ -604,8 +596,7 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
-          WriteProcessException {
+      throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
@@ -695,7 +686,7 @@ public class DataRegionTest {
   @Test
   public void testSmallReportProportionInsertRow()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
-          TriggerExecutionException, DataRegionException {
+          DataRegionException {
     double defaultValue = config.getWriteMemoryVariationReportProportion();
     config.setWriteMemoryVariationReportProportion(0);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");
@@ -734,8 +725,7 @@ public class DataRegionTest {
 
   @Test
   public void testMerge()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     int originCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(9);
@@ -865,8 +855,7 @@ public class DataRegionTest {
 
   @Test
   public void testTimedFlushSeqMemTable()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          TriggerExecutionException, ShutdownException {
+      throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -913,8 +902,7 @@ public class DataRegionTest {
 
   @Test
   public void testTimedFlushUnseqMemTable()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          TriggerExecutionException, ShutdownException {
+      throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable & close
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -975,8 +963,7 @@ public class DataRegionTest {
    */
   @Test
   public void testDeleteDataNotInFile()
-      throws IllegalPathException, WriteProcessException, TriggerExecutionException,
-          InterruptedException, IOException {
+      throws IllegalPathException, WriteProcessException, InterruptedException, IOException {
     for (int i = 0; i < 5; i++) {
       if (i % 2 == 0) {
         for (int d = 0; d < 2; d++) {
@@ -1039,7 +1026,7 @@ public class DataRegionTest {
 
   @Test
   public void testDeleteDataNotInFlushingMemtable()
-      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+      throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 0; j < 100; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -1061,7 +1048,7 @@ public class DataRegionTest {
 
   @Test
   public void testDeleteDataInSeqFlushingMemtable()
-      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+      throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -1087,7 +1074,7 @@ public class DataRegionTest {
 
   @Test
   public void testDeleteDataInUnSeqFlushingMemtable()
-      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+      throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -1143,7 +1130,7 @@ public class DataRegionTest {
 
   @Test
   public void testFlushingEmptyMemtable()
-      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+      throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));

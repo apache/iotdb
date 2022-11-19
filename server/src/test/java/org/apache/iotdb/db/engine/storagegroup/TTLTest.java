@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -141,8 +140,7 @@ public class TTLTest {
 
   @Test
   public void testTTLWrite()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
@@ -173,8 +171,7 @@ public class TTLTest {
     dataRegion.insert(node);
   }
 
-  private void prepareData()
-      throws WriteProcessException, IllegalPathException, TriggerExecutionException {
+  private void prepareData() throws WriteProcessException, IllegalPathException {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
@@ -410,8 +407,7 @@ public class TTLTest {
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     prepareData();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
