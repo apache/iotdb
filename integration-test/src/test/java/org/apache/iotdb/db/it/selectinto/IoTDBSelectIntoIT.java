@@ -22,11 +22,11 @@ package org.apache.iotdb.db.it.selectinto;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,8 +42,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-// TODO add LocalStandaloneIT back while deleting old standalone
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
   protected static int selectIntoInsertTabletPlanRowLimit;
@@ -469,7 +468,7 @@ public class IoTDBSelectIntoIT {
     executeNonQuery("CREATE TIMESERIES root.sg_error_bk1.new_d.t1 TEXT;");
     assertTestFail(
         "select s1, s2 into root.sg_error_bk1.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "Task was cancelled.");
+        "Fail to insert measurements [t1] caused by [data type of root.sg_error_bk1.new_d.t1 is not consistent, registered type TEXT, inserting type INT32, timestamp 1, value 1]");
   }
 
   @Test
@@ -477,7 +476,7 @@ public class IoTDBSelectIntoIT {
     executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
     assertTestFail(
         "select s1, s2 into root.sg_error_bk2.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "Task was cancelled.");
+        "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.sg_error_bk2.new_d)");
   }
 
   @Test
@@ -503,7 +502,6 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
-  @Ignore // TODO remove @Ignore after fix error message inconsistent
   public void testPermission2() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
@@ -516,7 +514,11 @@ public class IoTDBSelectIntoIT {
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
         fail("No exception!");
       } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage(), e.getMessage().contains("Task was cancelled."));
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "No permissions for this operation, please add privilege INSERT_TIMESERIES"));
       }
     }
   }

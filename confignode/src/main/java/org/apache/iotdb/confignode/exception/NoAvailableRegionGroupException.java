@@ -16,38 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.exception;
 
-package org.apache.iotdb.db.engine.trigger.executor;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0, "before insert"),
-  AFTER_INSERT((byte) 1, "after insert");
+public class NoAvailableRegionGroupException extends ConfigNodeException {
 
-  private final byte id;
-  private final String event;
+  private static final String SCHEMA_REGION_GROUP = "SchemaRegionGroup";
+  private static final String DATA_REGION_GROUP = "DataRegionGroup";
 
-  TriggerEvent(byte id, String event) {
-    this.id = id;
-    this.event = event;
-  }
-
-  public byte getId() {
-    return id;
-  }
-
-  @Override
-  public String toString() {
-    return event;
-  }
-
-  public static TriggerEvent construct(byte id) {
-    switch (id) {
-      case 0:
-        return BEFORE_INSERT;
-      case 1:
-        return AFTER_INSERT;
-      default:
-        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
-    }
+  public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
+    super(
+        String.format(
+            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+                ? SCHEMA_REGION_GROUP
+                : DATA_REGION_GROUP));
   }
 }

@@ -28,9 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
@@ -74,6 +72,7 @@ import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -428,6 +427,38 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     isClearing = false;
   }
 
+  // endregion
+
+  // region Interfaces for schema region Info query and operation
+
+  @Override
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
+  }
+
+  @Override
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
+  @Override
+  public synchronized void deleteSchemaRegion() throws MetadataException {
+    // collect all the LeafMNode in this schema region
+    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
+
+    int seriesCount = leafMNodes.size();
+    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(seriesCount);
+    }
+
+    // clear all the components and release all the file handlers
+    clear();
+
+    // delete all the schema region files
+    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+  }
+
   @Override
   public boolean createSnapshot(File snapshotDir) {
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
@@ -528,40 +559,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             metadataException);
       }
     }
-  }
-
-  // endregion
-
-  // region Interfaces for schema region Info query and operation
-
-  @Override
-  public String getStorageGroupFullPath() {
-    return storageGroupFullPath;
-  }
-
-  @Override
-  public SchemaRegionId getSchemaRegionId() {
-    return schemaRegionId;
-  }
-
-  @Override
-  public synchronized void deleteSchemaRegion() throws MetadataException {
-    // collect all the LeafMNode in this schema region
-    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
-
-    int seriesCount = leafMNodes.size();
-    schemaStatisticsManager.deleteTimeseries(seriesCount);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(seriesCount);
-    }
-    // drop triggers with no exceptions
-    TriggerEngine.drop(leafMNodes);
-
-    // clear all the components and release all the file handlers
-    clear();
-
-    // delete all the schema region files
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
   // endregion
@@ -875,7 +872,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       Set<String> failedNames = new HashSet<>();
       int deletedNum = 0;
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p);
         deletedNum++;
       }
       return new Pair<>(deletedNum, failedNames);
@@ -995,15 +992,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return deleteTimeseries(pathPattern, false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
-      throws MetadataException, IOException {
-    try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
-      if (!isRecovering) {
-        writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-      }
-    } catch (DeleteFailedException e) {
-      failedNames.add(e.getName());
+  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
+    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    if (!isRecovering) {
+      writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
   }
 
@@ -1019,9 +1011,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
-
-    // drop trigger with no exceptions
-    TriggerEngine.drop(pair.right);
 
     IMNode node = measurementMNode.getParent();
 
@@ -1352,6 +1341,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagManager.readTagFile(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
+          Pair<String, String> deadbandInfo =
+              MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -1364,7 +1355,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
                       : 0,
                   tagAndAttributePair.left,
-                  tagAndAttributePair.right));
+                  tagAndAttributePair.right,
+                  deadbandInfo.left,
+                  deadbandInfo.right));
           if (limit != 0) {
             count++;
           }
@@ -1425,7 +1418,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                 CompressionType.valueOf(ansString.right[4]),
                 ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
-                tagAndAttributePair.right));
+                tagAndAttributePair.right,
+                ansString.right[7],
+                ansString.right[8]));
       } catch (IOException e) {
         throw new MetadataException(
             "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),

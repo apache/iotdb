@@ -185,7 +185,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       List<CompressionType> compressors = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        compressors.add(CompressionType.values()[buffer.get()]);
+        compressors.add(CompressionType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setCompressors(compressors);
 
@@ -242,7 +242,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       createTimeSeriesPlan.setDataType(TSDataType.values()[buffer.get()]);
       createTimeSeriesPlan.setEncoding(TSEncoding.values()[buffer.get()]);
-      createTimeSeriesPlan.setCompressor(CompressionType.values()[buffer.get()]);
+      createTimeSeriesPlan.setCompressor(CompressionType.deserialize(buffer.get()));
       createTimeSeriesPlan.setTagOffset(buffer.getLong());
 
       // alias

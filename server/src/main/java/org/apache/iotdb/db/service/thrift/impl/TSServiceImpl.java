@@ -629,7 +629,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         && !SESSION_MANAGER.checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
+              TSStatusCode.NO_PERMISSION,
               "No permissions for this operation, please add privilege "
                   + OperatorType.values()[
                       AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
@@ -733,7 +733,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         port);
     TSStatus status = new TSStatus();
     status.setRedirectNode(new TEndPoint(ip, port));
-    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    status.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());
     return resp;
@@ -1108,7 +1108,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
               new PartialPath(req.path),
               TSDataType.values()[req.dataType],
               TSEncoding.values()[req.encoding],
-              CompressionType.values()[req.compressor],
+              CompressionType.deserialize((byte) req.compressor),
               req.props,
               req.tags,
               req.attributes,
@@ -1154,7 +1154,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       }
       List<CompressionType> compressors = new ArrayList<>();
       for (int compressor : req.compressors) {
-        compressors.add(CompressionType.values()[compressor]);
+        compressors.add(CompressionType.deserialize((byte) compressor));
       }
 
       CreateAlignedTimeSeriesPlan plan =
@@ -1230,7 +1230,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         }
 
         paths.add(new PartialPath(req.paths.get(i)));
-        compressors.add(CompressionType.values()[req.compressors.get(i)]);
+        compressors.add(CompressionType.deserialize(req.compressors.get(i).byteValue()));
         if (alias != null) {
           alias.add(req.measurementAliasList.get(i));
         }
@@ -1346,7 +1346,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       measurements[i] = req.getMeasurements().get(i);
       dataTypes[i] = TSDataType.values()[req.getDataTypes().get(i)];
       encodings[i] = TSEncoding.values()[req.getEncodings().get(i)];
-      compressionTypes[i] = CompressionType.values()[req.getCompressors().get(i)];
+      compressionTypes[i] = CompressionType.deserialize(req.getCompressors().get(i).byteValue());
     }
 
     AppendTemplatePlan plan =
@@ -1508,7 +1508,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

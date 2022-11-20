@@ -119,7 +119,6 @@ public class IoTDBAggregationIT {
 
   // add test for part of points in page don't satisfy filter
   // details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
-  // TODO: remove ignore after supporting value filter
   @Test
   public void test() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
@@ -899,76 +898,57 @@ public class IoTDBAggregationIT {
         statement.execute(sql);
       }
 
-      // TODO: change insert to batch insert
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
 
       for (int i = 7500; i < 8500; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
 
       for (String sql : dataSet3) {
         statement.execute(sql);

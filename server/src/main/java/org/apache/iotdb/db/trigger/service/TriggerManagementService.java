@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -115,16 +116,11 @@ public class TriggerManagementService {
   public void dropTrigger(String triggerName, boolean needToDeleteJar) throws IOException {
     try {
       acquireLock();
-      TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
-      TriggerExecutor executor = executorMap.get(triggerName);
+      TriggerInformation triggerInformation = triggerTable.removeTriggerInformation(triggerName);
+      TriggerExecutor executor = executorMap.remove(triggerName);
       if (executor != null) {
         executor.onDrop();
       }
-      // exception could be thrown when executing executor.onDrop()
-      // we delete trigger in map after successfully executing onDrop
-      triggerTable.removeTriggerInformation(triggerName);
-      executorMap.remove(triggerName);
-
       if (triggerInformation == null) {
         return;
       }
@@ -136,6 +132,8 @@ public class TriggerManagementService {
             .removeFileUnderLibRoot(triggerInformation.getJarName());
         TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
       }
+    } catch (TriggerExecutionException ignored) {
+      // Drop trigger can success even onDrop throw an exception for now
     } finally {
       releaseLock();
     }
@@ -324,7 +322,8 @@ public class TriggerManagementService {
         | InvocationTargetException
         | NoSuchMethodException
         | IllegalAccessException
-        | ClassNotFoundException e) {
+        | ClassNotFoundException
+        | ClassCastException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to reflect trigger instance with className(%s), because %s", className, e));

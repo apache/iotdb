@@ -76,6 +76,11 @@ public class QueryDataSource {
 
   /** @return an updated filter concerning TTL */
   public Filter updateFilterUsingTTL(Filter filter) {
+    return updateFilterUsingTTL(filter, dataTTL);
+  }
+
+  /** @return an updated filter concerning TTL */
+  public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
         filter = new AndFilter(filter, TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL));

@@ -35,8 +35,8 @@ public class AuthorizationHandler {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
-                    .code(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode())
-                    .message(TSStatusCode.NO_PERMISSION_ERROR.name()))
+                    .code(TSStatusCode.NO_PERMISSION.getStatusCode())
+                    .message(TSStatusCode.NO_PERMISSION.name()))
             .build();
       }
     } catch (AuthException e) {

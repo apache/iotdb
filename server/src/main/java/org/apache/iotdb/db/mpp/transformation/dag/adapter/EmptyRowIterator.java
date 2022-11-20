@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-public class PathException extends QueryProcessException {
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
-  private static final long serialVersionUID = 2141197032898163234L;
+import java.io.IOException;
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
+public class EmptyRowIterator implements RowIterator {
+  @Override
+  public boolean hasNextRow() {
+    return false;
   }
 
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
+  @Override
+  public Row next() throws IOException {
+    throw new UnsupportedOperationException("Can not call next on EmptyRowIterator");
   }
 
-  public PathException(String message, int errorCode) {
-    super(message, errorCode);
-  }
+  @Override
+  public void reset() {}
 }

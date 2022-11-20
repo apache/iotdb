@@ -1060,14 +1060,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
 
       for (String createSQL : createSQLs) {
-        statement.execute(createSQL);
+        statement.addBatch(createSQL);
       }
 
       for (String insertSQL : insertSQLs) {
-        // TODO statement.addBatch(insertSQL);
-        statement.execute(insertSQL);
+        statement.addBatch(insertSQL);
       }
-      // TODO statement.executeBatch();
+      statement.executeBatch();
 
       testStrLength(statement);
       testStrLocate(statement);

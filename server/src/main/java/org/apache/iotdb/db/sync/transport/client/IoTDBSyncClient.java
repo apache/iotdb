@@ -70,25 +70,39 @@ public class IoTDBSyncClient implements ISyncClient {
   /* local IP address*/
   private final String localIP;
   /* database name that client belongs to*/
-  private final String storageGroupName;
+  private final String databaseName;
 
   private final Pipe pipe;
 
   /**
+   * Create IoTDBSyncClient only for data transfer
+   *
    * @param pipe sync task
    * @param remoteAddress remote ip address
    * @param port remote port
    * @param localAddress local ip address
-   * @param storageGroupName database name that client belongs to
+   * @param databaseName database name that client belongs to
    */
   public IoTDBSyncClient(
-      Pipe pipe, String remoteAddress, int port, String localAddress, String storageGroupName) {
+      Pipe pipe, String remoteAddress, int port, String localAddress, String databaseName) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = remoteAddress;
     this.port = port;
     this.localIP = localAddress;
-    this.storageGroupName = storageGroupName;
+    this.databaseName = databaseName;
+  }
+
+  /**
+   * Create IoTDBSyncClient only for heartbeat
+   *
+   * @param pipe sync task
+   * @param remoteAddress remote ip address
+   * @param port remote port
+   * @param localAddress local ip address
+   */
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
+    this(pipe, remoteAddress, port, localAddress, "");
   }
 
   /**
@@ -131,14 +145,13 @@ public class IoTDBSyncClient implements ISyncClient {
               pipe.getName(),
               pipe.getCreateTime(),
               config.getIoTDBMajorVersion(),
-              storageGroupName);
+              databaseName);
       TSStatus status = serviceClient.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("The receiver rejected the synchronization task because {}", status.message);
         return false;
       }
     } catch (TException e) {
-      logger.warn("Cannot connect to the receiver because {}", e.getMessage());
       throw new SyncConnectionException(
           String.format("Cannot connect to the receiver because %s.", e.getMessage()));
     }
@@ -209,7 +222,7 @@ public class IoTDBSyncClient implements ISyncClient {
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
           position += dataLength;
-        } else if (status.code == TSStatusCode.SYNC_FILE_REBASE.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           logger.error(

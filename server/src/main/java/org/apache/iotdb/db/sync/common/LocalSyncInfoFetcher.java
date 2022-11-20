@@ -91,7 +91,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
     } catch (IOException e) {
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } catch (PipeSinkException e) {
-      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR, e.getMessage());
     }
   }
 

@@ -88,7 +88,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     } catch (MetadataException e) {
       throw new RuntimeException(e);
     }
-    schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
+    schemaTree.setDatabases(storageGroupSet);
     return schemaTree;
   }
 

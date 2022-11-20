@@ -585,6 +585,8 @@ public class IoTDBRestServiceTest {
             add("compression");
             add("tags");
             add("attributes");
+            add("deadband");
+            add("deadbandparameters");
           }
         };
     List<Object> values1 =
@@ -644,6 +646,8 @@ public class IoTDBRestServiceTest {
             add("compression");
             add("tags");
             add("attributes");
+            add("deadband");
+            add("deadbandparameters");
           }
         };
     List<Object> values1 =

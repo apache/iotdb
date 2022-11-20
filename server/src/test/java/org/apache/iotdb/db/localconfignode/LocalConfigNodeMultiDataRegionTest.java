@@ -36,15 +36,12 @@ import java.util.List;
 
 public class LocalConfigNodeMultiDataRegionTest {
   int originDataRegionNum;
-  boolean isMppMode = false;
   boolean isClusterMode = false;
 
   @Before
   public void setUp() throws IllegalPathException {
     originDataRegionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
-    isMppMode = IoTDBDescriptor.getInstance().getConfig().isMppMode();
     isClusterMode = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
-    IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
     IoTDBDescriptor.getInstance().getConfig().setClusterMode(false);
     IoTDB.configManager.init();
     EnvironmentUtils.envSetUp();
@@ -55,7 +52,6 @@ public class LocalConfigNodeMultiDataRegionTest {
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(originDataRegionNum);
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setMppMode(isMppMode);
     IoTDBDescriptor.getInstance().getConfig().setClusterMode(isClusterMode);
   }
 

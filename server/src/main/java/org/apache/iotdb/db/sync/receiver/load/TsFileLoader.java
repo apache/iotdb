@@ -39,11 +39,11 @@ public class TsFileLoader implements ILoader {
   private static final Logger logger = LoggerFactory.getLogger(TsFileLoader.class);
 
   private final File tsFile;
-  private final String storageGroup;
+  private final String database;
 
-  public TsFileLoader(File tsFile, String storageGroup) {
+  public TsFileLoader(File tsFile, String database) {
     this.tsFile = tsFile;
-    this.storageGroup = storageGroup;
+    this.database = database;
   }
 
   @Override
@@ -80,6 +80,6 @@ public class TsFileLoader implements ILoader {
   }
 
   private int parseSgLevel() throws IllegalPathException {
-    return new PartialPath(storageGroup).getNodeLength() - 1;
+    return new PartialPath(database).getNodeLength() - 1;
   }
 }
