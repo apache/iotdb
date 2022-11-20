@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -59,7 +58,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (WriteProcessException | TriggerExecutionException e) {
+    } catch (WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -73,7 +72,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (TriggerExecutionException | WriteProcessException e) {
+    } catch (WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
@@ -143,7 +142,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insert(node);
       return StatusUtils.OK;
-    } catch (WriteProcessException | TriggerExecutionException e) {
+    } catch (WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {

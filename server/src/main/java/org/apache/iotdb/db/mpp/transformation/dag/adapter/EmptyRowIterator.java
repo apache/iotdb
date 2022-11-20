@@ -17,16 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-public class TriggerManagementException extends StorageEngineException {
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
-  public TriggerManagementException(String message, Throwable cause) {
-    super(message);
-    this.initCause(cause);
+import java.io.IOException;
+
+public class EmptyRowIterator implements RowIterator {
+  @Override
+  public boolean hasNextRow() {
+    return false;
   }
 
-  public TriggerManagementException(String message) {
-    super(message);
+  @Override
+  public Row next() throws IOException {
+    throw new UnsupportedOperationException("Can not call next on EmptyRowIterator");
   }
+
+  @Override
+  public void reset() {}
 }

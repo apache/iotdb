@@ -342,15 +342,22 @@ public class ConfigNodeProcedureEnv {
   public void broadCastTheLatestConfigNodeGroup() {
     List<TConfigNodeLocation> registeredConfigNodes =
         configManager.getNodeManager().getRegisteredConfigNodes();
+    Map<Integer, TDataNodeLocation> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<TUpdateConfigNodeGroupReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
             new TUpdateConfigNodeGroupReq(registeredConfigNodes),
-            configManager.getNodeManager().getRegisteredDataNodeLocations());
+            registeredDataNodes);
 
-    LOG.info("Begin to broadcast the latest configNodeGroup: {}", registeredConfigNodes);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    LOG.info("Broadcast the latest configNodeGroup finished.");
+    if (registeredDataNodes.size() > 0) {
+      LOG.info(
+          "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
+          registeredConfigNodes,
+          registeredDataNodes.values());
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      LOG.info("Broadcast the latest configNodeGroup to DataNodes finished.");
+    }
   }
 
   /**

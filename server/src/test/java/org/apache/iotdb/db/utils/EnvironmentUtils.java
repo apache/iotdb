@@ -33,9 +33,7 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -109,10 +107,7 @@ public class EnvironmentUtils {
       if (UDFManagementService.getInstance() != null) {
         UDFManagementService.getInstance().deregisterAll();
       }
-      if (TriggerRegistrationService.getInstance() != null) {
-        TriggerRegistrationService.getInstance().deregisterAll();
-      }
-    } catch (UDFManagementException | TriggerManagementException e) {
+    } catch (UDFManagementException e) {
       fail(e.getMessage());
     }
 
