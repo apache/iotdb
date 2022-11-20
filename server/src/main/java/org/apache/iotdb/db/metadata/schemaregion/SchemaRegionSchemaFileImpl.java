@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -428,8 +427,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(seriesCount);
     }
-    // drop triggers with no exceptions
-    TriggerEngine.drop(leafMNodes);
 
     // clear all the components and release all the file handlers
     clear();
@@ -989,9 +986,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
-
-    // drop trigger with no exceptions
-    TriggerEngine.drop(pair.right);
 
     IMNode node = measurementMNode.getParent();
 
