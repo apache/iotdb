@@ -353,7 +353,7 @@ public class RecordUtils {
             nodeName,
             TSDataType.values()[dataType],
             TSEncoding.values()[encoding],
-            CompressionType.values()[compressor]);
+            CompressionType.deserialize(compressor));
 
     IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
     res.getAsMeasurementMNode().setOffset(tagIndex);
