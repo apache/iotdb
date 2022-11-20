@@ -364,7 +364,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | NoSuchMethodException
           | InstantiationException
           | IllegalAccessException
-          | InvocationTargetException e) {
+          | InvocationTargetException
+          | ClassCastException e) {
         LOGGER.warn(
             "Failed to create function when try to create UDF({}) instance first, the cause is: {}",
             createFunctionStatement.getUdfName(),
@@ -529,7 +530,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | NoSuchMethodException
           | InstantiationException
           | IllegalAccessException
-          | InvocationTargetException e) {
+          | InvocationTargetException
+          | ClassCastException e) {
         LOGGER.warn(
             "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
             createTriggerStatement.getTriggerName(),
