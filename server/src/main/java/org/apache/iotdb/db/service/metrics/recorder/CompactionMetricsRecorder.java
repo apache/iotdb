@@ -38,6 +38,7 @@ public class CompactionMetricsRecorder {
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
+    // TODO fix
     MetricService.getInstance()
         .count(
             byteNum / 1024L,
