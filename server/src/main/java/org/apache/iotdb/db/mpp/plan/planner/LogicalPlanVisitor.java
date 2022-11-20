@@ -300,7 +300,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .sorted()
             .collect(Collectors.toList());
     planBuilder
-        .planRawDataSource(analysis.getSourceExpressions(), Ordering.ASC, null)
+        .planRawDataSource(
+            analysis.getSourceExpressions(), Ordering.ASC, analysis.getGlobalTimeFilter())
         .planTransform(
             analysis.getSourceTransformExpressions(), true, ZoneId.systemDefault(), Ordering.ASC)
         .planWindowSplit(fetchWindowBatchStatement.getGroupByTimeParameter(), sortedSamplingIndexes)

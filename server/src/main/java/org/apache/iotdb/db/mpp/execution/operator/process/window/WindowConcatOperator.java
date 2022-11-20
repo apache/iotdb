@@ -91,7 +91,8 @@ public class WindowConcatOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return curTimeRange != null || sampleTimeRangeIterator.hasNextTimeRange();
+    return (!windowSliceQueue.isEmpty() || child.hasNext())
+        && (curTimeRange != null || sampleTimeRangeIterator.hasNextTimeRange());
   }
 
   @Override

@@ -77,4 +77,8 @@ public class WindowSliceQueue {
     }
     return windowBuilder.build();
   }
+
+  public boolean isEmpty() {
+    return deque.isEmpty();
+  }
 }

@@ -32,10 +32,14 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class WindowSplitOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WindowSplitOperator.class);
 
   protected final OperatorContext operatorContext;
 
@@ -96,7 +100,13 @@ public class WindowSplitOperator implements ProcessOperator {
       }
     }
 
-    if (!fetchData()) {
+    LOGGER.info(
+        "curTimeRange: {}, curTimeRangeSlice: {}, sliceLen: {}",
+        curTimeRange,
+        curTimeRangeSlice,
+        (curTimeRangeSlice.getMax() - curTimeRangeSlice.getMin()) / 86400000);
+
+    if (!fetchData() && child.hasNext()) {
       return null;
     } else {
       curTimeRangeSlice = null;
@@ -120,12 +130,17 @@ public class WindowSplitOperator implements ProcessOperator {
   }
 
   private boolean consumeInput() {
-    if (inputTsBlock == null) {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+
+    if (inputTsBlock.getEndTime() < curTimeRangeSlice.getMin()) {
+      inputTsBlock = null;
       return false;
     }
 
     inputTsBlock = TsBlockUtil.skipPointsOutOfTimeRange(inputTsBlock, curTimeRangeSlice, true);
-    if (inputTsBlock == null) {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return false;
     }
 
@@ -138,6 +153,7 @@ public class WindowSplitOperator implements ProcessOperator {
         return true;
       }
     }
+    inputTsBlock = null;
     return false;
   }
 
@@ -153,7 +169,8 @@ public class WindowSplitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return curTimeRangeSlice != null || sampleTimeRangeSliceIterator.hasNextTimeRange();
+    return (inputTsBlock != null || child.hasNext())
+        && (curTimeRangeSlice != null || sampleTimeRangeSliceIterator.hasNextTimeRange());
   }
 
   @Override

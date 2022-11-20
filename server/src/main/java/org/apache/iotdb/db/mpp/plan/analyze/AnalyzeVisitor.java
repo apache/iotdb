@@ -1314,7 +1314,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long minTime =
         groupByTimeParameter.getStartTime() + minIndex * groupByTimeParameter.getSlidingStep();
     long maxTime =
-        groupByTimeParameter.getStartTime() + maxIndex * groupByTimeParameter.getSlidingStep();
+        groupByTimeParameter.getStartTime()
+            + maxIndex * groupByTimeParameter.getSlidingStep()
+            + groupByTimeParameter.getInterval();
     analysis.setGlobalTimeFilter(
         FilterFactory.and(TimeFilter.gtEq(minTime), TimeFilter.ltEq(maxTime)));
   }

@@ -39,7 +39,13 @@ session.open(False)
 
 ts_path_list = [
     "root.eg.exchange.s0",
-    "root.eg.exchange.s1"
+    "root.eg.exchange.s1",
+    "root.eg.exchange.s2",
+    "root.eg.exchange.s3",
+    "root.eg.exchange.s4",
+    "root.eg.exchange.s5",
+    "root.eg.exchange.s6",
+    "root.eg.exchange.s7"
 ]
 
 fetch_args = {
@@ -47,8 +53,8 @@ fetch_args = {
     "end_time": 1286640000000,
     "interval": 86400000 * 96,
     "sliding_step": 86400000,
-    "indexes": [666, 555, 222]
-    # "indexes": random.sample([i for i in range(0, 7501)], 100)
+    # "indexes": [222, 555, 666]
+    "indexes": random.sample([i for i in range(0, 7492)], 100)
 }
 
 result = session.fetch_window_batch(ts_path_list, None, fetch_args)
