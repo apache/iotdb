@@ -578,7 +578,7 @@ public class Session {
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
-    request.setCompressor(compressor.ordinal());
+    request.setCompressor(compressor.serialize());
     request.setProps(props);
     request.setTags(tags);
     request.setAttributes(attributes);
@@ -2891,7 +2891,7 @@ public class Session {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -2934,7 +2934,7 @@ public class Session {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
