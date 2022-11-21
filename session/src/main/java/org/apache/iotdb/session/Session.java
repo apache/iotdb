@@ -2156,8 +2156,7 @@ public class Session implements ISession {
     Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
-      TSInsertRecordsReq request =
-          recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
+      TSInsertRecordsReq request = recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
       request.setIsAligned(isAligned);
       try {
         filterAndUpdateTSInsertRecordsReq(
