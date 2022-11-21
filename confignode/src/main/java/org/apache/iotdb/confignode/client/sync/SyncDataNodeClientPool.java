@@ -69,18 +69,13 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (TException | IOException e) {
         lastException = e;
-        LOGGER.warn(
-            "{} failed on DataNode {}, because {}, retrying {}...",
-            requestType,
-            endPoint,
-            e.getMessage(),
-            retry + 1);
         if (retry != DEFAULT_RETRY_NUM - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
@@ -93,18 +88,13 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (TException | IOException e) {
         lastException = e;
-        LOGGER.warn(
-            "{} failed on DataNode {}, because {}, retrying {}...",
-            requestType,
-            endPoint,
-            e.getMessage(),
-            retry + 1);
         if (retry != retryNum - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
@@ -178,11 +168,11 @@ public class SyncDataNodeClientPool {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
       status = client.changeRegionLeader(req);
     } catch (IOException e) {
-      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
+      LOGGER.error("Can't connect to Data node: {}", dataNode);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
-      LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
+      LOGGER.error("Change regions leader error on Date node: {}", dataNode);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

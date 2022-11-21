@@ -57,7 +57,6 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     } catch (Exception e) {
       // external doesn't care of other exceptions
       String errorMessage = String.format("Borrow client from pool for node %s failed.", node);
-      logger.warn(errorMessage, e);
       throw new IOException(errorMessage, e);
     }
     return client;
@@ -92,7 +91,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
       try {
         pool.clear(node);
       } catch (Exception e) {
-        logger.error(String.format("clear all client in pool for node %s failed.", node), e);
+        logger.error(String.format("Clear all client in pool for node %s failed.", node), e);
       }
     }
   }

@@ -1167,7 +1167,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) throws TException {
+  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
@@ -1215,7 +1215,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createNewRegionPeer(TCreatePeerReq req) throws TException {
+  public TSStatus createNewRegionPeer(TCreatePeerReq req) {
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
