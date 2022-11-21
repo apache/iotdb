@@ -64,6 +64,69 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AggregationDistributionTest {
+
+  @Test
+  public void testAggregation1Series2Regions() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_1_series_2_regions");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    String sql = "select count(s1) from root.sg.d1";
+    String d1s1Path = "root.sg.d1.s1";
+
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode rootNode = Util.genLogicalPlan(analysis, context);
+
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, rootNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+    Map<String, AggregationStep> expectedStep = new HashMap<>();
+    expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
+    List<FragmentInstance> fragmentInstances = plan.getInstances();
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
+    AggregationNode aggregationNode =
+        (AggregationNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertEquals(
+        AggregationStep.FINAL, aggregationNode.getAggregationDescriptorList().get(0).getStep());
+  }
+
+  @Test
+  public void testAggregation1Series2RegionsWithSlidingWindow() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_1_series_2_regions_sliding_window");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    String sql = "select count(s1) from root.sg.d1 group by ([0, 100), 5ms, 1ms)";
+    String d1s1Path = "root.sg.d1.s1";
+
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode rootNode = Util.genLogicalPlan(analysis, context);
+
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, rootNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+    Map<String, AggregationStep> expectedStep = new HashMap<>();
+    expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
+    List<FragmentInstance> fragmentInstances = plan.getInstances();
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
+    AggregationNode aggregationNode =
+        (AggregationNode)
+            fragmentInstances
+                .get(0)
+                .getFragment()
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0);
+    assertEquals(
+        AggregationStep.INTERMEDIATE,
+        aggregationNode.getAggregationDescriptorList().get(0).getStep());
+  }
+
   @Test
   public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
