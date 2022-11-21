@@ -496,7 +496,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+      if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
       }
     }
@@ -553,7 +553,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+      if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
       }
     }
