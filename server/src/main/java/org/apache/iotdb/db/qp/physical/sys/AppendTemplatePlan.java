@@ -171,7 +171,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
     size = ReadWriteIOUtils.readInt(buffer);
     compressors = new CompressionType[size];
     for (int i = 0; i < size; i++) {
-      compressors[i] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
+      compressors[i] = CompressionType.deserialize((byte) ReadWriteIOUtils.readInt(buffer));
     }
 
     this.index = buffer.getLong();

@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -38,7 +37,6 @@ import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Objects;
 
 public abstract class RMNode implements IMNode {
@@ -52,9 +50,6 @@ public abstract class RMNode implements IMNode {
   protected String name;
 
   protected static final Logger logger = LoggerFactory.getLogger(RMNode.class);
-
-  /** registered trigger */
-  protected TriggerExecutor triggerExecutor;
 
   /** Constructor of MNode. */
   public RMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
@@ -223,21 +218,6 @@ public abstract class RMNode implements IMNode {
     } else {
       throw new UnsupportedOperationException("Wrong MNode Type");
     }
-  }
-
-  @Override
-  public List<TriggerExecutor> getUpperTriggerExecutorList() {
-    throw new UnsupportedOperationException("Temporarily unsupported");
-  }
-
-  @Override
-  public TriggerExecutor getTriggerExecutor() {
-    return triggerExecutor;
-  }
-
-  @Override
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    this.triggerExecutor = triggerExecutor;
   }
 
   @Override

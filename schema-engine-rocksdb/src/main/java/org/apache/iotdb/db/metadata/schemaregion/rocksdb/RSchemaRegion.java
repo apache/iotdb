@@ -48,15 +48,12 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
@@ -368,8 +365,7 @@ public class RSchemaRegion implements ISchemaRegion {
             } else if (checkResult.getResult(RMNodeType.ENTITY)) {
               if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
-                    "Timeseries under this entity is aligned, please use createAlignedTimeseries"
-                        + " or change entity.",
+                    "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
                     RSchemaUtils.getPathByLevelPath(levelPath));
               }
             } else {
@@ -1317,29 +1313,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    List<MeasurementPath> result = new ArrayList<>();
-    String nextLevelPathName =
-        RSchemaUtils.convertPartialPathToInner(
-            devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
-    Map<byte[], byte[]> allMeasurementPath =
-        readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
-    for (Map.Entry<byte[], byte[]> entry : allMeasurementPath.entrySet()) {
-      PartialPath pathName;
-      try {
-        pathName = new PartialPath(new String(entry.getKey()));
-      } catch (IllegalPathException e) {
-        throw new PathNotExistException(e.getMessage());
-      }
-      MeasurementSchema measurementSchema =
-          (MeasurementSchema) RSchemaUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
-      result.add(new MeasurementPath(pathName, measurementSchema));
-    }
-    return result;
-  }
-
-  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
@@ -1865,36 +1838,6 @@ public class RSchemaRegion implements ISchemaRegion {
         Thread.currentThread().interrupt();
       }
     }
-  }
-
-  @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
   }
 
   @Override

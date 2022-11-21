@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -203,7 +204,7 @@ public class IoTDBAuthorizationIT {
       try {
         userStmt.execute(statement);
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("602"));
+        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getStatusCode() + ""));
         continue;
       }
       fail();
@@ -229,7 +230,7 @@ public class IoTDBAuthorizationIT {
       try {
         userStmt.execute(statement);
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("602"));
+        assertTrue(e.getMessage().contains(TSStatusCode.NO_PERMISSION.getStatusCode() + ""));
         continue;
       }
       fail();

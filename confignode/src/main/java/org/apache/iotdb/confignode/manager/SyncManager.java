@@ -91,7 +91,7 @@ public class SyncManager {
 
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
     try {
-      clusterSyncInfo.checkAddPipeSink(plan.getPipeSinkInfo().getPipeSinkName());
+      clusterSyncInfo.checkAddPipeSink(plan);
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());

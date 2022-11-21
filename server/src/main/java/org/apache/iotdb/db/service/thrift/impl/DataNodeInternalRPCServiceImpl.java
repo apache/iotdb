@@ -878,7 +878,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result.status;
       }
 
@@ -1297,7 +1297,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       UDFManagementService.getInstance().register(udfInformation, req.jarFile);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.CREATE_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_UDF_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -1308,7 +1308,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       UDFManagementService.getInstance().deregister(req.getFunctionName(), req.isNeedToDeleteJar());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.DROP_FUNCTION_ON_DATANODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_UDF_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }

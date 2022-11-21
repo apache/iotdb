@@ -21,9 +21,9 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
@@ -53,14 +53,14 @@ public class WalCheckerTest {
     boolean caught = false;
     try {
       checker.doCheck();
-    } catch (SystemCheckException e) {
+    } catch (WALException e) {
       caught = true;
     }
     assertTrue(caught);
   }
 
   @Test
-  public void testEmpty() throws IOException, SystemCheckException {
+  public void testEmpty() throws IOException, WALException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
@@ -73,7 +73,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testNormalCheck() throws IOException, SystemCheckException, IllegalPathException {
+  public void testNormalCheck() throws IOException, WALException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("wal"));
     tempRoot.mkdir();
 
@@ -112,7 +112,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testAbnormalCheck() throws IOException, SystemCheckException, IllegalPathException {
+  public void testAbnormalCheck() throws IOException, WALException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("wal"));
     tempRoot.mkdir();
 
@@ -156,7 +156,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testOneDamagedCheck() throws IOException, SystemCheckException {
+  public void testOneDamagedCheck() throws IOException, WALException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("wal"));
     tempRoot.mkdir();
 

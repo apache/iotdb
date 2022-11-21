@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.exception.NotAvailableRegionGroupException;
+import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -55,7 +55,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
   @Override
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
-      throws NotAvailableRegionGroupException {
+      throws NoAvailableRegionGroupException {
     Map<String, SchemaPartitionTable> result = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, List<TSeriesPartitionSlot>> slotsMapEntry :
@@ -86,7 +86,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
           unassignedDataPartitionSlotsMap)
-      throws NotAvailableRegionGroupException {
+      throws NoAvailableRegionGroupException {
     Map<String, DataPartitionTable> result = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> slotsMapEntry :

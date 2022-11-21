@@ -26,25 +26,25 @@
 In IoTDB, `SELECT` statement is used to retrieve data from one or more selected time series. Here is the syntax definition of `SELECT` statement:
 
 ```sql
-[TRACING] SELECT
-    [LAST] [TOP k] resultColumn [, resultColumn] ...
+SELECT [LAST] resultColumn [, resultColumn] ...
+    [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
-    WHERE whereCondition
+    [WHERE whereCondition]
     [GROUP BY ([startTime, endTime), interval, slidingStep)]
     [GROUP BY LEVEL = levelNum [, levelNum] ...]
-    [FILL ({PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant})]
+    [FILL ({PREVIOUS | LINEAR | constant})]
+    [HAVING havingCondition]
+    [ORDER BY TIME {ASC | DESC}]
     [LIMIT rowLimit] [OFFSET rowOffset]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
-    [WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
-    [ORDER BY TIME {ASC | DESC}]
-    [{ALIGN BY DEVICE | DISABLE ALIGN}]
+    [ALIGN BY DEVICE]
 ```
 
 The most commonly used clauses of `SELECT` statements are these:
 
 - Each `resultColumn` indicates a column that you want to retrieve, which may be a suffix of time series paths, an aggregate function and so on. There must be at least one `resultColumn`.  For more details for `resultColumn`, please refer to [Select Expression](./Select-Expression.md) .
 - `fromClause` contains the prefix of one or more time-series paths to query.
-- `whereCondition` (Optional) specify the filter criterion named ` queryfilter`. `queryfilter` is a logical expression that returns the data points which calculation result is TRUE. If you do not specify `whereCondition`, return all data points in the time series. For more details, please refer to [Query Filter](./Query-Filter.md).
+- `whereCondition` is a logical expression that returns the data points which calculation result is TRUE. If you do not specify `whereCondition`, return all data points in the time series. For more details, please refer to [Query Filter](./Query-Filter.md).
 - The query results are sorted in ascending order by timestamp. You can specify the results to be sorted in descending order by timestamp through `ORDER BY TIME DESC` clause.
 - When there is a large amount of query result data, you can use `LIMIT/SLIMIT` and `OFFSET/SOFFSET` to paginate the result set, see [Query Result Pagination](./Pagination.md) for details.
 - The query result set is aligned according to the timestamp by default, that is, the time series is used as the column, and the timestamp of each row of data is the same. For other result set alignments, see [Query Result Alignment](./Result-Format.md).

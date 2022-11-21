@@ -20,9 +20,6 @@ package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.idtable.trigger_example.Counter;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -41,7 +38,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -437,59 +433,6 @@ public class IoTDBSessionComplexIT {
         }
         assertEquals(pointNumPerDevice, count);
       }
-    }
-  }
-
-  @Ignore
-  @Test
-  public void insertTabletWithTriggersTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.setStorageGroup("root.sg1");
-      createTimeseries(session);
-
-      session.executeNonQueryStatement(
-          "create trigger d1s1 after insert on root.sg1.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-      session.executeNonQueryStatement(
-          "create trigger d1s2 before insert on root.sg1.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-
-      assertEquals(
-          Counter.BASE,
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
-              .getCounter());
-      assertEquals(
-          Counter.BASE,
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
-              .getCounter());
-      try {
-        int counter =
-            ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
-                .getCounter();
-        fail(String.valueOf(counter - Counter.BASE));
-      } catch (TriggerManagementException e) {
-        assertEquals("Trigger d1s3 does not exist.", e.getMessage());
-      }
-
-      insertTablet(session, "root.sg1.d1");
-
-      assertEquals(
-          Counter.BASE + 200,
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
-              .getCounter());
-      assertEquals(
-          Counter.BASE + 200,
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
-              .getCounter());
-      try {
-        int counter =
-            ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
-                .getCounter();
-        fail(String.valueOf(counter - Counter.BASE));
-      } catch (TriggerManagementException e) {
-        assertEquals("Trigger d1s3 does not exist.", e.getMessage());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 

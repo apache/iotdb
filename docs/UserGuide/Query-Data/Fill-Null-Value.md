@@ -21,15 +21,33 @@
 
 # Fill Null Value
 
+## Introduction
+
 When executing some queries, there may be no data for some columns in some rows, and data in these locations will be null, but this kind of null value is not conducive to data visualization and analysis, and the null value needs to be filled.
 
-Fill null value allows the user to fill any query result with null values according to a specific method, such as taking the previous value that is not null, or linear interpolation. The query result after filling the null value can better reflect the data distribution, which is beneficial for users to perform data analysis.
+In IoTDB, users can use the FILL clause to specify the fill mode when data is missing. Fill null value allows the user to fill any query result with null values according to a specific method, such as taking the previous value that is not null, or linear interpolation. The query result after filling the null value can better reflect the data distribution, which is beneficial for users to perform data analysis.
 
-In IoTDB, users can use the FILL clause to specify the fill mode when data is missing. If the queried point's value is not null, the fill function will not work.
+## Syntax Definition
+
+**The following is the syntax definition of the `FILL` clause:**
+
+```sql
+FILL '(' PREVIOUS | LINEAR | constant ')'
+```
+
+**Note:** 
+- We can specify only one fill method in the `FILL` clause, and this method applies to all columns of the result set.
+- Null value fill is not compatible with version 0.13 and previous syntax (`FILL((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)`) is not supported anymore.
 
 ## Fill Methods
 
-IoTDB supports previous, linear, and value fill methods. Following table lists the data types and supported fill methods.
+**IoTDB supports the following three fill methods:**
+
+- `PREVIOUS`: Fill with the previous non-null value of the column.
+- `LINEAR`: Fill the column with a linear interpolation of the previous non-null value and the next non-null value of the column.
+- Constant: Fill with the specified constant.
+
+**Following table lists the data types and supported fill methods.**
 
 | Data Type | Supported Fill Methods  |
 | :-------- |:------------------------|
@@ -39,25 +57,18 @@ IoTDB supports previous, linear, and value fill methods. Following table lists t
 | float     | previous, linear, value |
 | double    | previous, linear, value |
 | text      | previous, value         |
-| </center> |                         |
 
-> Note: Only one Fill method can be specified in a Fill statement. Null value fill is not compatible with version 0.13 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)) is not supported anymore.
+**Note:**  For columns whose data type does not support specifying the fill method, we neither fill it nor throw exception, just keep it as it is.
 
+**For examples:**
 
-### Previous Fill
-
-When the value is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+If we don't use any fill methods:
 
 ```sql
-fill(previous)
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000;
 ```
 
-Here we give an example of filling null values using the previous method. The SQL statement is as follows:
-
-```sql
-select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
-```
-if we don't use any fill methods, the original result will be like:
+the original result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -74,12 +85,19 @@ if we don't use any fill methods, the original result will be like:
 Total line number = 4
 ```
 
-if we use previous fill, sql will be like:
+### `PREVIOUS` Fill
+
+**For null values in the query result set, fill with the previous non-null value of the column.**
+
+**Note:** If the first value of this column is null, we will keep first value as null and won't fill it until we meet first non-null value
+
+For example, with `PREVIOUS` fill, the SQL is as follows:
+
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous);
 ```
 
-previous filled result will be like:
+result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -96,23 +114,23 @@ previous filled result will be like:
 Total line number = 4
 ```
 
-> Note: If the first value of this column is null, we will keep first value as null and won't fill it until we meet first non-null value
+### `LINEAR` Fill
 
-### Linear Fill
+**For null values in the query result set, fill the column with a linear interpolation of the previous non-null value and the next non-null value of the column.**
 
-When the value in the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
-
-```sql
-fill(linear)
-```
+**Note:**
+- If all the values before current value are null or all the values after current value are null, we will keep current value as null and won't fill it.
+- If the column's data type is boolean/text, we neither fill it nor throw exception, just keep it as it is.
 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
+For example, with `LINEAR` fill, the SQL is as follows:
+
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear)
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear);
 ```
 
-linear filled result will be like:
+result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -129,25 +147,28 @@ linear filled result will be like:
 Total line number = 4
 ```
 
+### Constant Fill
 
-> Note: If all the values before current value are null or all the values after current value are null, we will keep current value as null and won't fill it.
-> Note: If the column's data type is boolean/text, we neither fill it nor throw exception, just keep it as it is.
+**For null values in the query result set, fill with the specified constant.**
 
-### Value Fill
+**Note:** 
+- When using the ValueFill, IoTDB neither fill the query result if the data type is different from the input constant nor throw exception, just keep it as it is.
 
-When the value in the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+   | Constant Value Data Type | Support Data Type                 |
+   |:-------------------------|:----------------------------------|
+   | `BOOLEAN` | `BOOLEAN` `TEXT` |
+   | `INT64` | `INT32` `INT64` `FLOAT` `DOUBLE` `TEXT` |
+   | `DOUBLE` | `FLOAT` `DOUBLE` `TEXT` |
+   | `TEXT` | `TEXT` |
+- If constant value is larger than Integer.MAX_VALUE, IoTDB neither fill the query result if the data type is int32 nor throw exception, just keep it as it is.
+
+For example, with `FLOAT` constant fill, the SQL is as follows:
 
 ```sql
-fill(constant)
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(2.0);
 ```
 
-Here we give an example of filling null values using the value method. The SQL statement is as follows:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(2.0)
-```
-
-float constant filled result will be like:
+result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -164,11 +185,13 @@ float constant filled result will be like:
 Total line number = 4
 ```
 
+For example, with `BOOLEAN` constant fill, the SQL is as follows:
+
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(true)
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(true);
 ```
 
-boolean constant filled result will be like:
+result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -184,16 +207,3 @@ boolean constant filled result will be like:
 +-----------------------------+-------------------------------+--------------------------+
 Total line number = 4
 ```
-
-> Note: When using the ValueFill, IoTDB neither fill the query result if the data type is different from the input constant nor throw exception, just keep it as it is.
-> Note: If constant value is larger than Integer.MAX_VALUE, IoTDB neither fill the query result if the data type is int32 nor throw exception, just keep it as it is.
-
-#### Constant Fill Type Consistency
-
-| Constant Value Data Type | Support Data Type                 |
-|:-------------------------|:----------------------------------|
-| boolean                  | boolean, text                     |
-| int64                    | int32, int64, float, double, text |
-| double                   | float, double, text               |
-| text                     | text                              |
-| </center>                |                                   |

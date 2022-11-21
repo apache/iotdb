@@ -50,7 +50,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_FAILED, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
     }
   }
 
