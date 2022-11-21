@@ -75,10 +75,6 @@
             <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
-        </fileSet>
     </fileSets>
     <files>
         <file>
