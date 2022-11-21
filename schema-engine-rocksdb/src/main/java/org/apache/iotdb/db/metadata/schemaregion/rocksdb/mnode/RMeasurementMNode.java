@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -127,16 +126,6 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public void setAlias(String alias) {
     this.alias = alias;
-  }
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

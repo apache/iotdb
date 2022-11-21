@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.conf.rest;
 
 public class IoTDBRestServiceConfig {
-  static final String CONFIG_NAME = "iotdb-rest.properties";
+  static final String CONFIG_NAME = "iotdb-common.properties";
   /** if the enableRestService is true, we will start REST Service */
   private boolean enableRestService = false;
 

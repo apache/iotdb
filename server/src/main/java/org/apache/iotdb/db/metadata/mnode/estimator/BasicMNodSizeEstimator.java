@@ -34,7 +34,6 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
    *         <li>parent reference, 8B
    *         <li>fullPath reference, 8B
    *         <li>cacheEntry reference, 8B
-   *         <li>trigger reference, 8B
    *       </ol>
    *   <li>MapEntry in parent
    *       <ol>
@@ -44,7 +43,7 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
    *       </ol>
    * </ol>
    */
-  protected static final int NODE_BASE_SIZE = 100;
+  protected static final int NODE_BASE_SIZE = 92;
 
   /**
    * The basic extra memory occupied by an InternalMNode based on MNode occupation
@@ -73,10 +72,9 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
    * <ol>
    *   <li>isAligned, 1B
    *   <li>aliasChildren reference, 8B
-   *   <li>lastCacheMap, 8B
    * </ol>
    */
-  protected static final int ENTITY_NODE_BASE_SIZE = 17;
+  protected static final int ENTITY_NODE_BASE_SIZE = 9;
 
   /**
    * The basic extra memory occupied by an MeasurementMNode based on MNode occupation
@@ -85,10 +83,9 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
    *   <li>alias reference, 8B
    *   <li>tagOffset, 8B
    *   <li>estimated schema size, 32B
-   *   <li>lastCache, 8B
    * </ol>
    */
-  protected static final int MEASUREMENT_NODE_BASE_SIZE = 56;
+  protected static final int MEASUREMENT_NODE_BASE_SIZE = 48;
   // alias length, hashCode and occupation in aliasMap, 4 + 4 + 44 = 52B
   protected static final int ALIAS_BASE_SIZE = 52;
 

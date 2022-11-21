@@ -141,7 +141,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
- *   <li>Interfaces for Trigger
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
@@ -875,7 +874,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
-    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    deleteOneTimeseriesUpdateStatistics(p);
     if (!isRecovering) {
       writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
@@ -885,7 +884,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param path full path from root to leaf node
    * @return After delete if the schema region is empty, return its path, otherwise return null
    */
-  private PartialPath deleteOneTimeseriesUpdateStatisticsAndDropTrigger(PartialPath path)
+  private PartialPath deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, IMeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -1228,9 +1227,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
-                  leaf.getLastCacheContainer().getCachedLast() != null
-                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
-                      : 0,
+                  0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right,
                   deadbandInfo.left,
@@ -1767,20 +1764,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // endregion
 
-  // region Interfaces for Trigger
-
-  @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    return mtree.getNodeByPath(fullPath);
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    // do nothing
-  }
-
-  // endregion
-
   private static class RecoverOperationResult {
 
     private static final RecoverOperationResult SUCCESS = new RecoverOperationResult(null);
@@ -1839,8 +1822,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         IDeleteTimeSeriesPlan deleteTimeSeriesPlan, SchemaRegionMemoryImpl context) {
       try {
         // since we only has one path for one DeleteTimeSeriesPlan
-        deleteOneTimeseriesUpdateStatisticsAndDropTrigger(
-            deleteTimeSeriesPlan.getDeletePathList().get(0));
+        deleteOneTimeseriesUpdateStatistics(deleteTimeSeriesPlan.getDeletePathList().get(0));
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);

@@ -16,14 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common;
 
-/**
- * This class is used to represent the schema partition info including the DataRegionId and physical
- * node IP address
- */
-// TODO: (xingtanzjr) This class should be substituted with the class defined in Consensus level
-public class SchemaRegion {
-  private Integer DataRegionId;
-  private String endpoint;
+package org.apache.iotdb.db.metadata.cache.lastCache.container;
+
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+
+/** this interface declares the operations of LastCache data */
+public interface ILastCacheContainer {
+
+  // get lastCache of monad timseries
+  TimeValuePair getCachedLast();
+
+  /**
+   * update last point cache
+   *
+   * @param timeValuePair last point
+   * @param highPriorityUpdate whether it's a high priority update
+   * @param latestFlushedTime latest flushed time
+   */
+  void updateCachedLast(
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
+
+  // reset all lastCache data of one timeseries(monad or vector)
+  void resetLastCache();
+
+  // whether the entry contains lastCache Value.
+  boolean isEmpty();
 }

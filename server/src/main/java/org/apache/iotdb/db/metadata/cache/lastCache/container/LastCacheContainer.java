@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.container;
+package org.apache.iotdb.db.metadata.cache.lastCache.container;
 
-import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
-import org.apache.iotdb.db.metadata.lastCache.container.value.LastCacheValue;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.LastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**

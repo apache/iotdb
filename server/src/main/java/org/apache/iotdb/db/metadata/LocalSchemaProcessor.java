@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -51,7 +50,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -99,8 +97,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
- *   <li>Interfaces for lastCache operations
- *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
  * </ol>
  */
@@ -1011,145 +1007,6 @@ public class LocalSchemaProcessor {
 
     boolean satisfy(String storageGroup);
   }
-  // endregion
-
-  // region Interfaces for lastCache operations
-  /**
-   * Update the last cache value of time series of given seriesPath.
-   *
-   * <p>SchemaProcessor will use the seriesPath to search the node first and then process the
-   * lastCache in the MeasurementMNode
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      PartialPath seriesPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Update the last cache value in given MeasurementMNode. work.
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      IMeasurementMNode node,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Get the last cache value of time series of given seriesPath. SchemaProcessor will use the
-   * seriesPath to search the node.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return null;
-    }
-
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Get the last cache value in given MeasurementMNode.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(IMeasurementMNode node) {
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Reset the last cache value of time series of given seriesPath. SchemaProcessor will use the
-   * seriesPath to search the node.
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   */
-  public void resetLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.resetLastCache(node);
-  }
-
-  /**
-   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
-   * is under the device and matching the originalPath
-   *
-   * <p>Invoking scenario (1) delete timeseries
-   *
-   * @param deviceId path of device
-   * @param originalPath origin timeseries path
-   * @param startTime startTime
-   * @param endTime endTime
-   */
-  public void deleteLastCacheByDevice(
-      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {
-    IMNode node = getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(
-          node.getAsEntityMNode(), originalPath, startTime, endTime);
-    }
-  }
-  // endregion
-
-  // region Interfaces for Trigger
-
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    try {
-      return getBelongedSchemaRegion(fullPath).getMNodeForTrigger(fullPath);
-    } catch (StorageGroupNotSetException e) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-  }
-
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
-    getBelongedSchemaRegion(imNode.getPartialPath()).releaseMNodeAfterDropTrigger(imNode);
-  }
-
   // endregion
 
   // region TestOnly Interfaces
