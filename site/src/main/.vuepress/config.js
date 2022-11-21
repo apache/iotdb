@@ -1868,7 +1868,7 @@ var config = {
 							['Query-Data/Select-Expression','选择表达式'],
 							['Query-Data/Last-Query','最新点查询'],
 							['Query-Data/Align-By','查询对齐模式'],
-							['Query-Data/where-Condition','查询过滤条件'],
+							['Query-Data/Where-Condition','查询过滤条件'],
 							['Query-Data/Group-By','分段分组聚合'],
 							['Query-Data/Having-Condition','聚合结果过滤'],
 							['Query-Data/Order-By','结果集排序'],
@@ -1884,7 +1884,7 @@ var config = {
 						children: [
 							['Operators-Functions/Overview','概述'],
 							['Operators-Functions/User-Defined-Function','用户自定义函数'],
-							['Operators-Functions/Aggregate','聚合函数'],
+							['Operators-Functions/Aggregation','聚合函数'],
 							['Operators-Functions/Mathematical','算数运算符和函数'],
 							['Operators-Functions/Comparison','比较运算符和函数'],
 							['Operators-Functions/Logical','逻辑运算符'],
