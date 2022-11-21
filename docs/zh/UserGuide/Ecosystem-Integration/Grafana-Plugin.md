@@ -155,7 +155,7 @@ brew services start grafana
 
 #### 配置 IoTDB REST 服务
 
-进入 `{iotdb 目录}/conf`，打开 `iotdb-rest.properties` 文件，并作如下修改：
+进入 `{iotdb 目录}/conf`，打开 `iotdb-common.properties` 文件，并作如下修改：
 
 ```properties
 # Is the REST service enabled

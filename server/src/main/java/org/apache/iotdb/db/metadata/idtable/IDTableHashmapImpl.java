@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -169,38 +168,6 @@ public class IDTableHashmapImpl implements IDTable {
       }
     }
     return new Pair<>(deletedNum, failedNames);
-  }
-
-  /**
-   * register trigger to the timeseries
-   *
-   * @param fullPath full path of the timeseries
-   * @param measurementMNode the timeseries measurement mnode
-   * @throws MetadataException if the timeseries is not exits
-   */
-  @Override
-  public synchronized void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
-      throws MetadataException {
-    boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
-
-    deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUsingTrigger();
-  }
-
-  /**
-   * deregister trigger to the timeseries
-   *
-   * @param fullPath full path of the timeseries
-   * @param measurementMNode the timeseries measurement mnode
-   * @throws MetadataException if the timeseries is not exits
-   */
-  @Override
-  public synchronized void deregisterTrigger(
-      PartialPath fullPath, IMeasurementMNode measurementMNode) throws MetadataException {
-    boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
-
-    deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUnUsingTrigger();
   }
 
   /**

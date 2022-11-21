@@ -1876,16 +1876,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public String toString() {
     return String.format("database:[%s]", storageGroupFullPath);
   }
