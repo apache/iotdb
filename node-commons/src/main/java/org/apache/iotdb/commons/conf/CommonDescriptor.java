@@ -88,7 +88,10 @@ public class CommonDescriptor {
     config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()).trim());
 
     config.setWalDirs(
-        properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).trim().split(","));
+        properties
+            .getProperty("dn_wal_dirs", String.join(",", config.getWalDirs()))
+            .trim()
+            .split(","));
 
     config.setCnRpcThriftCompressionEnabled(
         Boolean.parseBoolean(

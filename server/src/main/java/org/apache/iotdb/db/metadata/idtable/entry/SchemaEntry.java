@@ -42,8 +42,7 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
  */
 public class SchemaEntry implements ILastCacheContainer {
 
-  /* 39 bits of disk pointer */
-  /* 1 bits indicate whether there is a trigger */
+  /* 40 bits of disk pointer */
   /*  1 byte of compressor  */
   /*   1 byte of encoding   */
   /*    1 byte of type      */
@@ -77,7 +76,7 @@ public class SchemaEntry implements ILastCacheContainer {
 
     lastTime = Long.MIN_VALUE;
 
-    schema |= (diskPos << 25);
+    schema |= (diskPos << 24);
   }
 
   public SchemaEntry(
@@ -105,7 +104,7 @@ public class SchemaEntry implements ILastCacheContainer {
               encoding.serialize(),
               compressionType.serialize(),
               isAligned);
-      schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 25);
+      schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 24);
     }
   }
 
@@ -115,7 +114,7 @@ public class SchemaEntry implements ILastCacheContainer {
    * @return disk pointer
    */
   public long getDiskPointer() {
-    return schema >> 25;
+    return schema >> 24;
   }
 
   /**
@@ -143,19 +142,6 @@ public class SchemaEntry implements ILastCacheContainer {
    */
   public CompressionType getCompressionType() {
     return CompressionType.deserialize((byte) (schema >> 16));
-  }
-
-  public boolean isUsingTrigger() {
-    return ((schema >> 24) & 1) == 1;
-  }
-
-  public void setUsingTrigger() {
-    schema |= (1 << 24);
-  }
-
-  public void setUnUsingTrigger() {
-    int mask = ~(1 << 24);
-    schema &= mask;
   }
 
   public long getLastTime() {

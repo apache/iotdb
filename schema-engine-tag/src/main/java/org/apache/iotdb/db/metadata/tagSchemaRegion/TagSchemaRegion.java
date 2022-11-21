@@ -842,16 +842,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException("getMNodeForTrigger");
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    throw new UnsupportedOperationException("releaseMNodeAfterDropTrigger");
-  }
-
-  @Override
   public String toString() {
     return "TagSchemaRegion{"
         + "storageGroupFullPath='"
