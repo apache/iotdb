@@ -36,7 +36,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
@@ -138,11 +137,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getDevices());
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
@@ -163,10 +160,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (int i = 0; i < devices.size(); i++) {
         regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
       }
-      deviceMergeNode.addChild(regionDeviceViewNode);
+      mergeSortNode.addChild(regionDeviceViewNode);
     }
 
-    return deviceMergeNode;
+    return mergeSortNode;
   }
 
   private static class DeviceViewSplit {
