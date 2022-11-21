@@ -96,6 +96,9 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (deviceIndex >= deviceOperators.size()) {
+      return NOT_BLOCKED;
+    }
     ListenableFuture<?> blocked = getCurDeviceOperator().isBlocked();
     if (!blocked.isDone()) {
       return blocked;
