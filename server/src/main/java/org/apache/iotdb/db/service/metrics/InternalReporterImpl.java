@@ -98,7 +98,8 @@ public class InternalReporterImpl implements InternalReporter {
 
   private void collectAutoGauge() {
     for (Map.Entry<Pair<String, String[]>, Gauge> entry : autoGauges.entrySet()) {
-      updateValue(entry.getKey().left, entry.getValue(), TSDataType.INT64, entry.getKey().right);
+      updateValue(
+          entry.getKey().left, entry.getValue().value(), TSDataType.INT64, entry.getKey().right);
     }
   }
 
