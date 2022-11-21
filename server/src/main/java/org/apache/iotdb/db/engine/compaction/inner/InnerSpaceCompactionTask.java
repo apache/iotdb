@@ -25,7 +25,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -214,6 +216,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (targetTsFileList.get(0) != null) {
         TsFileMetricManager.getInstance()
             .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+      }
+
+      if (performer instanceof FastCompactionPerformer) {
+        SubCompactionTaskSummary subTaskSummary =
+            ((FastCompactionPerformer) performer).getSubTaskSummary();
+        LOGGER.info(
+            "CHUNK_NONE_OVERLAP num is {}, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is {}, CHUNK_OVERLAP_OR_MODIFIED num is {}, PAGE_NONE_OVERLAP num is {}, PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is {}, PAGE_OVERLAP_OR_MODIFIED num is {}, PAGE_FAKE_OVERLAP num is {}.",
+            subTaskSummary.CHUNK_NONE_OVERLAP,
+            subTaskSummary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
+            subTaskSummary.CHUNK_OVERLAP_OR_MODIFIED,
+            subTaskSummary.PAGE_NONE_OVERLAP,
+            subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
+            subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
+            subTaskSummary.PAGE_FAKE_OVERLAP);
       }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;

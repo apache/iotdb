@@ -131,7 +131,7 @@ public abstract class SeriesCompactionExecutor {
 
       if (isChunkOverlap || isModified) {
         // has overlap or modified chunk, then deserialize it
-        summary.CHUNK_OVERLAP += overlappedChunkMetadatas.size();
+        summary.CHUNK_OVERLAP_OR_MODIFIED += overlappedChunkMetadatas.size();
         compactWithOverlapChunks(overlappedChunkMetadatas);
       } else {
         // has none overlap or modified chunk, flush it to file writer directly
@@ -218,7 +218,7 @@ public abstract class SeriesCompactionExecutor {
 
       if (isPageOverlap || modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // has overlap or modified pages, then deserialize it
-        summary.PAGE_OVERLAP += 1;
+        summary.PAGE_OVERLAP_OR_MODIFIED += 1;
         pointPriorityReader.addNewPage(overlapPages.remove(0));
         addOverlappedPagesIntoList(overlapPages);
         compactWithOverlapPages();
@@ -354,7 +354,7 @@ public abstract class SeriesCompactionExecutor {
    * deleted completely, we remove it.
    */
   private void addOverlappedPagesIntoList(List<PageElement> newOverlappedPages) {
-    summary.PAGE_OVERLAP += newOverlappedPages.size();
+    summary.PAGE_OVERLAP_OR_MODIFIED += newOverlappedPages.size();
     int oldSize = candidateOverlappedPages.size();
     candidateOverlappedPages.addAll(newOverlappedPages);
     if (oldSize != 0 && candidateOverlappedPages.size() > oldSize) {
@@ -548,7 +548,7 @@ public abstract class SeriesCompactionExecutor {
       // metadata queue, we should find new overlapped chunks and deserialize them into page queue
       for (ChunkMetadataElement newOverlappedChunkMetadata :
           findOverlapChunkMetadatas(chunkMetadataQueue.peek())) {
-        summary.CHUNK_OVERLAP++;
+        summary.CHUNK_OVERLAP_OR_MODIFIED++;
         readChunk(newOverlappedChunkMetadata);
         deserializeChunkIntoQueue(newOverlappedChunkMetadata);
         hasNewOverlappedChunks = true;
