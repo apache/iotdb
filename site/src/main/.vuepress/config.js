@@ -960,7 +960,6 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
-							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
 						]
 					},
@@ -1937,7 +1936,6 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
-							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
 						]
 					},
