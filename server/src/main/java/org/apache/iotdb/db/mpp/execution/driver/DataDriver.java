@@ -136,7 +136,7 @@ public class DataDriver extends Driver {
               pathList,
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               driverContext.getFragmentInstanceContext(),
-              context.getTimeFilter());
+              context.getTimeFilter().copy());
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
