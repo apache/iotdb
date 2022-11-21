@@ -249,8 +249,8 @@ public class NodeManager {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REGISTER_REMOVED_DATANODE.getStatusCode());
-      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
+      status.setCode(TSStatusCode.REGISTER_UNCLEAN_DATANODE.getStatusCode());
+      status.setMessage("Cannot register datanode, maybe its data is not clean.");
     }
 
     dataSet.setStatus(status);
