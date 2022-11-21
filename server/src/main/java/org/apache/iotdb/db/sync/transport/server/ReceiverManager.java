@@ -148,7 +148,7 @@ public class ReceiverManager {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
           String.format(
-              "Permission is not allowed because sender IP[%s]is not in the white list of receiver[%s].",
+              "permission is not allowed: the sender IP <%s>, the white list of receiver <%s>",
               identityInfo.getRemoteAddress(), config.getIpWhiteList()));
     }
     // Version check
@@ -156,7 +156,7 @@ public class ReceiverManager {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
           String.format(
-              "Version mismatch: the sender <%s>, the receiver <%s>",
+              "version mismatch: the sender <%s>, the receiver <%s>",
               identityInfo.version, config.getIoTDBVersion()));
     }
 

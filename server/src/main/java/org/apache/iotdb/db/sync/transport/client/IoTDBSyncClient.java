@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
+import org.apache.iotdb.commons.exception.sync.SyncHandshakeException;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -102,11 +103,12 @@ public class IoTDBSyncClient implements ISyncClient {
   /**
    * Create thrift connection to receiver. Check IoTDB version to make sure compatibility
    *
-   * @return true if success; false if failed to check IoTDB version.
+   * @return true if S; false if failed to check IoTDB version.
    * @throws SyncConnectionException cannot create connection to receiver
+   * @throws SyncHandshakeException cannot handshake with receiver
    */
   @Override
-  public synchronized boolean handshake() throws SyncConnectionException {
+  public synchronized void handshake() throws SyncConnectionException {
     if (transport != null && transport.isOpen()) {
       transport.close();
     }
@@ -138,14 +140,14 @@ public class IoTDBSyncClient implements ISyncClient {
               pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion(), databaseName);
       TSStatus status = serviceClient.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.error("The receiver rejected the synchronization task because {}", status.message);
-        return false;
+        throw new SyncHandshakeException(
+            String.format(
+                "the receiver rejected the synchronization task because %s", status.message));
       }
     } catch (TException e) {
       throw new SyncConnectionException(
-          String.format("Cannot connect to the receiver because %s.", e.getMessage()));
+          String.format("cannot connect to the receiver because %s", e.getMessage()));
     }
-    return true;
   }
 
   /**

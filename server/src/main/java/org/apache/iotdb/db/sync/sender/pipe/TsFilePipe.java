@@ -138,6 +138,8 @@ public class TsFilePipe implements Pipe {
     if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
+    // check connection
+    senderManager.checkConnection();
 
     // init sync manager
     List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();

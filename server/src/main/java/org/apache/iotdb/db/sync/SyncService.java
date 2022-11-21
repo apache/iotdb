@@ -350,9 +350,7 @@ public class SyncService implements IService {
     switch (message.getType()) {
       case ERROR:
         logger.error(
-            "Error occurred when executing PIPE [{}] because {}. Try to stop this PIPE.",
-            pipeName,
-            message.getMessage());
+            "Error occurred when executing PIPE [{}] because {}.", pipeName, message.getMessage());
         status = syncInfoFetcher.recordMsg(pipeName, message);
         break;
       case WARN:
@@ -477,7 +475,7 @@ public class SyncService implements IService {
     try {
       recover();
     } catch (Exception e) {
-      logger.error("Recover from disk error.", e);
+      logger.error("Recovery error.", e);
       throw new StartupException(e);
     }
   }

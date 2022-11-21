@@ -16,24 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.exception.sync;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class SyncHandshakeException extends SyncConnectionException {
 
-public class SyncConnectionException extends IoTDBException {
-
-  private static final long serialVersionUID = -6661904365503849681L;
-
-  public SyncConnectionException(String message) {
-    super(message, TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-  }
-
-  public SyncConnectionException(String message, Throwable cause) {
-    super(message + cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-  }
-
-  public SyncConnectionException(Throwable cause) {
-    super(cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+  public SyncHandshakeException(String message) {
+    super(message);
   }
 }

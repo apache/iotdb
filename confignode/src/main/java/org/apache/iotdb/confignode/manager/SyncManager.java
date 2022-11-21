@@ -152,15 +152,9 @@ public class SyncManager {
   }
 
   public TSStatus recordPipeMessage(String pipeName, PipeMessage pipeMessage) {
-    TSStatus tsStatus =
-        getConsensusManager().write(new RecordPipeMessagePlan(pipeName, pipeMessage)).getStatus();
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && pipeMessage.getType().equals(PipeMessage.PipeMessageType.ERROR)) {
-      // stop pipe
-      LOGGER.warn("Try to stop PIPE [{}] because {}", pipeMessage, pipeMessage.getMessage());
-      return getProcedureManager().stopPipe(pipeName);
-    }
-    return tsStatus;
+    return getConsensusManager()
+        .write(new RecordPipeMessagePlan(pipeName, pipeMessage))
+        .getStatus();
   }
 
   public TShowPipeResp showPipe(String pipeName) {

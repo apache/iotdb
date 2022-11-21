@@ -121,9 +121,9 @@ All parameters are in `$IOTDB_ HOME$/conf/iotdb-common.properties`, after all mo
 
 | **Parameter Name** | **ip_white_list**                                            |
 | ------------------ | ------------------------------------------------------------ |
-| Description        | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 0.0.0.0. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
+| Description        | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
 | Data type          | String                                                       |
-| Default value      | 0.0.0.0/32                                                    |
+| Default value      | 127.0.0.1/32                                                    |
 
 ## 6.SQL
 
@@ -233,7 +233,7 @@ IoTDB> DROP PIPE <PipeName>
 
   - `message`: the status message of this pipe. When pipe runs normally, this column is NORMAL. When an exception occurs, messages may appear in  following two states.
     - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
-    - ERROR, this indicates that there is a problem at the receiver. System will try to stop this pipe.
+    - ERROR, This indicates a problem where the network connection works but the data cannot be transferred, for example, the IP of the sender is not in the whitelist of the receiver or the version of the sender is not compatible with that of the receiver.
 
 
 ```
