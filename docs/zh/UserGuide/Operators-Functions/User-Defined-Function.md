@@ -19,7 +19,7 @@
 
 -->
 
-# 用户定义函数 (UDF)
+# 用户自定义函数
 
 UDF（User Defined Function）即用户自定义函数。IoTDB 提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
@@ -36,7 +36,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 ## UDF 依赖
 
-如果您使用 [Maven](http://search.maven.org/)，可以从 [Maven 库](http://search.maven.org/) 中搜索下面示例中的依赖。请注意选择和目标 IoTDB 服务器版本相同的依赖版本。
+如果您使用 [Maven](http://search.maven.org/) ，可以从 [Maven 库](http://search.maven.org/) 中搜索下面示例中的依赖。请注意选择和目标 IoTDB 服务器版本相同的依赖版本。
 
 ``` xml
 <dependency>

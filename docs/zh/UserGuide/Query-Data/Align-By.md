@@ -19,27 +19,31 @@
 
 -->
 
-# Query Result Alignment
+# 查询对齐模式
 
-In addition, IoTDB supports another result set format: `ALIGN BY DEVICE`.
+在 IoTDB 中，查询结果集**默认按照时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
 
-## align by device
+除按照时间对齐外，还支持以下对齐模式：
 
-The `ALIGN BY DEVICE` indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
+- 按设备对齐 `ALIGN BY DEVICE`
 
-> NOTE：
-> 
-> 1.You can see the result of 'align by device' as one relational table, `Time + Device` is the primary key of this Table. 
->
-> 2.The result is order by `Device` firstly, and then by `Time` order.
+## 按设备对齐
 
-The SQL statement is:
+在按设备对齐模式下，设备名会单独作为一列出现，查询结果集包含一列时间列、一列设备列和若干个值列。如果 `SELECT` 子句中选择了 `N` 列，则结果集包含 `N + 2` 列（时间列和设备名字列）。
+
+在默认情况下，结果集按照 `Device` 进行字典序排序，在每个 `Device` 内按照 `Time` 列升序排序。
+
+当查询多个设备时，要求设备之间同名的列数据类型相同。
+
+为便于理解，可以按照关系模型进行对应。设备可以视为关系模型中的表，选择的列可以视为表中的列，`Time + Device` 看做其主键。
+
+**示例：**
 
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device;
 ```
 
-The result shows below:
+执行如下：
 
 ```
 +-----------------------------+-----------------+-----------+------+--------+

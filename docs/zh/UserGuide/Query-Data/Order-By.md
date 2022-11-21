@@ -19,8 +19,6 @@
 
 -->
 
-# M4
+# 结果集排序
 
-## M4
-
-M4文档已移至[Query Data->Select Expression->Time Series Generating Functions](../Query-Data/Select-Expression.md).
+TODO @yang caiyin

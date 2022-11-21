@@ -1,25 +1,95 @@
 <!--
 
-​    Licensed to the Apache Software Foundation (ASF) under one
-​    or more contributor license agreements.  See the NOTICE file
-​    distributed with this work for additional information
-​    regarding copyright ownership.  The ASF licenses this file
-​    to you under the Apache License, Version 2.0 (the
-​    "License"); you may not use this file except in compliance
-​    with the License.  You may obtain a copy of the License at
-​    
-​        http://www.apache.org/licenses/LICENSE-2.0
-​    
-​    Unless required by applicable law or agreed to in writing,
-​    software distributed under the License is distributed on an
-​    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-​    KIND, either express or implied.  See the License for the
-​    specific language governing permissions and limitations
-​    under the License.
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
 # 字符串处理
+
+## STRING_CONTAINS
+
+### 函数简介
+
+本函数判断字符串中是否存在子串 `s`
+
+**函数名:** STRING_CONTAINS
+
+**输入序列:** 仅支持单个输入序列，类型为 TEXT。
+
+**参数:**
++ `s`: 待搜寻的字符串。
+
+**输出序列:** 输出单个序列，类型为 BOOLEAN。
+
+### 使用示例
+
+```   sql
+select s1, string_contains(s1, 's'='warn') from root.sg1.d4;
+```
+
+结果：
+
+``` 
++-----------------------------+--------------+-------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_contains(root.sg1.d4.s1, "s"="warn")|
++-----------------------------+--------------+-------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                       true|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                      false|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                       true|
++-----------------------------+--------------+-------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
+
+## STRING_MATCHES
+
+### 函数简介
+
+本函数判断字符串是否能够被正则表达式`regex`匹配。
+
+**函数名:** STRING_MATCHES
+
+**输入序列:** 仅支持单个输入序列，类型为 TEXT。
+
+**参数:**
++ `regex`: Java 标准库风格的正则表达式。
+
+**输出序列:** 输出单个序列，类型为 BOOLEAN。
+
+### 使用示例
+
+```   sql
+select s1, string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
+```
+
+结果：
+
+``` 
++-----------------------------+--------------+------------------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_matches(root.sg1.d4.s1, "regex"="[^\\s]+37229")|
++-----------------------------+--------------+------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                                 false|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                                  true|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                                 false|
++-----------------------------+--------------+------------------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
 
 ## Length
 
