@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.util;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
@@ -307,7 +308,7 @@ public class QueryResultUtils {
     try {
       while (ioTDBJDBCDataSet.hasCachedResults()) {
         ioTDBJDBCDataSet.constructOneRow();
-        String path = ioTDBJDBCDataSet.getValueByName("timeseries");
+        String path = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIMESERIES);
         res.add(path);
       }
     } catch (StatementExecutionException e) {
@@ -365,8 +366,8 @@ public class QueryResultUtils {
       while (ioTDBJDBCDataSet.hasCachedResults()) {
         Object[] value = new Object[columns.size()];
         ioTDBJDBCDataSet.constructOneRow();
-        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName("Time"));
-        String deviceName = ioTDBJDBCDataSet.getValueByName("Device");
+        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIME));
+        String deviceName = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.DEVICE);
         String[] deviceNameList = deviceName.split("\\.");
         for (int i = 3; i < deviceNameList.length; i++) {
           if (!deviceNameList[i].equals(InfluxConstant.PLACE_HOLDER)) {
@@ -444,8 +445,8 @@ public class QueryResultUtils {
       while (ioTDBJDBCDataSet.hasCachedResults()) {
         Object[] value = new Object[columns.size()];
         ioTDBJDBCDataSet.constructOneRow();
-        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName("Time"));
-        String deviceName = ioTDBJDBCDataSet.getValueByName("Device");
+        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIME));
+        String deviceName = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.DEVICE);
         String[] deviceNameList = deviceName.split("\\.");
         for (int i = 2; i < deviceNameList.length; i += 2) {
           if (tagOrders.containsKey(deviceNameList[i])) {

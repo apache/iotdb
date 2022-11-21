@@ -21,7 +21,7 @@
 
 ## SchemaFile 解析工具
 
-自 0.14.0 版本起，IoTDB 将每个存储组下序列的元数据存储为 schema_file.pst 文件。
+自 0.14.0 版本起，IoTDB 将每个 database 下序列的元数据存储为 schema_file.pst 文件。
 
 如果需要将该文件转为便于阅读的的模式，可以使用本工具来解析指定 schema_file.pst 。
 s

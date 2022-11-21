@@ -23,13 +23,13 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** Is metric service enabled */
-  private Boolean enableMetric = false;
+  private Boolean enableMetric = true;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
@@ -38,11 +38,10 @@ public class MetricConfig {
   private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** The list of reporters provide data for external system */
-  private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
+  private List<ReporterType> metricReporterList = Collections.emptyList();
 
   /** The level of metric service */
-  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
+  private MetricLevel metricLevel = MetricLevel.CORE;
 
   private Integer asyncCollectPeriodInSecond = 5;
 
@@ -63,8 +62,8 @@ public class MetricConfig {
     private String password = "root";
     /** The max number of connection */
     private Integer maxConnectionNumber = 3;
-    /** The monitor database of iotdb */
-    private String database = "metric";
+    /** The location of iotdb metrics */
+    private String location = "metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
 
@@ -108,12 +107,12 @@ public class MetricConfig {
       this.maxConnectionNumber = maxConnectionNumber;
     }
 
-    public String getDatabase() {
-      return database;
+    public String getLocation() {
+      return location;
     }
 
-    public void setDatabase(String database) {
-      this.database = database;
+    public void setLocation(String location) {
+      this.location = location;
     }
 
     public Integer getPushPeriodInSecond() {
@@ -137,13 +136,13 @@ public class MetricConfig {
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)
           && Objects.equals(password, that.password)
-          && Objects.equals(database, that.database)
+          && Objects.equals(location, that.location)
           && Objects.equals(pushPeriodInSecond, that.pushPeriodInSecond);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(host, port, username, password, database, pushPeriodInSecond);
+      return Objects.hash(host, port, username, password, location, pushPeriodInSecond);
     }
   }
 

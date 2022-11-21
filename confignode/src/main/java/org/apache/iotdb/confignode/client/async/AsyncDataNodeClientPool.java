@@ -49,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
@@ -219,6 +220,12 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case CHANGE_REGION_LEADER:
+          client.changeRegionLeader(
+              (TRegionLeaderChangeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
               (TUpdateConfigNodeGroupReq) clientHandler.getRequest(requestId),
@@ -296,16 +303,19 @@ public class AsyncDataNodeClientPool {
               (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
               (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case UPDATE_TEMPLATE:
           client.updateTemplate(
               (TUpdateTemplateReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
               (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
               (CountPathsUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

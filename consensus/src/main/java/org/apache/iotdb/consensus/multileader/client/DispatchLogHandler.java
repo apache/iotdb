@@ -67,7 +67,9 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
     MetricService.getInstance()
         .getOrCreateHistogram(
             Metric.STAGE.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.MULTI_LEADER.toString(),
             Tag.TYPE.toString(),
             "syncLogTimePerRequest",
             Tag.REGION.toString(),
@@ -77,7 +79,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
 
   private boolean needRetry(int statusCode) {
     return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-        || statusCode == TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
         || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 

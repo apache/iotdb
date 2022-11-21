@@ -252,15 +252,15 @@ public abstract class Traverser {
       return;
     }
 
-    Template upperTemplate = getUpperTemplate(node);
-    if (upperTemplate == null) {
+    Template schemaTemplate = getActivatedSchemaTemplate(node);
+    if (schemaTemplate == null) {
       // template == null means the template used by this node is not related to this query in new
       // cluster.
       return;
     }
     isInTemplate = true;
     traverseContext.push(node);
-    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+    for (IMNode childInTemplate : schemaTemplate.getDirectNodes()) {
       traverse(childInTemplate, idx + 1, level + 1);
     }
     traverseContext.pop();
@@ -346,15 +346,15 @@ public abstract class Traverser {
       return;
     }
 
-    Template upperTemplate = getUpperTemplate(node);
-    if (upperTemplate == null) {
+    Template schemaTemplate = getActivatedSchemaTemplate(node);
+    if (schemaTemplate == null) {
       // template == null means the template used by this node is not related to this query in new
       // cluster.
       return;
     }
     isInTemplate = true;
     traverseContext.push(node);
-    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+    for (IMNode childInTemplate : schemaTemplate.getDirectNodes()) {
       if (!Pattern.matches(targetNameRegex, childInTemplate.getName())) {
         continue;
       }
@@ -364,7 +364,7 @@ public abstract class Traverser {
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
-      for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+      for (IMNode childInTemplate : schemaTemplate.getDirectNodes()) {
         traverse(childInTemplate, idx, level + 1);
       }
       traverseContext.pop();
@@ -433,14 +433,14 @@ public abstract class Traverser {
       return;
     }
 
-    Template upperTemplate = getUpperTemplate(node);
-    if (upperTemplate == null) {
+    Template schemaTemplate = getActivatedSchemaTemplate(node);
+    if (schemaTemplate == null) {
       // template == null means the template used by this node is not related to this query in new
       // cluster.
       return;
     }
     isInTemplate = true;
-    IMNode targetNode = upperTemplate.getDirectNode(targetName);
+    IMNode targetNode = schemaTemplate.getDirectNode(targetName);
     if (targetNode != null) {
       traverseContext.push(node);
       traverse(targetNode, idx + 1, level + 1);
@@ -449,7 +449,7 @@ public abstract class Traverser {
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
-      for (IMNode child : upperTemplate.getDirectNodes()) {
+      for (IMNode child : schemaTemplate.getDirectNodes()) {
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();
@@ -457,29 +457,14 @@ public abstract class Traverser {
     isInTemplate = false;
   }
 
-  protected Template getUpperTemplate(IMNode node) {
-    Iterator<IMNode> iterator = traverseContext.iterator();
-    IMNode ancestor;
-    if (templateMap == null) {
-      // old standalone
-      if (node.getSchemaTemplate() != null) {
-        return node.getUpperTemplate();
+  protected Template getActivatedSchemaTemplate(IMNode node) {
+    // new cluster, the used template is directly recorded as template id in device mnode
+    if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+      if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {
+        // skip this pre deactivated template, the invoker will skip this
+        return null;
       }
-      while (iterator.hasNext()) {
-        ancestor = iterator.next();
-        if (ancestor.getSchemaTemplate() != null) {
-          return ancestor.getSchemaTemplate();
-        }
-      }
-    } else {
-      // new cluster, the used template is directly recorded as template id in device mnode
-      if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-        if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {
-          // skip this pre deactivated template, the invoker will skip this
-          return null;
-        }
-        return templateMap.get(node.getSchemaTemplateId());
-      }
+      return templateMap.get(node.getSchemaTemplateId());
     }
     // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
     // NON_TEMPLATE.
@@ -527,7 +512,7 @@ public abstract class Traverser {
     return nodeNames.toArray(new String[0]);
   }
 
-  /** @return the storage group node in the traverse path */
+  /** @return the database node in the traverse path */
   protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
     if (currentNode.isStorageGroup()) {
       return currentNode;

@@ -177,32 +177,32 @@ class Session(object):
 
     def set_storage_group(self, group_name):
         """
-        set one storage group
-        :param group_name: String, storage group name (starts from root)
+        create one database
+        :param group_name: String, database name (starts from root)
         """
         status = self.__client.setStorageGroup(self.__session_id, group_name)
         logger.debug(
-            "setting storage group {} message: {}".format(group_name, status.message)
+            "setting database {} message: {}".format(group_name, status.message)
         )
 
         return Session.verify_success(status)
 
     def delete_storage_group(self, storage_group):
         """
-        delete one storage group.
-        :param storage_group: String, path of the target storage group.
+        delete one database.
+        :param storage_group: String, path of the target database.
         """
         groups = [storage_group]
         return self.delete_storage_groups(groups)
 
     def delete_storage_groups(self, storage_group_lst):
         """
-        delete multiple storage groups.
-        :param storage_group_lst: List, paths of the target storage groups.
+        delete multiple databases.
+        :param storage_group_lst: List, paths of the target databases.
         """
         status = self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
         logger.debug(
-            "delete storage group(s) {} message: {}".format(
+            "delete database(s) {} message: {}".format(
                 storage_group_lst, status.message
             )
         )

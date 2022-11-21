@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
@@ -50,7 +50,7 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
   private static final Path[] resourcePaths = {
     new PartialPath(COLUMN_TIMESERIES, false),
     new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
-    new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_DATABASE, false),
     new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
     new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
     new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),

@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -56,7 +55,6 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
-import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -81,6 +79,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -117,7 +116,7 @@ public class ConfigNodeProcedureEnv {
   /**
    * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo
    *
-   * @param name storage group name
+   * @param name database name
    * @return tsStatus
    */
   public TSStatus deleteConfig(String name) {
@@ -126,10 +125,10 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Pre delete a storage group
+   * Pre delete a database
    *
    * @param preDeleteType execute/rollback
-   * @param deleteSgName storage group name
+   * @param deleteSgName database name
    */
   public void preDelete(
       PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
@@ -137,36 +136,55 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * @param storageGroupName Storage group name
+   * @param storageGroupName database name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes();
+    NodeManager nodeManager = configManager.getNodeManager();
+    List<TDataNodeConfiguration> allDataNodes = nodeManager.getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      final TSStatus invalidateSchemaStatus =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                  invalidateCacheReq,
-                  DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
-      final TSStatus invalidatePartitionStatus =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                  invalidateCacheReq,
-                  DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
+      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+
+      // if the node is not alive, sleep 1 second and try again
+      NodeStatus nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+      if (nodeStatus == NodeStatus.Unknown) {
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+        }
+        nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+      }
+
+      if (nodeStatus == NodeStatus.Running) {
+        final TSStatus invalidateSchemaStatus =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                    invalidateCacheReq,
+                    DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
+        final TSStatus invalidatePartitionStatus =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                    invalidateCacheReq,
+                    DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
+        if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+          LOG.error(
+              "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
+              invalidatePartitionStatus,
+              invalidateSchemaStatus);
+          return false;
+        }
+      } else if (nodeStatus == NodeStatus.Unknown) {
+        LOG.warn(
+            "Invalidate cache failed, because DataNode {} is Unknown",
+            dataNodeConfiguration.getLocation().getInternalEndPoint());
       }
     }
     return true;
@@ -186,35 +204,45 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Let the remotely new ConfigNode build the ConsensusGroup
+   * Only ConfigNode leader will invoke this method. Add the new ConfigNode Peer into
+   * ConfigNodeRegionGroup.
    *
-   * @param tConfigNodeLocation New ConfigNode's location
+   * @param newConfigNode The new ConfigNode
+   * @throws AddPeerException When addNewNodeToExistedGroup doesn't success
    */
-  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
-      throws AddConsensusGroupException {
-    List<TConfigNodeLocation> configNodeLocations =
-        new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
-    configNodeLocations.add(tConfigNodeLocation);
-    TSStatus status =
-        (TSStatus)
-            SyncConfigNodeClientPool.getInstance()
-                .sendSyncRequestToConfigNodeWithRetry(
-                    tConfigNodeLocation.getInternalEndPoint(),
-                    new TAddConsensusGroupReq(configNodeLocations),
-                    ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new AddConsensusGroupException(tConfigNodeLocation);
-    }
-  }
+  public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
+    for (int i = 0; i < 3; i++) {
+      try {
+        // sleep 5 seconds to wait the registered ConfigNode completed initConsensusManager
+        TimeUnit.SECONDS.sleep(5);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
+      }
 
-  /**
-   * Leader will add the new ConfigNode Peer into PartitionRegion
-   *
-   * @param configNodeLocation The new ConfigNode
-   * @throws AddPeerException When addPeer doesn't success
-   */
-  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
-    configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
+      TSStatus status =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      newConfigNode.getInternalEndPoint(),
+                      null,
+                      ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER_STATUS);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        break;
+      }
+
+      LOG.info(
+          "The ConsensusManager of Registered-ConfigNode is not initialized, wait 7 seconds, ConfigNode: {}, status: {}",
+          newConfigNode,
+          status);
+    }
+
+    List<TConfigNodeLocation> originalConfigNodes =
+        new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
+
+    configManager
+        .getConsensusManager()
+        .addNewNodeToExistedGroup(originalConfigNodes, newConfigNode);
   }
 
   /**
@@ -234,7 +262,7 @@ public class ConfigNodeProcedureEnv {
             getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
       } else {
         tsStatus =
-            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
@@ -314,15 +342,22 @@ public class ConfigNodeProcedureEnv {
   public void broadCastTheLatestConfigNodeGroup() {
     List<TConfigNodeLocation> registeredConfigNodes =
         configManager.getNodeManager().getRegisteredConfigNodes();
+    Map<Integer, TDataNodeLocation> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<TUpdateConfigNodeGroupReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
             new TUpdateConfigNodeGroupReq(registeredConfigNodes),
-            configManager.getNodeManager().getRegisteredDataNodeLocations());
+            registeredDataNodes);
 
-    LOG.info("Begin to broadcast the latest configNodeGroup: {}", registeredConfigNodes);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    LOG.info("Broadcast the latest configNodeGroup finished.");
+    if (registeredDataNodes.size() > 0) {
+      LOG.info(
+          "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
+          registeredConfigNodes,
+          registeredDataNodes.values());
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      LOG.info("Broadcast the latest configNodeGroup to DataNodes finished.");
+    }
   }
 
   /**
@@ -505,7 +540,7 @@ public class ConfigNodeProcedureEnv {
 
     // Select leader greedily for multi-leader consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.MultiLeaderConsensus.equals(
+        && ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
             ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
       List<Integer> availableDataNodes = new ArrayList<>();
       for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {

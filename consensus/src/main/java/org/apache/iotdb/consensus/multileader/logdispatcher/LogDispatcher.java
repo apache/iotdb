@@ -81,14 +81,18 @@ public class LogDispatcher {
             .map(x -> new LogDispatcherThread(x, impl.getConfig(), DEFAULT_INITIAL_SYNC_INDEX))
             .collect(Collectors.toList());
     if (!threads.isEmpty()) {
-      // We use cached thread pool here because each LogDispatcherThread will occupy one thread.
-      // And every LogDispatcherThread won't release its thread in this pool because it won't stop
-      // unless LogDispatcher stop.
-      // Thus, the size of this threadPool will be the same as the count of LogDispatcherThread.
-      this.executorService =
-          IoTDBThreadPoolFactory.newCachedThreadPool(
-              "LogDispatcher-" + impl.getThisNode().getGroupId());
+      initLogSyncThreadPool();
     }
+  }
+
+  private void initLogSyncThreadPool() {
+    // We use cached thread pool here because each LogDispatcherThread will occupy one thread.
+    // And every LogDispatcherThread won't release its thread in this pool because it won't stop
+    // unless LogDispatcher stop.
+    // Thus, the size of this threadPool will be the same as the count of LogDispatcherThread.
+    this.executorService =
+        IoTDBThreadPoolFactory.newCachedThreadPool(
+            "LogDispatcher-" + impl.getThisNode().getGroupId());
   }
 
   public synchronized void start() {
@@ -118,9 +122,13 @@ public class LogDispatcher {
     if (stopped) {
       return;
     }
-    //
     LogDispatcherThread thread = new LogDispatcherThread(peer, impl.getConfig(), initialSyncIndex);
     threads.add(thread);
+    // If the initial replica is 1, the executorService won't be initialized. And when adding
+    // dispatcher thread, the executorService should be initialized manually
+    if (this.executorService == null) {
+      initLogSyncThreadPool();
+    }
     executorService.submit(thread);
   }
 
@@ -300,7 +308,9 @@ public class LogDispatcher {
           MetricService.getInstance()
               .getOrCreateHistogram(
                   Metric.STAGE.toString(),
-                  MetricLevel.CORE,
+                  MetricLevel.IMPORTANT,
+                  Tag.NAME.toString(),
+                  Metric.MULTI_LEADER.toString(),
                   Tag.TYPE.toString(),
                   "constructBatch",
                   Tag.REGION.toString(),

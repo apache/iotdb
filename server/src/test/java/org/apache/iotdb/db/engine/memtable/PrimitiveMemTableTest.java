@@ -26,11 +26,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -377,8 +377,8 @@ public class PrimitiveMemTableTest {
   }
 
   private void writeVector(IMemTable memTable)
-      throws IOException, QueryProcessException, MetadataException {
-    memTable.writeAlignedTablet(genInsertTablePlan(), 0, 100);
+      throws IOException, QueryProcessException, MetadataException, WriteProcessException {
+    memTable.insertAlignedTablet(genInsertTableNode(), 0, 100);
 
     AlignedPath fullPath =
         new AlignedPath(
@@ -435,7 +435,8 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testAllType() throws IOException, QueryProcessException, MetadataException {
+  public void testAllType()
+      throws IOException, QueryProcessException, MetadataException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
@@ -496,33 +497,14 @@ public class PrimitiveMemTableTest {
     return ret;
   }
 
-  private InsertTabletPlan genInsertTablePlan() throws IllegalPathException {
+  private static InsertTabletNode genInsertTableNode() throws IllegalPathException {
     String[] measurements = new String[2];
     measurements[0] = "sensor0";
     measurements[1] = "sensor1";
-
-    List<Integer> dataTypesList = new ArrayList<>();
+    String deviceId = "root.sg.device5";
     TSDataType[] dataTypes = new TSDataType[2];
-    dataTypesList.add(TSDataType.BOOLEAN.ordinal());
-    dataTypesList.add(TSDataType.INT64.ordinal());
     dataTypes[0] = TSDataType.BOOLEAN;
     dataTypes[1] = TSDataType.INT64;
-
-    TSEncoding[] encodings = new TSEncoding[2];
-    encodings[0] = TSEncoding.PLAIN;
-    encodings[1] = TSEncoding.GORILLA;
-
-    String deviceId = "root.sg.device5";
-
-    IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema0 = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
-    IMeasurementSchema schema1 = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
-    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
-    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
-
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypesList);
-
     long[] times = new long[100];
     Object[] columns = new Object[2];
     columns[0] = new boolean[100];
@@ -533,17 +515,32 @@ public class PrimitiveMemTableTest {
       ((boolean[]) columns[0])[(int) r] = false;
       ((long[]) columns[1])[(int) r] = r;
     }
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setMeasurementMNodes(mNodes);
-    insertTabletPlan.setAligned(true);
+    TSEncoding[] encodings = new TSEncoding[2];
+    encodings[0] = TSEncoding.PLAIN;
+    encodings[1] = TSEncoding.GORILLA;
 
-    return insertTabletPlan;
+    MeasurementSchema[] schemas = new MeasurementSchema[2];
+    schemas[0] = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    schemas[1] = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+
+    InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(deviceId),
+            true,
+            measurements,
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
+    node.setMeasurementSchemas(schemas);
+    return node;
   }
 
   @Test
-  public void testSerializeSize() throws IOException, QueryProcessException, MetadataException {
+  public void testSerializeSize()
+      throws IOException, QueryProcessException, MetadataException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";

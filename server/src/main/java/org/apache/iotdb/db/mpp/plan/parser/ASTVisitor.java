@@ -532,7 +532,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
-      alterTimeSeriesStatement.setAlias(parseAlias(ctx.alias()));
+      alterTimeSeriesStatement.setAlias(parseAliasNode(ctx.alias()));
     }
   }
 
@@ -602,7 +602,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // Show Storage Group
+  // SHOW DATABASES
 
   @Override
   public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
@@ -627,7 +627,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesStatement);
     }
-    // show devices wtih storage group
+    // show devices with database
     if (ctx.WITH() != null) {
       showDevicesStatement.setSgCol(true);
     }
@@ -1638,8 +1638,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       LoadTsFileStatement loadTsFileStatement =
           new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
-      if (ctx.loadFilesClause() != null) {
-        parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+      if (ctx.loadFileAttributeClauses() != null) {
+        for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
+            ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
+          parseLoadFileAttributeClause(loadTsFileStatement, attributeContext);
+        }
       }
       return loadTsFileStatement;
     } catch (FileNotFoundException e) {
@@ -1654,8 +1657,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    * @param loadTsFileStatement the result statement, setting by clause context
    * @param ctx context of property statement
    */
-  private void parseLoadFiles(
-      LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+  private void parseLoadFileAttributeClause(
+      LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFileAttributeClauseContext ctx) {
     if (ctx.ONSUCCESS() != null) {
       loadTsFileStatement.setDeleteAfterLoad(ctx.DELETE() != null);
     } else if (ctx.SGLEVEL() != null) {
@@ -1667,9 +1670,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           String.format(
               "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
               ctx.getText()));
-    }
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
     }
   }
 
@@ -1909,17 +1909,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return src;
   }
 
-  /** function for parsing Alias. */
+  // alias
+
+  /** function for parsing Alias of ResultColumn . */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
     }
     return alias;
   }
 
+  /** function for parsing AliasNode. */
+  private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseConstant(ctx.constant());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
+      }
+    } else {
+      alias = parseNodeString(ctx.identifier().getText());
+    }
+    return alias;
+  }
   /** Data Control Language (DCL) */
 
   // Create User
@@ -2148,20 +2164,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
-  // Create Storage Group
-
-  @Override
-  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
-    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributesClause() != null) {
-      parseStorageGroupAttributesClause(
-          setStorageGroupStatement, ctx.storageGroupAttributesClause());
-    }
-    return setStorageGroupStatement;
-  }
-
+  // Create database
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
@@ -2179,7 +2182,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
     if (ctx.storageGroupAttributeClause().size() != 0) {
       throw new RuntimeException(
-          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific storage group.");
+          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific database.");
     }
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {
@@ -2237,6 +2240,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
     return new ShowClusterStatement();
+  }
+
+  @Override
+  public Statement visitShowClusterDetails(IoTDBSqlParser.ShowClusterDetailsContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    showClusterStatement.setDetails(true);
+    return showClusterStatement;
   }
 
   @Override
@@ -2767,7 +2777,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowRegion(IoTDBSqlParser.ShowRegionContext ctx) {
     ShowRegionStatement showRegionStatement = new ShowRegionStatement();
-    // TODO: Maybe add a show partition region in the future
+    // TODO: Maybe add a show ConfigNode region in the future
     if (ctx.DATA() != null) {
       showRegionStatement.setRegionType(TConsensusGroupType.DataRegion);
     } else if (ctx.SCHEMA() != null) {
@@ -3187,8 +3197,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
 
-    CreatePipeSinkStatement createPipeSinkStatement =
-        new CreatePipeSinkStatement(StatementType.CREATE_PIPESINK);
+    CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
 
     if (ctx.pipeSinkName != null) {
       createPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));

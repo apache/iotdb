@@ -29,6 +29,12 @@ public class PreDeactivateTemplatePlanImpl implements IPreDeactivateTemplatePlan
 
   private Map<PartialPath, List<Integer>> templateSetInfo;
 
+  public PreDeactivateTemplatePlanImpl() {}
+
+  public PreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
+  }
+
   @Override
   public Map<PartialPath, List<Integer>> getTemplateSetInfo() {
     return templateSetInfo;

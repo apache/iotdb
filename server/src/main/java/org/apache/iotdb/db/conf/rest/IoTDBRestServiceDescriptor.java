@@ -70,6 +70,9 @@ public class IoTDBRestServiceDescriptor {
               properties.getProperty(
                   "rest_query_default_row_size_limit",
                   Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+      conf.setEnableSwagger(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
 
       conf.setEnableHttps(
           Boolean.parseBoolean(

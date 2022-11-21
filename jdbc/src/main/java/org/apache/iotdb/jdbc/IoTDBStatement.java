@@ -302,7 +302,7 @@ public class IoTDBStatement implements Statement {
                 execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
-                true);
+                execResp.moreData);
       }
       return true;
     }
@@ -343,7 +343,7 @@ public class IoTDBStatement implements Statement {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            && result[i] != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           allSuccess = false;
           message
               .append(execResp.getSubStatus().get(i).message)
@@ -356,7 +356,7 @@ public class IoTDBStatement implements Statement {
         allSuccess =
             allSuccess
                 && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
+                    || execResp.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
         result[i] = execResp.getCode();
         message.setLength(0);
         message.append(execResp.getMessage());
@@ -457,7 +457,8 @@ public class IoTDBStatement implements Statement {
               execResp.operationType,
               execResp.columns,
               execResp.sgColumns,
-              aliasColumn);
+              aliasColumn,
+              execResp.moreData);
     }
     return resultSet;
   }

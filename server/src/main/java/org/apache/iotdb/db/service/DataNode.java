@@ -57,7 +57,6 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -82,11 +81,14 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.service.DataNodeServerCommandLine.MODE_START;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -127,14 +129,19 @@ public class DataNode implements DataNodeMBean {
     new DataNodeServerCommandLine().doMain(args);
   }
 
-  protected void serverCheckAndInit() throws ConfigurationException, IOException {
+  protected void serverCheckAndInit(String mode) throws ConfigurationException, IOException {
+    config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
+    if (MODE_START.equals(mode)) {
+      // Only checkDirectory when start DataNode
+      IoTDBStartCheck.getInstance().checkDirectory();
+    }
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
       if (endPoint.getIp().equals("0.0.0.0")) {
         throw new ConfigurationException(
-            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
       }
     }
 
@@ -162,7 +169,6 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    config.setClusterMode(true);
     return true;
   }
 
@@ -174,9 +180,6 @@ public class DataNode implements DataNodeMBean {
 
     // Register services
     JMXService.registerMBean(getInstance(), mbeanName);
-    // set the mpp mode to true
-    config.setMppMode(true);
-    config.setClusterMode(true);
   }
 
   /** register DataNode with ConfigNode */
@@ -205,6 +208,9 @@ public class DataNode implements DataNodeMBean {
 
         // store triggerInformationList
         getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
+
+        // store ttl information
+        StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -238,7 +244,7 @@ public class DataNode implements DataNodeMBean {
           // In current implementation, only MultiLeader need separated memory from Consensus
           if (!config
               .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.MultiLeaderConsensus)) {
+              .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
             IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
 
@@ -256,8 +262,8 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait 5s to start the next try
-        Thread.sleep(config.getJoinClusterTimeOutMs());
+        // wait to start the next try
+        Thread.sleep(config.getJoinClusterRetryIntervalMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);
@@ -280,6 +286,7 @@ public class DataNode implements DataNodeMBean {
   /** register services and set up DataNode */
   private void active() throws StartupException {
     try {
+      processPid();
       setUp();
     } catch (StartupException | QueryProcessException e) {
       logger.error("Meet error while starting up.", e);
@@ -293,6 +300,13 @@ public class DataNode implements DataNodeMBean {
       DataRegionConsensusImpl.setupAndGetInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
+    }
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
     }
   }
 
@@ -315,7 +329,7 @@ public class DataNode implements DataNodeMBean {
 
     // close wal when using ratis consensus
     if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
@@ -328,7 +342,7 @@ public class DataNode implements DataNodeMBean {
     registerUdfServices();
 
     logger.info(
-        "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
@@ -348,7 +362,6 @@ public class DataNode implements DataNodeMBean {
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
     // registerManager.register(SettleService.getINSTANCE());
-    registerManager.register(TriggerRegistrationService.getInstance());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
@@ -585,7 +598,7 @@ public class DataNode implements DataNodeMBean {
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
         TriggerExecutableManager.getInstance()
-            .saveToLibDir(jarList.get(i), triggerInformationList.get(i).getJarName());
+            .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException e) {
       throw new StartupException(e);
@@ -633,10 +646,6 @@ public class DataNode implements DataNodeMBean {
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
     logger.info("Spent {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        config.getSeqTsFileSize(),
-        config.getUnSeqTsFileSize());
   }
 
   public void stop() {

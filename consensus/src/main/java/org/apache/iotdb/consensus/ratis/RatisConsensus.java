@@ -570,7 +570,7 @@ class RatisConsensus implements IConsensus {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
       }
 
-      reply = forceStepDownLeader(raftGroup);
+      reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
@@ -584,15 +584,21 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
-  // TODO when Ratis implements read leader transfer mechanism, change this implementation
-  private RaftClientReply forceStepDownLeader(RaftGroup group) throws IOException {
+  private void forceStepDownLeader(RaftGroup group) throws IOException {
+    // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
+    // election
+    transferLeader(group, null);
+  }
+
+  private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader) throws IOException {
     RatisClient client = null;
     try {
       client = getRaftClient(group);
       // TODO tuning for timeoutMs
-      // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
-      // election
-      return client.getRaftClient().admin().transferLeadership(null, 5000);
+      return client
+          .getRaftClient()
+          .admin()
+          .transferLeadership(newLeader != null ? newLeader.getId() : null, 10000);
     } finally {
       if (client != null) {
         client.returnSelf();
@@ -700,16 +706,17 @@ class RatisConsensus implements IConsensus {
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {
+    logger.error("{} request failed with exception {}", this, e);
     return ConsensusGenericResponse.newBuilder().setSuccess(false).setException(e).build();
   }
 
   private ConsensusWriteResponse failedWrite(ConsensusException e) {
-    logger.error("write request failed with exception", e);
+    logger.error("{} write request failed with exception {}", this, e);
     return ConsensusWriteResponse.newBuilder().setException(e).build();
   }
 
   private ConsensusReadResponse failedRead(ConsensusException e) {
-    logger.error("read request failed with exception", e);
+    logger.error("{} read request failed with exception {}", this, e);
     return ConsensusReadResponse.newBuilder().setException(e).build();
   }
 

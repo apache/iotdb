@@ -32,7 +32,7 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
   /**
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd
    * @param displayWindowEnd displayWindowBegin < displayWindowEnd
-   * @param sessionTimeGap 0 < sessionTimeGap
+   * @param sessionTimeGap 0 <= sessionTimeGap
    */
   public SessionTimeWindowAccessStrategy(
       long displayWindowBegin, long displayWindowEnd, long sessionTimeGap) {
@@ -46,7 +46,7 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
    * and display window end will be set to the same as the maximum timestamp of the query result
    * set.
    *
-   * @param sessionTimeGap 0 < sessionTimeGap
+   * @param sessionTimeGap 0 <= sessionTimeGap
    */
   public SessionTimeWindowAccessStrategy(long sessionTimeGap) {
     this.displayWindowBegin = Long.MIN_VALUE;
@@ -56,9 +56,11 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
 
   @Override
   public void check() {
-    if (sessionTimeGap <= 0) {
+    if (sessionTimeGap < 0) {
       throw new RuntimeException(
-          String.format("Parameter sessionTimeGap(%d) should be positive.", sessionTimeGap));
+          String.format(
+              "Parameter sessionTimeGap(%d) should be equal to or greater than zero.",
+              sessionTimeGap));
     }
     if (displayWindowEnd < displayWindowBegin) {
       throw new RuntimeException(

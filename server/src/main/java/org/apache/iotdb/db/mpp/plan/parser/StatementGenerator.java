@@ -99,7 +99,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -257,7 +256,7 @@ public class StatementGenerator {
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
-      dataTypes[i] = TSDataType.values()[insertTabletReq.types.get(i)];
+      dataTypes[i] = TSDataType.deserialize((byte) insertTabletReq.types.get(i).intValue());
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
@@ -286,7 +285,7 @@ public class StatementGenerator {
       insertTabletStatement.setRowCount(req.sizeList.get(i));
       TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
       for (int j = 0; j < dataTypes.length; j++) {
-        dataTypes[j] = TSDataType.values()[req.typesList.get(i).get(j)];
+        dataTypes[j] = TSDataType.deserialize((byte) req.typesList.get(i).get(j).intValue());
       }
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
@@ -381,9 +380,7 @@ public class StatementGenerator {
       statement.setDevicePath(insertStatement.getDevicePath());
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
-      TSDataType[] dataTypes = new TSDataType[statement.getMeasurements().length];
-      Arrays.fill(dataTypes, TSDataType.TEXT);
-      statement.setDataTypes(dataTypes);
+      statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
       statement.setTime(req.timestamps.get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
@@ -398,7 +395,7 @@ public class StatementGenerator {
   }
 
   public static Statement createStatement(String storageGroup) throws IllegalPathException {
-    // construct set storage group statement
+    // construct create database statement
     SetStorageGroupStatement statement = new SetStorageGroupStatement();
     statement.setStorageGroupPath(new PartialPath(storageGroup));
     return statement;
@@ -408,9 +405,9 @@ public class StatementGenerator {
     // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
     statement.setPath(new PartialPath(req.path));
-    statement.setDataType(TSDataType.values()[req.dataType]);
-    statement.setEncoding(TSEncoding.values()[req.encoding]);
-    statement.setCompressor(CompressionType.values()[req.compressor]);
+    statement.setDataType(TSDataType.deserialize((byte) req.dataType));
+    statement.setEncoding(TSEncoding.deserialize((byte) req.encoding));
+    statement.setCompressor(CompressionType.deserialize((byte) req.compressor));
     statement.setProps(req.props);
     statement.setTags(req.tags);
     statement.setAttributes(req.attributes);
@@ -425,15 +422,15 @@ public class StatementGenerator {
     statement.setDevicePath(new PartialPath(req.prefixPath));
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int dataType : req.dataTypes) {
-      dataTypes.add(TSDataType.values()[dataType]);
+      dataTypes.add(TSDataType.deserialize((byte) dataType));
     }
     List<TSEncoding> encodings = new ArrayList<>();
     for (int encoding : req.encodings) {
-      encodings.add(TSEncoding.values()[encoding]);
+      encodings.add(TSEncoding.deserialize((byte) encoding));
     }
     List<CompressionType> compressors = new ArrayList<>();
     for (int compressor : req.compressors) {
-      compressors.add(CompressionType.values()[compressor]);
+      compressors.add(CompressionType.deserialize((byte) compressor));
     }
     statement.setMeasurements(req.measurements);
     statement.setDataTypes(dataTypes);
@@ -454,15 +451,15 @@ public class StatementGenerator {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int dataType : req.dataTypes) {
-      dataTypes.add(TSDataType.values()[dataType]);
+      dataTypes.add(TSDataType.deserialize((byte) dataType));
     }
     List<TSEncoding> encodings = new ArrayList<>();
     for (int encoding : req.encodings) {
-      encodings.add(TSEncoding.values()[encoding]);
+      encodings.add(TSEncoding.deserialize((byte) encoding));
     }
     List<CompressionType> compressors = new ArrayList<>();
     for (int compressor : req.compressors) {
-      compressors.add(CompressionType.values()[compressor]);
+      compressors.add(CompressionType.deserialize((byte) compressor));
     }
     CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
     statement.setPaths(paths);
@@ -584,9 +581,10 @@ public class StatementGenerator {
       String prefix = ReadWriteIOUtils.readString(buffer);
       isAlign = ReadWriteIOUtils.readBool(buffer);
       String measurementName = ReadWriteIOUtils.readString(buffer);
-      TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readByte(buffer)];
-      TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
-      CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
+      TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readByte(buffer));
+      TSEncoding encoding = TSEncoding.deserialize(ReadWriteIOUtils.readByte(buffer));
+      CompressionType compressionType =
+          CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);

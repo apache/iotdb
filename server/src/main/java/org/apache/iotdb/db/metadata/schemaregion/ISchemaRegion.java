@@ -25,23 +25,18 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -275,7 +270,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   /**
-   * Get all device paths and according storage group paths as ShowDevicesResult.
+   * Get all device paths and according database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
@@ -315,11 +310,6 @@ public interface ISchemaRegion {
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
-
-  // attention: this path must be a device node
-  List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException;
-
   // endregion
   // endregion
 
@@ -396,8 +386,6 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for InsertPlan process
-  /** get schema for device. Attention!!! Only support insertPlan */
-  IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException, IOException;
 
   DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
@@ -410,25 +398,6 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Template operations
-  /**
-   * Get all paths set designated template
-   *
-   * @param templateName designated template name, blank string for any template exists
-   * @return paths set
-   */
-  Set<String> getPathsSetTemplate(String templateName) throws MetadataException;
-
-  Set<String> getPathsUsingTemplate(String templateName) throws MetadataException;
-
-  boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException;
-
-  void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException;
-
-  void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException;
-
-  void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException;
-
   void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException;
 

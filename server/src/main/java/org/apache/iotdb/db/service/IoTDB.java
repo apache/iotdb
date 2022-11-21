@@ -35,7 +35,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
@@ -70,6 +70,7 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -89,6 +90,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void active() {
+    processPid();
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
       checks.verify();
@@ -118,7 +120,15 @@ public class IoTDB implements IoTDBMBean {
     config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
 
+    processPid();
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {
@@ -159,21 +169,10 @@ public class IoTDB implements IoTDBMBean {
     }
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
-
-    while (!StorageEngine.getInstance().isAllSgReady()) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up.", e);
-        Thread.currentThread().interrupt();
-        return;
-      }
-    }
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
-    registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(MetricService.getInstance());
     // bind predefined metrics
     DataNodeMetricsHelper.bind();
@@ -211,10 +210,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -114,7 +115,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
-      LOGGER.error("Failed to set storage group, caused by ", e);
+      LOGGER.error("Failed to create database, caused by ", e);
       future.setException(e);
     }
     return future;
@@ -191,7 +192,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
                 String.format(
                     "Path %s does not exist",
                     Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
-                TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()));
+                TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
         return future;
       } else {
         LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
@@ -368,7 +369,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCluster() {
+  public SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
         new IoTDBException(

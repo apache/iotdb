@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -94,7 +95,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
 
-  SettableFuture<ConfigTaskResult> showCluster();
+  SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement);
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 

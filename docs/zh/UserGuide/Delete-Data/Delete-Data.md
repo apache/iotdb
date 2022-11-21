@@ -80,7 +80,7 @@ Msg: The statement is executed successfully.
 ```
 
 ## 删除时间分区 （实验性功能）
-您可以通过如下语句来删除某一个存储组下的指定时间分区：
+您可以通过如下语句来删除某一个 database 下的指定时间分区：
 
 ```sql
 DELETE PARTITION root.ln 0,1,2

@@ -75,7 +75,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -121,6 +121,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -193,7 +194,7 @@ public class ConfigManager implements IManager {
   /** CQ */
   private final CQManager cqManager;
 
-  private final PartitionRegionStateMachine stateMachine;
+  private final ConfigNodeRegionStateMachine stateMachine;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -219,7 +220,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             syncInfo,
             cqInfo);
-    this.stateMachine = new PartitionRegionStateMachine(this, executor);
+    this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
@@ -239,9 +240,15 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    consensusManager.close();
-    partitionManager.getRegionMaintainer().shutdown();
-    procedureManager.shiftExecutor(false);
+    if (consensusManager != null) {
+      consensusManager.close();
+    }
+    if (partitionManager != null) {
+      partitionManager.getRegionMaintainer().shutdown();
+    }
+    if (procedureManager != null) {
+      procedureManager.shiftExecutor(false);
+    }
   }
 
   @Override
@@ -257,6 +264,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
@@ -434,7 +442,7 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
@@ -729,7 +737,7 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
@@ -750,8 +758,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(
-          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
@@ -931,6 +938,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.setDataNodeStatus(req)
+        : status;
+  }
+
+  @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
@@ -1005,8 +1020,8 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * @param storageGroups the storage groups to check
-   * @return List of PartialPath the storage groups that not exist
+   * @param storageGroups the databases to check
+   * @return List of PartialPath the databases that not exist
    */
   public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
@@ -1097,7 +1112,11 @@ public class ConfigManager implements IManager {
 
     Map<PartialPath, List<Template>> templateSetInfo = templateSetInfoResp.getPatternTemplateMap();
     if (templateSetInfo.isEmpty()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return RpcUtils.getStatus(
+          TSStatusCode.TEMPLATE_NOT_SET,
+          String.format(
+              "Schema Template %s is not set on any prefix path of %s",
+              req.getTemplateName(), patternList));
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1112,7 +1131,11 @@ public class ConfigManager implements IManager {
       }
 
       if (filteredTemplateSetInfo.isEmpty()) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        return RpcUtils.getStatus(
+            TSStatusCode.TEMPLATE_NOT_SET,
+            String.format(
+                "Schema Template %s is not set on any prefix path of %s",
+                req.getTemplateName(), patternList));
       }
 
       templateSetInfo = filteredTemplateSetInfo;
@@ -1327,7 +1350,7 @@ public class ConfigManager implements IManager {
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
       PathPatternTree patternTree) {
-    // Get all storage groups and slots by getting schema partition
+    // Get all databases and slots by getting schema partition
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -98,7 +99,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(time);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
@@ -177,7 +178,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
   }
 
   @Override
@@ -188,7 +189,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     if (deviceSchemaInfo == null) {
       throw new PathNotExistException(
           Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + s)
+              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
               .collect(Collectors.toList()));
     }
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -234,7 +235,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * Notice: measurementSchemas must be initialized before calling this method
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void transferType() throws QueryProcessException {
+  public void transferType() throws QueryProcessException {
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist

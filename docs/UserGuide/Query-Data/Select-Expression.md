@@ -147,6 +147,13 @@ Supported input data types: `All Types`
 
 Output data type: `BOOLEAN`
 
+Note: Please ensure the value strings in set can be cast to the DataType of Operand
+> Example: 
+> 
+>`s1 in (1, 2, 3, 'test')`, DataType of `s1` is `INT32`
+> 
+> We will throw Exception because `'test'` cannot be cast to `INT32`
+
 #### String Match Operators
 
 Supported operators `LIKE`, `REGEXP`
@@ -417,7 +424,7 @@ The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -120,7 +121,6 @@ public class TriggerManagementService {
       if (executor != null) {
         executor.onDrop();
       }
-
       if (triggerInformation == null) {
         return;
       }
@@ -132,6 +132,8 @@ public class TriggerManagementService {
             .removeFileUnderLibRoot(triggerInformation.getJarName());
         TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
       }
+    } catch (TriggerExecutionException ignored) {
+      // Drop trigger can success even onDrop throw an exception for now
     } finally {
       releaseLock();
     }
@@ -320,7 +322,8 @@ public class TriggerManagementService {
         | InvocationTargetException
         | NoSuchMethodException
         | IllegalAccessException
-        | ClassNotFoundException e) {
+        | ClassNotFoundException
+        | ClassCastException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to reflect trigger instance with className(%s), because %s", className, e));

@@ -91,7 +91,7 @@ public class IoTDBClusterRestartIT {
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ratisConsensusProtocolClass);
     ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass);
     ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass);
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
@@ -99,7 +99,7 @@ public class IoTDBClusterRestartIT {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
@@ -113,7 +113,7 @@ public class IoTDBClusterRestartIT {
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

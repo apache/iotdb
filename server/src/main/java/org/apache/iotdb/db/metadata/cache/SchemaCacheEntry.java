@@ -28,6 +28,8 @@ import java.util.Map;
 
 public class SchemaCacheEntry {
 
+  private final String storageGroup;
+
   private final MeasurementSchema measurementSchema;
 
   private final Map<String, String> tagMap;
@@ -36,7 +38,11 @@ public class SchemaCacheEntry {
   private volatile ILastCacheContainer lastCacheContainer = null;
 
   SchemaCacheEntry(
-      MeasurementSchema measurementSchema, Map<String, String> tagMap, boolean isAligned) {
+      String storageGroup,
+      MeasurementSchema measurementSchema,
+      Map<String, String> tagMap,
+      boolean isAligned) {
+    this.storageGroup = storageGroup.intern();
     this.measurementSchema = measurementSchema;
     this.isAligned = isAligned;
     this.tagMap = tagMap;
@@ -44,6 +50,10 @@ public class SchemaCacheEntry {
 
   public String getSchemaEntryId() {
     return measurementSchema.getMeasurementId();
+  }
+
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
   public MeasurementSchema getMeasurementSchema() {

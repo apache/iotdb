@@ -89,18 +89,18 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
-        (times[0] / TimePartitionUtils.timePartitionIntervalForRouting)
-            * TimePartitionUtils.timePartitionIntervalForRouting; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionIntervalForRouting; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[0]);
+        (times[0] / TimePartitionUtils.timePartitionInterval)
+            * TimePartitionUtils.timePartitionInterval; // included
+    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (times[i] / TimePartitionUtils.timePartitionIntervalForRouting + 1)
-                * TimePartitionUtils.timePartitionIntervalForRouting;
-        timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[i]);
+            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
+                * TimePartitionUtils.timePartitionInterval;
+        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
       }
     }
     result.add(timePartitionSlot);
@@ -111,8 +111,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
     TRegionReplicaSet regionReplicaSet =
         dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(),
-            TimePartitionUtils.getTimePartitionForRouting(times[times.length - 1]));
+            devicePath.getFullPath(), TimePartitionUtils.getTimePartition(times[times.length - 1]));
     return Collections.singletonList(
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }

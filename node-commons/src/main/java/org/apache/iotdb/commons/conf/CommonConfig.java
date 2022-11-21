@@ -85,10 +85,10 @@ public class CommonConfig {
   private FSType systemFileStorageFs = FSType.LOCAL;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms.
+   * default TTL for databases that are not set TTL by statements, in ms.
    *
-   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected. Unit: millisecond
+   * <p>Notice: if this property is changed, previous created database which are not set TTL will
+   * also be affected. Unit: millisecond
    */
   private long defaultTTLInMs = Long.MAX_VALUE;
 
@@ -117,7 +117,7 @@ public class CommonConfig {
   private volatile String statusReason = null;
 
   /** Disk Monitor */
-  private double diskSpaceWarningThreshold = 5.0;
+  private double diskSpaceWarningThreshold = 0.05;
 
   CommonConfig() {}
 
@@ -306,6 +306,7 @@ public class CommonConfig {
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
+    this.statusReason = null;
 
     switch (newStatus) {
       case ReadOnly:

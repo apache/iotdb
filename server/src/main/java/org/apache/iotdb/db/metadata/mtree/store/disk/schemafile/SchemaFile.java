@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -60,8 +59,8 @@ public class SchemaFile implements ISchemaFile {
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
   // attributes for this schema file
-  private String filePath;
-  private String logPath;
+  private final String filePath;
+  private final String logPath;
   private String storageGroupName;
   private long dataTTL;
   private boolean isEntity;
@@ -69,7 +68,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
-  private long lastSGAddr; // last segment of storage group node
+  private long lastSGAddr; // last segment of database node
 
   private IPageManager pageManager;
 
@@ -80,12 +79,11 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
-    String folderPath =
-        SchemaFileConfig.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId;
+    String dirPath = getDirPath(sgName, schemaRegionId);
 
     this.storageGroupName = sgName;
-    this.filePath = folderPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
-    this.logPath = folderPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
+    this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
+    this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -100,8 +98,8 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = SystemFileFactory.INSTANCE.getFile(folderPath);
-      folder.mkdirs();
+      File dir = SystemFileFactory.INSTANCE.getFile(dirPath);
+      dir.mkdirs();
       pmtFile.createNewFile();
     }
 
@@ -151,6 +149,14 @@ public class SchemaFile implements ISchemaFile {
     return new SchemaFile(file);
   }
 
+  private static String getDirPath(String sgName, int schemaRegionId) {
+    return SchemaFileConfig.SCHEMA_FOLDER
+        + File.separator
+        + sgName
+        + File.separator
+        + schemaRegionId;
+  }
+
   // region Interface Implementation
 
   @Override
@@ -171,7 +177,9 @@ public class SchemaFile implements ISchemaFile {
     }
     resNode.setFullPath(storageGroupName);
     if (templateHash != 0) {
-      resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      //
+      // resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      // todo record the templateId generated in configNode
     }
     return resNode;
   }
@@ -180,8 +188,9 @@ public class SchemaFile implements ISchemaFile {
   public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    this.templateHash =
-        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
+    // todo record the templateId generated in configNode
+    //    this.templateHash =
+    //        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
     updateHeader();
     return true;
   }
@@ -298,7 +307,7 @@ public class SchemaFile implements ISchemaFile {
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
-   *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
+   *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
    *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
@@ -401,6 +410,55 @@ public class SchemaFile implements ISchemaFile {
   public long getTargetSegmentOnTest(long srcSegAddr, String key)
       throws IOException, MetadataException {
     return ((PageManager) pageManager).getTargetSegmentAddressOnTest(srcSegAddr, key);
+  }
+
+  // endregion
+
+  // region Snapshot
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    File schemaFileSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    try {
+      sync();
+      if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating schema file snapshot.",
+            schemaFileSnapshot.getName());
+        return false;
+      }
+      Files.copy(Paths.get(filePath), schemaFileSnapshot.toPath());
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create SchemaFile snapshot due to {}", e.getMessage(), e);
+      schemaFileSnapshot.delete();
+      return false;
+    }
+  }
+
+  public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
+      throws IOException, MetadataException {
+    File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+    if (!snapshot.exists()) {
+      throw new SchemaFileNotExists(snapshot.getPath());
+    }
+    File schemaFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_FILE_NAME);
+    File schemaLogFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
+    Files.deleteIfExists(schemaFile.toPath());
+    Files.deleteIfExists(schemaLogFile.toPath());
+    Files.createLink(schemaFile.toPath(), snapshot.toPath());
+    return new SchemaFile(
+        sgName,
+        schemaRegionId,
+        false,
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+        false);
   }
 
   // endregion

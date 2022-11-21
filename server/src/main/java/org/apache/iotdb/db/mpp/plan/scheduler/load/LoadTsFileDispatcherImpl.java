@@ -112,7 +112,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint); // TODO: can read only once
+        dispatchRemote(instance, endPoint);
       }
     }
   }
@@ -138,7 +138,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -157,7 +157,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
       if (pieceNode == null) {
         throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
       }
       TSStatus resultStatus =
           StorageEngineV2.getInstance()
@@ -226,7 +226,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }

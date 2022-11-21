@@ -61,19 +61,14 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
-  public boolean isEnablePartition() {
-    return IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
-  }
-
-  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
     return this;
   }
 
   @Override
   public long getPartitionInterval() {
-    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
   @Override
@@ -103,12 +98,6 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
-    return this;
-  }
-
-  @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 
@@ -249,16 +238,14 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(concurrentCompactionThread);
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(concurrentCompactionThread);
     return this;
   }
 
   @Override
   public int getConcurrentCompactionThread() {
-    return IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    return IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
   }
 
   @Override

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -48,6 +47,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -83,6 +83,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
+      processPid();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -126,6 +127,7 @@ public class ConfigNode implements ConfigNodeMBean {
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
+
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
         return;
@@ -173,6 +175,13 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
+  void processPid() {
+    String pidFile = System.getProperty(ConfigNodeConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
+  }
+
   private void initConfigManager() {
     try {
       configManager = new ConfigManager();
@@ -193,9 +202,6 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
-
-    // Setup UDFService
-    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
 
     registerManager.register(MetricService.getInstance());
     // bind predefined metric sets
@@ -254,12 +260,17 @@ public class ConfigNode implements ConfigNodeMBean {
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
-      } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.CONFIGURATION_ERROR.getStatusCode()) {
         LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
+      } else if (status.getCode() == TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new StartupException(
+            "The target ConfigNode is not started successfully, "
+                + "please check the cn_target_config_node_list config!");
       }
 
       try {

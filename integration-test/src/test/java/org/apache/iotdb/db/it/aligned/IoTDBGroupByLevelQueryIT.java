@@ -61,7 +61,7 @@ public class IoTDBGroupByLevelQueryIT {
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg2");
+      statement.execute("CREATE DATABASE root.sg2");
       statement.execute(
           "create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
       for (int i = 1; i <= 10; i++) {

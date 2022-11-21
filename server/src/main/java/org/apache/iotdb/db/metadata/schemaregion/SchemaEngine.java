@@ -129,7 +129,7 @@ public class SchemaEngine {
     if (!(config.isClusterMode()
             && config
                 .getSchemaRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.RatisConsensus))
+                .equals(ConsensusFactory.RATIS_CONSENSUS))
         && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -146,7 +146,7 @@ public class SchemaEngine {
   }
 
   /**
-   * Scan the storage group and schema region directories to recover schema regions and return the
+   * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
   private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
@@ -284,7 +284,7 @@ public class SchemaEngine {
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
-        // TODO: handle duplicated regionId across different storage group
+        // TODO: handle duplicated regionId across different database
         ISchemaRegion schemaRegion =
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;

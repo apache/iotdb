@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
@@ -55,16 +56,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -113,7 +107,7 @@ public class SchemaQueryScanOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
+      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_DATABASE, COLUMN_IS_ALIGNED);
       DevicesSchemaScanOperator deviceMetaScanOperator =
           new DevicesSchemaScanOperator(
               planNodeId,
@@ -182,16 +176,6 @@ public class SchemaQueryScanOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns =
-          Arrays.asList(
-              COLUMN_TIMESERIES,
-              COLUMN_TIMESERIES_ALIAS,
-              COLUMN_STORAGE_GROUP,
-              COLUMN_TIMESERIES_DATATYPE,
-              COLUMN_TIMESERIES_ENCODING,
-              COLUMN_TIMESERIES_COMPRESSION,
-              COLUMN_TAGS,
-              COLUMN_ATTRIBUTES);
       TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
           new TimeSeriesSchemaScanOperator(
               planNodeId,
@@ -207,12 +191,13 @@ public class SchemaQueryScanOperatorTest {
               Collections.emptyMap());
       while (timeSeriesMetaScanOperator.hasNext()) {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
-        assertEquals(8, tsBlock.getValueColumnCount());
+        assertEquals(
+            ColumnHeaderConstant.showTimeSeriesColumnHeaders.size(), tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
         assertEquals(10, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
-          for (int j = 0; j < columns.size(); j++) {
+          for (int j = 0; j < ColumnHeaderConstant.showTimeSeriesColumnHeaders.size(); j++) {
             Binary binary =
                 tsBlock.getColumn(j).isNull(i) ? null : tsBlock.getColumn(j).getBinary(i);
             String value = binary == null ? "null" : binary.toString();

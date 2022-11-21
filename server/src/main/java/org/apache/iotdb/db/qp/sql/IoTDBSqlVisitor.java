@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -100,7 +99,6 @@ import org.apache.iotdb.db.qp.logical.sys.CreatePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreatePipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -110,7 +108,6 @@ import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
@@ -144,9 +141,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTemplatesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
@@ -234,17 +229,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** 2. Data Definition Language (DDL) */
 
-  // Create Storage Group
-
-  @Override
-  public Operator visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
-    SetStorageGroupOperator setStorageGroupOperator =
-        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupOperator.setPath(path);
-    return setStorageGroupOperator;
-  }
-
+  // Create database
   @Override
   public Operator visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupOperator setStorageGroupOperator =
@@ -637,33 +622,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return createFunctionOperator;
   }
 
-  // Create Trigger
-
-  @Override
-  public Operator visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
-    CreateTriggerOperator createTriggerOperator =
-        new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
-    createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    if (ctx.triggerEventClause().DELETE() != null) {
-      throw new SQLParserException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
-    }
-    createTriggerOperator.setEvent(
-        ctx.triggerEventClause().BEFORE() != null
-            ? TriggerEvent.BEFORE_INSERT
-            : TriggerEvent.AFTER_INSERT);
-    createTriggerOperator.setFullPath(parsePrefixPath(ctx.prefixPath()));
-    createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
-    if (ctx.triggerAttributeClause() != null) {
-      for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
-          ctx.triggerAttributeClause().triggerAttribute()) {
-        createTriggerOperator.addAttribute(
-            parseAttributeKey(triggerAttributeContext.key),
-            parseAttributeValue(triggerAttributeContext.value));
-      }
-    }
-    return createTriggerOperator;
-  }
-
   // Create Continuous Query
 
   @Override
@@ -876,11 +834,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
     if (alterTimeSeriesOperator != null && ctx.ALIAS() != null) {
-      alterTimeSeriesOperator.setAlias(parseAlias(ctx.alias()));
+      alterTimeSeriesOperator.setAlias(parseAliasNode(ctx.alias()));
     }
   }
 
-  // Delete Storage Group
+  // Delete database
 
   @Override
   public Operator visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
@@ -933,15 +891,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new DropFunctionOperator(SQLConstant.TOK_FUNCTION_DROP);
     dropFunctionOperator.setUdfName(parseIdentifier(ctx.udfName.getText()));
     return dropFunctionOperator;
-  }
-
-  // Drop Trigger
-
-  @Override
-  public Operator visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
-    DropTriggerOperator dropTriggerOperator = new DropTriggerOperator(SQLConstant.TOK_TRIGGER_DROP);
-    dropTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return dropTriggerOperator;
   }
 
   // Drop Continuous Query
@@ -1003,26 +952,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
-  // Start Trigger
-
-  @Override
-  public Operator visitStartTrigger(IoTDBSqlParser.StartTriggerContext ctx) {
-    StartTriggerOperator startTriggerOperator =
-        new StartTriggerOperator(SQLConstant.TOK_TRIGGER_START);
-    startTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return startTriggerOperator;
-  }
-
-  // Stop Trigger
-
-  @Override
-  public Operator visitStopTrigger(IoTDBSqlParser.StopTriggerContext ctx) {
-    StopTriggerOperator stopTriggerOperator = new StopTriggerOperator(SQLConstant.TOK_TRIGGER_STOP);
-    stopTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return stopTriggerOperator;
-  }
-
-  // Show Storage Group
+  // SHOW DATABASES
 
   @Override
   public Operator visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
@@ -1051,7 +981,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesOperator);
     }
-    // show devices wtih storage group
+    // show devices wtih database
     if (ctx.WITH() != null) {
       showDevicesOperator.setSgCol(true);
     }
@@ -2245,7 +2175,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitSettle(IoTDBSqlParser.SettleContext ctx) {
     SettleOperator settleOperator = new SettleOperator(SQLConstant.TOK_SETTLE);
     if (ctx.prefixPath() != null) {
-      // Storage Group
+      // database
       PartialPath sgPath = parsePrefixPath(ctx.prefixPath());
       settleOperator.setSgPath(sgPath);
       settleOperator.setIsSgPath(true);
@@ -2386,8 +2316,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
             true,
             true);
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
+    if (ctx.loadFileAttributeClauses() != null) {
+      for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
+          ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
+        parseLoadFileAttributeClause(loadFilesOperator, attributeContext);
+      }
     }
     return loadFilesOperator;
   }
@@ -2399,17 +2332,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    * @param operator the result operator, setting by clause context
    * @param ctx context of property statement
    */
-  private void parseLoadFiles(
-      LoadFilesOperator operator, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+  private void parseLoadFileAttributeClause(
+      LoadFilesOperator operator, IoTDBSqlParser.LoadFileAttributeClauseContext ctx) {
     if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
       operator.setVerifyMetadata(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else if (ctx.ONSUCCESS() != null) {
       operator.setDeleteAfterLoad(ctx.DELETE() != null);
-    }
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 
@@ -2724,13 +2654,28 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // alias
 
-  /** function for parsing Alias. */
+  /** function for parsing Alias of ResultColumn . */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
-      alias = parseStringLiteral(ctx.constant().getText());
+      alias = parseConstant(ctx.constant());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
+    }
+    return alias;
+  }
+
+  /** function for parsing AliasNode. */
+  private String parseAliasNode(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.constant() != null) {
+      alias = parseConstant(ctx.constant());
+      if (PathUtils.isRealNumber(alias)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
+        throw new SQLParserException("Not support for this alias, Please enclose in back quotes.");
+      }
+    } else {
+      alias = parseNodeString(ctx.identifier().getText());
     }
     return alias;
   }

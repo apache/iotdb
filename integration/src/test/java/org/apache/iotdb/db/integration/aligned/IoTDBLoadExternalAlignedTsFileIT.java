@@ -65,8 +65,8 @@ public class IoTDBLoadExternalAlignedTsFileIT {
 
   private static String[] insertSequenceSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
-        "SET STORAGE GROUP TO root.test",
+        "CREATE DATABASE root.vehicle",
+        "CREATE DATABASE root.test",
         "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 encoding=RLE, s1 TEXT encoding=PLAIN)",
         "CREATE ALIGNED TIMESERIES root.vehicle.d1(s2 FLOAT encoding=RLE, s3 BOOLEAN encoding=PLAIN)",
         "CREATE ALIGNED TIMESERIES root.test.d0(s0 INT32 encoding=RLE, s1 TEXT encoding=PLAIN)",
@@ -134,14 +134,13 @@ public class IoTDBLoadExternalAlignedTsFileIT {
   private int prevCompactionThread;
 
   private static String[] deleteSqls =
-      new String[] {"DELETE STORAGE GROUP root.vehicle", "DELETE STORAGE GROUP root.test"};
+      new String[] {"DELETE DATABASE root.vehicle", "DELETE DATABASE root.test"};
 
   @Before
   public void setUp() throws Exception {
     prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(1);
-    prevCompactionThread =
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    prevCompactionThread = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
@@ -150,7 +149,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(prevCompactionThread);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(prevCompactionThread);
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(prevVirtualPartitionNum);
   }
 
@@ -910,8 +909,8 @@ public class IoTDBLoadExternalAlignedTsFileIT {
       List<String> metaDataSqls =
           new ArrayList<>(
               Arrays.asList(
-                  "SET STORAGE GROUP TO root.vehicle",
-                  "SET STORAGE GROUP TO root.test",
+                  "CREATE DATABASE root.vehicle",
+                  "CREATE DATABASE root.test",
                   "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE",
                   "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
                   "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",

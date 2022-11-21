@@ -57,7 +57,7 @@ public class StorageGroupPartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupPartitionTable.class);
 
   private volatile boolean isPredeleted = false;
-  // The name of storage group
+  // The name of database
   private String storageGroupName;
 
   // RegionGroup
@@ -407,7 +407,7 @@ public class StorageGroupPartitionTable {
         return dataPartitionTable.getSeriesSlotList();
       case SchemaRegion:
         return schemaPartitionTable.getSeriesSlotList();
-      case PartitionRegion:
+      case ConfigNodeRegion:
       default:
         return Stream.concat(
                 schemaPartitionTable.getSeriesSlotList().stream(),
@@ -432,11 +432,18 @@ public class StorageGroupPartitionTable {
   private void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn(
+          "Cannot find RegionGroup for region {} when addRegionNewLocation in {}",
+          regionId,
+          storageGroupName);
       return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
-      LOGGER.info("Node is already in region locations, node: {}, region: {}", node, regionId);
+      LOGGER.info(
+          "Node is already in region locations when addRegionNewLocation in {}, node: {}, region: {}",
+          storageGroupName,
+          node,
+          regionId);
       return;
     }
     regionGroup.getReplicaSet().getDataNodeLocations().add(node);
@@ -445,12 +452,16 @@ public class StorageGroupPartitionTable {
   private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
-      LOGGER.warn("not find Region Group for region {}", regionId);
+      LOGGER.warn(
+          "Cannot find RegionGroup for region {} when removeRegionOldLocation in {}",
+          regionId,
+          storageGroupName);
       return;
     }
     if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is Not in region locations, no need to remove it, node: {}, region: {}",
+          "Node is not in region locations when removeRegionOldLocation in {}, no need to remove it, node: {}, region: {}",
+          storageGroupName,
           node,
           regionId);
       return;

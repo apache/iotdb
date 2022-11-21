@@ -161,6 +161,14 @@ DATA
     : D A T A
     ;
 
+DATABASE
+    : D A T A B A S E
+    ;
+
+DATABASES
+    : D A T A B A S E S
+    ;
+
 DATANODES
 
     : D A T A N O D E S
@@ -184,6 +192,10 @@ DESC
 
 DESCRIBE
     : D E S C R I B E
+    ;
+
+DETAILS
+    : D E T A I L S
     ;
 
 DEVICE

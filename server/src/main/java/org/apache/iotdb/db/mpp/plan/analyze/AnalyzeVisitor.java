@@ -113,8 +113,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -141,6 +139,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -151,7 +150,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetPath;
@@ -197,14 +196,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setStatement(queryStatement);
 
       // request schema fetch API
-      logger.info("[StartFetchSchema]");
+      logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree;
       if (queryStatement.isGroupByTag()) {
         schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
-      logger.info("[EndFetchSchema]");
+      logger.debug("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
         if (queryStatement.isSelectInto()) {
@@ -248,10 +247,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeInto(analysis, queryStatement, deviceSet, outputExpressions);
       } else {
-        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree);
-
+        Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
+            analyzeSelect(analysis, queryStatement, schemaTree);
+        outputExpressions = new ArrayList<>();
+        outputExpressionMap
+            .values()
+            .forEach(outputExpressionList -> outputExpressions.addAll(outputExpressionList));
         analyzeHaving(analysis, queryStatement, schemaTree);
-        analyzeGroupByLevel(analysis, queryStatement, outputExpressions);
+        analyzeGroupByLevel(analysis, queryStatement, outputExpressionMap, outputExpressions);
         analyzeGroupByTag(analysis, queryStatement, outputExpressions, schemaTree);
         Set<Expression> selectExpressions =
             outputExpressions.stream()
@@ -360,7 +363,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
       queryParam.setDevicePath(devicePath);
       sgNameToQueryParamsMap
-          .computeIfAbsent(schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+          .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
           .add(queryParam);
     }
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
@@ -369,17 +372,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private List<Pair<Expression, String>> analyzeSelect(
+  private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
-    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+    Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
     boolean isGroupByLevel = queryStatement.isGroupByLevel();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
             queryStatement.isLastQuery() || isGroupByLevel);
-
+    int columnIndex = 0;
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
@@ -419,8 +423,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           break;
         }
       }
+      outputExpressionMap.put(columnIndex++, outputExpressions);
     }
-    return outputExpressions;
+    return outputExpressionMap;
   }
 
   private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
@@ -589,6 +594,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeGroupByLevel(
       Analysis analysis,
       QueryStatement queryStatement,
+      Map<Integer, List<Pair<Expression, String>>> outputExpressionMap,
       List<Pair<Expression, String>> outputExpressions) {
     if (!queryStatement.isGroupByLevel()) {
       return;
@@ -597,14 +603,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     GroupByLevelController groupByLevelController =
         new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
 
-    Set<Expression> groupedSelectExpressions = new LinkedHashSet<>();
-    for (int i = 0; i < outputExpressions.size(); i++) {
-      Pair<Expression, String> expressionAliasPair = outputExpressions.get(i);
-      boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
-      Expression groupedExpression =
-          groupByLevelController.control(
-              isCountStar, expressionAliasPair.left, expressionAliasPair.right);
-      groupedSelectExpressions.add(groupedExpression);
+    List<Expression> groupedSelectExpressions = new LinkedList<>();
+
+    for (List<Pair<Expression, String>> outputExpressionList : outputExpressionMap.values()) {
+      Set<Expression> groupedSelectExpressionSet = new LinkedHashSet<>();
+      for (int i = 0; i < outputExpressionList.size(); i++) {
+        Pair<Expression, String> expressionAliasPair = outputExpressionList.get(i);
+        boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
+        Expression groupedExpression =
+            groupByLevelController.control(
+                isCountStar, expressionAliasPair.left, expressionAliasPair.right);
+        groupedSelectExpressionSet.add(groupedExpression);
+      }
+      groupedSelectExpressions.addAll(groupedSelectExpressionSet);
     }
 
     LinkedHashMap<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
@@ -952,8 +963,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
     Expression deviceExpression =
-        new TimeSeriesOperand(
-            new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT));
+        new TimeSeriesOperand(new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT));
 
     Set<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(deviceExpression);
@@ -1027,7 +1037,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     if (queryStatement.isAlignByDevice()) {
-      columnHeaders.add(new ColumnHeader(COLUMN_DEVICE, TSDataType.TEXT, null));
+      columnHeaders.add(new ColumnHeader(DEVICE, TSDataType.TEXT, null));
     }
     columnHeaders.addAll(
         outputExpressions.stream()
@@ -1098,7 +1108,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
       queryParam.setDevicePath(devicePath);
       sgNameToQueryParamsMap
-          .computeIfAbsent(schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+          .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
@@ -1344,7 +1354,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       // construct insert rows statement
       // construct insert statement
-      InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
+          new InsertRowsOfOneDeviceStatement();
       List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
@@ -1353,7 +1364,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         System.arraycopy(measurementList, 0, measurements, 0, measurements.length);
         statement.setMeasurements(measurements);
         statement.setTime(timeArray[i]);
-        statement.setDataTypes(new TSDataType[measurementList.length]);
+        TSDataType[] dataTypes = new TSDataType[measurementList.length];
+        statement.setDataTypes(dataTypes);
         Object[] values = new Object[measurementList.length];
         System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
         statement.setValues(values);
@@ -1361,14 +1373,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setNeedInferType(true);
         insertRowStatementList.add(statement);
       }
-      insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-      return insertRowsStatement.accept(this, context);
+      insertRowsOfOneDeviceStatement.setInsertRowStatementList(insertRowStatementList);
+      return insertRowsOfOneDeviceStatement.accept(this, context);
     }
   }
 
   @Override
   public Analysis visitCreateTimeseries(
       CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+    if (createTimeSeriesStatement.getPath().getNodeLength() < 3) {
+      throw new RuntimeException(
+          new IllegalPathException(createTimeSeriesStatement.getPath().getFullPath()));
+    }
     context.setQueryType(QueryType.WRITE);
     if (createTimeSeriesStatement.getTags() != null
         && !createTimeSeriesStatement.getTags().isEmpty()
@@ -1447,6 +1463,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+    if (createAlignedTimeSeriesStatement.getDevicePath().getNodeLength() < 2) {
+      throw new RuntimeException(
+          new IllegalPathException(createAlignedTimeSeriesStatement.getDevicePath().getFullPath()));
+    }
     context.setQueryType(QueryType.WRITE);
     List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
     Set<String> measurementsSet = new HashSet<>(measurements);
@@ -1690,10 +1710,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
       String device = entry.getKey();
       long endTime = device2MaxTime.get(device);
-      long interval = TimePartitionUtils.timePartitionIntervalForRouting;
+      long interval = TimePartitionUtils.timePartitionInterval;
       long time = (entry.getValue() / interval) * interval;
       for (; time <= endTime; time += interval) {
-        timePartitionSlots.add(TimePartitionUtils.getTimePartitionForRouting(time));
+        timePartitionSlots.add(TimePartitionUtils.getTimePartition(time));
       }
 
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
@@ -1716,7 +1736,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailMessage(
-          "Storage group not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
@@ -1742,14 +1762,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
             TSDataType dataType = timeseriesMetadata.getTSDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
-              ChunkHeader chunkHeader =
-                  getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata);
+              Pair<CompressionType, TSEncoding> pair =
+                  reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
               MeasurementSchema measurementSchema =
                   new MeasurementSchema(
                       timeseriesMetadata.getMeasurementId(),
                       dataType,
-                      chunkHeader.getEncodingType(),
-                      chunkHeader.getCompressionType());
+                      pair.getRight(),
+                      pair.getLeft());
               device2Schemas
                   .computeIfAbsent(device, o -> new HashMap<>())
                   .put(measurementSchema, tsFile);
@@ -1799,13 +1819,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private ChunkHeader getChunkHeaderByTimeseriesMetadata(
-      TsFileSequenceReader reader, TimeseriesMetadata timeseriesMetadata) throws IOException {
-    IChunkMetadata chunkMetadata = timeseriesMetadata.getChunkMetadataList().get(0);
-    reader.position(chunkMetadata.getOffsetOfChunkHeader());
-    return reader.readChunkHeader(reader.readMarker());
-  }
-
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
       throws VerifyMetadataException, LoadFileException, IllegalPathException {
     sgLevel += 1; // e.g. "root.sg" means sgLevel = 1, "root.sg.test" means sgLevel=2
@@ -1844,11 +1857,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 schemaFetcher,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && result.status.code != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
-      logger.error(String.format("Set Storage group error, statement: %s.", statement));
-      logger.error(String.format("Set storage group result status : %s.", result.status));
+        && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      logger.error(String.format("Create Database error, statement: %s.", statement));
+      logger.error(String.format("Create database result status : %s.", result.status));
       throw new LoadFileException(
-          String.format("Can not execute set storage group statement: %s", statement));
+          String.format("Can not execute create database statement: %s", statement));
     }
   }
 
@@ -1997,9 +2010,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
       // request schema fetch API
-      logger.info("[StartFetchSchema]");
+      logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
-      logger.info("[EndFetchSchema]]");
+      logger.debug("[EndFetchSchema]]");
       List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
 
       Set<Expression> sourceExpressions =
@@ -2016,8 +2029,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
         queryParam.setDevicePath(devicePath);
         sgNameToQueryParamsMap
-            .computeIfAbsent(
-                schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
             .add(queryParam);
       }
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
@@ -2069,7 +2081,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowClusterStatement showClusterStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(showClusterStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    if (showClusterStatement.isDetails()) {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterDetailsHeader());
+    } else {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowClusterHeader());
+    }
     return analysis;
   }
 
@@ -2250,7 +2266,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               queryParam.setDevicePath(devicePath.getFullPath());
               sgNameToQueryParamsMap
                   .computeIfAbsent(
-                      schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                      schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
                   .add(queryParam);
             });
 

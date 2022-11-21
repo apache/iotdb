@@ -22,10 +22,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -50,18 +53,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterRegionLeaderBalancingIT {
 
+  protected static boolean originalEnableLeaderBalancing;
+
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
-      ConsensusFactory.RatisConsensus;
+      ConsensusFactory.RATIS_CONSENSUS;
   protected static String originalDataRegionConsensusProtocolClass;
   private static final String testDataRegionConsensusProtocolClass =
-      ConsensusFactory.MultiLeaderConsensus;
+      ConsensusFactory.MULTI_LEADER_CONSENSUS;
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
@@ -71,6 +77,9 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @BeforeClass
   public static void setUp() {
+    originalEnableLeaderBalancing = ConfigFactory.getConfig().isEnableLeaderBalancing();
+    ConfigFactory.getConfig().setEnableLeaderBalancing(true);
+
     originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     ConfigFactory.getConfig()
@@ -89,6 +98,8 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @AfterClass
   public static void tearDown() {
+    ConfigFactory.getConfig().setEnableLeaderBalancing(originalEnableLeaderBalancing);
+
     ConfigFactory.getConfig()
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
@@ -147,6 +158,146 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       // The number of Region-leader in each DataNode should be exactly 1
       Assert.assertEquals(testDataNodeNum, leaderCounter.size());
       leaderCounter.values().forEach(leaderCount -> Assert.assertEquals(1, leaderCount.get()));
+    }
+  }
+
+  @Test
+  public void testMCFLeaderDistribution()
+      throws IOException, InterruptedException, TException, IllegalPathException {
+    final int testConfigNodeNum = 1;
+    final int testDataNodeNum = 3;
+    final int retryNum = 40;
+    EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
+
+    TSStatus status;
+    final int storageGroupNum = 6;
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      for (int i = 0; i < storageGroupNum; i++) {
+        // Set StorageGroups
+        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+        status = client.setStorageGroup(setReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+        // TODO: Create a SchemaRegionGroup for each StorageGroup
+        // TODO: (The Ratis protocol class is now hard to change leader)
+        //        TSchemaPartitionTableResp schemaPartitionTableResp =
+        //            client.getOrCreateSchemaPartitionTable(
+        //                new TSchemaPartitionReq(
+        //                    ConfigNodeTestUtils.generatePatternTreeBuffer(
+        //                        new String[] {sg + i + "." + "d"})));
+        //        Assert.assertEquals(
+        //            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        //            schemaPartitionTableResp.getStatus().getCode());
+
+        // Create a DataRegionGroup for each StorageGroup
+        Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+        seriesSlotMap.put(
+            new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
+        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap =
+            new HashMap<>();
+        sgSlotsMap.put(sg + i, seriesSlotMap);
+        TDataPartitionTableResp dataPartitionTableResp =
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            dataPartitionTableResp.getStatus().getCode());
+      }
+
+      // Check leader distribution
+      Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+      TShowRegionResp showRegionResp;
+      boolean isDistributionBalanced = false;
+      for (int retry = 0; retry < retryNum; retry++) {
+        leaderCounter.clear();
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .forEach(
+                regionInfo -> {
+                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+                    leaderCounter
+                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
+                        .getAndIncrement();
+                  }
+                });
+
+        // All DataNodes have Region-leader
+        isDistributionBalanced = leaderCounter.size() == testDataNodeNum;
+        // Each DataNode has exactly 4 Region-leader
+        for (AtomicInteger leaderCount : leaderCounter.values()) {
+          if (leaderCount.get() != 2) {
+            isDistributionBalanced = false;
+          }
+        }
+
+        if (isDistributionBalanced) {
+          break;
+        } else {
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertTrue(isDistributionBalanced);
+
+      // Shutdown a DataNode
+      boolean isDataNodeShutdown = false;
+      EnvFactory.getEnv().shutdownDataNode(0);
+      for (int retry = 0; retry < retryNum; retry++) {
+        AtomicInteger runningCnt = new AtomicInteger(0);
+        AtomicInteger unknownCnt = new AtomicInteger(0);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.Running.getStatus().equals(dataNodeInfo.getStatus())) {
+                    runningCnt.getAndIncrement();
+                  } else if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
+                    unknownCnt.getAndIncrement();
+                  }
+                });
+        if (runningCnt.get() == testDataNodeNum - 1 && unknownCnt.get() == 1) {
+          isDataNodeShutdown = true;
+          break;
+        }
+
+        TimeUnit.SECONDS.sleep(1);
+      }
+      Assert.assertTrue(isDataNodeShutdown);
+
+      // Check leader distribution
+      isDistributionBalanced = false;
+      for (int retry = 0; retry < retryNum; retry++) {
+        leaderCounter.clear();
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .forEach(
+                regionInfo -> {
+                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+                    leaderCounter
+                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
+                        .getAndIncrement();
+                  }
+                });
+
+        // Only Running DataNodes have Region-leader
+        isDistributionBalanced = leaderCounter.size() == testDataNodeNum - 1;
+        // Each Running DataNode has exactly 6 Region-leader
+        for (AtomicInteger leaderCount : leaderCounter.values()) {
+          if (leaderCount.get() != 3) {
+            isDistributionBalanced = false;
+          }
+        }
+
+        if (isDistributionBalanced) {
+          break;
+        } else {
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertTrue(isDistributionBalanced);
     }
   }
 }

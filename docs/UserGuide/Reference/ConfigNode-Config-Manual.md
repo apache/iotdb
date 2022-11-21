@@ -164,12 +164,12 @@ The global configuration of cluster is in ConfigNode.
 
 * data\_region\_consensus\_protocol\_class
 
-|Name| data\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|Description| Consensus protocol of data replicas, StandAloneConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|Type| String |
-|Default| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
-|Effective|Only allowed to be modified in first start up|
+|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
+|Type| String                                                                                                                                                       |
+|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
+|Effective| Only allowed to be modified in first start up                                                                                                                |
 
 * schema\_replication\_factor
 
@@ -183,12 +183,12 @@ The global configuration of cluster is in ConfigNode.
 
 * schema\_region\_consensus\_protocol\_class
 
-|Name| schema\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|Description| Consensus protocol of schema replicas, StandAloneConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
-|Type| String |
-|Default| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
-|Effective|Only allowed to be modified in first start up|
+|Name| schema\_region\_consensus\_protocol\_class                                                                                                  |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
+|Type| String                                                                                                                                      |
+|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                               |
 
 
 * region\_allocate\_strategy
@@ -233,25 +233,25 @@ The global configuration of cluster is in ConfigNode.
 |Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |Effective|Only allowed to be modified in first start up|
 
-### Storage Group
+### Database
 
 * default\_ttl
 
 |Name| default\_ttl |
 |:---:|:---|
-|Description| Default ttl when each storage group created |
+|Description| Default ttl when each database created |
 |Type| Long |
 |Default| Infinity |
 |Effective|After restarting system|
 
-* time\_partition\_interval\_for\_routing
+* time\_partition\_interval
 
-|Name| time\_partition\_interval\_for\_routing                       |
+|Name| time\_partition\_interval                                     |
 |:---:|:--------------------------------------------------------------|
 |Description| Time partition interval of data when ConfigNode allocate data |
 |Type| Long                                                          |
-|Unit| ms |
-|Default| 604800000                                                      |
+|Unit| ms                                                            |
+|Default| 604800000                                                     |
 |Effective| Only allowed to be modified in first start up                 |
 
 

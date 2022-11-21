@@ -55,6 +55,8 @@
     - CQS
     - CREATE
     - DATA
+    - DATABASE
+    - DATABASES
     - DATANODES
     - DEACTIVATE
     - DEBUG

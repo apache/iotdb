@@ -19,8 +19,6 @@
 package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -136,7 +134,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     URL providerConfigurationURL = issuerURI.resolve(".well-known/openid-configuration").toURL();
     InputStream stream = providerConfigurationURL.openStream();
     // Read all data from URL
-    String providerInfo = null;
+    String providerInfo;
     try (java.util.Scanner s = new java.util.Scanner(stream)) {
       providerInfo = s.useDelimiter("\\A").hasNext() ? s.next() : "";
     }
@@ -181,6 +179,18 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     return true;
   }
 
+  public String getIoTDBUserName(String token) {
+
+    Claims claims = validateToken(token);
+    logger.debug("JWT was validated successfully!");
+    logger.debug("ID: {}", claims.getId());
+    logger.debug("Subject: {}", claims.getSubject());
+    logger.debug("Issuer: {}", claims.getIssuer());
+    logger.debug("Expiration: {}", claims.getExpiration());
+    // Create User if not exists
+    return getUsername(claims);
+  }
+
   private Claims validateToken(String token) {
     return Jwts.parser()
         // Basically ignore the Expiration Date, if there is any???
@@ -193,10 +203,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
   private String getUsername(Claims claims) {
     return OPENID_USER_PREFIX + claims.getSubject();
-  }
-
-  private String getUsername(String token) {
-    return getUsername(validateToken(token));
   }
 
   @Override
@@ -251,26 +257,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    if (isAdmin(username)) {
-      return true;
-    }
-
-    User user = userManager.getUser(getUsername(username));
-    if (user == null) {
-      throw new AuthException(String.format("No such user : %s", getUsername(username)));
-    }
-    // get privileges of the user
-    if (user.checkPrivilege(path, privilegeId)) {
-      return true;
-    }
-    // merge the privileges of the roles of the user
-    for (String roleName : user.getRoleList()) {
-      Role role = roleManager.getRole(roleName);
-      if (role.checkPrivilege(path, privilegeId)) {
-        return true;
-      }
-    }
-    return false;
+    return isAdmin(username);
   }
 
   @Override

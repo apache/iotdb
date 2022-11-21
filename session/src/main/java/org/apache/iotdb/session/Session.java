@@ -466,6 +466,24 @@ public class Session implements ISession {
   }
 
   @Override
+  public void createDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.setStorageGroup(database);
+  }
+
+  @Override
+  public void deleteDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(database));
+  }
+
+  @Override
+  public void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteStorageGroups(databases);
+  }
+
+  @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -504,7 +522,7 @@ public class Session implements ISession {
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
-    request.setCompressor(compressor.ordinal());
+    request.setCompressor(compressor.serialize());
     request.setProps(props);
     request.setTags(tags);
     request.setAttributes(attributes);
@@ -2985,7 +3003,7 @@ public class Session implements ISession {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -3030,7 +3048,7 @@ public class Session implements ISession {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }

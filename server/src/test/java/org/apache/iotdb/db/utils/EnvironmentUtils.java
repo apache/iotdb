@@ -28,14 +28,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,7 +45,7 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.NewIoTDB;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
@@ -93,7 +91,7 @@ public class EnvironmentUtils {
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
-  private static IoTDB daemon;
+  private static NewIoTDB daemon;
 
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
@@ -109,10 +107,7 @@ public class EnvironmentUtils {
       if (UDFManagementService.getInstance() != null) {
         UDFManagementService.getInstance().deregisterAll();
       }
-      if (TriggerRegistrationService.getInstance() != null) {
-        TriggerRegistrationService.getInstance().deregisterAll();
-      }
-    } catch (UDFManagementException | TriggerManagementException e) {
+    } catch (UDFManagementException e) {
       fail(e.getMessage());
     }
 
@@ -147,11 +142,7 @@ public class EnvironmentUtils {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
 
-    // clean storage group manager
-    if (!StorageEngine.getInstance().deleteAll()) {
-      logger.error("Can't close the storage group manager in EnvironmentUtils");
-      fail();
-    }
+    StorageEngineV2.getInstance().stop();
 
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
@@ -165,7 +156,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.configManager.clear();
+    NewIoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -294,10 +285,10 @@ public class EnvironmentUtils {
     // use async wal mode in test
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
-      daemon = new IoTDB();
+      daemon = new NewIoTDB();
     }
     try {
-      EnvironmentUtils.daemon.active();
+      EnvironmentUtils.daemon.active(true);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -326,14 +317,14 @@ public class EnvironmentUtils {
 
   public static void activeDaemon() {
     if (daemon != null) {
-      daemon.active();
+      daemon.active(true);
     }
   }
 
   public static void reactiveDaemon() {
     if (daemon == null) {
-      daemon = new IoTDB();
-      daemon.active();
+      daemon = new NewIoTDB();
+      daemon.active(true);
     } else {
       activeDaemon();
     }
@@ -342,7 +333,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.configManager.clear();
+    NewIoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();
@@ -359,10 +350,10 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
-    // create storage group
+    // create database
     createDir(config.getSystemDir());
     // create sg dir
-    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
     createDir(commonConfig.getSyncFolder());

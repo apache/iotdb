@@ -55,9 +55,9 @@ Client could only connect to the DataNode for operation.
 
 The partitioning strategy partitions data and schema into different Regions, and allocates Regions to different DataNodes.
 
-It is recommended to set 1 storage group (there is no need to set the storage group according to the number of cores as in version 0.13), which is used as the database concept, and the cluster will dynamically allocate resources according to the number of nodes and cores.
+It is recommended to set 1 database (there is no need to set the database according to the number of cores as in version 0.13), which is used as the database concept, and the cluster will dynamically allocate resources according to the number of nodes and cores.
 
-The storage group contains multiple SchemaRegions (schema shards) and DataRegions (data shards), which are managed by DataNodes.
+The database contains multiple SchemaRegions (schema shards) and DataRegions (data shards), which are managed by DataNodes.
 
 * Schema partition strategy 
     * For a time series schema, the ConfigNode maps the device ID (full path from root to the penultimate tier node) into a series\_partition\_slot and assigns this partition slot to a SchemaRegion group.

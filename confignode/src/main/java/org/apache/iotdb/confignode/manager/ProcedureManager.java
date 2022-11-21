@@ -111,14 +111,14 @@ public class ProcedureManager {
     this.planSizeLimit =
         ConfigNodeDescriptor.getInstance()
                 .getConf()
-                .getPartitionRegionRatisConsensusLogAppenderBufferSize()
+                .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
   }
 
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsSize());
+        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
@@ -326,7 +326,7 @@ public class ProcedureManager {
         .forEach(
             tDataNodeLocation -> {
               this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
-              LOGGER.info("Submit to remove data node procedure, {}", tDataNodeLocation);
+              LOGGER.info("Submit RemoveDataNodeProcedure successfully, {}", tDataNodeLocation);
             });
     return true;
   }
@@ -361,12 +361,12 @@ public class ProcedureManager {
     final CreateTriggerProcedure createTriggerProcedure =
         new CreateTriggerProcedure(triggerInformation, jarFile);
     try {
-      final int planSize = new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize();
-      if (planSize > planSizeLimit) {
+      if (jarFile != null
+          && new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize() > planSizeLimit) {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'partition_region_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
@@ -501,7 +501,7 @@ public class ProcedureManager {
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
-        statusList.add(RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS));
+        statusList.add(RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
         isSucceed = false;
         continue;
       }

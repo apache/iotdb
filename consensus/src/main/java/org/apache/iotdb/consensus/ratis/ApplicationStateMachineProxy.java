@@ -208,7 +208,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotTmpDir);
+    boolean applicationTakeSnapshotSuccess =
+        applicationStateMachine.takeSnapshot(snapshotTmpDir, metadata);
     if (!applicationTakeSnapshotSuccess) {
       deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;

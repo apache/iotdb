@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** region migrate procedure */
@@ -81,53 +83,49 @@ public class RegionMigrateProcedure
       return Flow.NO_MORE_STATE;
     }
     TSStatus tsStatus;
+    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
         case CREATE_NEW_REGION_PEER:
-          env.getDataNodeRemoveHandler().createNewRegionPeer(consensusGroupId, destDataNode);
+          handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
-            throw new ProcedureException("Failed to add region peer");
+            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
-          env.getDataNodeRemoveHandler().changeRegionLeader(consensusGroupId, originalDataNode);
+          handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
-            throw new ProcedureException("Failed to remove region peer");
+            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
           setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .deleteOldRegionPeer(originalDataNode, consensusGroupId);
+          tsStatus = handler.deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
-          // remove consensus group after a node stop, which will be failed, but we will
+          // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
-          env.getDataNodeRemoveHandler()
-              .updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
+          handler.updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -142,18 +140,17 @@ public class RegionMigrateProcedure
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "{}, Failed state is not support rollback, failed state {}, originalDataNode: {}",
+            "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
             REMOVE_DATANODE_PROCESS,
             state,
-            originalDataNode);
+            getIdWithRpcEndpoint(originalDataNode));
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   "Procedure retried failed exceed 5 times, state stuck at " + state));
         }
 
-        // meets exception in region migrate process
-        // terminate the process
+        // meets exception in region migrate process terminate the process
         return Flow.NO_MORE_STATE;
       }
     }
@@ -283,7 +280,7 @@ public class RegionMigrateProcedure
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
     LOG.info(
-        "{}, ConfigNode received DataNode reported region migrate result: {}",
+        "{}, ConfigNode received region migrate result reported by DataNode: {}",
         REMOVE_DATANODE_PROCESS,
         req);
 
@@ -293,7 +290,7 @@ public class RegionMigrateProcedure
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
         LOG.info(
-            "{}, Region migrate executed failed in DataNode, migrateStatus: {}",
+            "{}, Region migrate failed in DataNode, migrateStatus: {}",
             REMOVE_DATANODE_PROCESS,
             migrateStatus);
         migrateSuccess = false;
