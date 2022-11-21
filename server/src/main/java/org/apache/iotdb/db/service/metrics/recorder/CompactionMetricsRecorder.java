@@ -38,20 +38,15 @@ public class CompactionMetricsRecorder {
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
-    // TODO fix
     MetricService.getInstance()
         .count(
             byteNum / 1024L,
             Metric.DATA_WRITTEN.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            compactionType.toString(),
+            "compaction_" + compactionType.toString(),
             Tag.TYPE.toString(),
-            aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.TYPE.toString(),
-            processChunkType.toString());
+            processChunkType.toString() + "_" + (aligned ? "ALIGNED" : "NOT_ALIGNED"));
     MetricService.getInstance()
         .count(
             byteNum / 1024L,
