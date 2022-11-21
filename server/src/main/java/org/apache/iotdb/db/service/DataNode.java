@@ -194,7 +194,6 @@ public class DataNode implements DataNodeMBean {
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
-        logger.info(dataNodeRegisterResp.getStatus().getMessage());
         // store config node lists from resp
         List<TEndPoint> configNodeList = new ArrayList<>();
         for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
@@ -217,6 +216,7 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+          logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
             IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
@@ -252,6 +252,10 @@ public class DataNode implements DataNodeMBean {
 
           logger.info("Register to the cluster successfully");
           return;
+        } else if (dataNodeRegisterResp.getStatus().getCode()
+            == TSStatusCode.REGISTER_UNCLEAN_DATANODE.getStatusCode()) {
+          logger.error(dataNodeRegisterResp.getStatus().getMessage());
+          throw new StartupException("Cannot register to the cluster.");
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
