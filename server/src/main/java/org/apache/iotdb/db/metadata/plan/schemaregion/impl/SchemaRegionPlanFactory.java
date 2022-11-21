@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -55,16 +54,10 @@ public class SchemaRegionPlanFactory {
         return new ChangeTagOffsetPlanImpl();
       case CHANGE_ALIAS:
         return new ChangeAliasPlanImpl();
-      case SET_TEMPLATE:
-        return new SetTemplatePlanImpl();
-      case ACTIVATE_TEMPLATE:
-        return new ActivateTemplatePlanImpl();
       case AUTO_CREATE_DEVICE_MNODE:
         return new AutoCreateDeviceMNodePlanImpl();
       case CREATE_ALIGNED_TIMESERIES:
         return new CreateAlignedTimeSeriesPlanImpl();
-      case UNSET_TEMPLATE:
-        return new UnsetTemplatePlanImpl();
       case ACTIVATE_TEMPLATE_IN_CLUSTER:
         return new ActivateTemplateInClusterPlanImpl();
       case PRE_DELETE_TIMESERIES_IN_CLUSTER:
@@ -91,10 +84,6 @@ public class SchemaRegionPlanFactory {
 
   public static IChangeTagOffsetPlan getChangeTagOffsetPlan(PartialPath fullPath, long tagOffset) {
     return new ChangeTagOffsetPlanImpl(fullPath, tagOffset);
-  }
-
-  public static IActivateTemplatePlan getActivateTemplatePlan(PartialPath path) {
-    return new ActivateTemplatePlanImpl(path);
   }
 
   public static IAutoCreateDeviceMNodePlan getAutoCreateDeviceMNodePlan(PartialPath path) {

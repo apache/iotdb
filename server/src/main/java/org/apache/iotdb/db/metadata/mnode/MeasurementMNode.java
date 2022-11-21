@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -219,22 +218,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void setChildren(IMNodeContainer children) {
     // Do nothing
   }
-
-  @Override
-  public Template getUpperTemplate() {
-    return parent.getUpperTemplate();
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    MeasurementMNode.logger.warn(
-        "current node {} is a MeasurementMNode, can not get Schema Template", name);
-    throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {}
 
   @Override
   public int getSchemaTemplateId() {

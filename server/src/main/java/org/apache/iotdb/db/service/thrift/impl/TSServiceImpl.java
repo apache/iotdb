@@ -39,7 +39,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -357,65 +356,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
     return IoTDB.schemaProcessor.getSeriesType(path);
-  }
-
-  private boolean executeMultiTimeSeriesPlan(
-      CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
-    long t1 = System.currentTimeMillis();
-    TSStatus tsStatus = executeNonQueryPlan(multiPlan);
-    addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
-
-    int startIndex = result.size();
-    if (startIndex > 0) {
-      startIndex = startIndex - 1;
-    }
-    for (int k = 0; k < multiPlan.getPaths().size(); k++) {
-      result.add(RpcUtils.SUCCESS_STATUS);
-    }
-    if (tsStatus.subStatus != null) {
-      for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
-        result.set(startIndex + entry.getKey(), entry.getValue());
-      }
-    }
-    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
-  }
-
-  private void initMultiTimeSeriesPlan(CreateMultiTimeSeriesPlan multiPlan) {
-    if (multiPlan.getPaths() == null) {
-      List<PartialPath> paths = new ArrayList<>();
-      List<TSDataType> tsDataTypes = new ArrayList<>();
-      List<TSEncoding> tsEncodings = new ArrayList<>();
-      List<CompressionType> tsCompressionTypes = new ArrayList<>();
-      List<Map<String, String>> tagsList = new ArrayList<>();
-      List<Map<String, String>> attributesList = new ArrayList<>();
-      List<String> aliasList = new ArrayList<>();
-      multiPlan.setPaths(paths);
-      multiPlan.setDataTypes(tsDataTypes);
-      multiPlan.setEncodings(tsEncodings);
-      multiPlan.setCompressors(tsCompressionTypes);
-      multiPlan.setTags(tagsList);
-      multiPlan.setAttributes(attributesList);
-      multiPlan.setAlias(aliasList);
-    }
-  }
-
-  private void setMultiTimeSeriesPlan(
-      CreateMultiTimeSeriesPlan multiPlan, CreateTimeSeriesPlan createTimeSeriesPlan) {
-    PartialPath path = createTimeSeriesPlan.getPath();
-    TSDataType type = createTimeSeriesPlan.getDataType();
-    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
-    CompressionType compressor = createTimeSeriesPlan.getCompressor();
-    Map<String, String> tags = createTimeSeriesPlan.getTags();
-    Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
-    String alias = createTimeSeriesPlan.getAlias();
-
-    multiPlan.getPaths().add(path);
-    multiPlan.getDataTypes().add(type);
-    multiPlan.getEncodings().add(encoding);
-    multiPlan.getCompressors().add(compressor);
-    multiPlan.getTags().add(tags);
-    multiPlan.getAttributes().add(attributes);
-    multiPlan.getAlias().add(alias);
   }
 
   @Override
@@ -1366,49 +1306,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
-    try {
-      TSQueryTemplateResp resp = new TSQueryTemplateResp();
-      String path;
-      switch (TemplateQueryType.values()[req.getQueryType()]) {
-        case COUNT_MEASUREMENTS:
-          resp.setQueryType(TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
-          resp.setCount(IoTDB.schemaProcessor.countMeasurementsInTemplate(req.name));
-          break;
-        case IS_MEASUREMENT:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
-          resp.setResult(IoTDB.schemaProcessor.isMeasurementInTemplate(req.name, path));
-          break;
-        case PATH_EXIST:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
-          resp.setResult(IoTDB.schemaProcessor.isPathExistsInTemplate(req.name, path));
-          break;
-        case SHOW_MEASUREMENTS:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
-          resp.setMeasurements(IoTDB.schemaProcessor.getMeasurementsInTemplate(req.name, path));
-          break;
-        case SHOW_TEMPLATES:
-          resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getAllTemplates()));
-          break;
-        case SHOW_SET_TEMPLATES:
-          path = req.getName();
-          resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsSetTemplate(path)));
-          break;
-        case SHOW_USING_TEMPLATES:
-          path = req.getName();
-          resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsUsingTemplate(path)));
-          break;
-      }
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
-      return resp;
-    } catch (MetadataException e) {
-      LOGGER.error("fail to query schema template because: " + e);
-    }
     return null;
   }
 

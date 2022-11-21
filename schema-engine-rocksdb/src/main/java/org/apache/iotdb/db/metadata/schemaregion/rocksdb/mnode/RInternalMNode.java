@@ -27,16 +27,12 @@ import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
-import org.apache.iotdb.db.metadata.template.Template;
 
 import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 
 public class RInternalMNode extends RMNode {
-
-  // schema template
-  protected Template schemaTemplate = null;
 
   private volatile boolean useTemplate = false;
 
@@ -159,26 +155,6 @@ public class RInternalMNode extends RMNode {
   @Override
   public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException();
-  }
-
-  /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
-   */
-  @Override
-  public Template getUpperTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    return schemaTemplate;
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    this.schemaTemplate = schemaTemplate;
   }
 
   @Override

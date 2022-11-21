@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -178,7 +177,9 @@ public class SchemaFile implements ISchemaFile {
     }
     resNode.setFullPath(storageGroupName);
     if (templateHash != 0) {
-      resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      //
+      // resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      // todo record the templateId generated in configNode
     }
     return resNode;
   }
@@ -187,8 +188,9 @@ public class SchemaFile implements ISchemaFile {
   public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    this.templateHash =
-        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
+    // todo record the templateId generated in configNode
+    //    this.templateHash =
+    //        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
     updateHeader();
     return true;
   }

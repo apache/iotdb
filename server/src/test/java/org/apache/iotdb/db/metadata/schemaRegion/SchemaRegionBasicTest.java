@@ -440,12 +440,7 @@ public abstract class SchemaRegionBasicTest {
     Assert.assertEquals("root.sg.wf02.wt01.temperature", schemas.get(0).getFullPath());
   }
 
-  /**
-   * Test {@link ISchemaRegion#activateSchemaTemplate}.
-   *
-   * <p>Check using {@link ISchemaRegion#getPathsUsingTemplate} and {@link
-   * ISchemaRegion#countPathsUsingTemplate}
-   */
+  /** Test {@link ISchemaRegion#activateSchemaTemplate}. */
   @Test
   public void testActivateSchemaTemplate() throws Exception {
     PartialPath storageGroup = new PartialPath("root.sg");
@@ -514,9 +509,6 @@ public abstract class SchemaRegionBasicTest {
    * Test {@link ISchemaRegion#constructSchemaBlackListWithTemplate}, {@link
    * ISchemaRegion#rollbackSchemaBlackListWithTemplate} and {@link
    * ISchemaRegion#deactivateTemplateInBlackList}
-   *
-   * <p>Check using {@link ISchemaRegion#getPathsUsingTemplate} and {@link
-   * ISchemaRegion#countPathsUsingTemplate}
    */
   @Test
   public void testDeactivateTemplate() throws Exception {

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -214,20 +213,6 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Template getUpperTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {}
-
-  @Override
-  public Template getSchemaTemplate() {
-    throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
   }
 
   @Override
