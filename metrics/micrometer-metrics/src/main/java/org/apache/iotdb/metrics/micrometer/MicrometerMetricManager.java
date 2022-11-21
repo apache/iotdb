@@ -37,7 +37,6 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToLongFunction;
@@ -50,7 +49,6 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
-    Metrics.globalRegistry.add(new SimpleMeterRegistry());
   }
 
   @Override

@@ -308,7 +308,7 @@ public class LogDispatcher {
           MetricService.getInstance()
               .getOrCreateHistogram(
                   Metric.STAGE.toString(),
-                  MetricLevel.IMPORTANT,
+                  MetricLevel.CORE,
                   Tag.NAME.toString(),
                   Metric.MULTI_LEADER.toString(),
                   Tag.TYPE.toString(),

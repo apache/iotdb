@@ -23,13 +23,13 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** Is metric service enabled */
-  private Boolean enableMetric = true;
+  private Boolean enableMetric = false;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
@@ -38,10 +38,11 @@ public class MetricConfig {
   private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** The list of reporters provide data for external system */
-  private List<ReporterType> metricReporterList = Collections.emptyList();
+  private List<ReporterType> metricReporterList =
+      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
 
   /** The level of metric service */
-  private MetricLevel metricLevel = MetricLevel.CORE;
+  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private Integer asyncCollectPeriodInSecond = 5;
 

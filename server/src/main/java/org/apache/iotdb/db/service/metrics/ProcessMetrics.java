@@ -105,17 +105,16 @@ public class ProcessMetrics implements IMetricSet {
         a -> runtime.freeMemory(),
         Tag.NAME.toString(),
         "process");
-    // TODO maybe following metrics can be removed
     metricService.getOrCreateAutoGauge(
         Metric.PROCESS_USED_MEM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> getProcessUsedMemory(),
         Tag.NAME.toString(),
         "process");
     metricService.getOrCreateAutoGauge(
         Metric.PROCESS_MEM_RATIO.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> Math.round(getProcessMemoryRatio()),
         Tag.NAME.toString(),
@@ -136,10 +135,9 @@ public class ProcessMetrics implements IMetricSet {
   }
 
   private void collectThreadInfo(AbstractMetricService metricService) {
-    // TODO maybe duplicated with thread info in jvm related metrics
     metricService.getOrCreateAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> getThreadsCount(),
         Tag.NAME.toString(),
@@ -154,7 +152,7 @@ public class ProcessMetrics implements IMetricSet {
   private void collectProcessStatusInfo(AbstractMetricService metricService) {
     metricService.getOrCreateAutoGauge(
         Metric.PROCESS_STATUS.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> (getProcessStatus()),
         Tag.NAME.toString(),

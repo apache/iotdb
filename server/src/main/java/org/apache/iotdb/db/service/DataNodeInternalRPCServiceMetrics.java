@@ -41,7 +41,7 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.getOrCreateAutoGauge(
         Metric.THRIFT_ACTIVE_THREADS.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),

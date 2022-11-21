@@ -166,7 +166,7 @@ public class MultiLeaderServerImpl {
       MetricService.getInstance()
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
@@ -200,7 +200,7 @@ public class MultiLeaderServerImpl {
       MetricService.getInstance()
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
@@ -222,7 +222,7 @@ public class MultiLeaderServerImpl {
       MetricService.getInstance()
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),
@@ -245,7 +245,7 @@ public class MultiLeaderServerImpl {
         MetricService.getInstance()
             .getOrCreateHistogram(
                 Metric.STAGE.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.CORE,
                 Tag.NAME.toString(),
                 Metric.MULTI_LEADER.toString(),
                 Tag.TYPE.toString(),
@@ -264,7 +264,7 @@ public class MultiLeaderServerImpl {
       MetricService.getInstance()
           .getOrCreateHistogram(
               Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               Metric.MULTI_LEADER.toString(),
               Tag.TYPE.toString(),

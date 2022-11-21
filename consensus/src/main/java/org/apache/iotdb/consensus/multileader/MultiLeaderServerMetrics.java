@@ -39,7 +39,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.MULTI_LEADER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             impl,
             MultiLeaderServerImpl::getIndex,
             Tag.NAME.toString(),
@@ -51,7 +51,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.MULTI_LEADER.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             impl,
             MultiLeaderServerImpl::getCurrentSafelyDeletedSearchIndex,
             Tag.NAME.toString(),

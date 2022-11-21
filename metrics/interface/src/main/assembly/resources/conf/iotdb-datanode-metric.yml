@@ -18,19 +18,21 @@
 #
 
 # whether enable the module
-enableMetric: true
+enableMetric: false
 
 # Is stat performance of operation latency
 enablePerformanceStat: false
 
 # Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
+  - JMX
+  - PROMETHEUS
 
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
 monitorType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: CORE
+metricLevel: IMPORTANT
 
 # The period of the collection of some metrics in asynchronous way, such as tsfile size.
 asyncCollectPeriodInSecond: 5
