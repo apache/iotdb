@@ -2174,7 +2174,6 @@ public class Session implements ISession {
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i).toString());
-        continue;
       }
     }
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
