@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.idtable;
 // import org.apache.iotdb.commons.exception.MetadataException;
 // import org.apache.iotdb.commons.path.PartialPath;
 // import org.apache.iotdb.db.conf.IoTDBDescriptor;
-// import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 // import org.apache.iotdb.db.exception.StorageEngineException;
 // import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 // import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -36,8 +35,6 @@ package org.apache.iotdb.db.metadata.idtable;
 // import org.apache.iotdb.db.qp.Planner;
 // import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 // import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-// import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-// import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 // import org.apache.iotdb.db.service.IoTDB;
 // import org.apache.iotdb.db.utils.EnvironmentUtils;
 // import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -533,86 +530,6 @@ package org.apache.iotdb.db.metadata.idtable;
 //        fail("throw wrong exception");
 //      }
 //    } catch (MetadataException e) {
-//      e.printStackTrace();
-//      fail("throw exception");
-//    }
-//  }
-//
-//  @Test
-//  public void testTriggerAndInsert() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-//    try {
-//      long time = 1L;
-//
-//      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s1"),
-//          TSDataType.valueOf("INT32"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s2"),
-//          TSDataType.valueOf("INT64"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//
-//      Planner processor = new Planner();
-//
-//      String sql =
-//          "CREATE TRIGGER trigger1 BEFORE INSERT ON root.laptop.d1.non_aligned_device.s1 AS
-// 'org.apache.iotdb.db.metadata.idtable.trigger_example.Counter'";
-//
-//      CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
-//
-//      TriggerRegistrationService.getInstance().register(plan);
-//
-//      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
-//      String[] columns = new String[2];
-//      columns[0] = "1";
-//      columns[1] = "2";
-//
-//      InsertRowPlan insertRowPlan =
-//          new InsertRowPlan(
-//              new PartialPath("root.laptop.d1.non_aligned_device"),
-//              time,
-//              new String[] {"s1", "s2"},
-//              dataTypes,
-//              columns,
-//              false);
-//      insertRowPlan.setMeasurementMNodes(
-//          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-//
-//      // call getSeriesSchemasAndReadLockDevice
-//      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
-//
-//      idTable.getSeriesSchemas(insertRowPlan);
-//
-//      // check SchemaProcessor
-//      IMeasurementMNode s1Node =
-//          schemaProcessor.getMeasurementMNode(
-//              new PartialPath("root.laptop.d1.non_aligned_device.s1"));
-//      assertEquals("s1", s1Node.getName());
-//      assertEquals(TSDataType.INT32, s1Node.getSchema().getType());
-//      assertNotNull(s1Node.getTriggerExecutor());
-//
-//      IMeasurementMNode s2Node =
-//          schemaProcessor.getMeasurementMNode(
-//              new PartialPath("root.laptop.d1.non_aligned_device.s2"));
-//      assertEquals("s2", s2Node.getName());
-//      assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
-//      assertNull(s2Node.getTriggerExecutor());
-//
-//      // drop trigger
-//      String sql2 = "Drop trigger trigger1";
-//
-//      DropTriggerPlan plan2 = (DropTriggerPlan) processor.parseSQLToPhysicalPlan(sql2);
-//      TriggerRegistrationService.getInstance().deregister(plan2);
-//
-//      idTable.getSeriesSchemas(insertRowPlan);
-//      assertNull(s1Node.getTriggerExecutor());
-//    } catch (MetadataException | StorageEngineException | QueryProcessException e) {
 //      e.printStackTrace();
 //      fail("throw exception");
 //    }

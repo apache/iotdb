@@ -100,7 +100,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces for lastCache operations
- *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
  * </ol>
  */
@@ -1134,22 +1133,6 @@ public class LocalSchemaProcessor {
           node.getAsEntityMNode(), originalPath, startTime, endTime);
     }
   }
-  // endregion
-
-  // region Interfaces for Trigger
-
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    try {
-      return getBelongedSchemaRegion(fullPath).getMNodeForTrigger(fullPath);
-    } catch (StorageGroupNotSetException e) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-  }
-
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
-    getBelongedSchemaRegion(imNode.getPartialPath()).releaseMNodeAfterDropTrigger(imNode);
-  }
-
   // endregion
 
   // region TestOnly Interfaces

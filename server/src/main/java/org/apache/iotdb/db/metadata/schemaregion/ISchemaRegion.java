@@ -76,7 +76,6 @@ import java.util.function.Function;
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces for InsertPlan process
  *   <li>Interfaces for Template operations
- *   <li>Interfaces for Trigger
  * </ol>
  */
 public interface ISchemaRegion {
@@ -414,11 +413,5 @@ public interface ISchemaRegion {
 
   int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
 
-  // endregion
-
-  // region Interfaces for Trigger
-  IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException;
-
-  void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException;
   // endregion
 }
