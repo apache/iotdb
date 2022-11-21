@@ -105,6 +105,10 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    if (!getCurDeviceOperator().hasNext()) {
+      deviceIndex++;
+      return null;
+    }
     TsBlock tsBlock = getCurDeviceOperator().next();
     if (tsBlock == null) {
       return null;
@@ -132,14 +136,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    while (!getCurDeviceOperator().hasNext()) {
-      if (deviceIndex + 1 < devices.size()) {
-        deviceIndex++;
-      } else {
-        return false;
-      }
-    }
-    return true;
+    return deviceIndex < devices.size();
   }
 
   @Override
