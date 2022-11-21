@@ -68,6 +68,14 @@ public interface ISourceHandle {
   void abort();
 
   /**
+   * Abort the handle. Discard all tsblocks which may still be in the memory buffer and cancel the
+   * future returned by {@link #isBlocked()}.
+   *
+   * <p>Should only be called in abnormal case
+   */
+  void abort(Throwable t);
+
+  /**
    * Close the handle. Discard all tsblocks which may still be in the memory buffer and complete the
    * future returned by {@link #isBlocked()}.
    *

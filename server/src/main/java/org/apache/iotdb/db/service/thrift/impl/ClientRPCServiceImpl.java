@@ -222,7 +222,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -470,7 +470,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return new TSStatus(
         !SESSION_MANAGER.closeSession(
                 SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
@@ -1518,7 +1518,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               config.getQueryTimeoutThreshold());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionResult.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         resp.setStatus(executionResult.status);
         return resp;
       }
@@ -1774,7 +1774,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

@@ -197,12 +197,15 @@ public class UDFManagementService {
   public void doRegister(UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
-    try (UDFClassLoader currentActiveClassLoader =
-        UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+    try {
+      UDFClassLoader currentActiveClassLoader =
+          UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
       updateAllRegisteredClasses(currentActiveClassLoader);
 
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
-      functionClass.getDeclaredConstructor().newInstance();
+
+      // ensure that it is a UDF class
+      UDTF udtf = (UDTF) functionClass.getDeclaredConstructor().newInstance();
       udfTable.addUDFInformation(functionName, udfInformation);
       udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException
@@ -210,7 +213,8 @@ public class UDFManagementService {
         | InvocationTargetException
         | NoSuchMethodException
         | IllegalAccessException
-        | ClassNotFoundException e) {
+        | ClassNotFoundException
+        | ClassCastException e) {
       String errorMessage =
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
@@ -264,21 +268,6 @@ public class UDFManagementService {
               functionName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new RuntimeException(errorMessage);
-    }
-
-    if (!information.isBuiltin()) {
-      try {
-        Thread.currentThread()
-            .setContextClassLoader(
-                UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader());
-      } catch (IOException e) {
-        String errorMessage =
-            String.format(
-                "Failed to set UDFClassLoader for UDF %s(%s) , because %s",
-                functionName, information.getClassName(), e);
-        LOGGER.warn(errorMessage, e);
-        throw new RuntimeException(e);
-      }
     }
 
     try {

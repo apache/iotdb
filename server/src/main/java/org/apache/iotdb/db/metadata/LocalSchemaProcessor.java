@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -40,27 +39,11 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowResult;
@@ -103,7 +86,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *
  * <ol>
  *   <li>SchemaProcessor Singleton
- *   <li>Interfaces and Implementation of Operating PhysicalPlans of Metadata
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces and Implementation for StorageGroup and TTL operation
  *   <li>Interfaces for metadata info Query
@@ -118,7 +100,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces for lastCache operations
- *   <li>Interfaces and Implementation for Template operations
  *   <li>Interfaces for Trigger
  *   <li>TestOnly Interfaces
  * </ol>
@@ -198,83 +179,6 @@ public class LocalSchemaProcessor {
     return schemaRegions;
   }
 
-  // endregion
-
-  // region Interfaces and Implementation of operating PhysicalPlans of Metadata
-  // This method is mainly used for Metadata Sync and  upgrade
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
-    switch (plan.getOperatorType()) {
-      case CREATE_TIMESERIES:
-        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
-        break;
-      case CREATE_ALIGNED_TIMESERIES:
-        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-            (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
-        break;
-      case DELETE_TIMESERIES:
-        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
-        for (PartialPath path : deleteTimeSeriesPlan.getPaths()) {
-          deleteTimeseries(path);
-        }
-        break;
-      case SET_STORAGE_GROUP:
-        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
-        setStorageGroup(setStorageGroupPlan.getPath());
-        break;
-      case DELETE_STORAGE_GROUP:
-        DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
-        deleteStorageGroups(deleteStorageGroupPlan.getPaths());
-        break;
-      case TTL:
-        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
-        setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
-        break;
-      case CHANGE_ALIAS:
-        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
-        break;
-      case CREATE_TEMPLATE:
-        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
-        createSchemaTemplate(createTemplatePlan);
-        break;
-      case DROP_TEMPLATE:
-        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
-        dropSchemaTemplate(dropTemplatePlan);
-        break;
-      case APPEND_TEMPLATE:
-        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
-        appendSchemaTemplate(appendTemplatePlan);
-        break;
-      case PRUNE_TEMPLATE:
-        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
-        pruneSchemaTemplate(pruneTemplatePlan);
-        break;
-      case SET_TEMPLATE:
-        SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
-        setSchemaTemplate(setTemplatePlan);
-        break;
-      case ACTIVATE_TEMPLATE:
-        ActivateTemplatePlan activateTemplatePlan = (ActivateTemplatePlan) plan;
-        setUsingSchemaTemplate(activateTemplatePlan);
-        break;
-      case AUTO_CREATE_DEVICE_MNODE:
-        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
-        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
-        break;
-      case UNSET_TEMPLATE:
-        UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
-        unsetSchemaTemplate(unsetTemplatePlan);
-        break;
-      default:
-        logger.error("Unrecognizable command {}", plan.getOperatorType());
-    }
-  }
-
-  private void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    getBelongedSchemaRegion(plan.getPath()).autoCreateDeviceMNode(plan);
-  }
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -461,8 +365,7 @@ public class LocalSchemaProcessor {
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     // todo this is for test assistance, refactor this to support massive timeseries
-    if (pathPattern.getFullPath().equals("root.**")
-        && TemplateManager.getInstance().getAllTemplateName().isEmpty()) {
+    if (pathPattern.getFullPath().equals("root.**")) {
       return (int) SchemaStatisticsManager.getInstance().getTotalSeriesNumber();
     }
     int count = 0;
@@ -924,16 +827,6 @@ public class LocalSchemaProcessor {
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return getMeasurementMNode(fullPath).getSchema();
   }
-
-  // attention: this path must be a device node
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    try {
-      return getBelongedSchemaRegion(devicePath).getAllMeasurementByDevicePath(devicePath);
-    } catch (MetadataException e) {
-      throw new PathNotExistException(devicePath.getFullPath());
-    }
-  }
   // endregion
   // endregion
 
@@ -1243,84 +1136,6 @@ public class LocalSchemaProcessor {
   }
   // endregion
 
-  // region Interfaces and Implementation for Template operations
-  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
-    configManager.createSchemaTemplate(plan);
-  }
-
-  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
-    configManager.appendSchemaTemplate(plan);
-  }
-
-  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
-    configManager.pruneSchemaTemplate(plan);
-  }
-
-  public int countMeasurementsInTemplate(String templateName) throws MetadataException {
-    return configManager.countMeasurementsInTemplate(templateName);
-  }
-
-  /**
-   * @param templateName name of template to check
-   * @param path full path to check
-   * @return if path correspond to a measurement in template
-   * @throws MetadataException
-   */
-  public boolean isMeasurementInTemplate(String templateName, String path)
-      throws MetadataException {
-    return configManager.isMeasurementInTemplate(templateName, path);
-  }
-
-  public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
-    return configManager.isPathExistsInTemplate(templateName, path);
-  }
-
-  public List<String> getMeasurementsInTemplate(String templateName, String path)
-      throws MetadataException {
-    return configManager.getMeasurementsInTemplate(templateName, path);
-  }
-
-  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
-      String templateName, String path) throws MetadataException {
-    return configManager.getSchemasInTemplate(templateName, path);
-  }
-
-  public Set<String> getAllTemplates() {
-    return configManager.getAllTemplates();
-  }
-
-  /**
-   * Get all paths set designated template
-   *
-   * @param templateName designated template name, blank string for any template exists
-   * @return paths set
-   */
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    return configManager.getPathsSetTemplate(templateName);
-  }
-
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    return configManager.getPathsUsingTemplate(templateName);
-  }
-
-  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
-    configManager.dropSchemaTemplate(plan);
-  }
-
-  public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    configManager.setSchemaTemplate(plan);
-  }
-
-  public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    configManager.unsetSchemaTemplate(plan);
-  }
-
-  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
-    configManager.setUsingSchemaTemplate(plan);
-  }
-
-  // endregion
-
   // region Interfaces for Trigger
 
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
@@ -1366,15 +1181,6 @@ public class LocalSchemaProcessor {
       // Cannot get deviceId from SchemaProcessor, return the input deviceId
     }
     return device;
-  }
-
-  @TestOnly
-  public Template getTemplate(String templateName) throws MetadataException {
-    try {
-      return TemplateManager.getInstance().getTemplate(templateName);
-    } catch (UndefinedTemplateException e) {
-      throw new MetadataException(e);
-    }
   }
   // endregion
 }

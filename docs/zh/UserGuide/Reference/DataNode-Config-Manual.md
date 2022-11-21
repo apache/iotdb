@@ -1647,24 +1647,6 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 134217728 |
 |改后生效方式|重启服务生效|
 
-* enable\_partition
-
-|名字| enable\_partition |
-|:---:|:---|
-|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0 (不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size)|
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* time\_partition\_interval\_for\_storage
-
-|名字| time\_partition\_interval\_for\_storage  |
-|:---:|:-----------------------------------------|
-|描述| 用于 database 分区的时间段长度，用户指定的 database 下会使用该时间段进行分区，单位：毫秒 |
-|类型| Int64                                    |
-|默认值| 604800000                                 |
-|改后生效方式| 仅允许在第一次启动服务前修改                           |
-
 * data\_region\_num
 
 |   名字   | data\_region\_num                                                                                                                                                    |

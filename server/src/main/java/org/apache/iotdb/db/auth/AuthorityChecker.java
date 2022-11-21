@@ -148,7 +148,7 @@ public class AuthorityChecker {
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION_ERROR,
+            TSStatusCode.NO_PERMISSION,
             "No permissions for this operation, please add privilege "
                 + PrivilegeType.values()[
                     AuthorityChecker.translateToPermissionId(statement.getType())]);

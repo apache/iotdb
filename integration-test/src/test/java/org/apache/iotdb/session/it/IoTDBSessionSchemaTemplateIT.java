@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
@@ -88,7 +89,9 @@ public class IoTDBSessionSchemaTemplateIT {
       session.setSchemaTemplate("flatTemplate", "root.sg.d0");
       fail();
     } catch (StatementExecutionException e) {
-      assertEquals("303: Template already exists on root.sg.d0", e.getMessage());
+      assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Template already exists on root.sg.d0",
+          e.getMessage());
     }
   }
 
@@ -184,7 +187,9 @@ public class IoTDBSessionSchemaTemplateIT {
       session.createSchemaTemplate(temp1);
       fail();
     } catch (Exception e) {
-      assertEquals("303: Duplicated template name: template1", e.getMessage());
+      assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: template1",
+          e.getMessage());
     }
 
     session.dropSchemaTemplate("template1");
@@ -197,7 +202,8 @@ public class IoTDBSessionSchemaTemplateIT {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "303: Template [template1] has been set on MTree, cannot be dropped now.",
+          TSStatusCode.METADATA_ERROR.getStatusCode()
+              + ": Template [template1] has been set on MTree, cannot be dropped now.",
           e.getMessage());
     }
 

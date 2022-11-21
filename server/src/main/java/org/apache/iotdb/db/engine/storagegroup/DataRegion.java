@@ -58,7 +58,6 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -874,8 +873,7 @@ public class DataRegion {
    *
    * @param insertRowNode one row of data
    */
-  public void insert(InsertRowNode insertRowNode)
-      throws WriteProcessException, TriggerExecutionException {
+  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
       throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
@@ -911,12 +909,8 @@ public class DataRegion {
         return;
       }
 
-      // fire trigger before insertion
-      // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowNode);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
-      // fire trigger after insertion
-      // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowNode);
     } finally {
       writeUnlock();
     }
@@ -929,7 +923,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
+      throws BatchProcessException, WriteProcessException {
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
     }
@@ -949,8 +943,12 @@ public class DataRegion {
         if (!isAlive(currTime)) {
           results[loc] =
               RpcUtils.getStatus(
-                  TSStatusCode.OUT_OF_TTL_ERROR,
-                  "time " + currTime + " in current line is out of TTL: " + dataTTL);
+                  TSStatusCode.OUT_OF_TTL,
+                  String.format(
+                      "Insertion time [%s] is less than ttl time bound [%s]",
+                      DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
+                      DateTimeUtils.convertMillsecondToZonedDateTime(
+                          DateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -963,11 +961,6 @@ public class DataRegion {
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
             (DateTimeUtils.currentTime() - dataTTL));
       }
-
-      //      TODO(Trigger)// fire trigger before insertion
-      //      final int firePosition = loc;
-      //      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertTabletPlan, firePosition);
-
       // before is first start point
       int before = loc;
       // before time partition
@@ -1027,9 +1020,6 @@ public class DataRegion {
       if (!noFailure) {
         throw new BatchProcessException(results);
       }
-
-      //      TODO: trigger // fire trigger after insertion
-      //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
     }
@@ -3061,7 +3051,7 @@ public class DataRegion {
    * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
-      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+      throws WriteProcessException, BatchProcessException {
     if (enableMemControl) {
       StorageEngineV2.blockInsertionIfReject(null);
     }
@@ -3078,7 +3068,7 @@ public class DataRegion {
               .put(
                   i,
                   RpcUtils.getStatus(
-                      TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+                      TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
@@ -3116,8 +3106,6 @@ public class DataRegion {
           return;
         }
 
-        // fire trigger before insertion
-        // TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
         // insert to sequence or unSequence file
         try {
           insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
@@ -3126,8 +3114,6 @@ public class DataRegion {
               .getResults()
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
-        // fire trigger before insertion
-        // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
       }
     } finally {
       writeUnlock();
@@ -3147,7 +3133,7 @@ public class DataRegion {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       try {
         insert(insertRowNode);
-      } catch (WriteProcessException | TriggerExecutionException e) {
+      } catch (WriteProcessException e) {
         insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -3168,7 +3154,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
+      } catch (WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));

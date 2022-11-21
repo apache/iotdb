@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Set;
 
 public interface ISchemaTree {
   /**
@@ -60,11 +61,11 @@ public interface ISchemaTree {
    * @param pathName only full path, cannot be path pattern
    * @return database in the given path
    */
-  String getBelongedStorageGroup(String pathName);
+  String getBelongedDatabase(String pathName);
 
-  String getBelongedStorageGroup(PartialPath path);
+  String getBelongedDatabase(PartialPath path);
 
-  List<String> getStorageGroups();
+  Set<String> getDatabases();
 
   boolean isEmpty();
 }

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -86,9 +85,8 @@ public class TTLTest {
 
   @Before
   public void setUp() throws MetadataException, DataRegionException {
-    prevPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(86400000);
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
     EnvironmentUtils.envSetUp();
     createSchemas();
   }
@@ -97,9 +95,7 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setTimePartitionIntervalForStorage(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
   }
 
   private void createSchemas() throws MetadataException, DataRegionException {
@@ -144,8 +140,7 @@ public class TTLTest {
 
   @Test
   public void testTTLWrite()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
@@ -176,8 +171,7 @@ public class TTLTest {
     dataRegion.insert(node);
   }
 
-  private void prepareData()
-      throws WriteProcessException, IllegalPathException, TriggerExecutionException {
+  private void prepareData() throws WriteProcessException, IllegalPathException {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
@@ -413,8 +407,7 @@ public class TTLTest {
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          TriggerExecutionException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     prepareData();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 

@@ -142,18 +142,6 @@ Total line number = 4
 It costs 0.016s
 ```
 
-It is worth noting that because the current FILL clause can only fill in the missing value of timeseries at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) limit 10
-```
-
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, ';'}
-```
-
 ## Column Control over Query Results
 
 By using SLIMIT and SOFFSET clauses, users can control the query results in a column-related manner. We will demonstrate how to use SLIMIT and SOFFSET clauses through the following examples.
@@ -240,29 +228,6 @@ Total line number = 7
 It costs 0.000s
 ```
 
-* Example 4: SLIMIT clause combined with FILL clause
-
-The SQL statement is:
-
-```sql
-select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(previous, 1m) slimit 1 soffset 1
-```
-which means:
-
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is the second column under this device, i.e., the temperature.
-
-The result is shown below:
-
-```
-+-----------------------------+--------------------------+
-|                         Time|root.sgcc.wf03.wt01.status|
-+-----------------------------+--------------------------+
-|2017-11-01T16:35:00.000+08:00|                      true|
-+-----------------------------+--------------------------+
-Total line number = 1
-It costs 0.007s
-```
-
 ## Row and Column Control over Query Results
 
 In addition to row or column control over query results, IoTDB allows users to control both rows and columns of query results. Here is a complete example with both LIMIT clauses and SLIMIT clauses.
@@ -331,7 +296,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
+Msg: 416: Out of range. LIMIT <N>: N should be Int32.
 ```
 
 If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:

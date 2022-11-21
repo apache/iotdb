@@ -26,7 +26,7 @@ The `SELECT INTO` statement copies data from query result set into target time s
 The application scenarios are as follows:
 - **Implement IoTDB internal ETL**: ETL the original data and write a new time series.
 - **Query result storage**: Persistently store the query results, which acts like a materialized view.
-- **Non-aligned time series to aligned time series**:  Rewrite non-aligned time series into aligned time series.
+- **Non-aligned time series to aligned time series**:  Rewrite non-aligned time series into another aligned time series.
 
 ## SQL Syntax
 
@@ -130,8 +130,6 @@ It costs 0.625s
 ```
 This statement also writes the query results of the four time series under the `root.sg` database to the four specified time series under the `root.sg_copy` database. However, in ALIGN BY DEVICE, the number of `intoItem` must be the same as the number of queried devices, and each queried device corresponds to one `intoItem`.
 
-It is easy to see that in the case of ALIGN BY DEVICE query, columns under the same device can only be written to the same target device.
-
 > When aligning the query by device, the result set displayed by `CLI` has one more column, the `source device` column indicating the queried device.
 
 - **Example 4** (aligned by device)
@@ -156,13 +154,11 @@ In particular, We can use variable placeholders to describe the correspondence b
 - Suffix duplication character `::`: Copy the suffix (or measurement) of the query device, indicating that from this layer to the last layer (or measurement) of the device, the node name (or measurement) of the target device corresponds to the queried device The node name (or measurement) is the same.
 - Single-level node matcher `${i}`: Indicates that the current level node name of the target sequence is the same as the i-th level node name of the query sequence. For example, for the path `root.sg1.d1.s1`, `${1}` means `sg1`, `${2}` means `d1`, and `${3}` means `s1`.
 
-Note: The variable placeholder **can only describe the correspondence between time series**, and cannot be used for functions, expressions, etc.
-
 When using variable placeholders, there must be no ambiguity in the correspondence between `intoItem` and the columns of the query result set. The specific cases are classified as follows:
 
 #### ALIGN BY TIME (default)
 
-> Note: If the query includes aggregation and expression calculation, the columns in the query result cannot correspond to a time series, so neither the target device nor the measurement can use variable placeholders.
+> Note: The variable placeholder **can only describe the correspondence between time series**. If the query includes aggregation and expression calculation, the columns in the query result cannot correspond to a time series, so neither the target device nor the measurement can use variable placeholders.
 
 ##### (1) The target device does not use variable placeholders & the target measurement list uses variable placeholders
 
@@ -176,13 +172,13 @@ When using variable placeholders, there must be no ambiguity in the corresponden
 
 ```sql
 select s1, s2
-into root.sg_copy.d1(::), rot.sg_copy.d2(s1), root.sg_copy.d1(${3}), root.sg_copy.d2(::),
+into root.sg_copy.d1(::), root.sg_copy.d2(s1), root.sg_copy.d1(${3}), root.sg_copy.d2(::)
 from root.sg.d1, root.sg.d2;
 ````
 This statement is equivalent to:
 ```sql
 select s1, s2
-into root.sg_copy.d1(s1), rot.sg_copy.d2(s1), root.sg_copy.d1(s2), root.sg_copy.d2(s2),
+into root.sg_copy.d1(s1), root.sg_copy.d2(s1), root.sg_copy.d1(s2), root.sg_copy.d2(s2)
 from root.sg.d1, root.sg.d2;
 ````
 As you can see, the statement is not very simplified in this case.
@@ -213,7 +209,7 @@ Write the query results of all time series under `root.sg` to `root.sg_bk`, the 
 
 #### ALIGN BY DEVICE
 
-> Note: If the query includes aggregation and expression calculation, the columns in the query result cannot correspond to a specific physical quantity, so the target measurement cannot use variable placeholders.
+> Note: The variable placeholder **can only describe the correspondence between time series**. If the query includes aggregation and expression calculation, the columns in the query result cannot correspond to a specific physical quantity, so the target measurement cannot use variable placeholders.
 
 ##### (1) The target device does not use variable placeholders & the target measurement list uses variable placeholders
 
@@ -258,6 +254,12 @@ Write the query result of each time series in `root.sg` to the same device, and 
 ### Specify the target time series as the aligned time series
 
 We can use the `ALIGNED` keyword to specify the target device for writing to be aligned, and each `intoItem` can be set independently.
+
+**Example:**
+```sql
+select s1, s2 into root.sg_copy.d1(t1, t2), aligned root.sg_copy.d2(t1, t2) from root.sg.d1, root.sg.d2 align by device;
+```
+This statement specifies that `root.sg_copy.d1` is an unaligned device and `root.sg_copy.d2` is an aligned device.
 
 ### Unsupported query clauses
 
@@ -306,7 +308,7 @@ It costs 0.115s
 ```
 
 ### Non-aligned time series to aligned time series
-Rewrite non-aligned time series into aligned time series.
+Rewrite non-aligned time series into another aligned time series.
 
 **Note:** It is recommended to use the `LIMIT & OFFSET` clause or the `WHERE` clause (time filter) to batch data to prevent excessive data volume in a single operation.
 

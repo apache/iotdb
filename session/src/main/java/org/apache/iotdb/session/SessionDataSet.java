@@ -173,7 +173,7 @@ public class SessionDataSet implements AutoCloseable {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.getTimestamp().getTime(), outFields);
+    return new RowRecord(ioTDBRpcDataSet.time, outFields);
   }
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {

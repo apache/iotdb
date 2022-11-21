@@ -39,7 +39,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -359,65 +358,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     return IoTDB.schemaProcessor.getSeriesType(path);
   }
 
-  private boolean executeMultiTimeSeriesPlan(
-      CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
-    long t1 = System.currentTimeMillis();
-    TSStatus tsStatus = executeNonQueryPlan(multiPlan);
-    addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
-
-    int startIndex = result.size();
-    if (startIndex > 0) {
-      startIndex = startIndex - 1;
-    }
-    for (int k = 0; k < multiPlan.getPaths().size(); k++) {
-      result.add(RpcUtils.SUCCESS_STATUS);
-    }
-    if (tsStatus.subStatus != null) {
-      for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
-        result.set(startIndex + entry.getKey(), entry.getValue());
-      }
-    }
-    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
-  }
-
-  private void initMultiTimeSeriesPlan(CreateMultiTimeSeriesPlan multiPlan) {
-    if (multiPlan.getPaths() == null) {
-      List<PartialPath> paths = new ArrayList<>();
-      List<TSDataType> tsDataTypes = new ArrayList<>();
-      List<TSEncoding> tsEncodings = new ArrayList<>();
-      List<CompressionType> tsCompressionTypes = new ArrayList<>();
-      List<Map<String, String>> tagsList = new ArrayList<>();
-      List<Map<String, String>> attributesList = new ArrayList<>();
-      List<String> aliasList = new ArrayList<>();
-      multiPlan.setPaths(paths);
-      multiPlan.setDataTypes(tsDataTypes);
-      multiPlan.setEncodings(tsEncodings);
-      multiPlan.setCompressors(tsCompressionTypes);
-      multiPlan.setTags(tagsList);
-      multiPlan.setAttributes(attributesList);
-      multiPlan.setAlias(aliasList);
-    }
-  }
-
-  private void setMultiTimeSeriesPlan(
-      CreateMultiTimeSeriesPlan multiPlan, CreateTimeSeriesPlan createTimeSeriesPlan) {
-    PartialPath path = createTimeSeriesPlan.getPath();
-    TSDataType type = createTimeSeriesPlan.getDataType();
-    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
-    CompressionType compressor = createTimeSeriesPlan.getCompressor();
-    Map<String, String> tags = createTimeSeriesPlan.getTags();
-    Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
-    String alias = createTimeSeriesPlan.getAlias();
-
-    multiPlan.getPaths().add(path);
-    multiPlan.getDataTypes().add(type);
-    multiPlan.getEncodings().add(encoding);
-    multiPlan.getCompressors().add(compressor);
-    multiPlan.getTags().add(tags);
-    multiPlan.getAttributes().add(attributes);
-    multiPlan.getAlias().add(alias);
-  }
-
   @Override
   public TSStatus executeBatchStatement(TSExecuteBatchStatementReq req) {
     return null;
@@ -629,7 +569,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         && !SESSION_MANAGER.checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
+              TSStatusCode.NO_PERMISSION,
               "No permissions for this operation, please add privilege "
                   + OperatorType.values()[
                       AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
@@ -733,7 +673,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         port);
     TSStatus status = new TSStatus();
     status.setRedirectNode(new TEndPoint(ip, port));
-    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    status.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());
     return resp;
@@ -1108,7 +1048,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
               new PartialPath(req.path),
               TSDataType.values()[req.dataType],
               TSEncoding.values()[req.encoding],
-              CompressionType.values()[req.compressor],
+              CompressionType.deserialize((byte) req.compressor),
               req.props,
               req.tags,
               req.attributes,
@@ -1154,7 +1094,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       }
       List<CompressionType> compressors = new ArrayList<>();
       for (int compressor : req.compressors) {
-        compressors.add(CompressionType.values()[compressor]);
+        compressors.add(CompressionType.deserialize((byte) compressor));
       }
 
       CreateAlignedTimeSeriesPlan plan =
@@ -1230,7 +1170,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         }
 
         paths.add(new PartialPath(req.paths.get(i)));
-        compressors.add(CompressionType.values()[req.compressors.get(i)]);
+        compressors.add(CompressionType.deserialize(req.compressors.get(i).byteValue()));
         if (alias != null) {
           alias.add(req.measurementAliasList.get(i));
         }
@@ -1346,7 +1286,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       measurements[i] = req.getMeasurements().get(i);
       dataTypes[i] = TSDataType.values()[req.getDataTypes().get(i)];
       encodings[i] = TSEncoding.values()[req.getEncodings().get(i)];
-      compressionTypes[i] = CompressionType.values()[req.getCompressors().get(i)];
+      compressionTypes[i] = CompressionType.deserialize(req.getCompressors().get(i).byteValue());
     }
 
     AppendTemplatePlan plan =
@@ -1366,49 +1306,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
-    try {
-      TSQueryTemplateResp resp = new TSQueryTemplateResp();
-      String path;
-      switch (TemplateQueryType.values()[req.getQueryType()]) {
-        case COUNT_MEASUREMENTS:
-          resp.setQueryType(TemplateQueryType.COUNT_MEASUREMENTS.ordinal());
-          resp.setCount(IoTDB.schemaProcessor.countMeasurementsInTemplate(req.name));
-          break;
-        case IS_MEASUREMENT:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.IS_MEASUREMENT.ordinal());
-          resp.setResult(IoTDB.schemaProcessor.isMeasurementInTemplate(req.name, path));
-          break;
-        case PATH_EXIST:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.PATH_EXIST.ordinal());
-          resp.setResult(IoTDB.schemaProcessor.isPathExistsInTemplate(req.name, path));
-          break;
-        case SHOW_MEASUREMENTS:
-          path = req.getMeasurement();
-          resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
-          resp.setMeasurements(IoTDB.schemaProcessor.getMeasurementsInTemplate(req.name, path));
-          break;
-        case SHOW_TEMPLATES:
-          resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getAllTemplates()));
-          break;
-        case SHOW_SET_TEMPLATES:
-          path = req.getName();
-          resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsSetTemplate(path)));
-          break;
-        case SHOW_USING_TEMPLATES:
-          path = req.getName();
-          resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
-          resp.setMeasurements(new ArrayList<>(IoTDB.schemaProcessor.getPathsUsingTemplate(path)));
-          break;
-      }
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
-      return resp;
-    } catch (MetadataException e) {
-      LOGGER.error("fail to query schema template because: " + e);
-    }
     return null;
   }
 
@@ -1508,7 +1405,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 

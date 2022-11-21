@@ -98,7 +98,7 @@ public class RegionMigrateProcedure
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
-            throw new ProcedureException("Failed to add region peer");
+            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
@@ -111,7 +111,7 @@ public class RegionMigrateProcedure
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
-            throw new ProcedureException("Failed to remove region peer");
+            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
           setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
@@ -150,8 +150,7 @@ public class RegionMigrateProcedure
                   "Procedure retried failed exceed 5 times, state stuck at " + state));
         }
 
-        // meets exception in region migrate process
-        // terminate the process
+        // meets exception in region migrate process terminate the process
         return Flow.NO_MORE_STATE;
       }
     }

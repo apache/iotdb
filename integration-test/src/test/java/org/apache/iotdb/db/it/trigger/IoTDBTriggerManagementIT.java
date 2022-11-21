@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -425,6 +426,43 @@ public class IoTDBTriggerManagementIT {
   }
 
   @Test
+  public void testCreateTriggerWithInvalidURI() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
+                TRIGGER_FILE_TIMES_COUNTER,
+                "",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all",
+                TRIGGER_FILE_TIMES_COUNTER,
+                "file:///data/trigger/upload-test.jar",
+                STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      ResultSet resultSet = statement.executeQuery("show triggers");
+      assertFalse(resultSet.next());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testDropTriggersAfterCreationNormally() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -507,7 +545,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
 
@@ -536,7 +575,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege CREATE_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
               e.getMessage());
         }
       }
@@ -567,7 +607,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }
 
@@ -578,7 +619,8 @@ public class IoTDBTriggerManagementIT {
           fail();
         } catch (Exception e) {
           assertEquals(
-              "602: No permissions for this operation, please add privilege DROP_TRIGGER",
+              TSStatusCode.NO_PERMISSION.getStatusCode()
+                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
               e.getMessage());
         }
 

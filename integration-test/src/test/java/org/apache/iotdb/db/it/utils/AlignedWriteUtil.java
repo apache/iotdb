@@ -136,10 +136,10 @@ public class AlignedWriteUtil {
         Statement statement = connection.createStatement()) {
 
       // create aligned and non-aligned time series
-      // TODO change it to executeBatch way when it's supported in new cluster
       for (String sql : sqls) {
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
