@@ -59,7 +59,7 @@ Here is a list of Status Code and related message:
 |500|DATABASE_NOT_EXIST|Database does not exist|
 |501|DATABASE_ALREADY_EXISTS|Database already exist|
 |502|SERIES_OVERFLOW|Series number exceeds the threshold|
-|503|TIMESERIES_ALREADY_EXIST|Timeseries number exceeds the threshold|
+|503|TIMESERIES_ALREADY_EXIST|Timeseries already exists|
 |504|TIMESERIES_IN_BLACK_LIST|Timeseries is being deleted|
 |505|ALIAS_ALREADY_EXIST|Alias already exists|
 |506|PATH_ALREADY_EXIST|Path already exists|

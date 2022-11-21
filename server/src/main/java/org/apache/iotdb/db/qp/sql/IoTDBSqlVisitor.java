@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -100,7 +99,6 @@ import org.apache.iotdb.db.qp.logical.sys.CreatePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreatePipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -110,7 +108,6 @@ import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropTemplateOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
@@ -144,9 +141,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTemplatesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopPipeOperator;
-import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
@@ -627,33 +622,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return createFunctionOperator;
   }
 
-  // Create Trigger
-
-  @Override
-  public Operator visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
-    CreateTriggerOperator createTriggerOperator =
-        new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
-    createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    if (ctx.triggerEventClause().DELETE() != null) {
-      throw new SQLParserException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
-    }
-    createTriggerOperator.setEvent(
-        ctx.triggerEventClause().BEFORE() != null
-            ? TriggerEvent.BEFORE_INSERT
-            : TriggerEvent.AFTER_INSERT);
-    createTriggerOperator.setFullPath(parsePrefixPath(ctx.prefixPath()));
-    createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
-    if (ctx.triggerAttributeClause() != null) {
-      for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
-          ctx.triggerAttributeClause().triggerAttribute()) {
-        createTriggerOperator.addAttribute(
-            parseAttributeKey(triggerAttributeContext.key),
-            parseAttributeValue(triggerAttributeContext.value));
-      }
-    }
-    return createTriggerOperator;
-  }
-
   // Create Continuous Query
 
   @Override
@@ -925,15 +893,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return dropFunctionOperator;
   }
 
-  // Drop Trigger
-
-  @Override
-  public Operator visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
-    DropTriggerOperator dropTriggerOperator = new DropTriggerOperator(SQLConstant.TOK_TRIGGER_DROP);
-    dropTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return dropTriggerOperator;
-  }
-
   // Drop Continuous Query
 
   @Override
@@ -991,25 +950,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
-  }
-
-  // Start Trigger
-
-  @Override
-  public Operator visitStartTrigger(IoTDBSqlParser.StartTriggerContext ctx) {
-    StartTriggerOperator startTriggerOperator =
-        new StartTriggerOperator(SQLConstant.TOK_TRIGGER_START);
-    startTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return startTriggerOperator;
-  }
-
-  // Stop Trigger
-
-  @Override
-  public Operator visitStopTrigger(IoTDBSqlParser.StopTriggerContext ctx) {
-    StopTriggerOperator stopTriggerOperator = new StopTriggerOperator(SQLConstant.TOK_TRIGGER_STOP);
-    stopTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
-    return stopTriggerOperator;
   }
 
   // SHOW DATABASES
@@ -1267,7 +1207,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
       queryOp.setWhereComponent(whereComponent);
     }
-    queryOp.setEnableTracing(ctx.TRACING() != null);
+    queryOp.setEnableTracing(false);
     // 4. Check whether it's a select-into clause
     return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
@@ -2508,7 +2448,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeOperator operator)
       throws SQLParserException {
-    if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
+    if (ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 

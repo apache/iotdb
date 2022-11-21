@@ -422,7 +422,7 @@ public class WrappedSegment extends Segment<IMNode> {
                 pair.left,
                 TSDataType.values()[schemaBytes[0]],
                 TSEncoding.values()[schemaBytes[1]],
-                CompressionType.values()[schemaBytes[2]],
+                CompressionType.deserialize(schemaBytes[2]),
                 RecordUtils.getRecordAlias(bufferR)));
       } else {
         throw new BufferUnderflowException();
