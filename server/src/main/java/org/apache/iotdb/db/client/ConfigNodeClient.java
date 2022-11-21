@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -149,9 +149,9 @@ public class ConfigNodeClient
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+  ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
 
-  PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
+  ConfigNodeRegionId configNodeRegionId = ConfigNodeInfo.configNodeRegionId;
 
   TProtocolFactory protocolFactory;
 
@@ -169,7 +169,7 @@ public class ConfigNodeClient
   public ConfigNodeClient(
       TProtocolFactory protocolFactory,
       long connectionTimeout,
-      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -252,7 +252,7 @@ public class ConfigNodeClient
   @Override
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(partitionRegionId, this);
+      clientManager.returnClient(configNodeRegionId, this);
     } else {
       invalidate();
     }
@@ -265,11 +265,11 @@ public class ConfigNodeClient
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.partitionRegionId);
+    clientManager.clear(ConfigNodeInfo.configNodeRegionId);
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
             new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
@@ -812,6 +812,11 @@ public class ConfigNodeClient
   @Override
   public TSStatus notifyRegisterSuccess() throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+  }
+
+  @Override
+  public TSStatus isConsensusInitialized() throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support isConsensusInitialized.");
   }
 
   @Override
@@ -1731,22 +1736,22 @@ public class ConfigNodeClient
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
+  public static class Factory extends BaseClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
 
     public Factory(
-        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
+        ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+    public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
         throws Exception {
       Constructor<ConfigNodeClient> constructor =
           ConfigNodeClient.class.getConstructor(
@@ -1762,7 +1767,7 @@ public class ConfigNodeClient
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }

@@ -130,7 +130,7 @@ public class TsFileValidationTool {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
         }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();

@@ -124,8 +124,8 @@ public interface IWritableMemChunk extends WALEntryValue {
     return null;
   }
 
-  default long getMinTime() {
-    return Long.MIN_VALUE;
+  default long getMaxTime() {
+    return Long.MAX_VALUE;
   }
 
   /** @return how many points are deleted */
@@ -140,4 +140,6 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getFirstPoint();
 
   long getLastPoint();
+
+  boolean isEmpty();
 }

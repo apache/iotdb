@@ -99,7 +99,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(time);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
@@ -178,7 +178,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
   }
 
   @Override
@@ -235,7 +235,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * Notice: measurementSchemas must be initialized before calling this method
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void transferType() throws QueryProcessException {
+  public void transferType() throws QueryProcessException {
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist

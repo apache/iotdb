@@ -34,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +44,7 @@ public class DefaultDriverSchedulerTest {
   private final DriverScheduler manager = DriverScheduler.getInstance();
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     clear();
   }
 

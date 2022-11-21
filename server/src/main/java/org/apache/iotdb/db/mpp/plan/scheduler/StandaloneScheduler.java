@@ -132,7 +132,7 @@ public class StandaloneScheduler implements IScheduler {
       case WRITE:
         // reject non-query operations when system is read-only
         if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-          TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+          TSStatus failedStatus = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
           failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
           stateMachine.transitionToFailed(failedStatus);
           return;

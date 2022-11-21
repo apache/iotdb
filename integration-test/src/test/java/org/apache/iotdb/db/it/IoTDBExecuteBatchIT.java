@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -71,7 +72,7 @@ public class IoTDBExecuteBatchIT {
       String[] values = {"3.4"};
 
       while (resultSet.next()) {
-        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(timestamps[count], resultSet.getString(ColumnHeaderConstant.TIME));
         assertEquals(values[count], resultSet.getString("root.ln.wf01.wt01.temperature"));
         count++;
       }
@@ -107,7 +108,7 @@ public class IoTDBExecuteBatchIT {
       String[] values = {"3.4"};
       int count = 0;
       while (resultSet.next()) {
-        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(timestamps[count], resultSet.getString(ColumnHeaderConstant.TIME));
         assertEquals(values[count], resultSet.getString("root.ln.wf01.wt01.temperature"));
         count++;
       }
@@ -115,15 +116,14 @@ public class IoTDBExecuteBatchIT {
           statement.executeQuery("SHOW TIMESERIES root.turbine.d1.s1");
       count = 0;
       String[] key_s1 = {
-        "timeseries",
-        "alias",
-        "storage",
-        "group",
-        "dataType",
-        "encoding",
-        "compression",
-        "tags",
-        "attributes"
+        ColumnHeaderConstant.TIMESERIES,
+        ColumnHeaderConstant.ALIAS,
+        ColumnHeaderConstant.DATABASE,
+        ColumnHeaderConstant.DATATYPE,
+        ColumnHeaderConstant.ENCODING,
+        ColumnHeaderConstant.COMPRESSION,
+        ColumnHeaderConstant.TAGS,
+        ColumnHeaderConstant.ATTRIBUTES
       };
       String[] value_s1 = {
         "root.turbine.d1.s1",
@@ -145,15 +145,14 @@ public class IoTDBExecuteBatchIT {
           statement.executeQuery("SHOW TIMESERIES root.turbine.d1.s2");
       count = 0;
       String[] key_s2 = {
-        "timeseries",
-        "alias",
-        "storage",
-        "group",
-        "dataType",
-        "encoding",
-        "compression",
-        "tags",
-        "attributes"
+        ColumnHeaderConstant.TIMESERIES,
+        ColumnHeaderConstant.ALIAS,
+        ColumnHeaderConstant.DATABASE,
+        ColumnHeaderConstant.DATATYPE,
+        ColumnHeaderConstant.ENCODING,
+        ColumnHeaderConstant.COMPRESSION,
+        ColumnHeaderConstant.TAGS,
+        ColumnHeaderConstant.ATTRIBUTES
       };
       String[] value_s2 = {
         "root.turbine.d1.s2",
@@ -172,15 +171,14 @@ public class IoTDBExecuteBatchIT {
 
       count = 0;
       String[] key_s3 = {
-        "timeseries",
-        "alias",
-        "storage",
-        "group",
-        "dataType",
-        "encoding",
-        "compression",
-        "tags",
-        "attributes"
+        ColumnHeaderConstant.TIMESERIES,
+        ColumnHeaderConstant.ALIAS,
+        ColumnHeaderConstant.DATABASE,
+        ColumnHeaderConstant.DATATYPE,
+        ColumnHeaderConstant.ENCODING,
+        ColumnHeaderConstant.COMPRESSION,
+        ColumnHeaderConstant.TAGS,
+        ColumnHeaderConstant.ATTRIBUTES
       };
       String[] value_s3 = {
         "root.turbine.d1.s3", "null", "root.turbine", "BOOLEAN", "RLE", "SNAPPY", "null", "null"

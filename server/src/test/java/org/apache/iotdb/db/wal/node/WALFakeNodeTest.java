@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -39,9 +41,10 @@ public class WALFakeNodeTest {
     walNode = WALFakeNode.getSuccessInstance();
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
-    walFlushListeners.add(walNode.log(1, new InsertRowPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertTabletPlan(), 0, 0));
-    walFlushListeners.add(walNode.log(1, new DeletePlan()));
+    walFlushListeners.add(walNode.log(1, new InsertRowNode(new PlanNodeId("0"))));
+    walFlushListeners.add(walNode.log(1, new InsertTabletNode(new PlanNodeId("1")), 0, 0));
+    walFlushListeners.add(
+        walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {
@@ -58,9 +61,10 @@ public class WALFakeNodeTest {
     walNode = WALFakeNode.getFailureInstance(expectedException);
     // log something
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
-    walFlushListeners.add(walNode.log(1, new InsertRowPlan()));
-    walFlushListeners.add(walNode.log(1, new InsertTabletPlan(), 0, 0));
-    walFlushListeners.add(walNode.log(1, new DeletePlan()));
+    walFlushListeners.add(walNode.log(1, new InsertRowNode(new PlanNodeId("0"))));
+    walFlushListeners.add(walNode.log(1, new InsertTabletNode(new PlanNodeId("1")), 0, 0));
+    walFlushListeners.add(
+        walNode.log(1, new DeleteDataNode(new PlanNodeId("2"), Collections.emptyList(), 0, 0)));
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {

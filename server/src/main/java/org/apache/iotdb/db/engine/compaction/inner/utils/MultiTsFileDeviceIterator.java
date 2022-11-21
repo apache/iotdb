@@ -56,6 +56,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
+    // sort the files from the oldest to the newest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
@@ -78,7 +79,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResources = new ArrayList<>(seqResources);
     tsFileResources.addAll(unseqResources);
-    // sort tsfiles from the newest to the oldest
+    // sort the files from the newest to the oldest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
     for (TsFileResource tsFileResource : tsFileResources) {
       TsFileSequenceReader reader =

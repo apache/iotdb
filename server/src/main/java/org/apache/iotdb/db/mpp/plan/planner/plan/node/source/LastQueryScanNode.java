@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -40,7 +41,10 @@ import java.util.Objects;
 public class LastQueryScanNode extends SeriesSourceNode {
 
   public static final List<String> LAST_QUERY_HEADER_COLUMNS =
-      ImmutableList.of("timeseries", "value", "dataType");
+      ImmutableList.of(
+          ColumnHeaderConstant.TIMESERIES,
+          ColumnHeaderConstant.VALUE,
+          ColumnHeaderConstant.DATATYPE);
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;

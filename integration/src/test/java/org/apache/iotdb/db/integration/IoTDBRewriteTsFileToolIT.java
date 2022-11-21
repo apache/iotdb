@@ -100,7 +100,7 @@ public class IoTDBRewriteTsFileToolIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("create timeseries root.sg.d1.s INT32");
       statement.execute("create timeseries root.sg.d2.s INT32");
       statement.execute("create timeseries root.sg.d3.s INT32");

@@ -213,7 +213,7 @@ public class ExtPipePluginManager {
             if (pipeData instanceof TsFilePipeData) {
               TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
 
-              String sgName = tsFilePipeData.getStorageGroupName();
+              String sgName = tsFilePipeData.getDatabase();
               String tsFileFullName = tsFilePipeData.getTsFilePath();
               String modsFileFullName = tsFilePipeData.getModsFilePath();
               try {
@@ -229,7 +229,7 @@ public class ExtPipePluginManager {
               if (pipeOpManager.isEmpty()) {
                 DeletionPipeData deletionPipeData = (DeletionPipeData) pipeData;
                 pipeOpManager.appendDeletionOpBlock(
-                    deletionPipeData.getStorageGroup(),
+                    deletionPipeData.getDatabase(),
                     deletionPipeData.getDeletion(),
                     pipeDataSerialNumber);
                 lastPipeDataSerialNumber = pipeData.getSerialNumber();

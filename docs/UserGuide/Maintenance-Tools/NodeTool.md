@@ -93,13 +93,13 @@ The above output shows that there are three nodes in the current cluster,
 and the output results are ordered by their identifier ascendant.
 
 ### Query data partition and metadata partition
-The time series metadata of distributed iotdb is divided into multiple data groups according to their storage groups,
-in which the storage group and data partition are many to one relationship.
+The time series metadata of distributed iotdb is divided into multiple data groups according to their databases,
+in which the database and data partition are many to one relationship.
 
-That is, all metadata of a storage group only exists in the same data group,
-and a data group may contain multiple storage groups.
+That is, all metadata of a database only exists in the same data group,
+and a data group may contain multiple databases.
 
-The data is divided into multiple data groups according to its storage group and timestamp,
+The data is divided into multiple data groups according to its database and timestamp,
 and the time partition granularity is decided by a configuration (currently unavailable).
 
 The data partition is composed of several replica nodes to ensure high availability of data,
@@ -115,7 +115,7 @@ Through this instruction, the user can know the metadata of a certain path,
 |Parameter|Description|Examples|
 | --- | --- | --- |
 |-m | --metadata	Query metadata partition, by default only query data partition|	-m |
-|-path | --path 	Required parameter, the path to be queried. If the path has no corresponding storage group, the query fails|	-path root.guangzhou.d1|
+|-path | --path 	Required parameter, the path to be queried. If the path has no corresponding database, the query fails|	-path root.guangzhou.d1|
 |-st | --StartTime	The system uses the current partition time by default|	-st 1576724778159 |
 |-et | --EndTime	It is used when querying data partition.<br>The end time is the current system time by default. <br> If the end time is less than the start time, the end time is the start time by default|-et 1576724778159 |
 
@@ -128,7 +128,7 @@ Through this instruction, the user can know the metadata of a certain path,
 
 > Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668, and 127.0.0.1:9007:40014:6669.
 > 
-> The number of copies is 2 and there are 3 storage groups:{ root.beijing , root.shanghai , root.guangzhou}.
+> The number of copies is 2 and there are 3 databases:{ root.beijing , root.shanghai , root.guangzhou}.
 
 + Partition of query data (default time range, time partition interval is one day)
 

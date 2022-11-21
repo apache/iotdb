@@ -43,7 +43,8 @@ public class TriggerExecutor {
     this.trigger = trigger;
     // call Trigger#validate and Trigger#onCreate
     onCreate();
-    if (isRestoring) {
+    // Only call Trigger.restore() for stateful trigger
+    if (isRestoring && triggerInformation.isStateful()) {
       onRestore();
     }
   }

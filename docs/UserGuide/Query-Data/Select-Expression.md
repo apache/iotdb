@@ -63,9 +63,6 @@ From this syntax definition, `selectExpr` can contain:
 
 ## Arithmetic Query
 
-
-> Please note that there is no difference between Aligned Timeseries and NonAligned Timeseries in the current version, both support Arithmetic Expression. 
-
 ### Operators
 
 #### Unary Arithmetic Operators
@@ -147,6 +144,13 @@ Supported input data types: `All Types`
 
 Output data type: `BOOLEAN`
 
+Note: Please ensure the value strings in set can be cast to the DataType of Operand
+> Example: 
+> 
+>`s1 in (1, 2, 3, 'test')`, DataType of `s1` is `INT32`
+> 
+> We will throw Exception because `'test'` cannot be cast to `INT32`
+
 #### String Match Operators
 
 Supported operators `LIKE`, `REGEXP`
@@ -222,8 +226,6 @@ The time series generating function takes several time series as input and outpu
 All time series generating functions can accept * as input.
 
 IoTDB supports hybrid queries of time series generating function queries and raw data queries.
-
-> Please note that Aligned Timeseries has not been supported in queries with hybrid functions yet. An error message is expected if you use hybrid functions with Aligned Timeseries selected in a query statement.
 
 ### Mathematical Functions
 
@@ -417,7 +419,7 @@ The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE
 ```
 IoTDB> show timeseries root.sg.d1.*;
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
 |root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|
@@ -1292,20 +1294,6 @@ It costs 0.012s
 
 - Only when the left operand and the right operand under a certain timestamp are not `null`, the nested expressions will have an output value. Otherwise this row will not be included in the result. But for nested expressions with `GROUP BY` clause, it is better to show the result of all time intervals. Please refer to Input3 and corresponding Result3 in Example.
 - If one operand in the nested expressions can be translated into multiple time series (For example, `*`), the result of each time series will be included in the result (Cartesian product). Please refer to Input2 and corresponding Result2 in Example.
-
-##### Note
-
-> Automated fill (`FILL`) and grouped by level (`GROUP BY LEVEL`) are not supported in an aggregation query with expression nested. They may be supported in future versions.
->
-> The aggregation expression must be the lowest level input of one expression tree. Any kind expressions except timeseries are not valid as aggregation function parameters。
->
-> In a word, the following queries are not valid.
->
-> ```sql
-> SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
-> SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
-> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(previous); -- Automated fill
-> ```
 
 ## Use Alias
 

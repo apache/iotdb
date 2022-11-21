@@ -230,26 +230,26 @@ IoTDB>
 现在，让我们介绍创建 timeseries、插入数据和查询数据的方法。
 
 
-IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个存储组拥有。
-在定义 timeseries 之前，我们应该先使用SET storage group来定义一个存储组，下面是一个例子:
+IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个 database 拥有。
+在定义 timeseries 之前，我们应该先使用 CREATE DATABASE 来创建一个数据库，下面是一个例子:
 
 ```
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们也可以使用`SHOW STORAGE GROUP`来检查正在创建的存储组:
+我们也可以使用`SHOW DATABASES`来检查已创建的数据库:
 
 ```
-IoTDB> SHOW STORAGE GROUP
-+-------------+
-|storage group|
-+-------------+
-|      root.ln|
-+-------------+
+IoTDB> SHOW DATABASES
++--------+
+|Database|
++--------+
+| root.ln|
++--------+
 Total line number = 1
 ```
 
-在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
+在设置 database 之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
 在创建 timeseries 时，我们应该定义它的数据类型和编码方案。这里我们创建两个 timeseries:
 
 
@@ -266,7 +266,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -279,7 +279,7 @@ Total line number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+

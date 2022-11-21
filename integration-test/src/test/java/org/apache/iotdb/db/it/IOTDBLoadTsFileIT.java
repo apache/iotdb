@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -56,8 +57,6 @@ public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
 
-  private boolean originEnablePartition;
-  private long originPartitionInterval;
   private long originConfigNodePartitionInterval;
 
   private File tmpDir;
@@ -65,12 +64,8 @@ public class IOTDBLoadTsFileIT {
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
-    originEnablePartition = ConfigFactory.getConfig().isEnablePartition();
-    originPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     originConfigNodePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setEnablePartition(true);
-    ConfigFactory.getConfig().setTimePartitionIntervalForStorage(PARTITION_INTERVAL);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(PARTITION_INTERVAL);
+    ConfigFactory.getConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().initBeforeTest();
   }
 
@@ -79,9 +74,7 @@ public class IOTDBLoadTsFileIT {
     deleteSG();
 
     EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setEnablePartition(originEnablePartition);
-    ConfigFactory.getConfig().setTimePartitionIntervalForStorage(originPartitionInterval);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originConfigNodePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originConfigNodePartitionInterval);
 
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");
@@ -92,8 +85,8 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("set storage group to " + SchemaConfig.STORAGE_GROUP_0);
-      statement.execute("set storage group to " + SchemaConfig.STORAGE_GROUP_1);
+      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_0);
+      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_1);
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00));
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_01));
@@ -143,8 +136,8 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("delete storage group %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete storage group %s", SchemaConfig.STORAGE_GROUP_1));
+      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
+      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
     }
   }
 
@@ -283,8 +276,9 @@ public class IOTDBLoadTsFileIT {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
-          String device = resultSet.getString("devices");
-          Assert.assertEquals(isAligned.get(device), resultSet.getString("isAligned"));
+          String device = resultSet.getString(ColumnHeaderConstant.DEVICE);
+          Assert.assertEquals(
+              isAligned.get(device), resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
         Assert.assertEquals(isAligned.size(), size);
       } catch (Exception e) {
@@ -390,7 +384,7 @@ public class IOTDBLoadTsFileIT {
       try (ResultSet resultSet =
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
-          String lastValue = resultSet.getString("value");
+          String lastValue = resultSet.getString(ColumnHeaderConstant.VALUE);
           Assert.assertEquals("100", lastValue);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -445,7 +439,7 @@ public class IOTDBLoadTsFileIT {
       try (ResultSet resultSet =
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
-          String lastTime = resultSet.getString("Time");
+          String lastTime = resultSet.getString(ColumnHeaderConstant.TIME);
           Assert.assertEquals("10000", lastTime);
         } else {
           Assert.fail("This ResultSet is empty.");

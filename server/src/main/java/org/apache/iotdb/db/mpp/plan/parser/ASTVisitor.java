@@ -602,7 +602,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // Show Storage Group
+  // SHOW DATABASES
 
   @Override
   public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
@@ -627,7 +627,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showDevicesStatement);
     }
-    // show devices wtih storage group
+    // show devices with database
     if (ctx.WITH() != null) {
       showDevicesStatement.setSgCol(true);
     }
@@ -2164,7 +2164,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
-  // Create Storage Group
+  // Create database
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
@@ -2182,7 +2182,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
     if (ctx.storageGroupAttributeClause().size() != 0) {
       throw new RuntimeException(
-          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific storage group.");
+          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific database.");
     }
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {
@@ -2240,6 +2240,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
     return new ShowClusterStatement();
+  }
+
+  @Override
+  public Statement visitShowClusterDetails(IoTDBSqlParser.ShowClusterDetailsContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    showClusterStatement.setDetails(true);
+    return showClusterStatement;
   }
 
   @Override
@@ -2770,7 +2777,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowRegion(IoTDBSqlParser.ShowRegionContext ctx) {
     ShowRegionStatement showRegionStatement = new ShowRegionStatement();
-    // TODO: Maybe add a show partition region in the future
+    // TODO: Maybe add a show ConfigNode region in the future
     if (ctx.DATA() != null) {
       showRegionStatement.setRegionType(TConsensusGroupType.DataRegion);
     } else if (ctx.SCHEMA() != null) {
@@ -3051,7 +3058,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement)
       throws SQLParserException {
-    if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
+    if (ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 
@@ -3190,8 +3197,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
 
-    CreatePipeSinkStatement createPipeSinkStatement =
-        new CreatePipeSinkStatement(StatementType.CREATE_PIPESINK);
+    CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
 
     if (ctx.pipeSinkName != null) {
       createPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));

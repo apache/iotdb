@@ -1038,7 +1038,7 @@ public class InnerSeqCompactionTest {
             COMPACTION_TEST_SG);
     vsgp.getTsFileResourceManager().addAll(sourceResources, true);
     // delete data before compaction
-    vsgp.delete(new PartialPath(fullPaths[0]), 0, 1000, 0, null);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1000, 0, null);
 
     ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
@@ -1053,8 +1053,8 @@ public class InnerSeqCompactionTest {
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data during compaction
-    vsgp.delete(new PartialPath(fullPaths[0]), 0, 1200, 0, null);
-    vsgp.delete(new PartialPath(fullPaths[0]), 0, 1800, 0, null);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0, null);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0, null);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();

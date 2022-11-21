@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -73,20 +72,20 @@ public class NewIoTDB implements NewIoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
-    config.setMppMode(true);
     // In standalone mode, Consensus memory should be reclaimed
     IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
-    daemon.active();
+    daemon.active(false);
   }
 
-  public void active() {
+  public void active(boolean isTesting) {
     processPid();
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
@@ -102,7 +101,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     config.setDataNodeId(0);
 
     try {
-      setUp();
+      setUp(isTesting);
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
@@ -120,7 +119,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
   }
 
-  private void setUp() throws StartupException, QueryProcessException {
+  private void setUp(boolean isTesting) throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
@@ -140,7 +139,9 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DriverScheduler.getInstance());
+    if (!isTesting) {
+      registerManager.register(DriverScheduler.getInstance());
+    }
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
@@ -155,7 +156,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     initProtocols();
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
@@ -168,12 +169,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(SettleService.getINSTANCE());
-    }
-    registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     // bind predefined metrics
@@ -204,13 +199,9 @@ public class NewIoTDB implements NewIoTDBMBean {
 
   private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.configManager.init();
+    configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

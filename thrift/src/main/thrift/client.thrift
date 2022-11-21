@@ -424,7 +424,7 @@ struct TSyncIdentityInfo{
   3:required i64 createTime
   // The version of sender and receiver need to be the same.
   4:required string version
-  5:required string storageGroup
+  5:required string database
 }
 
 struct TSyncTransportMetaInfo{

@@ -26,11 +26,7 @@
 
 ### 字符串常量
 
-> 我们参照了 MySQL 对 字符串的定义：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
-
-MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
-
-即在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
+在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
 
 ```Plain%20Text
 'a string'
@@ -332,7 +328,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 
 ```SQL
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -484,7 +480,7 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 ## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、数据库（database）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 

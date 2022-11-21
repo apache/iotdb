@@ -82,7 +82,6 @@ public class StandaloneSchedulerTest {
 
   @Before
   public void setUp() throws Exception {
-    conf.setMppMode(true);
     conf.setDataNodeId(0);
 
     configNode = LocalConfigNode.getInstance();
@@ -101,7 +100,6 @@ public class StandaloneSchedulerTest {
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
-    conf.setMppMode(false);
   }
 
   @Test

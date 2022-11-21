@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
@@ -199,7 +199,8 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
-    conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
+    conf.setRpcAddress(
+        properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
 
     // TODO: Use FQDN  to identify our nodes afterwards
     try {
@@ -210,84 +211,108 @@ public class IoTDBDescriptor {
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "rpc_thrift_compression_enable",
-                Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+            properties
+                .getProperty(
+                    "rpc_thrift_compression_enable",
+                    Boolean.toString(conf.isRpcThriftCompressionEnable()))
+                .trim()));
 
     conf.setRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "rpc_advanced_compression_enable",
-                Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
+            properties
+                .getProperty(
+                    "rpc_advanced_compression_enable",
+                    Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
+                .trim()));
 
     conf.setConnectionTimeoutInMS(
         Integer.parseInt(
-            properties.getProperty(
-                "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+            properties
+                .getProperty(
+                    "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
+                .trim()));
 
     conf.setMaxConnectionForInternalService(
         Integer.parseInt(
-            properties.getProperty(
-                "max_connection_for_internal_service",
-                String.valueOf(conf.getMaxConnectionForInternalService()))));
+            properties
+                .getProperty(
+                    "max_connection_for_internal_service",
+                    String.valueOf(conf.getMaxConnectionForInternalService()))
+                .trim()));
 
     conf.setCoreConnectionForInternalService(
         Integer.parseInt(
-            properties.getProperty(
-                "core_connection_for_internal_service",
-                String.valueOf(conf.getCoreConnectionForInternalService()))));
+            properties
+                .getProperty(
+                    "core_connection_for_internal_service",
+                    String.valueOf(conf.getCoreConnectionForInternalService()))
+                .trim()));
 
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
-            properties.getProperty(
-                "selector_thread_count_of_client_manager",
-                String.valueOf(conf.getSelectorNumOfClientManager()))));
+            properties
+                .getProperty(
+                    "selector_thread_count_of_client_manager",
+                    String.valueOf(conf.getSelectorNumOfClientManager()))
+                .trim()));
 
     conf.setRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))));
+            properties
+                .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
+                .trim()));
 
     conf.setEnableInfluxDBRpcService(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_influxdb_rpc_service",
-                Boolean.toString(conf.isEnableInfluxDBRpcService()))));
+            properties
+                .getProperty(
+                    "enable_influxdb_rpc_service",
+                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
+                .trim()));
 
     conf.setInfluxDBRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                "influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))));
+            properties
+                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
+                .trim()));
 
     conf.setTimestampPrecision(
-        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
+        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
 
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "buffered_arrays_memory_proportion",
-                Double.toString(conf.getBufferedArraysMemoryProportion()))));
+            properties
+                .getProperty(
+                    "buffered_arrays_memory_proportion",
+                    Double.toString(conf.getBufferedArraysMemoryProportion()))
+                .trim()));
 
     conf.setFlushProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "flush_proportion", Double.toString(conf.getFlushProportion()))));
+            properties
+                .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
+                .trim()));
 
     conf.setRejectProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "reject_proportion", Double.toString(conf.getRejectProportion()))));
+            properties
+                .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
+                .trim()));
 
     conf.setWriteMemoryVariationReportProportion(
         Double.parseDouble(
-            properties.getProperty(
-                "write_memory_variation_report_proportion",
-                Double.toString(conf.getWriteMemoryVariationReportProportion()))));
+            properties
+                .getProperty(
+                    "write_memory_variation_report_proportion",
+                    Double.toString(conf.getWriteMemoryVariationReportProportion()))
+                .trim()));
 
     conf.setMetaDataCacheEnable(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
+            properties
+                .getProperty(
+                    "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))
+                .trim()));
 
     initMemoryAllocate(properties);
 
@@ -350,24 +375,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
     logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
-
-    long seqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                .trim());
-    if (seqTsFileSize >= 0) {
-      conf.setSeqTsFileSize(seqTsFileSize);
-    }
-
-    long unSeqTsFileSize =
-        Long.parseLong(
-            properties
-                .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                .trim());
-    if (unSeqTsFileSize >= 0) {
-      conf.setUnSeqTsFileSize(unSeqTsFileSize);
-    }
 
     long memTableSizeThreshold =
         Long.parseLong(
@@ -735,7 +742,7 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    // the num of memtables in each storage group
+    // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(
         Integer.parseInt(
             properties.getProperty(
@@ -870,18 +877,14 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
 
+    conf.setMaxMeasurementNumOfInternalRequest(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_measurement_num_of_internal_request",
+                String.valueOf(conf.getMaxMeasurementNumOfInternalRequest()))));
+
     // mqtt
     loadMqttProps(properties);
-
-    conf.setEnablePartition(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
-
-    conf.setTimePartitionIntervalForStorage(
-        Long.parseLong(
-            properties.getProperty(
-                "time_partition_interval_for_storage",
-                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
 
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
@@ -998,13 +1001,9 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    conf.setTimePartitionIntervalForStorage(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionIntervalForStorage(), conf.getTimestampPrecision()));
-
-    if (!conf.isClusterMode()) {
-      conf.setTimePartitionIntervalForRouting(conf.getTimePartitionIntervalForStorage());
-    }
+            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1426,25 +1425,7 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
-      StorageEngine.getInstance().rebootTimedService();
-
-      long seqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
-                  .trim());
-      if (seqTsFileSize >= 0) {
-        conf.setSeqTsFileSize(seqTsFileSize);
-      }
-
-      long unSeqTsFileSize =
-          Long.parseLong(
-              properties
-                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
-                  .trim());
-      if (unSeqTsFileSize >= 0) {
-        conf.setUnSeqTsFileSize(unSeqTsFileSize);
-      }
+      StorageEngineV2.getInstance().rebootTimedService();
 
       long memTableSizeThreshold =
           Long.parseLong(
@@ -1560,7 +1541,7 @@ public class IoTDBDescriptor {
 
   private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion =
-        properties.getProperty("write_read_schema_free_memory_proportion");
+        properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1654,14 +1635,34 @@ public class IoTDBDescriptor {
   private void initStorageEngineAllocate(Properties properties) {
     String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
     String[] proportions = allocationRatio.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForWrite = Integer.parseInt(proportions[0].trim());
     int proportionForCompaction = Integer.parseInt(proportions[1].trim());
-    conf.setWriteProportion(
+
+    double writeProportion =
+        ((double) (proportionForWrite) / (double) (proportionForCompaction + proportionForWrite));
+
+    String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
+    proportions = allocationRatioForWrite.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
+
+    double memtableProportionForWrite =
         ((double) (proportionForMemTable)
-            / (double) (proportionForCompaction + proportionForMemTable)));
+            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+    Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
+    double timePartitionInfoForWrite =
+        ((double) (proportionForTimePartitionInfo)
+            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+    conf.setWriteProportionForMemtable(writeProportion * memtableProportionForWrite);
+
+    conf.setAllocateMemoryForTimePartitionInfo(
+        (long)
+            ((writeProportion * timePartitionInfoForWrite)
+                * conf.getAllocateMemoryForStorageEngine()));
+
     conf.setCompactionProportion(
         ((double) (proportionForCompaction)
-            / (double) (proportionForCompaction + proportionForMemTable)));
+            / (double) (proportionForCompaction + proportionForWrite)));
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {
@@ -1758,9 +1759,7 @@ public class IoTDBDescriptor {
   }
 
   private void loadTriggerProps(Properties properties) {
-    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
-    conf.setTriggerTemporaryLibDir(
-        properties.getProperty("trigger_temporary_lib_dir", conf.getTriggerTemporaryLibDir()));
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()));
     conf.setRetryNumToFindStatefulTrigger(
         Integer.parseInt(
             properties.getProperty(
@@ -1928,7 +1927,7 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionIntervalForRouting(
+    conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());

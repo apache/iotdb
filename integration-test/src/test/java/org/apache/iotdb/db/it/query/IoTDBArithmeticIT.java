@@ -50,7 +50,7 @@ public class IoTDBArithmeticIT {
   private static final double E = 0.0001;
 
   private static final String[] INSERTION_SQLS = {
-    "SET STORAGE GROUP TO root.test",
+    "CREATE DATABASE root.test",
     "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
     "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
     "CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",

@@ -38,7 +38,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
    * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
    * to get the result
    *
-   * @param path storage group path
+   * @param path database path
    * @param function influxdb function
    * @param sessionid session id
    * @return influxdb function value

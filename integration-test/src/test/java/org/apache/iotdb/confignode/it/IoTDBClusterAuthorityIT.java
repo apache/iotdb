@@ -153,7 +153,7 @@ public class IoTDBClusterAuthorityIT {
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
-      assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
       // drop user
       authorizerReq =

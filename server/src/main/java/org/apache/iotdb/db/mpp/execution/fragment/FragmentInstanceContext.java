@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -182,10 +183,19 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.failed(cause);
   }
 
+  /** @return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
+        .findFirst()
         .map(Throwable::getMessage)
-        .collect(Collectors.joining("; "));
+        .orElse("");
+  }
+
+  /** @return List of specific throwable and stack trace */
+  public List<FragmentInstanceFailureInfo> getFailureInfoList() {
+    return stateMachine.getFailureCauses().stream()
+        .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+        .collect(Collectors.toList());
   }
 
   public void finished() {
@@ -213,7 +223,8 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+    return new FragmentInstanceInfo(
+        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -222,5 +233,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public Optional<Throwable> getFailureCause() {
+    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
   }
 }

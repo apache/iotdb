@@ -36,7 +36,7 @@ public class AlignedWriteUtil {
 
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "create aligned timeseries root.sg1.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64, s4 BOOLEAN, s5 TEXT)",
         "create timeseries root.sg1.d2.s1 WITH DATATYPE=FLOAT, encoding=RLE",
         "create timeseries root.sg1.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
@@ -136,10 +136,10 @@ public class AlignedWriteUtil {
         Statement statement = connection.createStatement()) {
 
       // create aligned and non-aligned time series
-      // TODO change it to executeBatch way when it's supported in new cluster
       for (String sql : sqls) {
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

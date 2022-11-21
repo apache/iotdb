@@ -20,28 +20,21 @@ package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -132,12 +125,6 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan) {
-    WALEntry walEntry = new WALInfoEntry(memTableId, insertRowPlan);
-    return log(walEntry);
-  }
-
-  @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
     return log(walEntry);
@@ -145,21 +132,8 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      long memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
-    WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletPlan, start, end);
-    return log(walEntry);
-  }
-
-  @Override
-  public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
-    return log(walEntry);
-  }
-
-  @Override
-  public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
-    WALEntry walEntry = new WALInfoEntry(memTableId, deletePlan);
     return log(walEntry);
   }
 
@@ -357,24 +331,16 @@ public class WALNode implements IWALNode {
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
 
-      // get memTable's virtual storage group processor
+      // get memTable's virtual database processor
       File oldestTsFile =
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
       DataRegion dataRegion;
       try {
-        if (config.isMppMode()) {
-          dataRegion =
-              StorageEngineV2.getInstance()
-                  .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
-        } else {
-          dataRegion =
-              StorageEngine.getInstance()
-                  .getProcessorByDataRegionId(
-                      new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
-                      TsFileUtils.getDataRegionId(oldestTsFile));
-        }
-      } catch (IllegalPathException | StorageEngineException e) {
-        logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
+        dataRegion =
+            StorageEngineV2.getInstance()
+                .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
+      } catch (Exception e) {
+        logger.error("Fail to get data region processor for {}", oldestTsFile, e);
         return false;
       }
 

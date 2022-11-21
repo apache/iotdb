@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,6 +88,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     checkArgument(
         node.getDevices().size() == node.getChildren().size(),
         "size of devices and its children in DeviceViewNode should be same");
+
+    // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
+    // special logic.
+    if (isAggregationQuery()) {
+      return processDeviceViewWithAggregation(node, context);
+    }
 
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
 
@@ -117,12 +124,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           children.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
         }
       }
-      DeviceViewNode regionDeviceViewNode =
-          new DeviceViewNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrderParameter(),
-              node.getOutputColumnNames(),
-              node.getDeviceToMeasurementIndexesMap());
+      DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
       for (int i = 0; i < devices.size(); i++) {
         regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
       }
@@ -130,6 +132,25 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     }
 
     return deviceMergeNode;
+  }
+
+  private PlanNode processDeviceViewWithAggregation(
+      DeviceViewNode node, DistributionPlanContext context) {
+    DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      newRoot.addChildDeviceNode(
+          node.getDevices().get(i), rewrite(node.getChildren().get(i), context));
+    }
+    return newRoot;
+  }
+
+  private DeviceViewNode cloneDeviceViewNodeWithoutChild(
+      DeviceViewNode node, DistributionPlanContext context) {
+    return new DeviceViewNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getMergeOrderParameter(),
+        node.getOutputColumnNames(),
+        node.getDeviceToMeasurementIndexesMap());
   }
 
   private static class DeviceViewSplit {
@@ -216,7 +237,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
       storageGroupSchemaRegionMap.forEach(
           (storageGroup, schemaRegionSet) -> {
-            // extract the patterns overlap with current storage group
+            // extract the patterns overlap with current database
             Set<PartialPath> filteredPathPatternSet = new HashSet<>();
             try {
               PartialPath storageGroupPath = new PartialPath(storageGroup);
@@ -453,7 +474,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
-    if (isAggregationQuery(node)) {
+    if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
     return processRawMultiChildNode(node, context);
@@ -541,7 +562,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return root;
   }
 
-  private boolean isAggregationQuery(TimeJoinNode node) {
+  private boolean isAggregationQuery() {
+    return ((QueryStatement) analysis.getStatement()).isAggregationQuery();
+  }
+
+  private boolean containsAggregationSource(TimeJoinNode node) {
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesAggregationScanNode
           || child instanceof AlignedSeriesAggregationScanNode) {

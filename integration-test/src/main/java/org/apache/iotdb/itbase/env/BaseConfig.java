@@ -70,15 +70,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default boolean isEnablePartition() {
-    return false;
-  }
-
   default BaseConfig setPartitionInterval(long partitionInterval) {
-    return this;
-  }
-
-  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
     return this;
   }
 
@@ -99,10 +91,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 
@@ -235,6 +223,14 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
@@ -251,7 +247,7 @@ public interface BaseConfig {
     return 1;
   }
 
-  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 
@@ -267,7 +263,7 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
     return 4000;
   }
 
@@ -341,5 +337,13 @@ public interface BaseConfig {
 
   default int getSelectIntoInsertTabletPlanRowLimit() {
     return 10000;
+  }
+
+  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    return this;
+  }
+
+  default boolean isEnableLeaderBalancing() {
+    return false;
   }
 }

@@ -114,7 +114,7 @@ public class TransformUtils {
             valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
             valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) >= delta;
+          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) > delta;
           if (res) {
             valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
           }
@@ -126,7 +126,7 @@ public class TransformUtils {
             valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
             valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) >= delta;
+          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) > delta;
           if (res) {
             valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
           }
@@ -138,7 +138,7 @@ public class TransformUtils {
             valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
             valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) >= delta;
+          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) > delta;
           if (res) {
             valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
           }
@@ -150,7 +150,7 @@ public class TransformUtils {
             valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
             valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) >= delta;
+          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) > delta;
           if (res) {
             valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
           }

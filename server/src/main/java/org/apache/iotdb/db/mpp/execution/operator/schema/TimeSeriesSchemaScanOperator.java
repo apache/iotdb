@@ -121,6 +121,8 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     builder.writeNullableText(5, series.getCompressor().toString());
     builder.writeNullableText(6, mapToString(series.getTag()));
     builder.writeNullableText(7, mapToString(series.getAttribute()));
+    builder.writeNullableText(8, series.getDeadband());
+    builder.writeNullableText(9, series.getDeadbandParameters());
     builder.declarePosition();
   }
 

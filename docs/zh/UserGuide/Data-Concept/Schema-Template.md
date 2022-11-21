@@ -89,7 +89,7 @@ Class MeasurementNode extends Node {
 
 * 构造元数据模板
 
-构造上图中的元数据模板，并挂载到对应节点，可参考如下代码。**请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来地更新及各模块的协作。**
+构造上图中的元数据模板，并挂载到对应节点，可参考如下代码。**请注意，我们强烈建议您将模板设置在 database 或 database 下层的节点中，以更好地适配未来地更新及各模块的协作。**
 
 ``` java
 MeasurementNode nodeV = new MeasurementNode("velocity", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -107,4 +107,4 @@ createSchemaTemplate(template);
 setSchemaTemplate("template", "root.Beijing");
 ```
 
-挂载元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了存储组后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。
+挂载元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了 database 后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。

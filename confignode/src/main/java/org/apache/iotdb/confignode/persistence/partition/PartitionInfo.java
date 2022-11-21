@@ -489,10 +489,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * get storage group for region
+   * get database for region
    *
    * @param regionId regionId
-   * @return storage group name
+   * @return database name
    */
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
     Optional<StorageGroupPartitionTable> sgPartitionTableOptional =

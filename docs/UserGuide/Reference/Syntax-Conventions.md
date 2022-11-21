@@ -26,11 +26,7 @@ This section describes how to write literal values in IoTDB. These include strin
 
 ### String Literals
 
-> We refer to MySQL's definition of string：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
-
-Definition of string in MySQL could be found here：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
-
-So in IoTDB, **A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.** Examples：
+in IoTDB, **A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.** Examples：
 
 ```js
 'a string'
@@ -333,7 +329,7 @@ After executing above statments, execute "show timeseries"，below is the result
 
 ```SQL
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -485,7 +481,7 @@ Keywords are words that have significance in SQL. Keywords can be used as an ide
 
 ## Session、TsFile API
 
-When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, storage group, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand. Code example could be found at: `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, database, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand. Code example could be found at: `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. Take creating a time series createTimeseries as an example:
 
