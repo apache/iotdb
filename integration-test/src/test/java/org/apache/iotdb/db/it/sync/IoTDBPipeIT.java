@@ -26,9 +26,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.apache.commons.lang3.StringUtils;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,9 +52,9 @@ public class IoTDBPipeIT {
               ",")
           + ",";
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     if (EnvFactory.getEnv().getDataNodeWrapperList() != null
         && EnvFactory.getEnv().getDataNodeWrapperList().size() > 0) {
       ip = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIp();
@@ -65,9 +65,9 @@ public class IoTDBPipeIT {
     }
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -166,43 +166,6 @@ public class IoTDBPipeIT {
       }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet = new String[] {};
-        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testHandshakeFailure() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // create a PIPESINK and PIPE to unknown address
-      statement.execute(
-          String.format("CREATE PIPESINK demo AS IoTDB (ip='%s',port='%d');", ip, port));
-      statement.execute("CREATE PIPE p to demo;");
-      // check pipe
-      String createTime1 = getCreateTime(statement, "p");
-      try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
-        String[] expectedRetSet =
-            new String[] {
-              String.format(
-                  "%s,p,sender,demo,STOP,SyncDelOp=false,DataStartTimestamp=0,NORMAL,", createTime1)
-            };
-        assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
-      }
-      // insert
-      statement.execute("insert into root.vehicle.d1(timestamp,s1) values(now(),999);");
-      statement.execute("flush;");
-      statement.execute("START PIPE p;");
-      // check pipe
-      try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
-        String[] expectedRetSet =
-            new String[] {
-              String.format(
-                  "%s,p,sender,demo,STOP,SyncDelOp=false,DataStartTimestamp=0,ERROR,", createTime1)
-            };
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
     } catch (Exception e) {
