@@ -1231,7 +1231,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // concat path and construct path pattern tree
     PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath path : fetchWindowBatchStatement.getQueryPaths()) {
+    List<PartialPath> queryPaths = fetchWindowBatchStatement.getQueryPaths();
+    for (PartialPath path : queryPaths) {
       patternTree.appendFullPath(path);
     }
 
@@ -1244,9 +1245,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // set source
     List<MeasurementPath> measurementPaths = schemaTree.getAllMeasurement();
+    Map<String, MeasurementPath> pathNameToMeasurementPath = new HashMap<>();
+    for (MeasurementPath measurementPath : measurementPaths) {
+      pathNameToMeasurementPath.put(measurementPath.toString(), measurementPath);
+    }
+
     Set<Expression> sourceExpressions =
-        measurementPaths.stream()
-            .map(TimeSeriesOperand::new)
+        queryPaths.stream()
+            .map(
+                partialPath ->
+                    new TimeSeriesOperand(pathNameToMeasurementPath.get(partialPath.toString())))
             .collect(Collectors.toCollection(LinkedHashSet::new));
     for (Expression sourceExpression : sourceExpressions) {
       analyzeExpression(analysis, sourceExpression);
@@ -1281,10 +1289,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       // set output
       List<ColumnHeader> columnHeaders =
-          measurementPaths.stream()
+          sourceExpressions.stream()
               .map(
-                  measurementPath ->
-                      new ColumnHeader(measurementPath.toString(), measurementPath.getSeriesType()))
+                  expression ->
+                      new ColumnHeader(expression.toString(), analysis.getType(expression)))
               .collect(Collectors.toList());
       analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
     }
