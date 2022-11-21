@@ -33,7 +33,7 @@ import java.util.Objects;
 
 public class SingleDeviceViewNode extends SingleChildProcessNode {
 
-  private String device;
+  private final String device;
   private final List<String> outputColumnNames;
   private final List<Integer> deviceToMeasurementIndexes;
 

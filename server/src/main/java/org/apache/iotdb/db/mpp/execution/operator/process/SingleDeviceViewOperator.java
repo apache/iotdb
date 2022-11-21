@@ -35,17 +35,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 
 /**
- * Since devices have been sorted by the merge order as expected, what DeviceViewOperator need to do
- * is traversing the device child operators, get all tsBlocks of one device and transform it to the
- * form we need, adding the device column and allocating value column to its expected location, then
- * get the next device operator until no next device.
+ * The SingleDeviceViewOperator plays a similar role with DeviceViewOperator of adding a device
+ * column to current resultSet.
  *
- * <p>The deviceOperators can be timeJoinOperator or seriesScanOperator that have not transformed
- * the result form.
- *
- * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
- * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
- * with NullColumn.
+ * <p>Different from DeviceViewOperator which merge the resultSet from different devices,
+ * SingleDeviceViewOperator only focuses on one single device, the goal of it is to add a device
+ * view. It's just a transition and won't change the way data flows.
  */
 public class SingleDeviceViewOperator implements ProcessOperator {
 
@@ -54,8 +49,6 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   private final String device;
   private final Operator deviceOperator;
   // Used to fill columns and leave null columns which doesn't exist in some devices.
-  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
-  // not 0 because device is the first column
   private final List<Integer> deviceColumnIndex;
   // Column dataTypes that includes device column
   private final List<TSDataType> dataTypes;
@@ -137,9 +130,6 @@ public class SingleDeviceViewOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    // null columns would be filled, so return size equals to
-    // (numberOfValueColumns(dataTypes.size() - 1) + 1(timeColumn)) * columnSize + deviceColumnSize
-    // size of device name column is ignored
     return (long) (dataTypes.size())
         * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   }

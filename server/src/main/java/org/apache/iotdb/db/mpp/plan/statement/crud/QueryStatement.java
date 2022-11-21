@@ -402,10 +402,6 @@ public class QueryStatement extends Statement {
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
       }
-      //      if (isOrderByDevice()) {
-      //        // TODO support sort by device
-      //        throw new SemanticException("Sorting by device is not yet supported.");
-      //      }
     }
 
     if (isLastQuery()) {

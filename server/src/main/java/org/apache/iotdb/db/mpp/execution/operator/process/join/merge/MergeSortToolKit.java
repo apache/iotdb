@@ -28,7 +28,7 @@ public interface MergeSortToolKit {
   void addTsBlock(TsBlock tsBlock, int index);
 
   /** update consumed result */
-  void updateTsBlock(int index, int rowIndex);
+  void updateTsBlock(int index, TsBlock tsBlock);
   /**
    * get the index of TsBlock whose startValue<=targetValue when ordering is asc,and
    * startValue>=targetValue when ordering is desc. targetValue is the smallest endKey when ordering

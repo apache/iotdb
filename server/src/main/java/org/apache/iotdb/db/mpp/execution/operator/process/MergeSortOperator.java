@@ -109,7 +109,7 @@ public class MergeSortOperator implements ProcessOperator {
       int index = targetTsBlockIndex.get(0);
       TsBlock resultTsBlock = inputTsBlocks[index];
       inputTsBlocks[index] = null;
-      mergeSortToolKit.updateTsBlock(index, -1);
+      mergeSortToolKit.updateTsBlock(index, null);
       return resultTsBlock;
     }
 
@@ -166,10 +166,11 @@ public class MergeSortOperator implements ProcessOperator {
         int rowIndex = tsBlockIterators[i].getRowIndex();
         inputTsBlocks[targetTsBlockIndex.get(i)] =
             inputTsBlocks[targetTsBlockIndex.get(i)].subTsBlock(rowIndex);
-        mergeSortToolKit.updateTsBlock(i, rowIndex);
+        mergeSortToolKit.updateTsBlock(
+            targetTsBlockIndex.get(i), inputTsBlocks[targetTsBlockIndex.get(i)]);
       } else {
         inputTsBlocks[targetTsBlockIndex.get(i)] = null;
-        mergeSortToolKit.updateTsBlock(i, -1);
+        mergeSortToolKit.updateTsBlock(targetTsBlockIndex.get(i), null);
       }
     }
     return tsBlockBuilder.build();

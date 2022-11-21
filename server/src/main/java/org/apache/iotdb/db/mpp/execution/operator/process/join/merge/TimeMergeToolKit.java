@@ -55,17 +55,12 @@ public class TimeMergeToolKit implements MergeSortToolKit {
   }
 
   @Override
-  public void updateTsBlock(int index, int rowIndex) {
-    if (rowIndex == -1) {
+  public void updateTsBlock(int index, TsBlock tsBlock) {
+    if (tsBlock == null) {
       tsBlocks[index] = null;
       tsBlocksEmpty[index] = true;
     } else {
-      tsBlocks[index] = tsBlocks[index].subTsBlock(rowIndex);
-      if (tsBlocks[index].getPositionCount() == 0) {
-        tsBlocks[index] = null;
-        tsBlocksEmpty[index] = true;
-        return;
-      }
+      tsBlocks[index] = tsBlock;
       startKey[index] = tsBlocks[index].getTimeByIndex(0);
     }
   }

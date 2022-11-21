@@ -28,7 +28,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -75,6 +74,14 @@ public class OrderByIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
+  }
+
+  static void arrayReverse(String[] arrays) {
+    for (int i = 0; i < arrays.length / 2; i++) {
+      String temp = arrays[i];
+      arrays[i] = arrays[arrays.length - i - 1];
+      arrays[arrays.length - i - 1] = temp;
+    }
   }
 
   private static void insertData() {
@@ -386,7 +393,7 @@ public class OrderByIT {
     String sql = "SELECT * FROM root.** ORDER BY TIME DESC ALIGN BY DEVICE";
     Object[] expectedOrderDevice = Arrays.stream(places.clone()).sorted().toArray();
     String[] expectedTimeOrderDevice = places.clone();
-    ArrayUtils.reverse(expectedTimeOrderDevice);
+    arrayReverse(expectedTimeOrderDevice);
     int index = 0;
     int expectedPrecipitation = startPrecipitation + 1;
     double expectedTemperature = startTemperature + 1;
@@ -732,7 +739,7 @@ public class OrderByIT {
     Object[] expectedOrderDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     String[] expectedTimeOrderDevice = places.clone();
-    ArrayUtils.reverse(expectedTimeOrderDevice);
+    arrayReverse(expectedTimeOrderDevice);
     int index = 0;
     int expectedPrecipitation = startPrecipitation + 1;
     double expectedTemperature = startTemperature + 1;
@@ -782,7 +789,7 @@ public class OrderByIT {
     String sql = "SELECT * FROM root.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE";
     Object[] expectedOrderDevice = Arrays.stream(places.clone()).sorted().toArray();
     String[] expectedTimeOrderDevice = places.clone();
-    ArrayUtils.reverse(expectedTimeOrderDevice);
+    arrayReverse(expectedTimeOrderDevice);
     int index = 0;
     int expectedPrecipitation = startPrecipitation + 1;
     double expectedTemperature = startTemperature + 1;
