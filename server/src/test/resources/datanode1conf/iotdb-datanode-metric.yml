@@ -23,7 +23,12 @@ enableMetric: true
 # Is stat performance of operation latency
 enablePerformanceStat: false
 
-# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
+# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB]
+# Example:
+#   metricReporterList:
+#     - JMX
+#     - PROMETHEUS
+#     - IOTDB
 metricReporterList:
   - JMX
   - PROMETHEUS

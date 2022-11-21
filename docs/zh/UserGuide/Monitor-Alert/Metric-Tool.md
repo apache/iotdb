@@ -263,10 +263,13 @@ enableMetric: false
 # 是否启用操作延迟统计
 enablePerformanceStat: false
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB], IOTDB是默认关闭的。
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB]
+# Example:
+#   metricReporterList:
+#     - JMX
+#     - PROMETHEUS
+#     - IOTDB
 metricReporterList:
-  - JMX
-  - PROMETHEUS
 
 # 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
 monitorType: MICROMETER

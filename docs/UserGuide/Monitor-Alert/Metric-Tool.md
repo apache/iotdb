@@ -263,10 +263,13 @@ enableMetric: false
 # Is stat performance of operation latency
 enablePerformanceStat: false
 
-# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
+# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB]
+# Example:
+#   metricReporterList:
+#     - JMX
+#     - PROMETHEUS
+#     - IOTDB
 metricReporterList:
-  - JMX
-  - PROMETHEUS
 
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
 monitorType: MICROMETER
