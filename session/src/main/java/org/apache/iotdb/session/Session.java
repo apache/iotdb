@@ -1479,18 +1479,18 @@ public class Session implements ISession {
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
       TSInsertStringRecordsReq request =
-          recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
+          recordsGroup.getOrDefault(connection, new TSInsertStringRecordsReq());
       request.setIsAligned(isAligned);
       try {
         filterAndUpdateTSInsertStringRecordsReq(
             request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
+        recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
             "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i).toString());
-        continue;
       }
     }
 
@@ -2157,7 +2157,7 @@ public class Session implements ISession {
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
       TSInsertRecordsReq request =
-          recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
+          recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
       request.setIsAligned(isAligned);
       try {
         filterAndUpdateTSInsertRecordsReq(
@@ -2167,6 +2167,7 @@ public class Session implements ISession {
             measurementsList.get(i),
             typesList.get(i),
             valuesList.get(i));
+        recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
             "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
