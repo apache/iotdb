@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -88,25 +87,6 @@ public interface IDTable {
    */
   // IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException;
 
-  /**
-   * register trigger to the timeseries
-   *
-   * @param fullPath full path of the timeseries
-   * @param measurementMNode the timeseries measurement mnode
-   * @throws MetadataException if the timeseries is not exits
-   */
-  void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
-      throws MetadataException;
-
-  /**
-   * deregister trigger to the timeseries
-   *
-   * @param fullPath full path of the timeseries
-   * @param measurementMNode the timeseries measurement mnode
-   * @throws MetadataException if the timeseries is not exits
-   */
-  void deregisterTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
-      throws MetadataException;
   /**
    * get last cache of the timeseies
    *
