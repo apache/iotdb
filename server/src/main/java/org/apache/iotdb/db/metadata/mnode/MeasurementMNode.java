@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
@@ -46,8 +44,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
-  /** last value cache */
-  private volatile ILastCacheContainer lastCacheContainer = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
@@ -120,23 +116,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setAlias(String alias) {
     this.alias = alias;
-  }
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    if (lastCacheContainer == null) {
-      synchronized (this) {
-        if (lastCacheContainer == null) {
-          lastCacheContainer = new LastCacheContainer();
-        }
-      }
-    }
-    return lastCacheContainer;
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    this.lastCacheContainer = lastCacheContainer;
   }
 
   @Override

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -168,37 +167,6 @@ public class IDTableHashmapImpl implements IDTable {
       }
     }
     return new Pair<>(deletedNum, failedNames);
-  }
-
-  /**
-   * get last cache of the timeseies
-   *
-   * @param timeseriesID timeseries ID of the timeseries
-   * @throws MetadataException if the timeseries is not exits
-   */
-  @Override
-  public synchronized TimeValuePair getLastCache(TimeseriesID timeseriesID)
-      throws MetadataException {
-    return getSchemaEntry(timeseriesID).getCachedLast();
-  }
-
-  /**
-   * update last cache of the timeseies
-   *
-   * @param timeseriesID timeseries ID of the timeseries
-   * @param pair last time value pair
-   * @param highPriorityUpdate is high priority update
-   * @param latestFlushedTime last flushed time
-   * @throws MetadataException if the timeseries is not exits
-   */
-  @Override
-  public synchronized void updateLastCache(
-      TimeseriesID timeseriesID,
-      TimeValuePair pair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime)
-      throws MetadataException {
-    getSchemaEntry(timeseriesID).updateCachedLast(pair, highPriorityUpdate, latestFlushedTime);
   }
 
   @Override

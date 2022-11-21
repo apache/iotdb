@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -123,16 +122,6 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
     // skip the version flag and node type flag
     byte flag = ReadWriteIOUtils.readBytes(byteBuffer, 2)[1];
     isAligned = (RSchemaConstants.FLAG_IS_ALIGNED & flag) > 0;
-  }
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer(String measurementId) {
-    return null;
-  }
-
-  @Override
-  public Map<String, ILastCacheContainer> getTemplateLastCaches() {
-    return null;
   }
 
   @Override

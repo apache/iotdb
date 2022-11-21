@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -55,14 +54,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   // region support methods
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    return schemaEntry;
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
 
   @Override
   public boolean isPreDeleted() {
