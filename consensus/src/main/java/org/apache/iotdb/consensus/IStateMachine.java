@@ -181,15 +181,4 @@ public interface IStateMachine {
   default File getSnapshotRoot() {
     return null;
   }
-
-  /**
-   * Ratis requires a temporary directory to store in-transmitting snapshot files. This interface
-   * should be used together with {@link #getSnapshotRoot()}. Currently only DataRegionStateMachine
-   * will use this interface.
-   *
-   * @return statemachine snapshot temp dir
-   */
-  default File getSnapshotTmp() {
-    return null;
-  }
 }

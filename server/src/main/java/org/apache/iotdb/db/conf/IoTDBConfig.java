@@ -1160,7 +1160,6 @@ public class IoTDBConfig {
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
-    ratisDataRegionSnapshotTmp = addDataHomeDir(ratisDataRegionSnapshotTmp);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
@@ -1365,10 +1364,6 @@ public class IoTDBConfig {
 
   public String getRatisDataRegionSnapshotDir() {
     return ratisDataRegionSnapshotDir;
-  }
-
-  public String getRatisDataRegionSnapshotTmp() {
-    return ratisDataRegionSnapshotTmp;
   }
 
   public String getConsensusDir() {

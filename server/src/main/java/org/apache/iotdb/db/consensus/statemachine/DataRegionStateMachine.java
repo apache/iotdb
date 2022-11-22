@@ -455,16 +455,4 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return null;
     }
   }
-
-  @Override
-  public File getSnapshotTmp() {
-    String snapshotTmpDir =
-        IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotTmp();
-    try {
-      return new File(snapshotTmpDir).getCanonicalFile();
-    } catch (IOException e) {
-      logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotTmpDir, e);
-      return null;
-    }
-  }
 }
