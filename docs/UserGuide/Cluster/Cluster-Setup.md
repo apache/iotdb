@@ -87,12 +87,12 @@ The total process are three steps:
 
 Please set parameters about RPC in conf/iotdb-confignode.properties:
 
-| **Configuration**                          | **Description**                                                                                      |
-|--------------------------------------------|------------------------------------------------------------------------------------------------------|
-| cn\_internal\_address                      | Internal rpc service address of ConfigNode                                                           |
-| cn\_internal\_port                         | Internal rpc service address of ConfigNode                                                           |
-| cn\_consensus\_port                        | ConfigNode replication consensus protocol communication port                                         |
-| cn\_target\_config\_node\_list             | List of target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
+| **Configuration**                          | **Description**                                                                              |
+|--------------------------------------------|----------------------------------------------------------------------------------------------|
+| cn\_internal\_address                      | Internal rpc service address of ConfigNode                                                   |
+| cn\_internal\_port                         | Internal rpc service address of ConfigNode                                                   |
+| cn\_consensus\_port                        | ConfigNode replication consensus protocol communication port                                 |
+| cn\_target\_config\_node\_list             | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
 
 Please set parameters about replication in conf/iotdb-common.properties:
 
