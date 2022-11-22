@@ -374,11 +374,6 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.schemaProcessor.getMeasurementPaths(path);
   }
 
-  protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
-      throws MetadataException {
-    return IoTDB.schemaProcessor.getNodesListInGivenLevel(schemaPattern, level);
-  }
-
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
       throws MetadataException {
     return IoTDB.schemaProcessor.getMeasurementCountGroupByLevel(

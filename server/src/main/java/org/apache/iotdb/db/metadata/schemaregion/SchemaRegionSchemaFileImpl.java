@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -1021,8 +1020,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return node;
   }
 
-  @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
+  private void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
     IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     mtree.unPinMNode(node);
     try {
@@ -1096,21 +1094,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return getDevicesNum(pathPattern, false);
   }
 
-  /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
-   * path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-  }
-
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
@@ -1139,12 +1122,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // region Interfaces for level Node info Query
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
-    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
   }
 
   /**
@@ -1308,9 +1287,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
-                  leaf.getLastCacheContainer().getCachedLast() != null
-                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
-                      : 0,
+                  0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right,
                   deadbandInfo.left,

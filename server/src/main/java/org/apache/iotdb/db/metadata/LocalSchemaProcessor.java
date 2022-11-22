@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -51,7 +50,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -71,7 +69,6 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -98,8 +95,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *       </ol>
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces only for Cluster module usage
- *   <li>Interfaces for lastCache operations
  *   <li>TestOnly Interfaces
  * </ol>
  */
@@ -349,11 +344,6 @@ public class LocalSchemaProcessor {
     }
   }
 
-  /** Get metadata in string */
-  public String getMetadataInString() {
-    return "Doesn't support metadata Tree toString since v0.14";
-  }
-
   // region Interfaces for metadata count
 
   /**
@@ -396,11 +386,6 @@ public class LocalSchemaProcessor {
     return num;
   }
 
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
-  }
-
   /**
    * To calculate the count of database for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -423,17 +408,6 @@ public class LocalSchemaProcessor {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, level, isPrefixMatch).size();
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
@@ -466,31 +440,14 @@ public class LocalSchemaProcessor {
    * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
-      throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, null);
-  }
-
-  public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, false, filter);
-  }
-
   private List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, null);
-  }
-
-  private List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
     Pair<List<PartialPath>, Set<PartialPath>> pair =
-        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
     Set<PartialPath> result = new TreeSet<>(pair.left);
     for (PartialPath storageGroup : pair.right) {
       for (ISchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
-        result.addAll(
-            schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter));
+        result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch));
       }
     }
     return new ArrayList<>(result);
@@ -602,15 +559,6 @@ public class LocalSchemaProcessor {
   /** Get all database paths */
   public List<PartialPath> getAllStorageGroupPaths() {
     return configManager.getAllStorageGroupPaths();
-  }
-
-  /**
-   * get all storageGroups ttl
-   *
-   * @return key-> storageGroupPath, value->ttl
-   */
-  public Map<PartialPath, Long> getStorageGroupsTTL() {
-    return configManager.getStorageGroupsTTL();
   }
 
   // endregion
@@ -852,26 +800,6 @@ public class LocalSchemaProcessor {
       throw new PathNotExistException(fullPath.getFullPath());
     }
   }
-
-  /**
-   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
-   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
-   * created thus throw PathAlreadyExistException.
-   */
-  protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws MetadataException {
-    IMNode result = deviceMNode.getChild(measurementName);
-    if (result == null) {
-      return null;
-    }
-
-    if (result.isMeasurement()) {
-      return result.getAsMeasurementMNode();
-    } else {
-      throw new PathAlreadyExistException(
-          deviceMNode.getFullPath() + PATH_SEPARATOR + measurementName);
-    }
-  }
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
@@ -900,17 +828,6 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * add new attributes key-value for the timeseries
-   *
-   * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
-   */
-  public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).addAttributes(attributesMap, fullPath);
-  }
-
-  /**
    * add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
@@ -919,219 +836,6 @@ public class LocalSchemaProcessor {
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     getBelongedSchemaRegion(fullPath).addTags(tagsMap, fullPath);
-  }
-
-  /**
-   * drop tags or attributes of the timeseries
-   *
-   * @param keySet tags key or attributes key
-   * @param fullPath timeseries path
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).dropTagsOrAttributes(keySet, fullPath);
-  }
-
-  /**
-   * set/change the values of tags or attributes
-   *
-   * @param alterMap the new tags or attributes key-value
-   * @param fullPath timeseries
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).setTagsOrAttributesValue(alterMap, fullPath);
-  }
-
-  /**
-   * rename the tag or attribute's key of the timeseries
-   *
-   * @param oldKey old key of tag or attribute
-   * @param newKey new key of tag or attribute
-   * @param fullPath timeseries
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).renameTagOrAttributeKey(oldKey, newKey, fullPath);
-  }
-  // endregion
-
-  // region Interfaces only for Cluster module usage
-
-  /**
-   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
-   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
-   *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
-   * (2) the sub path which is substring that begin after the database name.
-   *
-   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
-   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
-   * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
-   * the part of the path is a substring that begin after the database name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
-   * part, keep what it is.
-   *
-   * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
-   * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
-   * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns
-   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
-   *
-   * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
-   *
-   * @param path can be a path pattern or a full path.
-   * @return StorageGroupName-FullPath pairs
-   * @apiNote :for cluster
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    return configManager.groupPathByStorageGroup(path);
-  }
-
-  /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
-   * cache the path to mRemoteSchemaCache
-   */
-  public void cacheMeta(
-      PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
-    // do nothing
-  }
-
-  /**
-   * StorageGroupFilter filters unsatisfied databases in metadata queries to speed up and
-   * deduplicate.
-   */
-  @FunctionalInterface
-  public interface StorageGroupFilter {
-
-    boolean satisfy(String storageGroup);
-  }
-  // endregion
-
-  // region Interfaces for lastCache operations
-  /**
-   * Update the last cache value of time series of given seriesPath.
-   *
-   * <p>SchemaProcessor will use the seriesPath to search the node first and then process the
-   * lastCache in the MeasurementMNode
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      PartialPath seriesPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Update the last cache value in given MeasurementMNode. work.
-   *
-   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
-   * during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @param timeValuePair the latest point value
-   * @param highPriorityUpdate the last value from insertPlan is high priority
-   * @param latestFlushedTime latest flushed time
-   */
-  public void updateLastCache(
-      IMeasurementMNode node,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    LastCacheManager.updateLastCache(node, timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * Get the last cache value of time series of given seriesPath. SchemaProcessor will use the
-   * seriesPath to search the node.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return null;
-    }
-
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Get the last cache value in given MeasurementMNode.
-   *
-   * <p>Invoking scenario: last cache read during last Query
-   *
-   * @param node the measurementMNode holding the lastCache
-   * @return the last cache value
-   */
-  public TimeValuePair getLastCache(IMeasurementMNode node) {
-    return LastCacheManager.getLastCache(node);
-  }
-
-  /**
-   * Reset the last cache value of time series of given seriesPath. SchemaProcessor will use the
-   * seriesPath to search the node.
-   *
-   * @param seriesPath the PartialPath of full path from root to Measurement
-   */
-  public void resetLastCache(PartialPath seriesPath) {
-    IMeasurementMNode node;
-    try {
-      node = getMeasurementMNode(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
-      return;
-    }
-
-    LastCacheManager.resetLastCache(node);
-  }
-
-  /**
-   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
-   * is under the device and matching the originalPath
-   *
-   * <p>Invoking scenario (1) delete timeseries
-   *
-   * @param deviceId path of device
-   * @param originalPath origin timeseries path
-   * @param startTime startTime
-   * @param endTime endTime
-   */
-  public void deleteLastCacheByDevice(
-      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
-      throws MetadataException {
-    IMNode node = getDeviceNode(deviceId);
-    if (node.isEntity()) {
-      LastCacheManager.deleteLastCacheByDevice(
-          node.getAsEntityMNode(), originalPath, startTime, endTime);
-    }
   }
   // endregion
 
@@ -1145,25 +849,6 @@ public class LocalSchemaProcessor {
   @TestOnly
   public long getTotalSeriesNumber() {
     return SchemaStatisticsManager.getInstance().getTotalSeriesNumber();
-  }
-
-  /**
-   * To reduce the String number in memory, use the deviceId from SchemaProcessor instead of the
-   * deviceId read from disk
-   *
-   * @param devicePath read from disk
-   * @return deviceId
-   */
-  @TestOnly
-  public String getDeviceId(PartialPath devicePath) {
-    String device = null;
-    try {
-      IMNode deviceNode = getDeviceNode(devicePath);
-      device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from SchemaProcessor, return the input deviceId
-    }
-    return device;
   }
   // endregion
 }
