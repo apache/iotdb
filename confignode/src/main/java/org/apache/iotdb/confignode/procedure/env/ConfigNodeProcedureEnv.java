@@ -206,7 +206,9 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Let the remotely new ConfigNode build the ConsensusGroup
+   * Let the remotely new ConfigNode build the ConsensusGroup.
+   * Actually, the parameter of this method can be empty, adding new raft peer to exist group should invoke
+   * createPeer(groupId, emptyList).
    *
    * @param tConfigNodeLocation New ConfigNode's location
    */

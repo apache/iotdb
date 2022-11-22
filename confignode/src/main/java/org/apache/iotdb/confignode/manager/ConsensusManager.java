@@ -212,7 +212,7 @@ public class ConsensusManager {
   }
 
   /**
-   * Add new ConfigNode Peer into PartitionRegion
+   * Add a new ConfigNode Peer into ConfigNodeRegion
    *
    * @param configNodeLocation The new ConfigNode
    * @throws AddPeerException When addPeer doesn't success

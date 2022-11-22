@@ -528,8 +528,7 @@ public class DataNodeRemoveHandler {
    * @param tDataNodeLocation data node location
    */
   public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
-    removeDataNodes.add(tDataNodeLocation);
+    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);;
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 
