@@ -180,9 +180,19 @@ public class IoTDBConstant {
       new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
 
   public static final String DEADBAND = "deadband";
+  public static final String MAX_POINT_NUMBER = "max_point_number";
+  public static final String MAX_STRING_LENGTH = "max_string_length";
   public static final Set<String> ALLOWED_SCHEMA_PROPS =
       new HashSet<>(
-          Arrays.asList(DEADBAND, LOSS, SDT, SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME));
+          Arrays.asList(
+              DEADBAND,
+              LOSS,
+              SDT,
+              SDT_COMP_DEV,
+              SDT_COMP_MIN_TIME,
+              SDT_COMP_MAX_TIME,
+              MAX_POINT_NUMBER,
+              MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
   public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";

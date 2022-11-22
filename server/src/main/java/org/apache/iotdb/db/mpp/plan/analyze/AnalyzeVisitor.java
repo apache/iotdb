@@ -137,6 +137,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1354,11 +1355,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (props == null || props.isEmpty()) {
       return;
     }
+    Map<String, String> caseChangeMap = new HashMap<>();
     for (String key : props.keySet()) {
-      if (!ALLOWED_SCHEMA_PROPS.contains(key)) {
+      caseChangeMap.put(key.toLowerCase(Locale.ROOT), key);
+    }
+    for (String lowerCaseKey : caseChangeMap.keySet()) {
+      if (!ALLOWED_SCHEMA_PROPS.contains(lowerCaseKey)) {
         throw new SemanticException(
-            new MetadataException(String.format("%s is not a legal prop.", key)));
+            new MetadataException(
+                String.format("%s is not a legal prop.", caseChangeMap.get(lowerCaseKey))));
       }
+      props.put(lowerCaseKey, props.remove(caseChangeMap.get(lowerCaseKey)));
     }
     if (props.containsKey(DEADBAND)) {
       props.put(LOSS, props.remove(DEADBAND));
