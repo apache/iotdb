@@ -17,25 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.service.metric;
+package org.apache.iotdb.metrics.utils;
 
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.utils.InternalReportType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+public enum InternalReportType {
+  MEMORY,
+  IOTDB;
 
-public interface InternalReporter {
-  void addAutoGauge(Gauge gauge, String name, String... tags);
-
-  void clear();
-
-  void updateValue(String name, Object value, TSDataType type, String... tags);
-
-  void updateValue(String name, Object value, TSDataType type, Long time, String... tags);
-
-  void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags);
-
-  InternalReportType getType();
-
-  void stop();
+  @Override
+  public String toString() {
+    return name();
+  }
 }

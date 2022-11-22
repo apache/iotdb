@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,8 +63,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class InternalReporterImpl implements InternalReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(InternalReporterImpl.class);
+public class IoTDBInternalReporter implements InternalReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
@@ -74,7 +75,7 @@ public class InternalReporterImpl implements InternalReporter {
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Map<Pair<String, String[]>, Gauge> autoGauges = new ConcurrentHashMap<>();
 
-  public InternalReporterImpl() {
+  public IoTDBInternalReporter() {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
@@ -160,6 +161,11 @@ public class InternalReporterImpl implements InternalReporter {
     updateValue(name + "_99", snapshot.getValue(0.99), TSDataType.DOUBLE, time, tags);
     updateValue(name + "_999", snapshot.getValue(0.999), TSDataType.DOUBLE, time, tags);
     updateValue(name + "_max", snapshot.getMax(), TSDataType.INT64, time, tags);
+  }
+
+  @Override
+  public InternalReportType getType() {
+    return InternalReportType.IOTDB;
   }
 
   @Override

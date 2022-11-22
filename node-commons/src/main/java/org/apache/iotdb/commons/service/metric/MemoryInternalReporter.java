@@ -21,9 +21,10 @@ package org.apache.iotdb.commons.service.metric;
 
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class DoNothingInternalReporter implements InternalReporter {
+public class MemoryInternalReporter implements InternalReporter {
   @Override
   public void addAutoGauge(Gauge gauge, String name, String... tags) {}
 
@@ -38,6 +39,11 @@ public class DoNothingInternalReporter implements InternalReporter {
 
   @Override
   public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {}
+
+  @Override
+  public InternalReportType getType() {
+    return InternalReportType.MEMORY;
+  }
 
   @Override
   public void stop() {}

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -37,6 +38,9 @@ public class MetricConfig {
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList = Collections.emptyList();
+
+  /** The type of internal report */
+  private InternalReportType internalReportType = InternalReportType.MEMORY;
 
   /** The level of metric service */
   private MetricLevel metricLevel = MetricLevel.CORE;
@@ -185,6 +189,14 @@ public class MetricConfig {
 
   public void setMetricReporterList(List<ReporterType> metricReporterList) {
     this.metricReporterList = metricReporterList;
+  }
+
+  public InternalReportType getInternalReportType() {
+    return internalReportType;
+  }
+
+  public void setInternalReportType(InternalReportType internalReportType) {
+    this.internalReportType = internalReportType;
   }
 
   public MetricLevel getMetricLevel() {

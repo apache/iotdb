@@ -49,7 +49,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
-  private InternalReporter internalReporter = new DoNothingInternalReporter();
+  private InternalReporter internalReporter = new MemoryInternalReporter();
 
   private MetricService() {}
 
@@ -89,7 +89,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
   public void stop() {
     logger.info("Stop metric Service.");
     internalReporter.stop();
-    internalReporter = new DoNothingInternalReporter();
+    internalReporter = new MemoryInternalReporter();
     stopService();
     JMXService.deregisterMBean(mbeanName);
     logger.info("Finish stop metric Service");
@@ -226,7 +226,9 @@ public class MetricService extends AbstractMetricService implements MetricServic
   }
 
   public void updateInternalReporter(InternalReporter internalReporter) {
-    this.internalReporter = internalReporter;
+    if (metricConfig.getInternalReportType().equals(internalReporter.getType())) {
+      this.internalReporter = internalReporter;
+    }
   }
 
   public static MetricService getInstance() {

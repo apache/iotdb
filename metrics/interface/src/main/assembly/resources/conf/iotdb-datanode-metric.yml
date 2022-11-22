@@ -23,6 +23,10 @@ enablePerformanceStat: false
 # Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
 
+# How to internal report metric, options: [MEMORY, IOTDB]
+internalReport:
+  - MEMORY
+
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
 monitorType: MICROMETER
 

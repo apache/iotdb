@@ -50,7 +50,8 @@ public abstract class AbstractMetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
-  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  protected final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
