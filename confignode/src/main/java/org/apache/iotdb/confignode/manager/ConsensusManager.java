@@ -198,11 +198,6 @@ public class ConsensusManager {
    * @param configNodeLocations All registered ConfigNodes
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is empty, createPeerForConsensusGroup failed.");
-      return;
-    }
-
     LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();

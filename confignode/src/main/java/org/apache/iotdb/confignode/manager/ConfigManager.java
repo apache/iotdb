@@ -789,7 +789,7 @@ public class ConfigManager implements IManager {
         if (consensusManager == null) {
           Thread.sleep(1000);
         } else {
-          consensusManager.createPeerForConsensusGroup(configNodeLocations);
+          consensusManager.createPeerForConsensusGroup(new ArrayList<>());
           return StatusUtils.OK;
         }
       } catch (InterruptedException e) {
