@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
@@ -38,7 +37,6 @@ import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -65,7 +63,6 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUt
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -87,7 +84,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -740,44 +736,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    PartialPath devicePath = plan.getDevicePath();
-    devicePath =
-        new PartialPath(
-            PathTagConverterUtils.pathToTagsSortPath(
-                storageGroupFullPath, devicePath.getFullPath()));
-    plan.setDevicePath(devicePath);
-    String[] measurementList = plan.getMeasurements();
-    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-    checkAlignedAndAutoCreateSeries(plan);
-    IMNode deviceMNode = getDeviceNode(devicePath);
-    IMeasurementMNode measurementMNode;
-    DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath.getFullPath());
-    Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
-    for (int i = 0; i < measurementList.length; i++) {
-      SchemaEntry schemaEntry = schemaMap.get(measurementList[i]);
-      measurementMNode = new InsertMeasurementMNode(measurementList[i], schemaEntry, null);
-      // check type is match
-      try {
-        SchemaRegionUtils.checkDataTypeMatch(plan, i, schemaEntry.getTSDataType());
-      } catch (DataTypeMismatchException mismatchException) {
-        if (!config.isEnablePartialInsert()) {
-          throw mismatchException;
-        } else {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, mismatchException);
-          continue;
-        }
-      }
-      measurementMNodes[i] = measurementMNode;
-    }
-    plan.setDeviceID(deviceEntry.getDeviceID());
-    plan.setDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID(), false));
-    return deviceMNode;
-  }
-
-  @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
@@ -833,36 +791,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     return deviceEntry.getSchemaEntry(measurementName);
   }
 
-  private void checkAlignedAndAutoCreateSeries(InsertPlan plan) throws MetadataException {
-    String[] measurementList = plan.getMeasurements();
-    try {
-      if (plan.isAligned()) {
-        internalAlignedCreateTimeseries(
-            plan.getDevicePath(),
-            Arrays.asList(measurementList),
-            Arrays.asList(plan.getDataTypes()));
-      } else {
-        internalCreateTimeseries(
-            plan.getDevicePath().concatNode(measurementList[0]), plan.getDataTypes()[0]);
-      }
-    } catch (MetadataException e) {
-      if (!(e instanceof PathAlreadyExistException)) {
-        throw e;
-      }
-    }
-  }
-
-  /** create timeseries ignoring PathAlreadyExistException */
-  private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
-      throws MetadataException {
-    createTimeseries(
-        path,
-        dataType,
-        getDefaultEncoding(dataType),
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-  }
-
   /** create timeseries ignoring PathAlreadyExistException */
   private void internalCreateTimeseries(
       PartialPath path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
@@ -874,19 +802,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
     createTimeseries(path, dataType, encoding, compressor, Collections.emptyMap());
-  }
-
-  /** create aligned timeseries ignoring PathAlreadyExistException */
-  private void internalAlignedCreateTimeseries(
-      PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
-      throws MetadataException {
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
-    for (TSDataType dataType : dataTypes) {
-      encodings.add(getDefaultEncoding(dataType));
-      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    }
-    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
 
   /** create aligned timeseries ignoring PathAlreadyExistException */

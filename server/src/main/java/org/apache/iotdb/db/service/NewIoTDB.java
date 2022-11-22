@@ -73,13 +73,13 @@ public class NewIoTDB implements NewIoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
-    config.setMppMode(true);
     // In standalone mode, Consensus memory should be reclaimed
     IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
@@ -155,7 +155,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     initProtocols();
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
@@ -168,11 +168,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(SettleService.getINSTANCE());
-    }
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
@@ -207,10 +202,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

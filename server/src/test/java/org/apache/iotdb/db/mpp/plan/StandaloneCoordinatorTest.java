@@ -63,7 +63,6 @@ public class StandaloneCoordinatorTest {
 
   @Before
   public void setUp() throws Exception {
-    conf.setMppMode(true);
     conf.setDataNodeId(0);
     coordinator = Coordinator.getInstance();
     schemaFetcher = StandaloneSchemaFetcher.getInstance();
@@ -86,7 +85,6 @@ public class StandaloneCoordinatorTest {
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
-    conf.setMppMode(false);
   }
 
   @Test

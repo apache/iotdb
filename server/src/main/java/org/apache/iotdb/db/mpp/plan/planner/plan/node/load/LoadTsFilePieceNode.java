@@ -21,8 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.load.TsFileData;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -48,7 +46,6 @@ import java.util.List;
 
 public class LoadTsFilePieceNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private File tsFile;
 
@@ -66,9 +63,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     this.tsFileDataList = new ArrayList<>();
   }
 
-  public boolean exceedSize() {
-    return dataSize >= config.getThriftMaxFrameSize() / 2
-        || dataSize >= config.getAllocateMemoryForFree() / 2;
+  public long getDataSize() {
+    return dataSize;
   }
 
   public void addTsFileData(TsFileData tsFileData) {
@@ -131,11 +127,12 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
     for (TsFileData tsFileData : tsFileDataList) {
       try {
-        tsFileData.serialize(stream, tsFile);
+        tsFileData.serialize(stream);
       } catch (IOException e) {
         logger.error(
             String.format(
-                "Parse page of TsFile %s error, skip chunk %s", tsFile.getPath(), tsFileData));
+                "Serialize data of TsFile %s error, skip TsFileData %s",
+                tsFile.getPath(), tsFileData));
       }
     }
   }

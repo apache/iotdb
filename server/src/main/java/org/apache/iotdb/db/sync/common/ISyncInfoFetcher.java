@@ -24,15 +24,12 @@ import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 
 import java.util.List;
 
 public interface ISyncInfoFetcher {
 
   // region Interfaces of PipeSink
-  // TODO(sync): delete this in new-standalone version
-  TSStatus addPipeSink(CreatePipeSinkPlan plan);
 
   TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 

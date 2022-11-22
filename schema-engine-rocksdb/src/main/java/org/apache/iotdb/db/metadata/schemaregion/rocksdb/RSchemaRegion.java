@@ -35,7 +35,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -67,15 +66,11 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -102,7 +97,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -565,9 +559,9 @@ public class RSchemaRegion implements ISchemaRegion {
         } else {
           if (start == nodes.length) {
             // make sure sg node and entity node are different
-            // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
+            // eg.,'root.a' is a database path, 'root.a.b' can not be a timeseries
             if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
-              throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+              throw new MetadataException("Database Node and Entity Node could not be same!");
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
@@ -1838,131 +1832,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDevicePath();
-    String[] measurementList = plan.getMeasurements();
-    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-
-    IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath, plan.isAligned());
-
-    if (deviceMNode == null) {
-      throw new MetadataException(
-          String.format("Failed to create deviceMNode,device path:[%s]", plan.getDevicePath()));
-    }
-    // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.isEntity()) {
-      if (plan.isAligned() && !deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "timeseries under this device are not aligned, " + "please use non-aligned interface",
-            devicePath.getFullPath());
-      }
-
-      if (!plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "timeseries under this device are aligned, " + "please use aligned interface",
-            devicePath.getFullPath());
-      }
-    }
-
-    // get node for each measurement
-    Map<Integer, IMeasurementMNode> nodeMap = new HashMap<>();
-    Map<Integer, PartialPath> missingNodeIndex = new HashMap<>();
-    for (int i = 0; i < measurementList.length; i++) {
-      PartialPath path = new PartialPath(devicePath.getFullPath(), measurementList[i]);
-      IMeasurementMNode node = getMeasurementMNode(path);
-      if (node == null) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(path.getFullPath());
-        }
-        missingNodeIndex.put(i, path);
-      } else {
-        nodeMap.put(i, node);
-      }
-    }
-
-    // create missing nodes
-    if (!missingNodeIndex.isEmpty()) {
-      if (!(plan instanceof InsertRowPlan) && !(plan instanceof InsertTabletPlan)) {
-        throw new MetadataException(
-            String.format(
-                "Only support insertRow and insertTablet, plan is [%s]", plan.getOperatorType()));
-      }
-
-      if (plan.isAligned()) {
-        List<String> measurements = new ArrayList<>();
-        List<TSDataType> dataTypes = new ArrayList<>();
-        List<TSEncoding> encodings = new ArrayList<>();
-        for (Integer index : missingNodeIndex.keySet()) {
-          measurements.add(measurementList[index]);
-          TSDataType type = plan.getDataTypes()[index];
-          dataTypes.add(type);
-          encodings.add(EncodingInferenceUtils.getDefaultEncoding(type));
-        }
-        createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings);
-      } else {
-        for (Map.Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
-          IMeasurementSchema schema =
-              new MeasurementSchema(
-                  entry.getValue().getMeasurement(), plan.getDataTypes()[entry.getKey()]);
-          createTimeseries(entry.getValue(), schema, null, null, null);
-        }
-      }
-
-      // get the latest node
-      for (Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
-        nodeMap.put(entry.getKey(), getMeasurementMNode(entry.getValue()));
-      }
-    }
-
-    // check datatype
-    for (int i = 0; i < measurementList.length; i++) {
-      try {
-        // check type is match
-        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          try {
-            SchemaRegionUtils.checkDataTypeMatch(plan, i, nodeMap.get(i).getSchema().getType());
-          } catch (DataTypeMismatchException mismatchException) {
-            logger.warn(mismatchException.getMessage());
-            if (!config.isEnablePartialInsert()) {
-              throw mismatchException;
-            } else {
-              // mark failed measurement
-              plan.markFailedMeasurementInsertion(i, mismatchException);
-              continue;
-            }
-          }
-          measurementMNodes[i] = nodeMap.get(i);
-          // set measurementName instead of alias
-          measurementList[i] = nodeMap.get(i).getName();
-        }
-      } catch (MetadataException e) {
-        if (config.isClusterMode()) {
-          logger.debug(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        } else {
-          logger.warn(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        }
-        if (config.isEnablePartialInsert()) {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, e);
-        } else {
-          throw e;
-        }
-      }
-    }
-    return deviceMNode;
-  }
-
-  @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
@@ -2069,7 +1938,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public String toString() {
-    return String.format("storage group:[%s]", storageGroupFullPath);
+    return String.format("database:[%s]", storageGroupFullPath);
   }
 
   @TestOnly

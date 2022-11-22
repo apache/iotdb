@@ -267,7 +267,7 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
     return 4000;
   }
 
@@ -341,5 +341,13 @@ public interface BaseConfig {
 
   default int getSelectIntoInsertTabletPlanRowLimit() {
     return 10000;
+  }
+
+  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    return this;
+  }
+
+  default boolean isEnableLeaderBalancing() {
+    return false;
   }
 }

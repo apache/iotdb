@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -175,7 +176,9 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowCluster(
       ShowClusterStatement showClusterStatement, TaskContext context) {
-    return new ShowClusterTask(showClusterStatement);
+    return showClusterStatement.isDetails()
+        ? new ShowClusterDetailsTask(showClusterStatement)
+        : new ShowClusterTask(showClusterStatement);
   }
 
   @Override

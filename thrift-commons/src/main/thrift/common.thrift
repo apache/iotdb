@@ -35,7 +35,7 @@ struct TSStatus {
 }
 
 enum TConsensusGroupType {
-  PartitionRegion,
+  ConfigNodeRegion,
   DataRegion,
   SchemaRegion
 }

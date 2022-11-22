@@ -45,8 +45,7 @@ public class MetadataConstant {
   public static final String SCHEMA_FILE_NAME = "schema_file.pst";
   public static final String SCHEMA_LOG_FILE_NAME = "schema_file_log.bin";
 
-  public static final String METADATA_LOG_SNAPSHOT = "mlog.bin.snapshot";
-  public static final String METADATA_LOG_SNAPSHOT_TMP = "mlog.bin.snapshot.tmp";
+  public static final String SCHEMA_FILE_SNAPSHOT = "schema_file.pst.snapshot";
   public static final String TAG_LOG_SNAPSHOT = "tlog.txt.snapshot";
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";

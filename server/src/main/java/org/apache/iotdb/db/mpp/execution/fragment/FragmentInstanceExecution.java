@@ -90,7 +90,14 @@ public class FragmentInstanceExecution {
 
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(
-        stateMachine.getState(), context.getEndTime(), context.getFailedCause());
+        stateMachine.getState(),
+        context.getEndTime(),
+        context.getFailedCause(),
+        context.getFailureInfoList());
+  }
+
+  public FragmentInstanceStateMachine getStateMachine() {
+    return stateMachine;
   }
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction

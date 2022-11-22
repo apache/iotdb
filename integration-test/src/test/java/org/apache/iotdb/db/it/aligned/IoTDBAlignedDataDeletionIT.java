@@ -48,7 +48,7 @@ public class IoTDBAlignedDataDeletionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
       };
 
@@ -215,7 +215,7 @@ public class IoTDBAlignedDataDeletionIT {
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt01");
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN," + " ENCODING=PLAIN");
       statement.execute(

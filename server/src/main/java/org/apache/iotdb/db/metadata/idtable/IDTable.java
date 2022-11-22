@@ -35,7 +35,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -87,7 +86,7 @@ public interface IDTable {
    * @return reusable device id
    * @throws MetadataException if insert plan's aligned value is inconsistent with device
    */
-  IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException;
+  // IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException;
 
   /**
    * register trigger to the timeseries

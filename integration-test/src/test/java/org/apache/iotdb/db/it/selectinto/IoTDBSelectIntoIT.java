@@ -51,7 +51,7 @@ public class IoTDBSelectIntoIT {
 
   protected static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -80,14 +80,14 @@ public class IoTDBSelectIntoIT {
         "INSERT INTO root.sg.d2(time, s2) VALUES (11, 11)",
         "INSERT INTO root.sg.d2(time, s1) VALUES (12, 12)",
         "flush",
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"
       };
 
-  protected static final String selectIntoHeader = "source column,target timeseries,written,";
+  protected static final String selectIntoHeader = "SourceColumn,TargetTimeseries,Written,";
   protected static final String selectIntoAlignByDeviceHeader =
-      "source device,source column,target timeseries,written,";
+      "SourceDevice,SourceColumn,TargetTimeseries,Written,";
 
   protected static final String[] rawDataSet =
       new String[] {

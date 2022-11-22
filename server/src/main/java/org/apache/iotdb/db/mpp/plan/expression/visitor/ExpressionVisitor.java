@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -126,5 +127,9 @@ public abstract class ExpressionVisitor<R, C> {
 
   public R visitConstantOperand(ConstantOperand constantOperand, C context) {
     return visitLeafOperand(constantOperand, context);
+  }
+
+  public R visitNullOperand(NullOperand nullOperand, C context) {
+    return visitLeafOperand(nullOperand, context);
   }
 }

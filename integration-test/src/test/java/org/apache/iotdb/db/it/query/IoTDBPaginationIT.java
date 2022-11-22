@@ -44,7 +44,7 @@ public class IoTDBPaginationIT {
 
   private static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",

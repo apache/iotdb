@@ -33,7 +33,7 @@ func main() {
 	// from Grafana to create different instances of SampleDatasource (per datasource
 	// ID). When datasource configuration changed Dispose method will be called and
 	// new datasource instance created using NewSampleDatasource factory.
-	if err := datasource.Manage("myorgid-simple-backend-datasource", plugin.NewSampleDatasource, datasource.ManageOpts{}); err != nil {
+	if err := datasource.Manage("apache-iotdb-backend-datasource", plugin.ApacheIoTDBDatasource, datasource.ManageOpts{}); err != nil {
 		log.DefaultLogger.Error(err.Error())
 		os.Exit(1)
 	}

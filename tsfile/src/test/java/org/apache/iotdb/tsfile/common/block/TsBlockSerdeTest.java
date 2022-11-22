@@ -122,7 +122,7 @@ public class TsBlockSerdeTest {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      // to indicate this binary data is storage group info
+      // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
       ReadWriteIOUtils.write(1, outputStream);
@@ -156,7 +156,7 @@ public class TsBlockSerdeTest {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      // to indicate this binary data is storage group info
+      // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
       ReadWriteIOUtils.write(1, outputStream);

@@ -115,11 +115,15 @@ public class TriggerManagementService {
   public void dropTrigger(String triggerName, boolean needToDeleteJar) throws IOException {
     try {
       acquireLock();
-      TriggerInformation triggerInformation = triggerTable.removeTriggerInformation(triggerName);
-      TriggerExecutor executor = executorMap.remove(triggerName);
+      TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+      TriggerExecutor executor = executorMap.get(triggerName);
       if (executor != null) {
         executor.onDrop();
       }
+      // exception could be thrown when executing executor.onDrop()
+      // we delete trigger in map after successfully executing onDrop
+      triggerTable.removeTriggerInformation(triggerName);
+      executorMap.remove(triggerName);
 
       if (triggerInformation == null) {
         return;

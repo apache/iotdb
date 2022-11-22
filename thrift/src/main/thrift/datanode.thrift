@@ -118,14 +118,16 @@ struct TSendPlanNodeResp {
   3: optional common.TSStatus status
 }
 
-struct TFetchFragmentInstanceStateReq {
+struct TFetchFragmentInstanceInfoReq {
   1: required TFragmentInstanceId fragmentInstanceId
 }
 
 // TODO: need to supply more fields according to implementation
-struct TFragmentInstanceStateResp {
+struct TFragmentInstanceInfoResp {
   1: required string state
-  2: optional list<string> failedMessages
+  2: optional i64 endTime
+  3: optional list<string> failedMessages
+  4: optional list<binary> failureInfoList
 }
 
 struct TCancelQueryReq {
@@ -360,7 +362,7 @@ service IDataNodeRPCService {
   */
   TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
-  TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
+  TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
   TCancelResp cancelQuery(TCancelQueryReq req);
 
@@ -550,7 +552,7 @@ service IDataNodeRPCService {
   common.TSStatus setSystemStatus(string status)
 
   /**
-   * Config node will Set the TTL for the storage group on a list of data nodes.
+   * Config node will Set the TTL for the database on a list of data nodes.
    */
   common.TSStatus setTTL(common.TSetTTLReq req)
   

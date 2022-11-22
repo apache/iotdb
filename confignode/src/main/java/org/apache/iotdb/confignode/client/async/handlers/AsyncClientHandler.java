@@ -214,6 +214,7 @@ public class AsyncClientHandler<Q, R> {
       case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
+      case CHANGE_REGION_LEADER:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

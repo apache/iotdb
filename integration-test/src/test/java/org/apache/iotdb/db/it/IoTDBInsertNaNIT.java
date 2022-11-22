@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -77,10 +78,10 @@ public class IoTDBInsertNaNIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.happy");
-    sqls.add("SET STORAGE GROUP TO root.cycle");
-    sqls.add("SET STORAGE GROUP TO root.vehicle.f0");
-    sqls.add("SET STORAGE GROUP TO root.vehicle.d0");
+    sqls.add("CREATE DATABASE root.happy");
+    sqls.add("CREATE DATABASE root.cycle");
+    sqls.add("CREATE DATABASE root.vehicle.f0");
+    sqls.add("CREATE DATABASE root.vehicle.d0");
     for (int i = 0; i < 10; i++) {
       sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "rle", "FLOAT", "RLE", i));
       sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "2f", "FLOAT", "TS_2DIFF", i));
@@ -184,7 +185,7 @@ public class IoTDBInsertNaNIT {
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
-          if ((resultSet.getString("timeseries")).contains("root.cycle.d0.s0")) {
+          if ((resultSet.getString(ColumnHeaderConstant.TIMESERIES)).contains("root.cycle.d0.s0")) {
             exist = true;
           }
         }

@@ -28,11 +28,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * SHOW STORAGE GROUP statement
+ * SHOW DATABASES statement
  *
  * <p>Here is the syntax definition:
  *
- * <p>SHOW STORAGE GROUP prefixPath?
+ * <p>SHOW DATABASES prefixPath?
  */
 public class ShowStorageGroupStatement extends ShowStatement implements IConfigStatement {
 

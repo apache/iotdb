@@ -27,7 +27,7 @@ public class PathTagConverterUtils {
   /**
    * convert the path of the tree model to the tags of the tag model
    *
-   * @param storageGroupFullPath storage group full path
+   * @param storageGroupFullPath database full path
    * @param path path of the tree model
    * @return tags of the tag model
    */
@@ -45,7 +45,7 @@ public class PathTagConverterUtils {
   /**
    * convert the tags of the tag model to the path of the tree model
    *
-   * @param storageGroupFullPath storage group full path
+   * @param storageGroupFullPath database full path
    * @param tags tags of the tag model
    * @return path of the tree model
    */
@@ -60,7 +60,7 @@ public class PathTagConverterUtils {
   /**
    * generate unique path for paths with the same semantics
    *
-   * @param storageGroupFullPath storage group full path
+   * @param storageGroupFullPath database full path
    * @param path path of the tree model
    * @return unique path of the tree model
    */

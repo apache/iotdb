@@ -18,18 +18,14 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -301,73 +297,74 @@ public class TemplateTest {
    *
    * @throws MetadataException
    */
-  @Test
-  public void testShowTemplates() throws MetadataException, QueryProcessException {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    assertEquals(0, schemaProcessor.getAllTemplates().size());
-    CreateTemplatePlan plan1 = getTreeTemplatePlan();
-    CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    schemaProcessor.createSchemaTemplate(plan1);
-    schemaProcessor.createSchemaTemplate(plan2);
-
-    assertEquals("[template1, treeTemplate]", schemaProcessor.getAllTemplates().toString());
-
-    for (int i = 0; i < 3; i++) {
-      SetTemplatePlan setTemplatePlan =
-          new SetTemplatePlan("template1", String.format("root.sg%d.d%d", i, i + 1));
-      schemaProcessor.setSchemaTemplate(setTemplatePlan);
-    }
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.sg1.d2", "root.sg0.d1", "root.sg2.d3")),
-        schemaProcessor.getPathsSetTemplate("*"));
-    assertEquals(
-        new HashSet<>(Arrays.asList()), schemaProcessor.getPathsSetTemplate("treeTemplate"));
-
-    for (int i = 0; i < 3; i++) {
-      SetTemplatePlan setTemplatePlan =
-          new SetTemplatePlan("treeTemplate", String.format("root.tsg%d.d%d", i + 9, i + 10));
-      schemaProcessor.setSchemaTemplate(setTemplatePlan);
-    }
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.tsg11.d12", "root.tsg9.d10")),
-        schemaProcessor.getPathsSetTemplate("treeTemplate"));
-    assertEquals(
-        new HashSet<>(
-            Arrays.asList(
-                "root.tsg10.d11",
-                "root.tsg11.d12",
-                "root.tsg9.d10",
-                "root.sg1.d2",
-                "root.sg0.d1",
-                "root.sg2.d3")),
-        schemaProcessor.getPathsSetTemplate("*"));
-
-    PlanExecutor exe1 = new PlanExecutor();
-    exe1.insert(getInsertRowPlan("root.sg0.d1", "s11"));
-    exe1.insert(getInsertRowPlan("root.sg1.d2", "s11"));
-    exe1.insert(getInsertRowPlan("root.tsg10.d11.d1", "s1"));
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.sg1.d2", "root.sg0.d1")),
-        schemaProcessor.getPathsUsingTemplate("*"));
-
-    try {
-      schemaProcessor.createSchemaTemplate(plan1);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Duplicated template name: treeTemplate", e.getMessage());
-    }
-
-    try {
-      schemaProcessor.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
-      fail();
-    } catch (MetadataException e) {
-      assertEquals(
-          "Template [treeTemplate] has been set on MTree, cannot be dropped now.", e.getMessage());
-    }
-  }
+  //  @Test
+  //  public void testShowTemplates() throws MetadataException, QueryProcessException {
+  //    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+  //    assertEquals(0, schemaProcessor.getAllTemplates().size());
+  //    CreateTemplatePlan plan1 = getTreeTemplatePlan();
+  //    CreateTemplatePlan plan2 = getCreateTemplatePlan();
+  //    schemaProcessor.createSchemaTemplate(plan1);
+  //    schemaProcessor.createSchemaTemplate(plan2);
+  //
+  //    assertEquals("[template1, treeTemplate]", schemaProcessor.getAllTemplates().toString());
+  //
+  //    for (int i = 0; i < 3; i++) {
+  //      SetTemplatePlan setTemplatePlan =
+  //          new SetTemplatePlan("template1", String.format("root.sg%d.d%d", i, i + 1));
+  //      schemaProcessor.setSchemaTemplate(setTemplatePlan);
+  //    }
+  //
+  //    assertEquals(
+  //        new HashSet<>(Arrays.asList("root.sg1.d2", "root.sg0.d1", "root.sg2.d3")),
+  //        schemaProcessor.getPathsSetTemplate("*"));
+  //    assertEquals(
+  //        new HashSet<>(Arrays.asList()), schemaProcessor.getPathsSetTemplate("treeTemplate"));
+  //
+  //    for (int i = 0; i < 3; i++) {
+  //      SetTemplatePlan setTemplatePlan =
+  //          new SetTemplatePlan("treeTemplate", String.format("root.tsg%d.d%d", i + 9, i + 10));
+  //      schemaProcessor.setSchemaTemplate(setTemplatePlan);
+  //    }
+  //
+  //    assertEquals(
+  //        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.tsg11.d12", "root.tsg9.d10")),
+  //        schemaProcessor.getPathsSetTemplate("treeTemplate"));
+  //    assertEquals(
+  //        new HashSet<>(
+  //            Arrays.asList(
+  //                "root.tsg10.d11",
+  //                "root.tsg11.d12",
+  //                "root.tsg9.d10",
+  //                "root.sg1.d2",
+  //                "root.sg0.d1",
+  //                "root.sg2.d3")),
+  //        schemaProcessor.getPathsSetTemplate("*"));
+  //
+  //    PlanExecutor exe1 = new PlanExecutor();
+  //    exe1.insert(getInsertRowPlan("root.sg0.d1", "s11"));
+  //    exe1.insert(getInsertRowPlan("root.sg1.d2", "s11"));
+  //    exe1.insert(getInsertRowPlan("root.tsg10.d11.d1", "s1"));
+  //
+  //    assertEquals(
+  //        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.sg1.d2", "root.sg0.d1")),
+  //        schemaProcessor.getPathsUsingTemplate("*"));
+  //
+  //    try {
+  //      schemaProcessor.createSchemaTemplate(plan1);
+  //      fail();
+  //    } catch (MetadataException e) {
+  //      assertEquals("Duplicated template name: treeTemplate", e.getMessage());
+  //    }
+  //
+  //    try {
+  //      schemaProcessor.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+  //      fail();
+  //    } catch (MetadataException e) {
+  //      assertEquals(
+  //          "Template [treeTemplate] has been set on MTree, cannot be dropped now.",
+  // e.getMessage());
+  //    }
+  //  }
 
   @Test
   public void testShowAllSchemas() throws MetadataException {
@@ -476,17 +473,5 @@ public class TemplateTest {
           "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
           e.getMessage());
     }
-  }
-
-  private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)
-      throws IllegalPathException {
-    long time = 110L;
-    TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT64};
-
-    String[] columns = new String[1];
-    columns[0] = "1";
-
-    return new InsertRowPlan(
-        new PartialPath(prefixPath), time, new String[] {measurement}, dataTypes, columns);
   }
 }

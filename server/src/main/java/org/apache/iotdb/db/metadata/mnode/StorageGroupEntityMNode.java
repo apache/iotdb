@@ -26,8 +26,8 @@ import java.io.IOException;
 
 public class StorageGroupEntityMNode extends EntityMNode implements IStorageGroupMNode {
   /**
-   * when the data file in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually deleted.
+   * when the data file in a database is older than dataTTL, it is considered invalid and will be
+   * eventually deleted.
    */
   private long dataTTL;
 

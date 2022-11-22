@@ -527,7 +527,7 @@ public abstract class Traverser {
     return nodeNames.toArray(new String[0]);
   }
 
-  /** @return the storage group node in the traverse path */
+  /** @return the database node in the traverse path */
   protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
     if (currentNode.isStorageGroup()) {
       return currentNode;

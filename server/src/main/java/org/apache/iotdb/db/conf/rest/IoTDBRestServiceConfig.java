@@ -26,6 +26,9 @@ public class IoTDBRestServiceConfig {
   /** set the REST Service port. */
   private int restServicePort = 18080;
 
+  /** Whether to display rest service interface information through swagger */
+  private boolean enableSwagger = false;
+
   /** enable the REST Service ssl. */
   private boolean enableHttps = false;
 
@@ -80,6 +83,14 @@ public class IoTDBRestServiceConfig {
 
   public void setIdleTimeoutInSeconds(int idleTimeoutInSeconds) {
     this.idleTimeoutInSeconds = idleTimeoutInSeconds;
+  }
+
+  public boolean isEnableSwagger() {
+    return enableSwagger;
+  }
+
+  public void setEnableSwagger(boolean enableSwagger) {
+    this.enableSwagger = enableSwagger;
   }
 
   public String getKeyStorePath() {

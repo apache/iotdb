@@ -25,27 +25,16 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 /** This interface provides uniform interface for writing wal and making checkpoints. */
 public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
-  /** Log InsertRowPlan */
-  WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan);
 
   /** Log InsertRowNode */
   WALFlushListener log(long memTableId, InsertRowNode insertRowNode);
 
-  /** Log InsertTabletPlan */
-  WALFlushListener log(long memTableId, InsertTabletPlan insertTabletPlan, int start, int end);
-
   /** Log InsertTabletNode */
   WALFlushListener log(long memTableId, InsertTabletNode insertTabletNode, int start, int end);
-
-  /** Log DeletePlan */
-  WALFlushListener log(long memTableId, DeletePlan deletePlan);
 
   /** Log DeleteDataNode */
   WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode);
