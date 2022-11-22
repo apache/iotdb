@@ -290,14 +290,6 @@ public class IoTDBConfig {
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
-  public String getRatisDataRegionSnapshotDir() {
-    return ratisDataRegionSnapshotDir;
-  }
-
-  public String getRatisDataRegionSnapshotTmp() {
-    return ratisDataRegionSnapshotTmp;
-  }
-
   private String ratisDataRegionSnapshotDir =
       IoTDBConstant.DEFAULT_BASE_DIR
           + File.separator
@@ -1369,6 +1361,14 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public String getRatisDataRegionSnapshotDir() {
+    return ratisDataRegionSnapshotDir;
+  }
+
+  public String getRatisDataRegionSnapshotTmp() {
+    return ratisDataRegionSnapshotTmp;
   }
 
   public String getConsensusDir() {

@@ -458,7 +458,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public File getSnapshotTmp() {
-    String snapshotTmpDir = IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotTmp();
+    String snapshotTmpDir =
+        IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotTmp();
     try {
       return new File(snapshotTmpDir).getCanonicalFile();
     } catch (IOException e) {

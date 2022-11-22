@@ -284,6 +284,4 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             Utils.fromRaftProtoListAndRaftGroupIdToPeers(
                 newRaftConfiguration.getPeersList(), groupId));
   }
-
-
 }
