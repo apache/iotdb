@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -230,6 +231,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
             subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
             subTaskSummary.PAGE_FAKE_OVERLAP);
+      } else {
+        SubCompactionTaskSummary taskSummary =
+            ((ReadChunkCompactionPerformer) performer).getSummary();
+        LOGGER.info(
+            "CHUNK_NONE_OVERLAP num is {},CHUNK_NON_DESERIALIZE num is {}, CHUNK_DESERIALIZE_INTO_PAGES num is {}, CHUNK_DESERIALIZE_INTO_POINTS num is {}.",
+            taskSummary.CHUNK_NONE_OVERLAP,
+            taskSummary.CHUNK_NON_DESERIALIZE,
+            taskSummary.CHUNK_DESERIALIZE_INTO_PAGES,
+            taskSummary.CHUNK_DESERIALIZE_INTO_POINTS);
       }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;

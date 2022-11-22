@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterat
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -49,6 +50,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
   private CompactionTaskSummary summary;
+
+  private SubCompactionTaskSummary compactionTaskSummary = new SubCompactionTaskSummary();
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -167,9 +170,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
+      SubCompactionTaskSummary subCompactionTaskSummary = new SubCompactionTaskSummary();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              p, readerAndChunkMetadataList, writer, targetResource, subCompactionTaskSummary);
       compactionExecutorOfCurrentTimeSeries.execute();
+      compactionTaskSummary.increase(subCompactionTaskSummary);
     }
     writer.endChunkGroup();
   }
@@ -177,5 +183,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+  }
+
+  public SubCompactionTaskSummary getSummary() {
+    return compactionTaskSummary;
   }
 }
