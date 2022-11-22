@@ -269,13 +269,13 @@ metricReporterList:
   - PROMETHEUS
 
 # 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+metricFrameType: MICROMETER
 
 # 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
 # Prometheus Reporter 使用的端口
-prometheusExporterPort: 9091
+prometheusReporterPort: 9091
 
 # IoTDB Reporter相关的配置
 ioTDBReporterConfig:

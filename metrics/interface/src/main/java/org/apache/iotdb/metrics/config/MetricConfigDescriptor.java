@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.ReporterType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
@@ -38,38 +37,12 @@ public class MetricConfigDescriptor {
   private final MetricConfig metricConfig;
 
   private MetricConfigDescriptor() {
-    metricConfig = loadProps();
+    metricConfig = new MetricConfig();
   }
 
-  /**
-   * load property file into metric config. Use default values if not find.
-   *
-   * @return metric config
-   */
-  public MetricConfig loadProps() {
-    MetricConfig metricConfig;
-    String url = getPropsUrl();
-    Constructor constructor = new Constructor(MetricConfig.class);
-    Yaml yaml = new Yaml(constructor);
-    if (url != null) {
-      try (InputStream inputStream = Files.newInputStream(Paths.get(url))) {
-        logger.info("Start to read config file {}", url);
-        metricConfig = yaml.load(inputStream);
-      } catch (IOException e) {
-        logger.warn(
-            "Fail to find config file : {} because of {}, use default config.",
-            url,
-            e.getMessage());
-        metricConfig = new MetricConfig();
-      }
-    } else {
-      logger.warn("Fail to find config file, use default config.");
-      metricConfig = new MetricConfig();
-    }
-    if (null == metricConfig.getMetricReporterList()) {
-      metricConfig.setMetricReporterList(new ArrayList<>());
-    }
-    return metricConfig;
+  public void loadProps(Properties properties) {
+    MetricConfig loadConfig = generateFromProperties(properties);
+    metricConfig.copy(loadConfig);
   }
 
   /**
@@ -77,10 +50,10 @@ public class MetricConfigDescriptor {
    *
    * @return reload level of metric service
    */
-  public ReloadLevel loadHotProps() {
-    MetricConfig newMetricConfig = loadProps();
+  public ReloadLevel loadHotProps(Properties properties) {
+    MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
-    if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
+    if (!metricConfig.equals(newMetricConfig)) {
       if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
         // start service or stop service.
         reloadLevel =
@@ -89,7 +62,7 @@ public class MetricConfigDescriptor {
                 : ReloadLevel.STOP_METRIC;
       } else if (metricConfig.getEnableMetric()) {
         // restart reporters or restart service
-        if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
+        if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
             || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
             || !metricConfig
                 .getAsyncCollectPeriodInSecond()
@@ -102,6 +75,96 @@ public class MetricConfigDescriptor {
       metricConfig.copy(newMetricConfig);
     }
     return reloadLevel;
+  }
+
+  /** load properties into metric config */
+  private MetricConfig generateFromProperties(Properties properties) {
+    MetricConfig loadConfig = new MetricConfig();
+    loadConfig.setEnableMetric(
+        Boolean.parseBoolean(
+            getProperty(
+                "enable_metric", String.valueOf(loadConfig.getEnableMetric()), properties)));
+
+    loadConfig.setEnablePerformanceStat(
+        Boolean.parseBoolean(
+            getProperty(
+                "enable_performance_stat",
+                String.valueOf(loadConfig.getEnablePerformanceStat()),
+                properties)));
+
+    String reporterList =
+        getProperty(
+            "metric_reporter_list",
+            String.join(
+                ",",
+                loadConfig.getMetricReporterList().stream()
+                    .map(ReporterType::toString)
+                    .collect(Collectors.toSet())),
+            properties);
+    loadConfig.setMetricReporterList(reporterList);
+
+    loadConfig.setMetricFrameType(
+        MetricFrameType.valueOf(
+            getProperty(
+                "metric_frame_type", String.valueOf(loadConfig.getMetricFrameType()), properties)));
+
+    loadConfig.setMetricLevel(
+        MetricLevel.valueOf(
+            getProperty("metric_level", String.valueOf(loadConfig.getMetricLevel()), properties)));
+
+    loadConfig.setAsyncCollectPeriodInSecond(
+        Integer.parseInt(
+            getProperty(
+                "metric_async_collect_period",
+                String.valueOf(loadConfig.getAsyncCollectPeriodInSecond()),
+                properties)));
+
+    loadConfig.setPrometheusReporterPort(
+        Integer.parseInt(
+            getProperty(
+                "metric_prometheus_reporter_port",
+                String.valueOf(loadConfig.getPrometheusReporterPort()),
+                properties)));
+
+    MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
+    reporterConfig.setHost(
+        getProperty("iotdb_reporter_host", reporterConfig.getHost(), properties));
+
+    reporterConfig.setPort(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_port", String.valueOf(reporterConfig.getPort()), properties)));
+
+    reporterConfig.setUsername(
+        getProperty("iotdb_reporter_username", reporterConfig.getUsername(), properties));
+
+    reporterConfig.setPassword(
+        getProperty("iotdb_reporter_password", reporterConfig.getPassword(), properties));
+
+    reporterConfig.setMaxConnectionNumber(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_max_connection_number",
+                String.valueOf(reporterConfig.getMaxConnectionNumber()),
+                properties)));
+
+    reporterConfig.setLocation(
+        getProperty("iotdb_reporter_location", reporterConfig.getLocation(), properties));
+
+    reporterConfig.setPushPeriodInSecond(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_push_period",
+                String.valueOf(reporterConfig.getPushPeriodInSecond()),
+                properties)));
+
+    return loadConfig;
+  }
+
+  /** Try to get property from confignode or datanode */
+  private String getProperty(String target, String defaultValue, Properties properties) {
+    return properties.getProperty(
+        "dn_" + target, properties.getProperty("cn_" + target, defaultValue));
   }
 
   /** get the path of metric config file. */

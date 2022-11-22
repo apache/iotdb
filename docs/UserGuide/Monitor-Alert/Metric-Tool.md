@@ -269,13 +269,13 @@ metricReporterList:
   - PROMETHEUS
 
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+metricFrameType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
 # The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9091
+prometheusReporterPort: 9091
 
 # The config of iotdb reporter
 ioTDBReporterConfig:
