@@ -43,7 +43,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
@@ -349,9 +348,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {}
-
-  @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     throw new UnsupportedOperationException("isPathExist");
   }
@@ -414,12 +410,6 @@ public class TagSchemaRegion implements ISchemaRegion {
         return getDeviceIDsFromInvertedIndex(pathPattern).size();
       }
     }
-  }
-
-  @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getNodesCountInGivenLevel");
   }
 
   @Override
