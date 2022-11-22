@@ -198,8 +198,10 @@ public class NodeManager {
     ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
     ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
 
+    ratisConfig.setDataMaxRetryAttempts(conf.getDataRegionRatisMaxRetryAttempts());
     ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
     ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
