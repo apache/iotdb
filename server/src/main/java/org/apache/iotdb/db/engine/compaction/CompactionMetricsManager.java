@@ -154,7 +154,7 @@ public class CompactionMetricsManager {
                   Tag.NAME.toString(),
                   "cross_compaction_count",
                   Tag.TYPE.toString(),
-                  "total");
+                  "cross");
         }
         break;
     }
