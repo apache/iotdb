@@ -138,7 +138,7 @@ public class ClusterScheduler implements IScheduler {
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
-    logger.debug("state tracker starts");
+    logger.info("state tracker starts");
   }
 
   @Override

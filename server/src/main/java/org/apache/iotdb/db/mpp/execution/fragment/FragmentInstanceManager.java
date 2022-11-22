@@ -94,6 +94,10 @@ public class FragmentInstanceManager {
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, DataRegion dataRegion) {
+    logger.info(
+        "execDataQueryFragmentInstance {} in DataRegion {}",
+        instance,
+        dataRegion.getDataRegionId());
 
     FragmentInstanceId instanceId = instance.getId();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
@@ -152,6 +156,11 @@ public class FragmentInstanceManager {
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
+    logger.info(
+        "execSchemaQueryFragmentInstance {} in schemaRegion {}",
+        instance,
+        schemaRegion.getSchemaRegionId());
+
     FragmentInstanceId instanceId = instance.getId();
     FragmentInstanceExecution execution =
         instanceExecution.computeIfAbsent(
@@ -212,7 +221,7 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
-    logger.debug("[CancelFI]");
+    logger.info("[CancelFI]");
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);
