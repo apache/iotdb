@@ -1103,7 +1103,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
     req.setSpaceLimit(spaceQuota);
     try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       tsStatus = client.setSpaceQuota(req);
     } catch (IOException | TException e) {
@@ -1123,7 +1123,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       List<String> storageGroups = new ArrayList<>();
       if (showSpaceQuotaStatement.getStorageGroups() != null) {
         showSpaceQuotaStatement
