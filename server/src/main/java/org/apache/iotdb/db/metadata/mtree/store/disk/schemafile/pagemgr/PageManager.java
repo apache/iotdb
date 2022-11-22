@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -428,11 +429,14 @@ public abstract class PageManager implements IPageManager {
   }
 
   @Override
-  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
+  public void inspect(PrintWriter pw) throws IOException, MetadataException {
+    String pageContent;
     for (int i = 0; i <= lastPageIndex.get(); i++) {
-      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
+      pageContent = getPageInstance(i).inspect();
+      pw.print("---------------------\n");
+      pw.print(pageContent);
+      pw.print("\n");
     }
-    return builder;
   }
 
   @Override

@@ -154,9 +154,8 @@ public class SchemaFileSketchTool {
     pw = new PrintWriter(new FileWriter(outputFile, false));
     ISchemaFile sf = SchemaFile.loadSchemaFile(SystemFileFactory.INSTANCE.getFile(inputFile));
     try {
-      String res = ((SchemaFile) sf).inspect();
+      String res = ((SchemaFile) sf).inspect(pw);
       System.out.println(res);
-      pw.print(res);
     } finally {
       sf.close();
       pw.close();
