@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class RatisClient {
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
@@ -76,14 +77,14 @@ public class RatisClient {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
-    private final RatisConfig.RatisConsensus config;
+    private final Supplier<RatisConfig.RatisConsensus> config;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         ClientFactoryProperty clientPoolProperty,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        RatisConfig.RatisConsensus config) {
+        Supplier<RatisConfig.RatisConsensus> config) {
       super(clientManager, clientPoolProperty);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
@@ -103,7 +104,7 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisRetryPolicy(config))
+                  .setRetryPolicy(new RatisRetryPolicy(config.get()))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));

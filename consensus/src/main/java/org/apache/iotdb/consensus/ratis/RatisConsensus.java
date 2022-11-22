@@ -69,6 +69,7 @@ import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
+import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.ratis.util.function.CheckedSupplier;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -80,6 +81,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -801,7 +803,7 @@ class RatisConsensus implements IConsensus {
               new ClientFactoryProperty.Builder().build(),
               properties,
               clientRpc,
-              config.getRatisConsensus()),
+              MemoizedSupplier.valueOf(() -> config.getRatisConsensus())),
           new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }
