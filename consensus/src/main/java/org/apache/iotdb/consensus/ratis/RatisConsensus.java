@@ -797,7 +797,11 @@ class RatisConsensus implements IConsensus {
         ClientManager<RaftGroup, RatisClient> manager) {
       return new GenericKeyedObjectPool<>(
           new RatisClient.Factory(
-              manager, new ClientFactoryProperty.Builder().build(), properties, clientRpc),
+              manager,
+              new ClientFactoryProperty.Builder().build(),
+              properties,
+              clientRpc,
+              config.getRatisConsensus()),
           new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }
