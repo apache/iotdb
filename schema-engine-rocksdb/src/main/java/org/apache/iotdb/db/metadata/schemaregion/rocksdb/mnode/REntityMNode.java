@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
@@ -31,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.rocksdb.RocksDBException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -133,7 +131,4 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
   public MNodeType getMNodeType(Boolean isConfig) {
     return MNodeType.DEVICE;
   }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {}
 }

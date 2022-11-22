@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -135,11 +134,6 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
 
   @Override
   public void setPreDeleted(boolean preDeleted) {}
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
-  }
 
   private void deserialize(byte[] value) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
