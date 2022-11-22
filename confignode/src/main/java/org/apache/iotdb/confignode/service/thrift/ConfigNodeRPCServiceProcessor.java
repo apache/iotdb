@@ -135,6 +135,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
@@ -770,5 +771,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
     return configManager.setSpaceQuota(req);
+  }
+
+  @Override
+  public TShowSpaceQuotaResp showSpaceQuota(List<String> storageGroups) throws TException {
+    return configManager.showSpaceQuotaResp(storageGroups);
   }
 }

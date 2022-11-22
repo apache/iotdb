@@ -146,6 +146,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -2170,8 +2171,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SQLParserException(
-          "The tenant function is not enabled. If you want to use, change quota in the configuration file_ The enable configuration item is 'true'");
+      throw new SQLParserException("Limit configuration is not enabled, please enable it first.");
     }
 
     SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
@@ -2191,7 +2191,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
       if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setTimeSeriesNum(-1);
+        setSpaceQuotaStatement.setTimeSeriesNum(0);
+      } else if (Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
+        throw new SQLParserException("Please set the number of devices greater than 0");
       } else {
         setSpaceQuotaStatement.setDeviceNum(
             Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
@@ -2199,7 +2201,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
       if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDiskSize(-1);
+        setSpaceQuotaStatement.setDiskSize(0);
+      } else if (Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
+        throw new SQLParserException("Please set the number of timeseries greater than 0");
       } else {
         setSpaceQuotaStatement.setTimeSeriesNum(
             Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
@@ -2207,12 +2211,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
       if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDeviceNum(-1);
+        setSpaceQuotaStatement.setDeviceNum(0);
+      } else if (Integer.parseInt(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)) <= 0) {
+        throw new SQLParserException("Please set the disk size greater than 0");
       } else {
         setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
       }
     }
     return setSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitShowSpaceQuota(IoTDBSqlParser.ShowSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SQLParserException("Limit configuration is not enabled, please enable it first.");
+    }
+    ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
+    List<PartialPath> storageGroups = null;
+    if (ctx.OF() != null) {
+      storageGroups = new ArrayList<>();
+      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      showSpaceQuotaStatement.setStorageGroups(storageGroups);
+    } else {
+      showSpaceQuotaStatement.setStorageGroups(null);
+    }
+    return showSpaceQuotaStatement;
   }
 
   private long parseUnit(String data) {

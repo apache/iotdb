@@ -68,21 +68,20 @@ public class SpaceQuotaPersistence {
     File quotaProfile =
         SystemFileFactory.INSTANCE.getFile(
             spaceQuotaDirPath + File.separator + path + SUFFIX + TEMP_SUFFIX);
-    if (quotaProfile.exists()) {
-      try (OutputStream out = new FileOutputStream(quotaProfile);
-          DataOutputStream outputStream = new DataOutputStream(out)) {
-        BasicStructureSerDeUtil.write(path, outputStream);
-        BasicStructureSerDeUtil.write(spaceQuota.getDeviceNum(), outputStream);
-        BasicStructureSerDeUtil.write(spaceQuota.getTimeserieNum(), outputStream);
-        BasicStructureSerDeUtil.write(spaceQuota.getDiskSize(), outputStream);
-        outputStream.flush();
-      } catch (FileNotFoundException e) {
-        logger.error("file {} not found.", quotaProfile, e);
-      }
-      File oldFile =
-          SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path + SUFFIX);
-      IOUtils.replaceFile(quotaProfile, oldFile);
+
+    try (OutputStream out = new FileOutputStream(quotaProfile);
+        DataOutputStream outputStream = new DataOutputStream(out)) {
+      BasicStructureSerDeUtil.write(path, outputStream);
+      BasicStructureSerDeUtil.write(spaceQuota.getDeviceNum(), outputStream);
+      BasicStructureSerDeUtil.write(spaceQuota.getTimeserieNum(), outputStream);
+      BasicStructureSerDeUtil.write(spaceQuota.getDiskSize(), outputStream);
+      outputStream.flush();
+    } catch (FileNotFoundException e) {
+      logger.error("file {} not found.", quotaProfile, e);
     }
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(spaceQuotaDirPath + File.separator + path + SUFFIX);
+    IOUtils.replaceFile(quotaProfile, oldFile);
   }
 
   public Map<String, TSpaceQuota> loadSpaceQuota(String path) throws IOException {

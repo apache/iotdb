@@ -154,4 +154,5 @@ public enum StatementType {
   DEACTIVATE_TEMPLATE,
 
   SET_SPACE_QUOTA,
+  SHOW_SPACE_QUOTA,
 }

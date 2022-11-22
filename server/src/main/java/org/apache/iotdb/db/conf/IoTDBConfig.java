@@ -1069,7 +1069,7 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
   /** Enable quotas */
-  private boolean quotaEnable = false;
+  private boolean quotaEnable = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();

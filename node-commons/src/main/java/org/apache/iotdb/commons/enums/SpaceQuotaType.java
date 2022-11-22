@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.enums;
 
 public enum SpaceQuotaType {
-  DISK,
-  DEVICE_NUMBER,
-  TIMESERIES_NUMBER
+  diskSize,
+  deviceNum,
+  timeSeriesNum
 }

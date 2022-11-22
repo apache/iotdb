@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,6 +35,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // TODO: Manage quotas for storage groups
@@ -73,5 +77,22 @@ public class ClusterQuotaManager {
       res.setMessage(response.getErrorMessage());
       return res;
     }
+  }
+
+  public TShowSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
+    TShowSpaceQuotaResp showSpaceQuotaResp = new TShowSpaceQuotaResp();
+    if (storageGroups.isEmpty()) {
+      showSpaceQuotaResp.setSpaceQuota(quotaInfo.getSpaceQuotaLimit());
+    } else if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
+      Map<String, TSpaceQuota> spaceQuotaMap = new HashMap<>();
+      for (String storageGroup : storageGroups) {
+        if (quotaInfo.getSpaceQuotaLimit().keySet().contains(storageGroup)) {
+          spaceQuotaMap.put(storageGroup, quotaInfo.getSpaceQuotaLimit().get(storageGroup));
+        }
+      }
+      showSpaceQuotaResp.setSpaceQuota(spaceQuotaMap);
+    }
+    showSpaceQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return showSpaceQuotaResp;
   }
 }

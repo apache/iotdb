@@ -127,6 +127,12 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_QUERY = "query";
   public static final String COLUMN_STATE = "state";
 
+  // column names for show space quota
+  public static final String COLUMN_DATABASE = "database";
+  public static final String COLUMN_QUOTA_TYPE = "quotaType";
+  public static final String COLUMN_LIMIT = "limit";
+  public static final String COLUMN_USED = "used";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
@@ -316,4 +322,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_CQ_ID, TSDataType.TEXT),
           new ColumnHeader(COLUMN_QUERY, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_LIMIT, TSDataType.TEXT));
 }
