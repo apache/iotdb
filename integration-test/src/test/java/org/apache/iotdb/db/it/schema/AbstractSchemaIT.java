@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParameters;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -27,27 +27,45 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.model.InitializationError;
+import org.junit.runners.parameterized.ParametersRunnerFactory;
+import org.junit.runners.parameterized.TestWithParameters;
 
-/**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
- * IoTDB server should be defined as integration test.
- */
-@RunWith(IoTDBTestRunner.class)
+import java.util.Arrays;
+
+@RunWith(Parameterized.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchSchemaFileIT extends IoTDBMetadataFetchIT {
+public abstract class AbstractSchemaIT {
 
-  protected static String schemaEngineMode;
+  protected String testSchemaEngineMode;
+  private String defaultSchemaEngineMode;
+
+  @Parameterized.Parameters(name = "SchemaEngineMode={0}")
+  public static Iterable<String> data() {
+    return Arrays.asList("Memory", "Schema_File");
+  }
+
+  public AbstractSchemaIT(String schemaEngineMode) {
+    this.testSchemaEngineMode = schemaEngineMode;
+  }
 
   @Before
   public void setUp() throws Exception {
-    schemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
-    ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
-    super.setUp();
+    defaultSchemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
+    ConfigFactory.getConfig().setSchemaEngineMode(testSchemaEngineMode);
   }
 
   @After
   public void tearDown() throws Exception {
-    super.tearDown();
-    ConfigFactory.getConfig().setSchemaEngineMode(schemaEngineMode);
+    ConfigFactory.getConfig().setSchemaEngineMode(defaultSchemaEngineMode);
+  }
+
+  public static class RunnerFactory implements ParametersRunnerFactory {
+    @Override
+    public org.junit.runner.Runner createRunnerForTestWithParameters(TestWithParameters test)
+        throws InitializationError {
+      return new IoTDBTestRunnerWithParameters(test);
+    }
   }
 }

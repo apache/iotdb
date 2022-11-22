@@ -19,17 +19,12 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -48,9 +43,11 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchIT {
+public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
+
+  public IoTDBMetadataFetchIT(String schemaEngineMode) {
+    super(schemaEngineMode);
+  }
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -85,14 +82,15 @@ public class IoTDBMetadataFetchIT {
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initBeforeTest();
-
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
+    super.tearDown();
   }
 
   @Test

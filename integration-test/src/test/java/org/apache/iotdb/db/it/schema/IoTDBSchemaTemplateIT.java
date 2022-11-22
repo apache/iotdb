@@ -44,6 +44,7 @@ import java.util.Set;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
+// TODO: extends AbstractSchemaIT
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBSchemaTemplateIT {
