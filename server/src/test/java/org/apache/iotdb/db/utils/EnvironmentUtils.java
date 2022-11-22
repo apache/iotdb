@@ -264,7 +264,7 @@ public class EnvironmentUtils {
       cleanDir(walDir);
     }
     // delete sync dir
-    cleanDir(commonConfig.getSyncFolder());
+    cleanDir(commonConfig.getSyncDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -356,7 +356,7 @@ public class EnvironmentUtils {
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
-    createDir(commonConfig.getSyncFolder());
+    createDir(commonConfig.getSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
