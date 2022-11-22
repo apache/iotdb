@@ -1384,8 +1384,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
     if (createAlignedTimeSeriesStatement.getDevicePath().getNodeLength() < 2) {
-      context.setQueryType(QueryType.WRITE);
       throw new RuntimeException(
           new IllegalPathException(createAlignedTimeSeriesStatement.getDevicePath().getFullPath()));
     }
