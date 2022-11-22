@@ -199,7 +199,9 @@ public class MetricConfig {
   public void setMetricReporterList(String metricReporterList) {
     this.metricReporterList = new ArrayList<>();
     for (String type : metricReporterList.split(",")) {
-      this.metricReporterList.add(ReporterType.valueOf(type));
+      if (type.trim().length() != 0) {
+        this.metricReporterList.add(ReporterType.valueOf(type));
+      }
     }
   }
 
