@@ -1676,7 +1676,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Common Parsers */
 
   // IoTDB Objects ========================================================================
-
   private PartialPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
@@ -1936,10 +1935,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     return alias;
   }
+
   /** Data Control Language (DCL) */
 
   // Create User
-
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_USER);
@@ -2062,6 +2061,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     boolean pathRelevant = true;
     String errorPrivilegeName = "";
     for (String privilege : privileges) {
+      if ("SET_STORAGE_GROUP".equalsIgnoreCase(privilege)) {
+        privilege = PrivilegeType.CREATE_DATABASE.name();
+      }
+      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(privilege)) {
+        privilege = PrivilegeType.DELETE_DATABASE.name();
+      }
       if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
         pathRelevant = false;
         errorPrivilegeName = privilege.toUpperCase();

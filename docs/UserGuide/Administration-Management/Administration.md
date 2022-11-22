@@ -367,8 +367,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 |privilege Name|Interpretation|Example|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|create database; set/unset database ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
-|DELETE\_STORAGE\_GROUP|delete databases; path dependent|Eg: `delete database root.ln;`|
+|CREATE\_DATABASE|create database; set/unset database ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
+|DELETE\_DATABASE|delete databases; path dependent|Eg: `delete database root.ln;`|
 |CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|alter timeseries; path dependent|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
