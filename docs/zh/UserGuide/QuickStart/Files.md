@@ -51,7 +51,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 2. 后缀为`.inner-compaction.log` 或者 `.cross-compaction.log`
     + 记录合并进展的日志文件
 3. 后缀为`.compaction.mods`
-    + 临时文件，用于存放临时数据
+    + 记录合并过程中发生的删除等操作
 4. 后缀为`.meta`的文件
     + 合并过程生成的元数据临时文件
 
