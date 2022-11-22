@@ -155,7 +155,11 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
-          new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
+          new ClientPoolProperty.Builder<ConfigNodeClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 
