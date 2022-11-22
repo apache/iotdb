@@ -320,7 +320,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
-          resp.setMetadataInJson(IoTDB.schemaProcessor.getMetadataInString());
+          resp.setMetadataInJson("{}");
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":

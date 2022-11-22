@@ -69,7 +69,6 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -345,11 +344,6 @@ public class LocalSchemaProcessor {
     }
   }
 
-  /** Get metadata in string */
-  public String getMetadataInString() {
-    return "Doesn't support metadata Tree toString since v0.14";
-  }
-
   // region Interfaces for metadata count
 
   /**
@@ -392,11 +386,6 @@ public class LocalSchemaProcessor {
     return num;
   }
 
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
-  }
-
   /**
    * To calculate the count of database for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -419,17 +408,6 @@ public class LocalSchemaProcessor {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, level, isPrefixMatch).size();
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   */
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
-      throws MetadataException {
-    return getNodesCountInGivenLevel(pathPattern, level, false);
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
@@ -462,11 +440,6 @@ public class LocalSchemaProcessor {
    * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
-      throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, false);
-  }
-
   private List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     Pair<List<PartialPath>, Set<PartialPath>> pair =
@@ -827,26 +800,6 @@ public class LocalSchemaProcessor {
       throw new PathNotExistException(fullPath.getFullPath());
     }
   }
-
-  /**
-   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
-   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
-   * created thus throw PathAlreadyExistException.
-   */
-  protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws MetadataException {
-    IMNode result = deviceMNode.getChild(measurementName);
-    if (result == null) {
-      return null;
-    }
-
-    if (result.isMeasurement()) {
-      return result.getAsMeasurementMNode();
-    } else {
-      throw new PathAlreadyExistException(
-          deviceMNode.getFullPath() + PATH_SEPARATOR + measurementName);
-    }
-  }
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
@@ -896,25 +849,6 @@ public class LocalSchemaProcessor {
   @TestOnly
   public long getTotalSeriesNumber() {
     return SchemaStatisticsManager.getInstance().getTotalSeriesNumber();
-  }
-
-  /**
-   * To reduce the String number in memory, use the deviceId from SchemaProcessor instead of the
-   * deviceId read from disk
-   *
-   * @param devicePath read from disk
-   * @return deviceId
-   */
-  @TestOnly
-  public String getDeviceId(PartialPath devicePath) {
-    String device = null;
-    try {
-      IMNode deviceNode = getDeviceNode(devicePath);
-      device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from SchemaProcessor, return the input deviceId
-    }
-    return device;
   }
   // endregion
 }
