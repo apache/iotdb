@@ -115,7 +115,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public boolean takeSnapshot(File snapshotDir, String snapshotId) {
     try {
       return new SnapshotTaker(region)
-          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotId, true);
+          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotId, snapshotId, true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
