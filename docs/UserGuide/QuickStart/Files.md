@@ -49,11 +49,11 @@ In order to support users' storage requirements such as disk space expansion bet
 > under directory basedir/data/sequence or unsequence/{DatabaseName}/
 
 1. file suffixe with `.cross ` or `.inner`
-    + modification file generated during a merge
+    + temporary files of metadata generated in a compaction task
 2. file suffixe with `.inner-compaction.log` or `.cross-compaction.log`
-    + record the progress of a merge
+    + record the progress of a compaction task
 3. file suffixe with `.compaction.mods`
-    + temporary files, for storing temporary data
+    + modification file generated during a compaction task
 4. file suffixe with `.meta`
     + temporary files of metadata generated during a merge
 
