@@ -84,7 +84,7 @@ public class MergeSortNode extends MultiChildProcessNode {
     mergeOrderParameter.serializeAttributes(stream);
   }
 
-  public MergeSortNode deserialize(ByteBuffer byteBuffer) {
+  public static MergeSortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new MergeSortNode(planNodeId, orderByParameter);
