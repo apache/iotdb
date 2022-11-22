@@ -39,7 +39,6 @@ import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
@@ -847,11 +845,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     if (IoTDBConstant.PATH_ROOT.equals(path.getFullPath())) {
       return true;
@@ -909,35 +902,6 @@ public class RSchemaRegion implements ISchemaRegion {
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, nodetype);
-    return atomicInteger.get();
-  }
-
-  @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    // todo support wildcard
-    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      throw new UnsupportedOperationException(
-          "Wildcards are not currently supported for this operation"
-              + " [COUNT NODES pathPattern].");
-    }
-    String innerNameByLevel =
-        RSchemaUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
-    AtomicInteger atomicInteger = new AtomicInteger(0);
-    Function<String, Boolean> function =
-        s -> {
-          atomicInteger.incrementAndGet();
-          return true;
-        };
-    Arrays.stream(ALL_NODE_TYPE_ARRAY)
-        .parallel()
-        .forEach(
-            x -> {
-              String getKeyByInnerNameLevel =
-                  x + innerNameByLevel + RSchemaConstants.PATH_SEPARATOR + level;
-              readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel, function);
-            });
-
     return atomicInteger.get();
   }
 
@@ -1050,8 +1014,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));

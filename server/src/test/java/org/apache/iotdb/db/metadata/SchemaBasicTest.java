@@ -1292,48 +1292,4 @@ public abstract class SchemaBasicTest {
     resultTag = results.get(0).getTag();
     assertEquals("newValue", resultTag.get("description"));
   }
-
-  @Test
-  public void testCountNodesWithLevel() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.sgcc.wf03.wt01.temperature"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.sgcc.wf03.t01.status"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.ln.wf01.wt01.temperature"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.ln.wf01.wt01.status"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.ln.wf02.wt02.status"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.ln.wf02.wt02.hardware"),
-        TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"),
-        compressionType,
-        Collections.emptyMap());
-
-    Assert.assertEquals(
-        2, schemaProcessor.getNodesCountInGivenLevel(new PartialPath("root.**.temperature"), 3));
-  }
 }

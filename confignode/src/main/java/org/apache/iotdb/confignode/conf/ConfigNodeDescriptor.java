@@ -395,14 +395,6 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))
                 .trim()));
 
-    conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "config_node_simple_consensus_snapshot_trigger_threshold",
-                    String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))
-                .trim()));
-
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
         Long.parseLong(
             properties
