@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -177,6 +178,11 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
   public static final String[] SDT_PARAMETERS =
       new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
+
+  public static final String DEADBAND = "deadband";
+  public static final Set<String> ALLOWED_SCHEMA_PROPS =
+      new HashSet<>(
+          Arrays.asList(DEADBAND, LOSS, SDT, SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME));
 
   // default base dir, stores all IoTDB runtime files
   public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
