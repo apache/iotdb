@@ -96,7 +96,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *       </ol>
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces only for Cluster module usage
  *   <li>TestOnly Interfaces
  * </ol>
  */
@@ -465,29 +464,17 @@ public class LocalSchemaProcessor {
    */
   public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
       throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, null);
-  }
-
-  public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, false, filter);
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, false);
   }
 
   private List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, null);
-  }
-
-  private List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
     Pair<List<PartialPath>, Set<PartialPath>> pair =
-        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+        configManager.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
     Set<PartialPath> result = new TreeSet<>(pair.left);
     for (PartialPath storageGroup : pair.right) {
       for (ISchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
-        result.addAll(
-            schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter));
+        result.addAll(schemaRegion.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch));
       }
     }
     return new ArrayList<>(result);
@@ -599,15 +586,6 @@ public class LocalSchemaProcessor {
   /** Get all database paths */
   public List<PartialPath> getAllStorageGroupPaths() {
     return configManager.getAllStorageGroupPaths();
-  }
-
-  /**
-   * get all storageGroups ttl
-   *
-   * @return key-> storageGroupPath, value->ttl
-   */
-  public Map<PartialPath, Long> getStorageGroupsTTL() {
-    return configManager.getStorageGroupsTTL();
   }
 
   // endregion
@@ -897,17 +875,6 @@ public class LocalSchemaProcessor {
   }
 
   /**
-   * add new attributes key-value for the timeseries
-   *
-   * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
-   */
-  public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).addAttributes(attributesMap, fullPath);
-  }
-
-  /**
    * add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
@@ -916,96 +883,6 @@ public class LocalSchemaProcessor {
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     getBelongedSchemaRegion(fullPath).addTags(tagsMap, fullPath);
-  }
-
-  /**
-   * drop tags or attributes of the timeseries
-   *
-   * @param keySet tags key or attributes key
-   * @param fullPath timeseries path
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).dropTagsOrAttributes(keySet, fullPath);
-  }
-
-  /**
-   * set/change the values of tags or attributes
-   *
-   * @param alterMap the new tags or attributes key-value
-   * @param fullPath timeseries
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).setTagsOrAttributesValue(alterMap, fullPath);
-  }
-
-  /**
-   * rename the tag or attribute's key of the timeseries
-   *
-   * @param oldKey old key of tag or attribute
-   * @param newKey new key of tag or attribute
-   * @param fullPath timeseries
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
-      throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).renameTagOrAttributeKey(oldKey, newKey, fullPath);
-  }
-  // endregion
-
-  // region Interfaces only for Cluster module usage
-
-  /**
-   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
-   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
-   *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
-   * (2) the sub path which is substring that begin after the database name.
-   *
-   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
-   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
-   * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
-   * the part of the path is a substring that begin after the database name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
-   * part, keep what it is.
-   *
-   * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
-   * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
-   * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns
-   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
-   *
-   * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
-   *
-   * @param path can be a path pattern or a full path.
-   * @return StorageGroupName-FullPath pairs
-   * @apiNote :for cluster
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    return configManager.groupPathByStorageGroup(path);
-  }
-
-  /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
-   * cache the path to mRemoteSchemaCache
-   */
-  public void cacheMeta(
-      PartialPath path, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
-    // do nothing
-  }
-
-  /**
-   * StorageGroupFilter filters unsatisfied databases in metadata queries to speed up and
-   * deduplicate.
-   */
-  @FunctionalInterface
-  public interface StorageGroupFilter {
-
-    boolean satisfy(String storageGroup);
   }
   // endregion
 
