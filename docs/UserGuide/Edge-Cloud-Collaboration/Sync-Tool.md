@@ -234,6 +234,7 @@ IoTDB> DROP PIPE <PipeName>
   - `message`: the status message of this pipe. When pipe runs normally, this column is NORMAL. When an exception occurs, messages may appear in  following two states.
     - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
     - ERROR, This indicates a problem where the network connection works but the data cannot be transferred, for example, the IP of the sender is not in the whitelist of the receiver or the version of the sender is not compatible with that of the receiver.
+    - When the ERROR status appears, it is recommended to check the DataNode logs after STOP PIPE, check the receiver configuration or network conditions, and then START PIPE again.
 
 
 ```

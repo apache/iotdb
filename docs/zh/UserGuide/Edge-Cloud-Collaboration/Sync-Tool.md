@@ -225,6 +225,7 @@ IoTDB> DROP PIPE <PipeName>
   - `message`：Pipe运行信息，当 Pipe 正常运行时，这一字段通常为NORMAL，当出现异常时，可能出现两种状态：
     - WARN 状态，这表明发生了数据丢失或者其他错误，但是 Pipe 会保持运行
     - ERROR 状态，这表明出现了网络连接正常但数据无法传输的问题，例如发送端 IP 不在接收端白名单中，或是发送端与接收端版本不兼容
+    - 当出现 ERROR 状态时，建议 STOP PIPE 后查看 DataNode 日志，检查接收端配置或网络情况后重新 START PIPE
 
 ```Plain%20Text
 IoTDB> SHOW PIPES
