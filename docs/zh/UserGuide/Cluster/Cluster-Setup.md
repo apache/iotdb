@@ -63,12 +63,12 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **目录**                  | **说明**                                               |
 |-------------------------|------------------------------------------------------|
-| conf                    | 配置文件目录，包含 ConfigNode 和 DataNode 的配置文件。               |
-| data                    | 数据文件目录，包含 ConfigNode 和 DataNode 的数据文件。               |
+| conf                    | 配置文件目录，包含 ConfigNode 和 DataNode 的配置文件                |
+| data                    | 数据文件目录，包含 ConfigNode 和 DataNode 的数据文件                |
 | grafana-metrics-example | Grafana 监控界面模板                                       |
 | lib                     | 库文件目录                                                |
 | licenses                | 证书文件目录                                               |
-| logs                    | 日志文件目录，包含 ConfigNode 和 DataNode 的日志文件。               |
+| logs                    | 日志文件目录，包含 ConfigNode 和 DataNode 的日志文件                |
 | sbin                    | 脚本目录，包含 ConfigNode 和 DataNode 的启停移除脚本目录，以及 Cli 的启动脚本 |
 | tools                   | 系统工具目录                                               |
 
