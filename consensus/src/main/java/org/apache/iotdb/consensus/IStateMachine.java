@@ -74,10 +74,11 @@ public interface IStateMachine {
    * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
    *
    * @param snapshotDir required storage dir
+   * @param snapshotTmpId temporary id of the snapshot
    * @param snapshotId the id of the snapshot
    * @return true if snapshot is successfully taken
    */
-  default boolean takeSnapshot(File snapshotDir, String snapshotId) {
+  default boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
     return takeSnapshot(snapshotDir);
   }
 
@@ -169,5 +170,26 @@ public interface IStateMachine {
    */
   default IStateMachine.EventApi event() {
     return (IStateMachine.EventApi) this;
+  }
+
+  /**
+   * Since Ratis 2.4.1, RatisConsensus allows statemachine to customize its own snapshot storage.
+   * Currently only DataRegionStateMachine will use this interface.
+   *
+   * @return statemachine snapshot root
+   */
+  default File getSnapshotRoot() {
+    return null;
+  }
+
+  /**
+   * Ratis requires a temporary directory to store in-transmitting snapshot files.
+   * This interface should be used together with {@link #getSnapshotRoot()}.
+   * Currently only DataRegionStateMachine will use this interface.
+   *
+   * @return statemachine snapshot temp dir
+   */
+  default File getSnapshotTmp() {
+    return null;
   }
 }

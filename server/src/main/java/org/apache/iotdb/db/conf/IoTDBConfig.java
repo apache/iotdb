@@ -290,6 +290,28 @@ public class IoTDBConfig {
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
+  public String getRatisDataRegionSnapshotDir() {
+    return ratisDataRegionSnapshotDir;
+  }
+
+  public String getRatisDataRegionSnapshotTmp() {
+    return ratisDataRegionSnapshotTmp;
+  }
+
+  private String ratisDataRegionSnapshotDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
+
+  private String ratisDataRegionSnapshotTmp =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
@@ -1145,6 +1167,8 @@ public class IoTDBConfig {
     tracingDir = addDataHomeDir(tracingDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
+    ratisDataRegionSnapshotTmp = addDataHomeDir(ratisDataRegionSnapshotTmp);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);

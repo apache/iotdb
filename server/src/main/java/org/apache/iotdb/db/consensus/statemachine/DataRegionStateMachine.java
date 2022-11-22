@@ -112,10 +112,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir, String snapshotId) {
+  public boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
     try {
       return new SnapshotTaker(region)
-          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotId, snapshotId, true);
+          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotTmpId, snapshotId, true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
@@ -443,5 +443,27 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public long getSleepTime() {
     // TODO implement this
     return super.getSleepTime();
+  }
+
+  @Override
+  public File getSnapshotRoot() {
+    String snapshotDir = IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotDir();
+    try {
+      return new File(snapshotDir).getCanonicalFile();
+    } catch (IOException e) {
+      logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
+      return null;
+    }
+  }
+
+  @Override
+  public File getSnapshotTmp() {
+    String snapshotTmpDir = IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotTmp();
+    try {
+      return new File(snapshotTmpDir).getCanonicalFile();
+    } catch (IOException e) {
+      logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotTmpDir, e);
+      return null;
+    }
   }
 }
