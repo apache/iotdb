@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
@@ -64,6 +65,9 @@ public class MetricConfigDescriptor {
     } else {
       logger.warn("Fail to find config file, use default config.");
       metricConfig = new MetricConfig();
+    }
+    if (null == metricConfig.getMetricReporterList()) {
+      metricConfig.setMetricReporterList(new ArrayList<>());
     }
     return metricConfig;
   }
