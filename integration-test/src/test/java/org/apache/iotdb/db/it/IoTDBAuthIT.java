@@ -89,7 +89,7 @@ public class IoTDBAuthIT {
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
         userStmt.execute("SELECT * from root.a");
-        userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
+        userStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
         userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b");
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
@@ -134,7 +134,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("DELETE DATABASE root.sgtest"));
 
-        adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_DATABASE ON root.*");
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_STORAGE_GROUP ON root.*");
 
         try {
           userStmt.execute("DELETE DATABASE root.sgtest");

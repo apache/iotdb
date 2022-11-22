@@ -136,7 +136,7 @@ public class IoTDBAuthorizationIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("CREATE DATABASE root.sgtest"));
 
-        adminStmt.execute("GRANT USER sgtest PRIVILEGES CREATE_DATABASE ON root.sgtest");
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES SET_STORAGE_GROUP ON root.sgtest");
 
         try {
           userStmt.execute("CREATE DATABASE root.sgtest");
@@ -147,7 +147,7 @@ public class IoTDBAuthorizationIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("DELETE DATABASE root.sgtest"));
 
-        adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_DATABASE ON root.sgtest");
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_STORAGE_GROUP ON root.sgtest");
 
         try {
           userStmt.execute("DELETE DATABASE root.sgtest");
