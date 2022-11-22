@@ -177,7 +177,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       }
       try {
         statement.executeQuery(
-            "select count_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
+            "select sum_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
       }

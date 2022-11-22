@@ -2477,9 +2477,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       if (subexpression instanceof EqualToExpression) {
         Expression subLeftExpression = ((EqualToExpression) subexpression).getLeftExpression();
-        Expression subRightExpression = ((EqualToExpression) subexpression).getLeftExpression();
+        Expression subRightExpression = ((EqualToExpression) subexpression).getRightExpression();
         if (!subLeftExpression.isConstantOperand()
             || !subRightExpression.isConstantOperand()
+            || !((ConstantOperand) subLeftExpression).getDataType().equals(TSDataType.TEXT)
             || !((ConstantOperand) subRightExpression).getDataType().equals(TSDataType.TEXT)) {
           throw new SQLParserException("Attributes of functions should be quoted with '' or \"\"");
         }
