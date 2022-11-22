@@ -88,7 +88,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, stream);
