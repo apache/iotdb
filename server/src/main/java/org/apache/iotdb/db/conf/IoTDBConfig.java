@@ -297,13 +297,6 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
 
-  private String ratisDataRegionSnapshotTmp =
-      IoTDBConstant.DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.DATA_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.TMP_FOLDER_NAME;
-
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
