@@ -22,7 +22,7 @@
 
 Currently, users can use various methods to monitor the running IoTDB process, including using Java's Jconsole tool to monitor the system status of the running IoTDB process, using the interface developed by IoTDB for users to view data statistics, and using the monitor framework to monitor the system status of the running IoTDB process.
 
-# 1. Monitor Framework
+# 1. Metric Framework
 
 Along with IoTDB running, some metrics reflecting current system's status will be collected continuously, which will provide some useful information helping us resolving system problems and detecting potential system risks.
 
@@ -252,48 +252,38 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 ## 1.4. How to get these metrics？
 
-The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-{datanode/confignode}-metric.yml```, Currently, it also supports hot loading via `load configuration` after startup.
+The relevant configuration of the metric module is in `conf/iotdb-{datanode/confignode}.properties`, and all configuration items support hot loading through the `load configuration` command.
 
-### 1.4.1. Iotdb-metric.yml
+### 1.4.1. Config File
+
+Take DataNode as example:
 
 ```yaml
-# whether enable the module
-enableMetric: false
+# Whether enable metric module
+# Datatype: boolean
+dn_enable_metric=true
 
-# Is stat performance of operation latency
-enablePerformanceStat: false
+# The reporters of metric module to report metrics
+# If there are more than one reporter, please separate them by commas ",".
+# Options: [JMX, PROMETHEUS, IOTDB]
+# Datatype: String
+dn_metric_reporter_list=JMX,PROMETHEUS
 
-# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
-metricReporterList:
-  - JMX
-  - PROMETHEUS
+# The level of metric module
+# Options: [Core, Important, Normal, All]
+# Datatype: String
+dn_metric_level=CORE
 
-# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-metricFrameType: MICROMETER
-
-# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: IMPORTANT
-
-# The http server's port for prometheus exporter to get metric data.
-prometheusReporterPort: 9091
-
-# The config of iotdb reporter
-ioTDBReporterConfig:
-  host: 127.0.0.1
-  port: 6667
-  username: root
-  password: root
-  maxConnectionNumber: 3
-  location: metric
-  pushPeriodInSecond: 15
+# The port of prometheus reporter of metric module
+# Datatype: int
+dn_metric_prometheus_reporter_port=9091
 ```
 
 Then you can get metrics data as follows
 
-1. Enable metrics switch in ```iotdb-{datanode/confignode}-metric.yml```
-2. You can just stay other config params as default.
-3. Start/Restart your IoTDB server/cluster
-4. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
+1. Modify parameters above in config file
+2. Start/Restart your IoTDB
+3. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
 
 ```
 ...
@@ -499,8 +489,8 @@ The performance monitoring module is used to monitor the time-consuming of each 
 ## 4.2. Configuration parameter
 
 - location
-  - datanode：conf/iotdb-datanode-metric.yml
-  - confignode：conf/iotdb-confignode-metric.yml
+  - datanode：conf/iotdb-datanode.properties
+  - confignode：conf/iotdb-confignode.properties
 
 <center>
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class MetricConfigTest {
   public void testYamlConfig() {
     List<String> prefixes = Arrays.asList("cn_", "dn_");
     List<Properties> propertiesList = new ArrayList<>();
-    for(String prefix: prefixes) {
+    for (String prefix : prefixes) {
       Properties properties = new Properties();
       properties.setProperty(prefix + "enable_metric", "true");
       properties.setProperty(prefix + "enable_performance_stat", "true");
@@ -57,7 +58,7 @@ public class MetricConfigTest {
       propertiesList.add(properties);
     }
 
-    for(Properties properties: propertiesList) {
+    for (Properties properties : propertiesList) {
       MetricConfigDescriptor.getInstance().loadProps(properties);
 
       MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
