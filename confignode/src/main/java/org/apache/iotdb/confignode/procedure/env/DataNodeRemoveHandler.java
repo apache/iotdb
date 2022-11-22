@@ -402,7 +402,6 @@ public class DataNodeRemoveHandler {
         "{}, Begin to stop DataNode and kill the DataNode process {}",
         REMOVE_DATANODE_PROCESS,
         dataNode);
-
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithGivenRetry(
@@ -529,7 +528,8 @@ public class DataNodeRemoveHandler {
    * @param tDataNodeLocation data node location
    */
   public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);
+    List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
+    removeDataNodes.add(tDataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
   }
 
