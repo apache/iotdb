@@ -79,3 +79,7 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f myTsFile
 ```
+
+### Q&A
+
+- 建议在导入数据时不要同时执行写入数据命令，这将有可能导致JVM内存不足的情况。
