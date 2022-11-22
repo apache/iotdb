@@ -61,9 +61,9 @@ public class OrderByIT {
       };
   private static final int startPrecipitation = 200;
   private static final double startTemperature = 20.0;
-
-  private static final Map<String, Long> deviceToUniqueTimestamp = new HashMap<>();
   private static final long shareTime = 1668960000;
+  private static final long uniqueStartTime = 1668960001;
+  private static final Map<String, Long> deviceToUniqueTimestamp = new HashMap<>();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -76,7 +76,7 @@ public class OrderByIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
-  static void arrayReverse(String[] arrays) {
+  private static void arrayReverse(String[] arrays) {
     for (int i = 0; i < arrays.length / 2; i++) {
       String temp = arrays[i];
       arrays[i] = arrays[arrays.length - i - 1];
@@ -87,7 +87,7 @@ public class OrderByIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      long uniqueTime = 1668960001;
+      long uniqueTime = uniqueStartTime;
       // create TimeSeries
       for (String place : places) {
         String PRE_PRECIPITATION = place + ".precipitation";
@@ -99,7 +99,6 @@ public class OrderByIT {
         statement.execute(createPrecipitationSql);
         statement.execute(createTemperatureSql);
       }
-
       // insert data
       for (String place : places) {
         int precipitation = place.hashCode() + startPrecipitation;

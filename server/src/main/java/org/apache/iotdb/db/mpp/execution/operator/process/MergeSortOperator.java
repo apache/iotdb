@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortTo
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -44,9 +45,9 @@ public class MergeSortOperator implements ProcessOperator {
   private final int inputOperatorsCount;
   private final TsBlock[] inputTsBlocks;
   private final boolean[] noMoreTsBlocks;
-  private boolean finished;
-
   private final MergeSortToolKit mergeSortToolKit;
+
+  private boolean finished;
 
   public MergeSortOperator(
       OperatorContext operatorContext,
@@ -56,11 +57,11 @@ public class MergeSortOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperators = inputOperators;
     this.dataTypes = dataTypes;
-    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.inputOperatorsCount = inputOperators.size();
+    this.mergeSortToolKit = mergeSortToolKit;
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
-    this.mergeSortToolKit = mergeSortToolKit;
+    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
@@ -82,10 +83,7 @@ public class MergeSortOperator implements ProcessOperator {
     return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
-  /**
-   * If the tsBlock of tsBlockIndex is null or has no more data in the tsBlock, return true; else
-   * return false;
-   */
+  /** If the tsBlock is null or has no more data in the tsBlock, return true; else return false; */
   private boolean isTsBlockEmpty(int tsBlockIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == 0;
@@ -116,21 +114,24 @@ public class MergeSortOperator implements ProcessOperator {
     // get the row of tsBlock whose keyValue <= targetValue
     tsBlockBuilder.reset();
 
-    TsBlock.TsBlockSingleColumnIterator[] tsBlockIterators =
-        new TsBlock.TsBlockSingleColumnIterator[targetTsBlockSize];
+    TsBlockSingleColumnIterator[] tsBlockIterators =
+        new TsBlockSingleColumnIterator[targetTsBlockSize];
     for (int i = 0; i < targetTsBlockSize; i++) {
       tsBlockIterators[i] =
           inputTsBlocks[targetTsBlockIndex.get(i)].getTsBlockSingleColumnIterator();
     }
 
-    // use the min KeyValue of all TsBlock as the end keyValue of result tsBlock
+    // use the min KeyValue of all TsBlock as the end keyValue of result tsBlock, it has already
+    // been calculated through mergeSortToolKit.getTargetTsBlockIndex().
+    // ps: max KeyValue if the ordering is desc, which is aimed to use up at least one tsBlock.
     boolean hasMatchKey = true;
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    // add to result TsBlock through a merge-sorting way
     while (hasMatchKey) {
       int minIndex = -1;
       hasMatchKey = false;
-      // find the targetTsBlock which has the smallest keyValue
+      // find the targetTsBlock which has the min KeyValue to output one row
       for (int i = 0; i < targetTsBlockSize; i++) {
         if (tsBlockIterators[i].hasNext()
             && mergeSortToolKit.satisfyCurrentEndValue(tsBlockIterators[i])) {
@@ -142,7 +143,6 @@ public class MergeSortOperator implements ProcessOperator {
           }
         }
       }
-      // add to result TsBlock
       if (hasMatchKey) {
         if (tsBlockIterators[minIndex].hasNext()) {
           int rowIndex = tsBlockIterators[minIndex].getRowIndex();

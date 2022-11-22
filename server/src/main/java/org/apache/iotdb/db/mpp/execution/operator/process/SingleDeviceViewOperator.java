@@ -45,7 +45,6 @@ import java.util.List;
 public class SingleDeviceViewOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  // The size devices and deviceOperators should be the same.
   private final String device;
   private final Operator deviceOperator;
   // Used to fill columns and leave null columns which doesn't exist in some devices.
@@ -86,7 +85,6 @@ public class SingleDeviceViewOperator implements ProcessOperator {
     if (tsBlock == null) {
       return null;
     }
-
     // fill existing columns
     Column[] newValueColumns = new Column[dataTypes.size()];
     for (int i = 0; i < deviceColumnIndex.size(); i++) {
