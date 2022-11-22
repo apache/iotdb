@@ -2475,9 +2475,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
-      if (subexpression instanceof EqualToExpression
-          && ((EqualToExpression) subexpression).getLeftExpression().isConstantOperand()
-          && ((EqualToExpression) subexpression).getRightExpression().isConstantOperand()) {
+      if (subexpression instanceof EqualToExpression) {
+        Expression subLeftExpression = ((EqualToExpression) subexpression).getLeftExpression();
+        Expression subRightExpression = ((EqualToExpression) subexpression).getLeftExpression();
+        if (!subLeftExpression.isConstantOperand()
+            || !subRightExpression.isConstantOperand()
+            || !((ConstantOperand) subRightExpression).getDataType().equals(TSDataType.TEXT)) {
+          throw new SQLParserException("Attributes of functions should be quoted with '' or \"\"");
+        }
         // parse attribute
         functionExpression.addAttribute(
             ((ConstantOperand) ((EqualToExpression) subexpression).getLeftExpression())
