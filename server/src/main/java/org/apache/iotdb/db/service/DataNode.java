@@ -256,7 +256,7 @@ public class DataNode implements DataNodeMBean {
           logger.info("Register to the cluster successfully");
           return;
         } else if (dataNodeRegisterResp.getStatus().getCode()
-            == TSStatusCode.REGISTER_UNCLEAN_DATANODE.getStatusCode()) {
+            == TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode()) {
           logger.error(dataNodeRegisterResp.getStatus().getMessage());
           throw new StartupException("Cannot register to the cluster.");
         }
