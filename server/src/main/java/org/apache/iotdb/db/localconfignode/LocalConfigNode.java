@@ -70,7 +70,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -438,42 +437,6 @@ public class LocalConfigNode {
   }
 
   /**
-   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
-   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
-   *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
-   * (2) the sub path which is substring that begin after the database name.
-   *
-   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
-   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
-   * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
-   * the part of the path is a substring that begin after the database name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
-   * part, keep what it is.
-   *
-   * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
-   * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
-   * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns
-   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
-   *
-   * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
-   *
-   * @param path can be a path pattern or a full path.
-   * @return StorageGroupName-FullPath pairs
-   * @apiNote :for cluster
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap =
-        storageGroupSchemaManager.groupPathByStorageGroup(path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("The databases of path {} are {}", path, sgPathMap.keySet());
-    }
-    return sgPathMap;
-  }
-
-  /**
    * get all storageGroups ttl
    *
    * @return key-> storageGroupPath, value->ttl
@@ -498,13 +461,9 @@ public class LocalConfigNode {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     return storageGroupSchemaManager.getNodesListInGivenLevel(
-        pathPattern, nodeLevel, isPrefixMatch, filter);
+        pathPattern, nodeLevel, isPrefixMatch);
   }
 
   /**

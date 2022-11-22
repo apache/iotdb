@@ -17,19 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.container.value;
+package org.apache.iotdb.db.metadata.cache.lastCache.container.value;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-// this interface declares the simplest storage operation of lastCacheValue
-public interface ILastCacheValue {
+public class LastCacheValue implements ILastCacheValue {
 
-  long getTimestamp();
+  private long timestamp;
 
-  void setTimestamp(long timestamp);
+  private TsPrimitiveType value;
 
-  void setValue(TsPrimitiveType value);
+  public LastCacheValue(long timestamp, TsPrimitiveType value) {
+    this.timestamp = timestamp;
+    this.value = value;
+  }
 
-  TimeValuePair getTimeValuePair();
+  @Override
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  @Override
+  public void setTimestamp(long timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  @Override
+  public void setValue(TsPrimitiveType value) {
+    this.value = value;
+  }
+
+  @Override
+  public TimeValuePair getTimeValuePair() {
+    return new TimeValuePair(timestamp, value);
+  }
 }

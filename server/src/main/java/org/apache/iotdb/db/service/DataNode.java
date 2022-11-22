@@ -159,6 +159,9 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      registerManager.register(MetricService.getInstance());
+      // bind predefined metrics
+      DataNodeMetricsHelper.bind();
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
@@ -370,10 +373,7 @@ public class DataNode implements DataNodeMBean {
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
-    registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
-    // bind predefined metrics
-    DataNodeMetricsHelper.bind();
   }
 
   /** set up RPC and protocols after DataNode is available */

@@ -17,29 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.container;
+package org.apache.iotdb.db.metadata.cache.lastCache.container.value;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
+// this interface declares the simplest storage operation of lastCacheValue
+public interface ILastCacheValue {
 
-  // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
+  long getTimestamp();
 
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   */
-  void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
+  void setTimestamp(long timestamp);
 
-  // reset all lastCache data of one timeseries(monad or vector)
-  void resetLastCache();
+  void setValue(TsPrimitiveType value);
 
-  // whether the entry contains lastCache Value.
-  boolean isEmpty();
+  TimeValuePair getTimeValuePair();
 }
