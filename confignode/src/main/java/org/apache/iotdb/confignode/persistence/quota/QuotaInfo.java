@@ -121,12 +121,13 @@ public class QuotaInfo implements SnapshotProcessor {
           snapshotFile.getAbsolutePath());
       return;
     }
+    spaceQuotaReadWriteLock.writeLock().lock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
       clear();
       deserializeSpaceQuotaLimit(fileInputStream);
+    } finally {
+      spaceQuotaReadWriteLock.writeLock().unlock();
     }
-
-    spaceQuotaReadWriteLock.writeLock().lock();
   }
 
   private void deserializeSpaceQuotaLimit(FileInputStream fileInputStream) throws IOException {

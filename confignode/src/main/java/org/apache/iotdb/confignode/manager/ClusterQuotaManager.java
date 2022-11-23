@@ -86,7 +86,7 @@ public class ClusterQuotaManager {
     } else if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
       Map<String, TSpaceQuota> spaceQuotaMap = new HashMap<>();
       for (String storageGroup : storageGroups) {
-        if (quotaInfo.getSpaceQuotaLimit().keySet().contains(storageGroup)) {
+        if (quotaInfo.getSpaceQuotaLimit().containsKey(storageGroup)) {
           spaceQuotaMap.put(storageGroup, quotaInfo.getSpaceQuotaLimit().get(storageGroup));
         }
       }
