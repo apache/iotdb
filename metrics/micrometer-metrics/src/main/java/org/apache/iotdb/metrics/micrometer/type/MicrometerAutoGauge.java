@@ -46,25 +46,10 @@ public class MicrometerAutoGauge<T> implements AutoGauge {
   }
 
   @Override
-  public void set(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
   public long value() {
     if (refObject.get() == null) {
       return 0L;
     }
     return mapper.applyAsLong(refObject.get());
-  }
-
-  @Override
-  public void incr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void decr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }

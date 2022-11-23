@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -44,9 +45,9 @@ import java.util.function.ToLongFunction;
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** metric name -> tag keys */
+  /** The map from metric name to metric metaInfo */
   protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
-  /** metric type -> metric name -> metric info */
+  /** The map from metricInfo to metric */
   protected Map<MetricInfo, IMetric> metrics;
 
   public AbstractMetricManager() {
@@ -106,7 +107,7 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
+              AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
@@ -117,7 +118,14 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
-  protected abstract <T> Gauge createAutoGauge(
+  /**
+   * Create autoGauge according to metric framework
+   *
+   * @param metricInfo the metricInfo of autoGauge
+   * @param obj which will be monitored automatically
+   * @param mapper use which to map the obj to a long value
+   */
+  protected abstract <T> AutoGauge createAutoGauge(
       MetricInfo metricInfo, T obj, ToLongFunction<T> mapper);
 
   /**
@@ -147,6 +155,11 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
+  /**
+   * Create gauge according to metric framework
+   *
+   * @param metricInfo the metricInfo of gauge
+   */
   protected abstract Gauge createGauge(MetricInfo metricInfo);
 
   /**
@@ -176,6 +189,11 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
+  /**
+   * Create rate according to metric framework
+   *
+   * @param metricInfo the metricInfo of rate
+   */
   protected abstract Rate createRate(MetricInfo metricInfo);
 
   /**
@@ -205,6 +223,11 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
+  /**
+   * Create histogram according to metric framework
+   *
+   * @param metricInfo the metricInfo of metric
+   */
   protected abstract Histogram createHistogram(MetricInfo metricInfo);
 
   /**
@@ -234,6 +257,11 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
+  /**
+   * Create timer according to metric framework
+   *
+   * @param metricInfo the metricInfo of metric
+   */
   protected abstract Timer createTimer(MetricInfo metricInfo);
 
   // endregion

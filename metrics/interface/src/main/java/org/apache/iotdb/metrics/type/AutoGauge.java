@@ -19,4 +19,7 @@
 
 package org.apache.iotdb.metrics.type;
 
-public interface AutoGauge extends Gauge {}
+public interface AutoGauge extends IMetric {
+  /** get value according to the state of obj */
+  long value();
+}

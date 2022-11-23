@@ -19,38 +19,25 @@
 
 package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class MemoryInternalReporter implements InternalReporter {
+public class MemoryInternalReporter extends InternalReporter {
   @Override
-  public void addAutoGauge(Gauge gauge, String name, String... tags) {}
-
-  @Override
-  public void addAutoGauge(Map<Pair<String, String[]>, Gauge> gauges) {}
-
-  @Override
-  public Map<Pair<String, String[]>, Gauge> getAllAutoGauge() {
-    return new HashMap<>();
+  public void updateValue(String name, Object value, TSDataType type, String... tags) {
+    // do nothing
   }
 
   @Override
-  public void clear() {}
+  public void updateValue(String name, Object value, TSDataType type, Long time, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void updateValue(String name, Object value, TSDataType type, String... tags) {}
-
-  @Override
-  public void updateValue(String name, Object value, TSDataType type, Long time, String... tags) {}
-
-  @Override
-  public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {}
+  public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {
+    // do nothing
+  }
 
   @Override
   public InternalReporterType getType() {
@@ -58,8 +45,13 @@ public class MemoryInternalReporter implements InternalReporter {
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    // do nothing
+
+  }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    clear();
+  }
 }

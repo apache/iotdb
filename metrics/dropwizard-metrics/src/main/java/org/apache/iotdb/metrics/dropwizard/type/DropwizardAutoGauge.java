@@ -46,19 +46,4 @@ public class DropwizardAutoGauge<T> implements AutoGauge, com.codahale.metrics.G
   public long value() {
     return getValue();
   }
-
-  @Override
-  public void incr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void decr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void set(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
 }

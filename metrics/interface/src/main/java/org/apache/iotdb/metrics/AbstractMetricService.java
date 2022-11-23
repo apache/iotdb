@@ -22,19 +22,24 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.impl.DoNothingMetric;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
+import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +53,6 @@ import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
-
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
   protected final MetricConfig metricConfig =
@@ -57,12 +61,15 @@ public abstract class AbstractMetricService {
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
+  /** The internal reporter of metric service */
+  protected InternalReporter internalReporter = new MemoryInternalReporter();
+
   /** The list of metric sets */
   protected List<IMetricSet> metricSets = new ArrayList<>();
 
   public AbstractMetricService() {}
 
-  /** start metric service */
+  /** Start metric service */
   public void startService() {
     startCoreModule();
     for (IMetricSet metricSet : metricSets) {
@@ -70,7 +77,7 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** stop metric service */
+  /** Stop metric service */
   public void stopService() {
     for (IMetricSet metricSet : metricSets) {
       metricSet.unbindFrom(this);
@@ -78,7 +85,7 @@ public abstract class AbstractMetricService {
     stopCoreModule();
   }
 
-  /** start metric core module */
+  /** Start metric core module */
   protected void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
@@ -89,7 +96,7 @@ public abstract class AbstractMetricService {
     startAllReporter();
   }
 
-  /** stop metric core module */
+  /** Stop metric core module */
   protected void stopCoreModule() {
     stopAllReporter();
     metricManager.stop();
@@ -142,9 +149,18 @@ public abstract class AbstractMetricService {
     }
   }
 
+  /**
+   * Reload internal reporter
+   *
+   * @param internalReporter the new internal reporter
+   */
   public abstract void reloadInternalReporter(InternalReporter internalReporter);
 
-  /** Reload metric service according to reloadLevel */
+  /**
+   * Reload metric service
+   *
+   * @param reloadLevel the level of reload
+   */
   protected abstract void reloadService(ReloadLevel reloadLevel);
 
   // region interface from metric reporter
@@ -219,59 +235,121 @@ public abstract class AbstractMetricService {
     metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
   }
 
+  /** GetOrCreateCounter with internal report */
   public Counter getOrCreateCounterWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
-    return metricManager.getOrCreateCounter(metric, metricLevel, tags);
+    Counter counter = metricManager.getOrCreateCounter(metric, metricLevel, tags);
+    report(counter, metric, tags);
+    return counter;
   }
 
+  /** GetOrCreateAutoGauge with internal report */
   public <T> Gauge getOrCreateAutoGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    return metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+    Gauge gauge = metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+    report(gauge, metric, tags);
+    return gauge;
   }
 
+  /** GetOrCreateGauge with internal report */
   public Gauge getOrCreateGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
-    return metricManager.getOrCreateGauge(metric, metricLevel, tags);
+    Gauge gauge = metricManager.getOrCreateGauge(metric, metricLevel, tags);
+    report(gauge, metric, tags);
+    return gauge;
   }
 
+  /** GetOrCreateRate with internal report */
   public Rate getOrCreateRateWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
-    return metricManager.getOrCreateRate(metric, metricLevel, tags);
+    Rate rate = metricManager.getOrCreateRate(metric, metricLevel, tags);
+    report(rate, metric, tags);
+    return rate;
   }
 
+  /** GetOrCreateHistogram with internal report */
   public Histogram getOrCreateHistogramWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
-    return metricManager.getOrCreateHistogram(metric, metricLevel, tags);
+    Histogram histogram = metricManager.getOrCreateHistogram(metric, metricLevel, tags);
+    report(histogram, metric, tags);
+    return histogram;
   }
 
+  /** GetOrCreateTimer with internal report */
   public Timer getOrCreateTimerWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
-    return metricManager.getOrCreateTimer(metric, metricLevel, tags);
+    Timer timer = metricManager.getOrCreateTimer(metric, metricLevel, tags);
+    report(timer, metric, tags);
+    return timer;
   }
 
+  /** Count with internal report */
   public void countWithInternalReport(
       long delta, String metric, MetricLevel metricLevel, String... tags) {
-    metricManager.count(delta, metric, metricLevel, tags);
+    report(metricManager.count(delta, metric, metricLevel, tags), metric, tags);
   }
 
+  /** Gauge value with internal report */
   public void gaugeWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    metricManager.gauge(value, metric, metricLevel, tags);
+    report(metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
   }
 
+  /** Rate with internal report */
   public void rateWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    metricManager.rate(value, metric, metricLevel, tags);
+    report(metricManager.rate(value, metric, metricLevel, tags), metric, tags);
   }
 
+  /** Histogram with internal report */
   public void histogramWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    metricManager.histogram(value, metric, metricLevel, tags);
+    report(metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
   }
 
+  /** Timer with internal report */
   public void timerWithInternalReport(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
+    report(metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
+  }
+
+  /**
+   * Reporter metric internally
+   *
+   * @param metric the metric that need to report
+   * @param name the name of metric
+   * @param tags the tags of metric
+   */
+  protected void report(IMetric metric, String name, String... tags) {
+    if (metric instanceof DoNothingMetric) {
+      return;
+    }
+    if (metric instanceof Counter) {
+      Counter counter = (Counter) metric;
+      internalReporter.updateValue(name, counter.count(), TSDataType.INT64, tags);
+    } else if (metric instanceof AutoGauge) {
+      internalReporter.addAutoGauge((AutoGauge) metric, name, tags);
+    } else if (metric instanceof Gauge) {
+      internalReporter.updateValue(name, ((Gauge) metric).value(), TSDataType.INT64, tags);
+    } else if (metric instanceof Rate) {
+      Rate rate = (Rate) metric;
+      Long time = System.currentTimeMillis();
+      internalReporter.updateValue(name + "_count", rate.getCount(), TSDataType.INT64, time, tags);
+      internalReporter.updateValue(
+          name + "_mean", rate.getMeanRate(), TSDataType.DOUBLE, time, tags);
+      internalReporter.updateValue(
+          name + "_1min", rate.getOneMinuteRate(), TSDataType.DOUBLE, time, tags);
+      internalReporter.updateValue(
+          name + "_5min", rate.getFiveMinuteRate(), TSDataType.DOUBLE, time, tags);
+      internalReporter.updateValue(
+          name + "_15min", rate.getFifteenMinuteRate(), TSDataType.DOUBLE, time, tags);
+    } else if (metric instanceof Histogram) {
+      Histogram histogram = (Histogram) metric;
+      internalReporter.writeSnapshotAndCount(name, histogram.takeSnapshot(), tags);
+    } else if (metric instanceof Timer) {
+      Timer timer = (Timer) metric;
+      internalReporter.writeSnapshotAndCount(name, timer.takeSnapshot(), tags);
+    }
   }
 
   public List<String[]> getAllMetricKeys() {
@@ -308,7 +386,7 @@ public abstract class AbstractMetricService {
     return metricManager;
   }
 
-  /** bind metrics and store metric set */
+  /** Bind metrics and store metric set */
   public void addMetricSet(IMetricSet metricSet) {
     if (!metricSets.contains(metricSet)) {
       metricSet.bindTo(this);
@@ -316,7 +394,7 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** remove metrics */
+  /** Remove metrics */
   public void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);

@@ -23,15 +23,15 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 public interface Reporter {
-  /** start reporter */
+  /** Start reporter */
   boolean start();
 
-  /** stop reporter */
+  /** Stop reporter */
   boolean stop();
 
-  /** get the type of reporter */
+  /** Get the type of reporter */
   ReporterType getReporterType();
 
-  /** set metric manager to get metrics❤ */
+  /** Set metric manager into reporter */
   void setMetricManager(AbstractMetricManager metricManager);
 }

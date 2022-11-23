@@ -38,7 +38,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
@@ -48,7 +48,6 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,13 +56,12 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBInternalReporter implements InternalReporter {
+public class IoTDBInternalReporter extends InternalReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -73,7 +71,6 @@ public class IoTDBInternalReporter implements InternalReporter {
   private final ISchemaFetcher SCHEMA_FETCHER;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-  private final Map<Pair<String, String[]>, Gauge> autoGauges = new ConcurrentHashMap<>();
 
   public IoTDBInternalReporter() {
     if (config.isClusterMode()) {
@@ -87,34 +84,15 @@ public class IoTDBInternalReporter implements InternalReporter {
   }
 
   private void collectAutoGauge() {
-    for (Map.Entry<Pair<String, String[]>, Gauge> entry : autoGauges.entrySet()) {
+    for (Map.Entry<Pair<String, String[]>, AutoGauge> entry : autoGauges.entrySet()) {
       updateValue(
           entry.getKey().left, entry.getValue().value(), TSDataType.INT64, entry.getKey().right);
     }
   }
 
   @Override
-  public void addAutoGauge(Gauge gauge, String name, String... tags) {
-    autoGauges.put(new Pair<>(name, tags), gauge);
-  }
-
-  @Override
-  public void addAutoGauge(Map<Pair<String, String[]>, Gauge> gauges) {
-    autoGauges.putAll(gauges);
-  }
-
-  @Override
-  public Map<Pair<String, String[]>, Gauge> getAllAutoGauge() {
-    return autoGauges;
-  }
-
-  @Override
-  public void clear() {
-    autoGauges.clear();
-  }
-
-  @Override
   public void updateValue(String name, Object value, TSDataType type, String... tags) {
+    // TODO spricoder update iotdb reporter
     updateValue(name, value, type, System.currentTimeMillis(), tags);
   }
 
@@ -188,5 +166,6 @@ public class IoTDBInternalReporter implements InternalReporter {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
+    clear();
   }
 }

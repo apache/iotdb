@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.config;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.junit.Test;
 
 import java.util.Properties;

@@ -26,32 +26,18 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.impl.DoNothingMetric;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
-import org.apache.iotdb.metrics.type.AutoGauge;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.type.Rate;
-import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
 
 public class MetricService extends AbstractMetricService implements MetricServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
-  private InternalReporter internalReporter = new MemoryInternalReporter();
 
   private MetricService() {}
 
@@ -95,108 +81,6 @@ public class MetricService extends AbstractMetricService implements MetricServic
     stopService();
     JMXService.deregisterMBean(mbeanName);
     logger.info("Finish stop metric Service");
-  }
-
-  public Counter getOrCreateCounterWithInternalReport(
-      String metric, MetricLevel metricLevel, String... tags) {
-    Counter counter = metricManager.getOrCreateCounter(metric, metricLevel, tags);
-    report(counter, metric, tags);
-    return counter;
-  }
-
-  public <T> Gauge getOrCreateAutoGaugeWithInternalReport(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    Gauge gauge = metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
-    report(gauge, metric, tags);
-    return gauge;
-  }
-
-  public Gauge getOrCreateGaugeWithInternalReport(
-      String metric, MetricLevel metricLevel, String... tags) {
-    Gauge gauge = metricManager.getOrCreateGauge(metric, metricLevel, tags);
-    report(gauge, metric, tags);
-    return gauge;
-  }
-
-  public Rate getOrCreateRateWithInternalReport(
-      String metric, MetricLevel metricLevel, String... tags) {
-    Rate rate = metricManager.getOrCreateRate(metric, metricLevel, tags);
-    report(rate, metric, tags);
-    return rate;
-  }
-
-  public Histogram getOrCreateHistogramWithInternalReport(
-      String metric, MetricLevel metricLevel, String... tags) {
-    Histogram histogram = metricManager.getOrCreateHistogram(metric, metricLevel, tags);
-    report(histogram, metric, tags);
-    return histogram;
-  }
-
-  public Timer getOrCreateTimerWithInternalReport(
-      String metric, MetricLevel metricLevel, String... tags) {
-    Timer timer = metricManager.getOrCreateTimer(metric, metricLevel, tags);
-    report(timer, metric, tags);
-    return timer;
-  }
-
-  public void countWithInternalReport(
-      long delta, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.count(delta, metric, metricLevel, tags), metric, tags);
-  }
-
-  public void gaugeWithInternalReport(
-      long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
-  }
-
-  public void rateWithInternalReport(
-      long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.rate(value, metric, metricLevel, tags), metric, tags);
-  }
-
-  public void histogramWithInternalReport(
-      long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
-  }
-
-  public void timerWithInternalReport(
-      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
-  }
-
-  private void report(IMetric metric, String name, String... tags) {
-    if (metric instanceof DoNothingMetric) {
-      return;
-    }
-    if (metric instanceof Counter) {
-      Counter counter = (Counter) metric;
-      internalReporter.updateValue(name, counter.count(), TSDataType.INT64, tags);
-    } else if (metric instanceof Gauge) {
-      Gauge gauge = (Gauge) metric;
-      if (metric instanceof AutoGauge) {
-        internalReporter.addAutoGauge((Gauge) metric, name, tags);
-      } else {
-        internalReporter.updateValue(name, gauge.value(), TSDataType.INT64, tags);
-      }
-    } else if (metric instanceof Rate) {
-      Rate rate = (Rate) metric;
-      Long time = System.currentTimeMillis();
-      internalReporter.updateValue(name + "_count", rate.getCount(), TSDataType.INT64, time, tags);
-      internalReporter.updateValue(
-          name + "_mean", rate.getMeanRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_1min", rate.getOneMinuteRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_5min", rate.getFiveMinuteRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_15min", rate.getFifteenMinuteRate(), TSDataType.DOUBLE, time, tags);
-    } else if (metric instanceof Histogram) {
-      Histogram histogram = (Histogram) metric;
-      internalReporter.writeSnapshotAndCount(name, histogram.takeSnapshot(), tags);
-    } else if (metric instanceof Timer) {
-      Timer timer = (Timer) metric;
-      internalReporter.writeSnapshotAndCount(name, timer.takeSnapshot(), tags);
-    }
   }
 
   @Override
