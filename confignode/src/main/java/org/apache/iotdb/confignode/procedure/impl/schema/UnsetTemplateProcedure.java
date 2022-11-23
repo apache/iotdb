@@ -178,7 +178,7 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private int checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
+  private long checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
@@ -256,7 +256,7 @@ public class UnsetTemplateProcedure
       return 0;
     }
 
-    int result = 0;
+    long result = 0;
     Map<Integer, List<TCountPathsUsingTemplateResp>> dataNodeResponseMap =
         regionTask.getResponseMap();
     for (List<TCountPathsUsingTemplateResp> respList : dataNodeResponseMap.values()) {

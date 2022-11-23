@@ -321,7 +321,7 @@ public class ConfigMTree {
     CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
-    return counter.getCount();
+    return (int) counter.getCount();
   }
 
   /**

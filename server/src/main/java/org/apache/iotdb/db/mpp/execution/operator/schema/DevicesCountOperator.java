@@ -73,7 +73,7 @@ public class DevicesCountOperator implements SourceOperator {
   public TsBlock next() {
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    int count = 0;
+    long count = 0;
     try {
       count =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
@@ -83,7 +83,7 @@ public class DevicesCountOperator implements SourceOperator {
       throw new RuntimeException(e.getMessage(), e);
     }
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(count);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
     tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
