@@ -1729,7 +1729,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
-    int result = 0;
+    long result = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }
