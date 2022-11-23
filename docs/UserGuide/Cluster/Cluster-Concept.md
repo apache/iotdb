@@ -39,8 +39,8 @@ Client could only connect to the DataNode for operation.
 
 | Concept           | Type                             | Description                                                                                                                                 |
 |:------------------|:---------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
-| ConfigNode        | role                             | Configuration node, which manages cluster node information and partition information, monitors cluster status, controls load balancing      |
-| DataNode          | role                             | Data node, which manages data and meta data                                                                                                 |
+| ConfigNode        | node role                        | Configuration node, which manages cluster node information and partition information, monitors cluster status, controls load balancing      |
+| DataNode          | node role                        | Data node, which manages data and meta data                                                                                                 |
 | Database          | meta data                        | Database, data are isolated physically from different databases                                                                             |
 | DeviceId          | device id                        | The full path from root to the penultimate level in the metadata tree represents a device id                                                |
 | SeriesSlot        | series partition slot            | Each database has a fixed number of series slots, containing the schemas of series                                                          |

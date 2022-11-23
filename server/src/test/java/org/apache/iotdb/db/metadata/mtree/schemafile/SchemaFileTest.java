@@ -103,7 +103,6 @@ public class SchemaFileTest {
         sf.writeMNode(curNode);
       }
     }
-    System.out.println(((SchemaFile) sf).inspect());
 
     ICachedMNodeContainer.getCachedMNodeContainer(int0).getNewChildBuffer().clear();
     addNodeToUpdateBuffer(int0, getMeasurementNode(int0, "mint1", "alas99999"));
@@ -885,7 +884,7 @@ public class SchemaFileTest {
   // region Quick Print
 
   private void printSF(ISchemaFile file) throws IOException, MetadataException {
-    System.out.println(((SchemaFile) file).inspect());
+    ((SchemaFile) file).inspect();
   }
 
   public static void print(Object o) {

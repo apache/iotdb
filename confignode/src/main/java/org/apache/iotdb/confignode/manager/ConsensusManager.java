@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -51,7 +50,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
@@ -200,11 +198,6 @@ public class ConsensusManager {
    * @param configNodeLocations All registered ConfigNodes
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is empty, createPeerForConsensusGroup failed.");
-      return;
-    }
-
     LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();
@@ -219,37 +212,24 @@ public class ConsensusManager {
   }
 
   /**
-   * Tell the group to [create a new Peer on new node] and [add this member to join the group].
+   * Add a new ConfigNode Peer into ConfigNodeRegion
    *
-   * <p>Using this method to replace `createPeer` and `addPeer`.
-   *
-   * @param originalConfigNodes the original members of the existed group
-   * @param newConfigNode the new member
+   * @param configNodeLocation The new ConfigNode
+   * @throws AddPeerException When addPeer doesn't success
    */
-  public void addNewNodeToExistedGroup(
-      List<TConfigNodeLocation> originalConfigNodes, TConfigNodeLocation newConfigNode)
-      throws AddPeerException {
-    Peer newPeer =
-        new Peer(
-            consensusGroupId,
-            newConfigNode.getConfigNodeId(),
-            newConfigNode.getConsensusEndPoint());
+  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
+    boolean result =
+        consensusImpl
+            .addPeer(
+                consensusGroupId,
+                new Peer(
+                    consensusGroupId,
+                    configNodeLocation.getConfigNodeId(),
+                    configNodeLocation.getConsensusEndPoint()))
+            .isSuccess();
 
-    List<Peer> originalPeers =
-        originalConfigNodes.stream()
-            .map(
-                node ->
-                    new Peer(consensusGroupId, node.getConfigNodeId(), node.getConsensusEndPoint()))
-            .collect(Collectors.toList());
-
-    LOGGER.info("AddNewNodeToExistedGroup, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
-
-    ConsensusGenericResponse response =
-        consensusImpl.addNewNodeToExistedGroup(consensusGroupId, newPeer, originalPeers);
-    if (!response.isSuccess()) {
-      LOGGER.error(
-          "Execute addNewNodeToExistedGroup for ConfigNode failed, response: {}", response);
-      throw new AddPeerException(newConfigNode);
+    if (!result) {
+      throw new AddPeerException(configNodeLocation);
     }
   }
 

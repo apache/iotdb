@@ -85,7 +85,8 @@ mvn clean package -pl distribution -am -DskipTests
 
 ### 启动种子 ConfigNode
 
-ConfigNode 的 RPC 相关参数在 conf/iotdb-confignode.properties 中进行配置：
+对 confignode/conf/iotdb-confignode.properties 和 conf/iotdb-common.properties 中的重要参数进行配置：
+iotdb-confignode.properties：
 
 | **配置项**                                   | **说明**                                             |
 |-------------------------------------------|----------------------------------------------------|
@@ -94,7 +95,7 @@ ConfigNode 的 RPC 相关参数在 conf/iotdb-confignode.properties 中进行配
 | cn\_consensus\_port                       | ConfigNode 副本组共识协议通信使用的端口                          |
 | cn\_target\_config\_node\_list            | 种子 ConfigNode 地址，第一个 ConfigNode 配置自己的 address:port |
 
-ConfigNode 的副本相关参数在 conf/iotdb-common.properties 中进行配置：
+iotdb-common.properties：
 
 | **配置项**                                    | **说明**                    |
 |--------------------------------------------|---------------------------|
@@ -251,7 +252,7 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 +------+----------+-------+---------------+------------+
 Total line number = 2
@@ -268,18 +269,18 @@ It costs 0.160s
 
 + 修改 ConfigNode 配置：
 
-| **配置项**                        | **值**         |
-|--------------------------------|---------------|
-| cn\_internal\_address          | 0.0.0.0       |
-| cn\_internal\_port             | 22279         |
-| cn\_consensus\_port            | 22280         |
-| cn\_target\_config\_node\_list | 0.0.0.0:22277 |
+| **配置项**                        | **值**           |
+|--------------------------------|-----------------|
+| cn\_internal\_address          | 127.0.0.1       |
+| cn\_internal\_port             | 22279           |
+| cn\_consensus\_port            | 22280           |
+| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
 
 + 修改 DataNode 配置：
 
 | **配置项**                             | **值**           |
 |-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 0.0.0.0         |
+| dn\_rpc\_address                    | 127.0.0.1       |
 | dn\_rpc\_port                       | 6668            |
 | dn\_internal\_address               | 127.0.0.1       |
 | dn\_internal\_port                  | 9004            |
@@ -292,18 +293,18 @@ It costs 0.160s
 
 + 修改 ConfigNode 配置：
 
-| **配置项**                        | **值**         |
-|--------------------------------|---------------|
-| cn\_internal\_address          | 0.0.0.0       |
-| cn\_internal\_port             | 22281         |
-| cn\_consensus\_port            | 22282         |
-| cn\_target\_config\_node\_list | 0.0.0.0:22277 |
+| **配置项**                        | **值**           |
+|--------------------------------|-----------------|
+| cn\_internal\_address          | 127.0.0.1       |
+| cn\_internal\_port             | 22281           |
+| cn\_consensus\_port            | 22282           |
+| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
 
 + 修改 DataNode 配置：
 
 | **配置项**                             | **值**           |
 |-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 0.0.0.0         |
+| dn\_rpc\_address                    | 127.0.0.1       |
 | dn\_rpc\_port                       | 6669            |
 | dn\_internal\_address               | 127.0.0.1       |
 | dn\_internal\_port                  | 9005            |
@@ -315,11 +316,11 @@ It costs 0.160s
 ### 6. 集群扩容
 
 将集群扩容至 3 个 ConfigNode 和 3 个 DataNode（3C3D）集群版，
-指令执行顺序可不分先后：
+指令执行顺序为先启动 ConfigNode，再启动 DataNode：
 ```
 ./cluster1/sbin/start-confignode.sh
-./cluster1/sbin/start-datanode.sh
 ./cluster2/sbin/start-confignode.sh
+./cluster1/sbin/start-datanode.sh
 ./cluster2/sbin/start-datanode.sh
 ```
 
@@ -331,9 +332,9 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     2|ConfigNode|Running|        0.0.0.0|       22279|
-|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     2|ConfigNode|Running|      127.0.0.1|       22279|
+|     3|ConfigNode|Running|      127.0.0.1|       22281|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 |     4|  DataNode|Running|      127.0.0.1|        9004|
 |     5|  DataNode|Running|      127.0.0.1|        9005|
@@ -362,8 +363,8 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     3|ConfigNode|Running|      127.0.0.1|       22281|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 |     5|  DataNode|Running|      127.0.0.1|        9005|
 +------+----------+-------+---------------+------------+

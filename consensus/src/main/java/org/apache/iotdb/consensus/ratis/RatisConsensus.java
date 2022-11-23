@@ -81,7 +81,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -330,11 +329,6 @@ class RatisConsensus implements IConsensus {
   @Override
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
-    // pre-conditions: myself in this new group
-    if (!group.getPeers().contains(myself)) {
-      return failed(new ConsensusGroupNotExistException(groupId));
-    }
-
     // add RaftPeer myself to this RaftGroup
     ConsensusGenericResponse reply = addNewGroupToServer(group, myself);
 
@@ -345,7 +339,11 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     RatisClient client = null;
     try {
-      client = getRaftClient(group);
+      if (group.getPeers().size() == 0) {
+        client = getRaftClient(RaftGroup.valueOf(group.getGroupId(), server));
+      } else {
+        client = getRaftClient(group);
+      }
       reply = client.getRaftClient().getGroupManagementApi(server.getId()).add(group);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
@@ -487,38 +485,6 @@ class RatisConsensus implements IConsensus {
       return failed(new RatisRequestFailedException(e));
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
-  }
-
-  @Override
-  public ConsensusGenericResponse addNewNodeToExistedGroup(
-      ConsensusGroupId groupId, Peer newNode, List<Peer> originalGroup) {
-
-    CompletableFuture<ConsensusGenericResponse> addResp =
-        CompletableFuture.supplyAsync(() -> addPeer(groupId, newNode), addExecutor);
-
-    try {
-      TimeUnit.MILLISECONDS.sleep(500);
-    } catch (InterruptedException i) {
-      logger.debug("{}: interrupted when wait to create new peer with exception {}", this, i);
-      Thread.currentThread().interrupt();
-    }
-
-    if (!originalGroup.contains(newNode)) {
-      originalGroup.add(newNode);
-    }
-
-    RaftGroup group = buildRaftGroup(groupId, originalGroup);
-    RaftPeer newPeer = Utils.fromPeerAndPriorityToRaftPeer(newNode, DEFAULT_PRIORITY);
-    ConsensusGenericResponse createResp = addNewGroupToServer(group, newPeer);
-    if (!createResp.isSuccess()) {
-      return createResp;
-    }
-
-    ConsensusGenericResponse addResult = addResp.join();
-    if (!addResult.isSuccess()) {
-      return addResult;
-    }
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   /**

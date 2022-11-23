@@ -193,9 +193,9 @@ IoTDB> show confignodes
 +------+-------+---------------+------------+--------+
 |NodeID| Status|InternalAddress|InternalPort|    Role|
 +------+-------+---------------+------------+--------+
-|     0|Running|        0.0.0.0|       22277|  Leader|
-|     1|Running|        0.0.0.0|       22279|Follower|
-|     2|Running|        0.0.0.0|       22281|Follower|
+|     0|Running|      127.0.0.1|       22277|  Leader|
+|     1|Running|      127.0.0.1|       22279|Follower|
+|     2|Running|      127.0.0.1|       22281|Follower|
 +------+-------+---------------+------------+--------+
 Total line number = 3
 It costs 0.030s
@@ -222,9 +222,9 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     1|ConfigNode|Running|        0.0.0.0|       22279|
-|     2|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     1|ConfigNode|Running|      127.0.0.1|       22279|
+|     2|ConfigNode|Running|      127.0.0.1|       22281|
 |     3|  DataNode|Running|      127.0.0.1|        9003|
 |     4|  DataNode|Running|      127.0.0.1|        9005|
 |     5|  DataNode|Running|      127.0.0.1|        9007|
@@ -263,9 +263,9 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     1|ConfigNode|Unknown|        0.0.0.0|       22279|
-|     2|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     1|ConfigNode|Unknown|      127.0.0.1|       22279|
+|     2|ConfigNode|Running|      127.0.0.1|       22281|
 |     3|  DataNode|Running|      127.0.0.1|        9003|
 |     4|  DataNode|Running|      127.0.0.1|        9005|
 |     5|  DataNode|Running|      127.0.0.1|        9007|
@@ -293,18 +293,18 @@ IoTDB> show regions
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1|   0.0.0.0|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2|   0.0.0.0|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2|   0.0.0.0|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3|   0.0.0.0|   6669|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1|   0.0.0.0|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2|   0.0.0.0|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2|   0.0.0.0|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3|   0.0.0.0|   6669|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 12
 It costs 0.165s
@@ -316,12 +316,12 @@ IoTDB> show data regions
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1|   0.0.0.0|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2|   0.0.0.0|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1|   0.0.0.0|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2|   0.0.0.0|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3|   0.0.0.0|   6669|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.011s
@@ -330,12 +330,12 @@ IoTDB> show schema regions
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2|   0.0.0.0|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3|   0.0.0.0|   6669|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2|   0.0.0.0|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3|   0.0.0.0|   6669|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.012s
@@ -348,12 +348,12 @@ IoTDB> show regions of database root.sg1
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+-- -----+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1|   0.0.0.0|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2|   0.0.0.0|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2|   0.0.0.0|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3|   0.0.0.0|   6669|  Leader|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.007s
@@ -362,18 +362,18 @@ IoTDB> show regions of database root.sg1, root.sg2
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1|   0.0.0.0|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2|   0.0.0.0|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2|   0.0.0.0|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3|   0.0.0.0|   6669|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1|   0.0.0.0|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2|   0.0.0.0|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2|   0.0.0.0|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3|   0.0.0.0|   6669|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 12
 It costs 0.009s
@@ -382,12 +382,12 @@ IoTDB> show data regions of database root.sg1, root.sg2
 +--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|      Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|DataRegion|Running|root.sg1|          1|        1|         1|   0.0.0.0|   6667|Follower|
-|       0|DataRegion|Running|root.sg1|          1|        1|         2|   0.0.0.0|   6668|  Leader|
-|       0|DataRegion|Running|root.sg1|          1|        1|         3|   0.0.0.0|   6669|Follower|
-|       2|DataRegion|Running|root.sg2|          1|        1|         1|   0.0.0.0|   6667|  Leader|
-|       2|DataRegion|Running|root.sg2|          1|        1|         2|   0.0.0.0|   6668|Follower|
-|       2|DataRegion|Running|root.sg2|          1|        1|         3|   0.0.0.0|   6669|Follower|
+|       0|DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       0|DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
+|       2|DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       2|DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
 +--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.007s
@@ -396,12 +396,12 @@ IoTDB> show schema regions of database root.sg1, root.sg2
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 |RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2|   0.0.0.0|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3|   0.0.0.0|   6669|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1|   0.0.0.0|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2|   0.0.0.0|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3|   0.0.0.0|   6669|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.009s

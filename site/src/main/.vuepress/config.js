@@ -864,7 +864,13 @@ var config = {
 						title: 'Syntax Conventions',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions','Syntax Conventions'],
+							['Syntax-Conventions/Literal-Values', 'Literal Values'],
+							['Syntax-Conventions/Identifier', 'Identifier'],
+							['Syntax-Conventions/NodeName-In-Path', 'NodeName in Path'],
+							['Syntax-Conventions/KeyValue-Pair', 'Key-Value Pair'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', 'Keywords'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', 'Detailed Definitions of Lexical and Grammar'],
 						]
 					},
 					{
@@ -887,7 +893,7 @@ var config = {
 						title: 'Operate Metadata',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Database','Database'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
@@ -903,7 +909,7 @@ var config = {
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
 							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
-							['Write-Data/CSV-Tool','CSV Tool'],
+							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
 					{
@@ -959,8 +965,9 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/NodeTool','Node Tool'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
+							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
 					{
@@ -1809,7 +1816,13 @@ var config = {
 						title: '语法约定',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions', '语法约定'],
+							['Syntax-Conventions/Literal-Values', '字面值常量'],
+							['Syntax-Conventions/Identifier', '标识符'],
+							['Syntax-Conventions/NodeName-In-Path', '路径结点名'],
+							['Syntax-Conventions/KeyValue-Pair', '键值对'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', '关键字'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', '词法和文法详细定义'],
 						]
 					},
 					{
@@ -1832,7 +1845,7 @@ var config = {
 						title: '元数据操作',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Database','数据库操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
@@ -1840,7 +1853,7 @@ var config = {
 						]
 					},
 					{
-						title: '数据写入（更新）',
+						title: '数据写入（数据更新）',
 						sidebarDepth: 1,
 						children: [
 							['Write-Data/Write-Data','CLI 工具写入'],
@@ -1848,7 +1861,7 @@ var config = {
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
 							['Write-Data/Load-External-Tsfile','加载 TsFile'],
-							['Write-Data/CSV-Tool','导入导出 CSV']
+							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
 					{
@@ -1935,8 +1948,9 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/NodeTool','节点工具'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
+							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
 					{
