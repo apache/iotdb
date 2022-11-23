@@ -962,7 +962,7 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Tool','TsFile Load Export Tools']
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tools']
 
 						]
 					},
@@ -1941,7 +1941,7 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Tool','TsFile 导入导出工具']
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具']
 						]
 					},
 					{
