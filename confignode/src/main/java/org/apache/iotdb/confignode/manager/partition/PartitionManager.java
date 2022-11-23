@@ -491,15 +491,16 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface. Get the number of Regions currently owned by the specific
-   * StorageGroup
+   * Only leader use this interface.
+   *
+   * <p>Get the number of RegionGroups currently owned by the specific StorageGroup
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
    * @return Number of Regions currently owned by the specific StorageGroup
    * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
    */
-  public int getRegionCount(String storageGroup, TConsensusGroupType type)
+  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
       throws StorageGroupNotExistsException {
     return partitionInfo.getRegionGroupCount(storageGroup, type);
   }

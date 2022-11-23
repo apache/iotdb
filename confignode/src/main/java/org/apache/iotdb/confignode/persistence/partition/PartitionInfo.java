@@ -607,8 +607,9 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the number of RegionGroups currently owned by the specified
-   * StorageGroup
+   * Only leader use this interface.
+   *
+   * <p>Get the number of RegionGroups currently owned by the specified StorageGroup
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion

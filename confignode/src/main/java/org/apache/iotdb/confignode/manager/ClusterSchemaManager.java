@@ -202,9 +202,9 @@ public class ClusterSchemaManager {
 
       try {
         storageGroupInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionCount(name, TConsensusGroupType.SchemaRegion));
+            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.SchemaRegion));
         storageGroupInfo.setDataRegionNum(
-            getPartitionManager().getRegionCount(name, TConsensusGroupType.DataRegion));
+            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.DataRegion));
       } catch (StorageGroupNotExistsException e) {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
@@ -327,11 +327,12 @@ public class ClusterSchemaManager {
         // Allocated SchemaRegionGroups are not shrunk.
         int allocatedSchemaRegionGroupCount =
             getPartitionManager()
-                .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
+                .getRegionGroupCount(
+                    storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
             Math.max(
-                // The least number of DataRegionGroup of each StorageGroup is specified
-                // by parameter least_data_region_group_num, which is currently unconfigurable.
+                // The least number of SchemaRegionGroup of each StorageGroup is specified
+                // by parameter least_schema_region_group_num, which is currently unconfigurable.
                 LEAST_SCHEMA_REGION_GROUP_NUM,
                 Math.max(
                     // The maxSchemaRegionGroupNum of the current StorageGroup is expected to be
@@ -350,7 +351,7 @@ public class ClusterSchemaManager {
         // Allocated DataRegionGroups are not shrunk.
         int allocatedDataRegionGroupCount =
             getPartitionManager()
-                .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
+                .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
             Math.max(
                 // The least number of DataRegionGroup of each StorageGroup is specified
