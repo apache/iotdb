@@ -69,9 +69,9 @@ public class IoTDBClusterRestartIT {
 
   private static final String ratisConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
-  private static final int testConfigNodeNum = 3;
-  private static final int testDataNodeNum = 3;
-  private static final int testReplicationFactor = 3;
+  private static final int testConfigNodeNum = 2;
+  private static final int testDataNodeNum = 2;
+  private static final int testReplicationFactor = 2;
   private static final long testTimePartitionInterval = 604800000;
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
@@ -100,7 +100,7 @@ public class IoTDBClusterRestartIT {
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
-    // Init 3C3D cluster environment
+    // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
 

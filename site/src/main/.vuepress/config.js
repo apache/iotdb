@@ -893,7 +893,7 @@ var config = {
 						title: 'Operate Metadata',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Database','Database'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
@@ -965,7 +965,6 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
@@ -1846,7 +1845,7 @@ var config = {
 						title: '元数据操作',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Database','数据库操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
@@ -1854,7 +1853,7 @@ var config = {
 						]
 					},
 					{
-						title: '数据写入（更新）',
+						title: '数据写入（数据更新）',
 						sidebarDepth: 1,
 						children: [
 							['Write-Data/Write-Data','CLI 工具写入'],
@@ -1949,7 +1948,6 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],

@@ -511,11 +511,9 @@ public class ConfigNodeProcedureEnv {
     return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
   }
 
-  public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
+  public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
-    // Broadcast the latest RegionRouteMap
-    getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public void activateRegionGroup(
@@ -547,6 +545,11 @@ public class ConfigNodeProcedureEnv {
 
     // Force update RegionRouteMap
     getLoadManager().getRouteBalancer().updateRegionRouteMap();
+  }
+
+  public void broadcastRegionGroup() {
+    // Broadcast the latest RegionRouteMap
+    getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

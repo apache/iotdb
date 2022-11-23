@@ -170,8 +170,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupCount
-  7: optional i32 maxDataRegionGroupCount
+  6: optional i32 maxSchemaRegionGroupNum
+  7: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -307,6 +307,7 @@ struct TConfigNodeRegisterReq {
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
   13: required double diskSpaceWarningThreshold
+  14: required i32 leastDataRegionGroupNum
 }
 
 struct TConfigNodeRegisterResp {
