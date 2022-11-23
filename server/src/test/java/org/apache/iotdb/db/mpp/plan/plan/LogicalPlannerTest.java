@@ -64,6 +64,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -80,6 +81,8 @@ import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.sqlToPlanMa
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+@Ignore
+@Deprecated
 public class LogicalPlannerTest {
 
   @Test
