@@ -2133,13 +2133,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCompact(IoTDBSqlParser.CompactContext ctx) {
     return new CompactOperator(SQLConstant.TOK_MERGE);
   }
-
-  // Full Merge
-  @Override
-  public Operator visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    return new CompactOperator(SQLConstant.TOK_FULL_MERGE);
-  }
-
   // Flush
 
   @Override

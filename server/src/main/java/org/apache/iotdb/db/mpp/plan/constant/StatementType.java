@@ -100,7 +100,6 @@ public enum StatementType {
   ACTIVATE_TEMPLATE,
 
   COMPACT,
-  FULL_MERGE,
 
   MNODE,
   MEASUREMENT_MNODE,

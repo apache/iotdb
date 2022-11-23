@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CompactPlan;
@@ -35,10 +34,6 @@ public class CompactOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if (tokenIntType == SQLConstant.TOK_FULL_MERGE) {
-      return new CompactPlan(OperatorType.FULL_MERGE);
-    } else {
-      return new CompactPlan();
-    }
+    return new CompactPlan();
   }
 }

@@ -31,10 +31,6 @@ import java.util.List;
 
 public class CompactPlan extends PhysicalPlan {
 
-  public CompactPlan(OperatorType operatorType) {
-    super(operatorType);
-  }
-
   public CompactPlan() {
     super(OperatorType.COMPACT);
   }

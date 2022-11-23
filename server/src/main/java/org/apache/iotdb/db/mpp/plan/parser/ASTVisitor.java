@@ -2704,16 +2704,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return compactStatement;
   }
 
-  @Override
-  public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    CompactStatement compactStatement = new CompactStatement(StatementType.FULL_MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
-    }
-    compactStatement.setOnCluster(ctx.LOCAL() == null);
-    return compactStatement;
-  }
-
   // Flush
 
   @Override

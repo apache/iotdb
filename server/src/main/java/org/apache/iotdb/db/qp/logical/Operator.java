@@ -166,7 +166,6 @@ public abstract class Operator {
     ACTIVATE_TEMPLATE,
 
     COMPACT,
-    FULL_MERGE,
 
     MNODE,
     MEASUREMENT_MNODE,
