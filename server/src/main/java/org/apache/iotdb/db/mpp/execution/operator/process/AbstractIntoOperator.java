@@ -38,8 +38,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,8 +48,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
 
   protected final OperatorContext operatorContext;
   protected final Operator child;
@@ -92,8 +88,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   protected void insertMultiTabletsInternally(boolean needCheck) {
-    LOGGER.info("insertMultiTabletsInternally, needCheck = {}", needCheck);
-
     if (insertTabletStatementGenerators == null
         || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
       return;
@@ -175,9 +169,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    boolean hasNext = existNonEmptyStatement(insertTabletStatementGenerators) || child.hasNext();
-    LOGGER.info("in driver, hasNext() = {}", hasNext);
-    return hasNext;
+    return existNonEmptyStatement(insertTabletStatementGenerators) || child.hasNext();
   }
 
   @Override

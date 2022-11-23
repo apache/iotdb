@@ -33,16 +33,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class IntoOperator extends AbstractIntoOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IntoOperator.class);
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
@@ -80,10 +75,8 @@ public class IntoOperator extends AbstractIntoOperator {
     }
 
     if (child.hasNext()) {
-      LOGGER.info("in next(), child.hasNext() = true");
       return null;
     } else {
-      LOGGER.info("child.hasNext() = false");
       insertMultiTabletsInternally(false);
       return constructResultTsBlock();
     }
