@@ -678,7 +678,7 @@ public class TSServiceImpl implements TSIService.Iface {
           serviceProvider
               .getPlanner()
               .parseSQLToPhysicalPlan(statement, session.getZoneId(), session.getClientVersion());
-
+      AuditLogUtils.writeAuditLog(statement);
       if (physicalPlan.isQuery()) {
         return submitQueryTask(session, physicalPlan, startTime, req);
       } else {
