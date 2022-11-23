@@ -19,8 +19,8 @@
 
 -->
 
-# KeyWords and Reserved Words
+# KeyWords Words
 
 Keywords are words that have significance in SQL. Keywords can be used as an identifier. Certain keywords, such as TIME/TIMESTAMP and ROOT, are reserved and cannot use as identifiers.
 
-[Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB.
+[Keywords](../Reference/Keywords.md) shows the keywords in IoTDB.

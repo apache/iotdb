@@ -21,7 +21,13 @@
 
 # Keywords and Reserved Words
 
-The following list shows the keywords and reserved words in IoTDB. Reserved keywords are marked with **(R)**.
+The following list shows the reserved words in IoTDB:
+
+- ROOT
+- TIME
+- TIMESTAMP
+
+The following list shows the keywords in IoTDB:
 
 - Common Keywords
   - ADD
@@ -140,7 +146,6 @@ The following list shows the keywords and reserved words in IoTDB. Reserved keyw
   - RESOURCE
   - REVOKE
   - ROLE
-  - ROOT **(R)**
   - RUNNING
   - SCHEMA
   - SELECT
@@ -161,11 +166,9 @@ The following list shows the keywords and reserved words in IoTDB. Reserved keyw
   - TAGS
   - TASK
   - TEMPLATE
-  - TIME **(R)**
   - TIMEOUT
   - TIMESERIES
   - TIMESLOTID
-  - TIMESTAMP **(R)**
   - TO
   - TOLERANCE
   - TOP

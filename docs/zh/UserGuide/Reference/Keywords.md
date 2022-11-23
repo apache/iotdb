@@ -19,9 +19,15 @@
 
 -->
 
-# 关键字和保留字
+# 关键字
 
-以下为 IoTDB 的关键字，其中保留字用 **(R)** 标志。
+以下为 IoTDB 的保留字：
+
+- ROOT
+- TIME
+- TIMESTAMP
+
+以下为 IoTDB 的关键字：
 
 - 一般关键字
     - ADD
@@ -140,7 +146,6 @@
     - RESOURCE
     - REVOKE
     - ROLE
-    - ROOT **(R)**
     - RUNNING
     - SCHEMA
     - SELECT
@@ -161,11 +166,9 @@
     - TAGS
     - TASK
     - TEMPLATE
-    - TIME **(R)**
     - TIMEOUT
     - TIMESERIES
     - TIMESLOTID
-    - TIMESTAMP **(R)**
     - TO
     - TOLERANCE
     - TOP
