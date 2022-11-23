@@ -769,8 +769,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    int preDeletedNum = 0;
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    long preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
         // Given pathPatterns may match one timeseries multi times, which may results in the
@@ -1657,9 +1657,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    int preDeactivateNum = 0;
+    long preDeactivateNum = 0;
     Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
@@ -1727,7 +1727,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
     int result = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {

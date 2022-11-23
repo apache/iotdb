@@ -321,7 +321,7 @@ struct TCountPathsUsingTemplateReq{
 
 struct TCountPathsUsingTemplateResp{
   1: required common.TSStatus status
-  2: optional i32 count
+  2: optional i64 count
 }
 
 struct TCreatePipeOnDataNodeReq{

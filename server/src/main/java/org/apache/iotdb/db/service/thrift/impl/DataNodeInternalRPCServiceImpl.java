@@ -736,7 +736,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
-    int result = 0;
+    long result = 0;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
       // todo implement as consensus layer read request
       ReadWriteLock readWriteLock =

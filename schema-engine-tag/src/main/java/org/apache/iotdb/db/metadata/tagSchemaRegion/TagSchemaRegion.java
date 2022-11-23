@@ -327,7 +327,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException("constructSchemaBlackList");
   }
 
@@ -804,7 +804,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException("constructSchemaBlackListWithTemplate");
   }
@@ -821,7 +821,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
     return 0;
   }

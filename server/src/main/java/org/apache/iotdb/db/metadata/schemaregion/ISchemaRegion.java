@@ -125,7 +125,7 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
@@ -379,7 +379,7 @@ public interface ISchemaRegion {
   List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException;
 
-  int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException;
 
   void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
@@ -387,7 +387,8 @@ public interface ISchemaRegion {
 
   void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
 
-  int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
+  long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException;
 
   // endregion
 }
