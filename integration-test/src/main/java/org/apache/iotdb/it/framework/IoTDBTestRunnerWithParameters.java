@@ -39,7 +39,6 @@ public class IoTDBTestRunnerWithParameters extends BlockJUnit4ClassRunnerWithPar
 
   @Override
   public void run(RunNotifier notifier) {
-    logger.info("Run IoTDBTestRunnerWithParameters");
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);
