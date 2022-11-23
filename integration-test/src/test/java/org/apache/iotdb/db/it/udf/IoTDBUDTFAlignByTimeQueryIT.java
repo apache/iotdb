@@ -166,16 +166,6 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
       }
       try {
-        statement.executeQuery("select sum_sec(s1, interval=3) from root.udf.d1;");
-      } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
-      }
-      try {
-        statement.executeQuery("select sum_sec(s1, `interval`=3) from root.udf.d1;");
-      } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
-      }
-      try {
         statement.executeQuery(
             "select sum_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
       } catch (SQLException e) {
