@@ -89,7 +89,7 @@ Readme.md
 
 **在哪里可以找到 IoTDB 的数据文件**
 
-在默认的设置里，数据文件（包含 TsFile，metadata，WAL）被存储在```IOTDB_HOME/data```文件夹。
+在默认的设置里，数据文件（包含 TsFile，metadata，WAL）被存储在```IOTDB_HOME/data/datanode/data```文件夹。
 
 **如何知道 IoTDB 中存储了多少时间序列**
 
