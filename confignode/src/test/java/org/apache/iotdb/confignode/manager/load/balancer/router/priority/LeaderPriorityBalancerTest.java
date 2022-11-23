@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router;
+package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -34,12 +34,13 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LeaderRouterTest {
+public class LeaderPriorityBalancerTest {
 
   @Test
   public void testGenRealTimeRoutingPolicy() {
@@ -100,7 +101,8 @@ public class LeaderRouterTest {
 
     // Check result
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderRouter().getLatestRegionRouteMap(regionReplicaSets, leaderMap, loadScoreMap);
+        new LeaderPriorityBalancer()
+            .generateOptimalRoutePriority(regionReplicaSets, leaderMap, loadScoreMap);
     TRegionReplicaSet result1 = result.get(groupId1);
     // Leader first
     Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
@@ -113,5 +115,53 @@ public class LeaderRouterTest {
     // The others will be sorted by loadScore
     Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
     Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(2));
+  }
+
+  @Test
+  public void testLeaderUnavailable() {
+    // Build TDataNodeLocations
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      dataNodeLocations.add(
+          new TDataNodeLocation(
+              i,
+              new TEndPoint("0.0.0.0", 6667 + i),
+              new TEndPoint("0.0.0.0", 9003 + i),
+              new TEndPoint("0.0.0.0", 8777 + i),
+              new TEndPoint("0.0.0.0", 40010 + i),
+              new TEndPoint("0.0.0.0", 50010 + i)));
+    }
+
+    // Build TRegionReplicaSet
+    TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
+    TRegionReplicaSet regionReplicaSet1 =
+        new TRegionReplicaSet(
+            groupId1,
+            Arrays.asList(
+                dataNodeLocations.get(2), dataNodeLocations.get(1), dataNodeLocations.get(0)));
+
+    // Build leaderMap
+    Map<TConsensusGroupId, Integer> leaderMap = new HashMap<>();
+    leaderMap.put(groupId1, 1);
+
+    // Build loadScoreMap
+    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
+    loadScoreMap.put(0, 10L);
+    loadScoreMap.put(2, 20L);
+    // The leader is DataNode-1, but it's unavailable
+    loadScoreMap.put(1, Long.MAX_VALUE);
+
+    // Check result
+    Map<TConsensusGroupId, TRegionReplicaSet> result =
+        new LeaderPriorityBalancer()
+            .generateOptimalRoutePriority(
+                Collections.singletonList(regionReplicaSet1), leaderMap, loadScoreMap);
+    // Only sorted by loadScore since the leader is unavailable
+    Assert.assertEquals(
+        dataNodeLocations.get(0), result.get(groupId1).getDataNodeLocations().get(0));
+    Assert.assertEquals(
+        dataNodeLocations.get(2), result.get(groupId1).getDataNodeLocations().get(1));
+    Assert.assertEquals(
+        dataNodeLocations.get(1), result.get(groupId1).getDataNodeLocations().get(2));
   }
 }

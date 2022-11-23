@@ -106,7 +106,7 @@ public class SchemaCountOperatorTest {
         tsBlock = devicesCountOperator.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(tsBlock.getColumn(0).getInt(0), 10);
+      assertEquals(tsBlock.getColumn(0).getLong(0), 10);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -154,7 +154,7 @@ public class SchemaCountOperatorTest {
         tsBlock = timeSeriesCountOperator.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(100, tsBlock.getColumn(0).getInt(0));
+      assertEquals(100, tsBlock.getColumn(0).getLong(0));
       TimeSeriesCountOperator timeSeriesCountOperator2 =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -168,7 +168,7 @@ public class SchemaCountOperatorTest {
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());
-      assertEquals(10, tsBlock.getColumn(0).getInt(0));
+      assertEquals(10, tsBlock.getColumn(0).getLong(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -221,7 +221,7 @@ public class SchemaCountOperatorTest {
       for (int i = 0; i < 10; i++) {
         String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
         assertTrue(path.startsWith(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device"));
-        assertEquals(10, tsBlock.getColumn(1).getInt(i));
+        assertEquals(10, tsBlock.getColumn(1).getLong(i));
       }
 
       LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
@@ -238,7 +238,7 @@ public class SchemaCountOperatorTest {
         tsBlock = timeSeriesCountOperator2.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(100, tsBlock.getColumn(1).getInt(0));
+      assertEquals(100, tsBlock.getColumn(1).getLong(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();

@@ -124,35 +124,35 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   private void generateResultWithoutGroupByLevel() {
-    int totalCount = 0;
+    long totalCount = 0;
     for (TsBlock tsBlock : childrenTsBlocks) {
-      int count = tsBlock.getColumn(0).getInt(0);
+      long count = tsBlock.getColumn(0).getLong(0);
       totalCount += count;
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(totalCount);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(totalCount);
     tsBlockBuilder.declarePosition();
     this.resultTsBlockList = Collections.singletonList(tsBlockBuilder.build());
   }
 
   private void generateResultWithGroupByLevel() {
-    Map<String, Integer> countMap = new HashMap<>();
+    Map<String, Long> countMap = new HashMap<>();
     for (TsBlock tsBlock : childrenTsBlocks) {
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         String columnName = tsBlock.getColumn(0).getBinary(i).getStringValue();
-        int count = tsBlock.getColumn(1).getInt(i);
-        countMap.put(columnName, countMap.getOrDefault(columnName, 0) + count);
+        long count = tsBlock.getColumn(1).getLong(i);
+        countMap.put(columnName, countMap.getOrDefault(columnName, 0L) + count);
       }
     }
     this.resultTsBlockList =
         SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
             countMap.entrySet().iterator(),
-            Arrays.asList(TSDataType.TEXT, TSDataType.INT32),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT64),
             (entry, tsBlockBuilder) -> {
               tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
               tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
-              tsBlockBuilder.getColumnBuilder(1).writeInt(entry.getValue());
+              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
               tsBlockBuilder.declarePosition();
             });
   }

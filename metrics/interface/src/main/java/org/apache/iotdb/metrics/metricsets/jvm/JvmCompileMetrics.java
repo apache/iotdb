@@ -33,7 +33,7 @@ public class JvmCompileMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.compilation.time.ms",
           MetricLevel.IMPORTANT,
           compilationBean,

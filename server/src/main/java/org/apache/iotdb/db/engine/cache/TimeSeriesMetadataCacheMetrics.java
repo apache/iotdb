@@ -38,14 +38,14 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
         l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
         Tag.NAME.toString(),
         "timeSeriesMeta");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,

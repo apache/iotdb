@@ -105,7 +105,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   }
 
   public void createTsBlockList() {
-    Map<PartialPath, Integer> countMap;
+    Map<PartialPath, Long> countMap;
     try {
       if (key != null && value != null) {
         countMap =
@@ -133,7 +133,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
               tsBlockBuilder
                   .getColumnBuilder(0)
                   .writeBinary(new Binary(entry.getKey().getFullPath()));
-              tsBlockBuilder.getColumnBuilder(1).writeInt(entry.getValue());
+              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
               tsBlockBuilder.declarePosition();
             });
   }

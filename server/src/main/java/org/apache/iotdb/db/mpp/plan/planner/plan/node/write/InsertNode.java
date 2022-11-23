@@ -248,10 +248,9 @@ public abstract class InsertNode extends WritePlanNode {
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes() throws DataTypeMismatchException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (dataTypes[i] != measurementSchemas[i].getType()) {
-        if (checkAndCastDataType(i, measurementSchemas[i].getType())) {
-          continue;
-        }
+      if (measurementSchemas[i] == null
+          || (dataTypes[i] != measurementSchemas[i].getType()
+              && !checkAndCastDataType(i, measurementSchemas[i].getType()))) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw new DataTypeMismatchException(
               devicePath.getFullPath(),

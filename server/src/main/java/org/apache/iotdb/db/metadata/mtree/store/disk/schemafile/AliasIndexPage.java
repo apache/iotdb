@@ -389,7 +389,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     for (int i = 0; i < memberNum; i++) {
       builder.append(String.format("(%s, %s),", getKeyByIndex(i), getNameByIndex(i)));
     }
-    builder.append("]");
+    builder.append("]\n");
     return builder.toString();
   }
 

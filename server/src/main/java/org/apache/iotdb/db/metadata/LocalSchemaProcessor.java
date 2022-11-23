@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -408,23 +407,6 @@ public class LocalSchemaProcessor {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     return getNodesListInGivenLevel(pathPattern, level, isPrefixMatch).size();
-  }
-
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    Map<PartialPath, Integer> result = new HashMap<>();
-    Map<PartialPath, Integer> sgResult;
-    for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
-      sgResult = schemaRegion.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
-      for (PartialPath path : sgResult.keySet()) {
-        if (result.containsKey(path)) {
-          result.put(path, result.get(path) + sgResult.get(path));
-        } else {
-          result.put(path, sgResult.get(path));
-        }
-      }
-    }
-    return result;
   }
 
   // endregion

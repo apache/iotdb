@@ -116,8 +116,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
@@ -736,7 +735,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
-    int result = 0;
+    long result = 0;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
       // todo implement as consensus layer read request
       ReadWriteLock readWriteLock =
@@ -931,14 +930,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     // Sampling load if necessary
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
-        && req.isNeedSamplingLoad()) {
+    if (req.isNeedSamplingLoad()) {
       TLoadSample loadSample = new TLoadSample();
 
       // Sample cpu load
       long cpuLoad =
           MetricService.getInstance()
-              .getOrCreateGauge(
+              .getAutoGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
@@ -1010,15 +1008,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       List<String> noHeapIds = Arrays.asList("Code Cache", "Compressed Class Space", "Metaspace");
 
       for (String id : heapIds) {
-        Gauge gauge =
+        AutoGauge gauge =
             MetricService.getInstance()
-                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
+                .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
         result += gauge.value();
       }
       for (String id : noHeapIds) {
-        Gauge gauge =
+        AutoGauge gauge =
             MetricService.getInstance()
-                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
+                .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
         result += gauge.value();
       }
     } catch (Exception e) {
@@ -1033,7 +1031,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     long freeDisk =
         MetricService.getInstance()
-            .getOrCreateGauge(
+            .getAutoGauge(
                 Metric.SYS_DISK_FREE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
@@ -1041,7 +1039,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .value();
     long totalDisk =
         MetricService.getInstance()
-            .getOrCreateGauge(
+            .getAutoGauge(
                 Metric.SYS_DISK_TOTAL_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
@@ -1167,17 +1165,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) throws TException {
+  @Override
+  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) {
+    LOGGER.info("[ChangeRegionLeader] {}", req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
     Peer newLeaderPeer = new Peer(regionId, req.getNewLeaderNode().getDataNodeId(), newNode);
-    if (!isLeader(regionId)) {
-      LOGGER.info("region {} is not leader, no need to change leader", regionId);
-      return status;
+
+    if (isLeader(regionId)) {
+      String msg =
+          "[ChangeRegionLeader] The current DataNode: "
+              + req.getNewLeaderNode().getDataNodeId()
+              + " is already the leader of RegionGroup: "
+              + regionId
+              + ", skip leader transfer.";
+      LOGGER.info(msg);
+      return status.setMessage(msg);
     }
-    LOGGER.info("region {} is leader, will change leader", regionId);
+
+    LOGGER.info(
+        "[ChangeRegionLeader] Start change the leader of RegionGroup: {} to DataNode: {}",
+        regionId,
+        req.getNewLeaderNode().getDataNodeId());
     return transferLeader(regionId, newLeaderPeer);
   }
 
@@ -1190,16 +1201,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp = SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
     } else {
       status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
-      status.setMessage("Error Region type. region: " + regionId);
+      status.setMessage("[ChangeRegionLeader] Error Region type: " + regionId);
       return status;
     }
+
     if (!resp.isSuccess()) {
-      LOGGER.error("change region {} leader failed", regionId, resp.getException());
+      LOGGER.error(
+          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}",
+          regionId,
+          resp.getException());
       status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
-    status.setMessage("change region " + regionId + " leader succeed");
+    status.setMessage(
+        "[ChangeRegionLeader] Successfully change the leader of RegionGroup: "
+            + regionId
+            + " to "
+            + newLeaderPeer.getNodeId());
     return status;
   }
 
