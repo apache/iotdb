@@ -175,10 +175,7 @@ public class QueryExecution implements IQueryExecution {
 
   public void start() {
     if (skipExecute()) {
-      logger.info(
-          "[SkipExecute] analysis.isFinishQueryAfterAnalyze() = {}, analysis.hasDataSource() = {}",
-          analysis.isFinishQueryAfterAnalyze(),
-          analysis.hasDataSource());
+      logger.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
         stateMachine.transitionToFailed(new RuntimeException(analysis.getFailMessage()));
       } else {
