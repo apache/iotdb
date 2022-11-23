@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-// TODO: Store quota information of each sg
 public class QuotaInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(QuotaInfo.class);
@@ -48,7 +47,6 @@ public class QuotaInfo implements SnapshotProcessor {
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
   private final Map<String, TSpaceQuota> useSpaceQuota;
   private final Map<Integer, Integer> regionDisk;
-  private final SpaceQuotaPersistence spaceQuotaPersistence;
 
   private final String snapshotFileName = "quota_info.bin";
 
@@ -57,8 +55,6 @@ public class QuotaInfo implements SnapshotProcessor {
     spaceQuotaLimit = new HashMap<>();
     useSpaceQuota = new HashMap<>();
     regionDisk = new HashMap<>();
-    spaceQuotaPersistence = SpaceQuotaPersistence.getInstance();
-    init();
   }
 
   public TSStatus setSpaceQuota(SetSpaceQuotaPlan setSpaceQuotaPlan) {
@@ -78,17 +74,8 @@ public class QuotaInfo implements SnapshotProcessor {
         }
       }
       spaceQuotaLimit.put(storageGroup, spaceQuota);
-      try {
-        spaceQuotaPersistence.saveSpaceQuota(storageGroup, spaceQuotaLimit.get(storageGroup));
-      } catch (IOException e) {
-        logger.error("An error was encountered while persisting data.{}", setSpaceQuotaPlan, e);
-      }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  private void init() {
-    spaceQuotaPersistence.init(spaceQuotaLimit);
   }
 
   public Map<String, TSpaceQuota> getSpaceQuotaLimit() {
