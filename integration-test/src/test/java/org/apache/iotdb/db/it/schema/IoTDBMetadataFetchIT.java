@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -43,10 +46,11 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
 
-  public IoTDBMetadataFetchIT(String schemaEngineMode) {
-    super(schemaEngineMode);
+  public IoTDBMetadataFetchIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
   }
 
   private static void insertSQL() {

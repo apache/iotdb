@@ -25,7 +25,8 @@
     <property name="severity" value="error"/>
     <property name="fileExtensions" value="java"/>
     <module name="BeforeExecutionExclusionFileFilter">
-        <property name="fileNamePattern" value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/](db|confignode)[\\/]it[\\/](env|utils))[\\/].*$"/>
+        <property name="fileNamePattern" value="(^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/](db|confignode)[\\/]it[\\/](env|utils))[\\/].*$)|
+            |^.*AbstractSchemaIT\.java$"/>
     </module>
     <module name="TreeWalker">
         <module name="ImportControl">
@@ -39,7 +40,7 @@
             <property name="message" value="Statement::getResultSet is not allowed to use in integration test, please use the return value of Statement::executeQuery instead."/>
         </module>
         <module name="Regexp">
-            <property name="format" value="@RunWith\(IoTDBTestRunner\.class\)"/>
+            <property name="format" value="(@RunWith\(IoTDBTestRunner\.class\))|(extends AbstractSchemaIT)"/>
             <property name="ignoreComments" value="true"/>
             <property name="illegalPattern" value="false" />
             <property name="message" value="Test cases should run with IoTDBTestRunner."/>

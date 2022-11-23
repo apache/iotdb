@@ -326,6 +326,19 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCachedMNodeSizeInSchemaFileMode(cachedMNodeSizeInSchemaFileMode);
+    return this;
+  }
+
+  @Override
+  public int getCachedMNodeSizeInSchemaFileMode() {
+    return IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode();
+  }
+
+  @Override
   public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     IoTDBDescriptor.getInstance()
         .getConfig()

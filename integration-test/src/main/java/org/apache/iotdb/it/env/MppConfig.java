@@ -313,6 +313,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    engineProperties.setProperty(
+        "cached_mnode_size_in_schema_file_mode", String.valueOf(cachedMNodeSizeInSchemaFileMode));
+    return this;
+  }
+
+  @Override
   public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     engineProperties.setProperty(
         "select_into_insert_tablet_plan_row_limit",

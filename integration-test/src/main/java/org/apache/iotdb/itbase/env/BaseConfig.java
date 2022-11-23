@@ -331,6 +331,14 @@ public interface BaseConfig {
     return "Memory";
   }
 
+  default BaseConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    return this;
+  }
+
+  default int getCachedMNodeSizeInSchemaFileMode() {
+    return -1;
+  }
+
   default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     return this;
   }
