@@ -20,16 +20,14 @@
 package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.type.AutoGauge;
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class InternalReporter {
-  protected final Map<Pair<String, String[]>, AutoGauge> autoGauges = new ConcurrentHashMap<>();
+public abstract class InternalReporter extends IoTDBReporter {
+  protected final Map<String, AutoGauge> autoGauges = new ConcurrentHashMap<>();
 
   /**
    * Add autoGauge into internal reporter
@@ -39,7 +37,8 @@ public abstract class InternalReporter {
    * @param tags the tags of autoGauge
    */
   public void addAutoGauge(AutoGauge autoGauge, String name, String... tags) {
-    autoGauges.put(new Pair<>(name, tags), autoGauge);
+    String prefix = IoTDBMetricsUtils.generatePath(name, tags);
+    autoGauges.put(prefix, autoGauge);
   }
 
   /**
@@ -47,12 +46,12 @@ public abstract class InternalReporter {
    *
    * @param gauges the map of autoGauge
    */
-  public void addAutoGauge(Map<Pair<String, String[]>, AutoGauge> gauges) {
+  public void addAutoGauge(Map<String, AutoGauge> gauges) {
     autoGauges.putAll(gauges);
   }
 
   /** Get all autoGauges */
-  public Map<Pair<String, String[]>, AutoGauge> getAllAutoGauge() {
+  public Map<String, AutoGauge> getAllAutoGauge() {
     return autoGauges;
   }
 
@@ -61,44 +60,6 @@ public abstract class InternalReporter {
     autoGauges.clear();
   }
 
-  /**
-   * Update value of metric without specific time
-   *
-   * @param name the name of metric
-   * @param value the value of metric
-   * @param type the type of value
-   * @param tags the tags of metric
-   */
-  public abstract void updateValue(String name, Object value, TSDataType type, String... tags);
-
-  /**
-   * Update value of metric with specific time
-   *
-   * @param name the name of metric
-   * @param value the value of metric
-   * @param type the type of value
-   * @param time the time of value
-   * @param tags the tags of metric
-   */
-  public abstract void updateValue(
-      String name, Object value, TSDataType type, Long time, String... tags);
-
-  /**
-   * Update the value of HistogramSnapshot
-   *
-   * @param name the name of metric
-   * @param snapshot the snapshot of metric
-   * @param tags the tags of metric
-   */
-  public abstract void writeSnapshotAndCount(
-      String name, HistogramSnapshot snapshot, String... tags);
-
   /** Get the type of internal reporter */
   public abstract InternalReporterType getType();
-
-  /** Start internal reporter */
-  public abstract void start();
-
-  /** Stop internal reporter */
-  public abstract void stop();
 }

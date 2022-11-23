@@ -36,12 +36,12 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -85,28 +86,65 @@ public class IoTDBInternalReporter extends InternalReporter {
   }
 
   private void collectAutoGauge() {
-    for (Map.Entry<Pair<String, String[]>, AutoGauge> entry : autoGauges.entrySet()) {
-      updateValue(
-          entry.getKey().left, entry.getValue().value(), TSDataType.INT64, entry.getKey().right);
+    Map<Pair<String, String>, Object> values = new LinkedHashMap<>();
+    for (Map.Entry<String, AutoGauge> entry : autoGauges.entrySet()) {
+      String prefix = entry.getKey();
+      values.put(new Pair<>(prefix, "value"), entry.getValue().value());
     }
+    writeToIoTDB(values, System.currentTimeMillis());
   }
 
   @Override
-  public void updateValue(String name, Object value, TSDataType type, String... tags) {
-    // TODO spricoder update iotdb reporter
-    updateValue(name, value, type, System.currentTimeMillis(), tags);
+  public InternalReporterType getType() {
+    return InternalReporterType.IOTDB;
   }
 
   @Override
-  public void updateValue(String name, Object value, TSDataType type, Long time, String... tags) {
+  public boolean start() {
+    if (currentServiceFuture == null) {
+      currentServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+              service,
+              this::collectAutoGauge,
+              1,
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getAsyncCollectPeriodInSecond(),
+              TimeUnit.SECONDS);
+    }
+    return true;
+  }
+
+  @Override
+  public boolean stop() {
+    if (currentServiceFuture != null) {
+      currentServiceFuture.cancel(true);
+      currentServiceFuture = null;
+    }
+    clear();
+    return true;
+  }
+
+  @Override
+  public ReporterType getReporterType() {
+    return ReporterType.IOTDB;
+  }
+
+  @Override
+  public void setMetricManager(AbstractMetricManager metricManager) {
+    // TODO spricoder remove
+  }
+
+  @Override
+  public void writeToIoTDB(String devicePath, String sensor, Object value, long time) {
+    String prefix = devicePath + "." + sensor;
+    TSDataType type = inferType(value);
     if (value != null) {
       try {
         TSInsertRecordReq request = new TSInsertRecordReq();
-        String prefix = IoTDBMetricsUtils.generatePath(name, tags);
         List<String> measurements = Collections.singletonList("value");
         List<TSDataType> types = Collections.singletonList(type);
-        List<Object> values = Collections.singletonList(value);
-        ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+        ByteBuffer buffer = SessionUtils.getValueBuffer(types, Collections.singletonList(value));
 
         request.setPrefixPath(prefix);
         request.setTimestamp(time);
@@ -130,43 +168,9 @@ public class IoTDBInternalReporter extends InternalReporter {
   }
 
   @Override
-  public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {
-    Long time = System.currentTimeMillis();
-    updateValue(name + "_min", snapshot.getMin(), TSDataType.INT64, time, tags);
-    updateValue(name + "_mean", snapshot.getMean(), TSDataType.DOUBLE, time, tags);
-    updateValue(name + "_median", snapshot.getMedian(), TSDataType.DOUBLE, time, tags);
-    updateValue(name + "_95", snapshot.getValue(0.95), TSDataType.DOUBLE, time, tags);
-    updateValue(name + "_99", snapshot.getValue(0.99), TSDataType.DOUBLE, time, tags);
-    updateValue(name + "_999", snapshot.getValue(0.999), TSDataType.DOUBLE, time, tags);
-    updateValue(name + "_max", snapshot.getMax(), TSDataType.INT64, time, tags);
-  }
-
-  @Override
-  public InternalReporterType getType() {
-    return InternalReporterType.IOTDB;
-  }
-
-  @Override
-  public void start() {
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-              service,
-              this::collectAutoGauge,
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
+  public void writeToIoTDB(Map<Pair<String, String>, Object> values, long time) {
+    for (Map.Entry<Pair<String, String>, Object> entry : values.entrySet()) {
+      writeToIoTDB(entry.getKey().getLeft(), entry.getKey().getRight(), entry.getValue(), time);
     }
-  }
-
-  @Override
-  public void stop() {
-    if (currentServiceFuture != null) {
-      currentServiceFuture.cancel(true);
-      currentServiceFuture = null;
-    }
-    clear();
   }
 }

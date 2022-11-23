@@ -19,46 +19,32 @@
 
 package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
-public class MemoryInternalReporter extends InternalReporter {
-  @Override
-  public InternalReporterType getType() {
-    return InternalReporterType.MEMORY;
-  }
+public abstract class IoTDBReporter implements Reporter {
+  /** Write metric value into IoTDB */
+  public abstract void writeToIoTDB(String devicePath, String sensor, Object value, long time);
 
-  @Override
-  public void writeToIoTDB(String devicePath, String sensor, Object value, long time) {
-    // do nothing
-  }
+  /** Write metric values into IoTDB */
+  public abstract void writeToIoTDB(Map<Pair<String, String>, Object> values, long time);
 
-  @Override
-  public void writeToIoTDB(Map<Pair<String, String>, Object> values, long time) {
-    // do nothing
-  }
-
-  @Override
-  public boolean start() {
-    return false;
-  }
-
-  @Override
-  public boolean stop() {
-    return false;
-  }
-
-  @Override
-  public ReporterType getReporterType() {
-    return null;
-  }
-
-  @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
-    // do nothing
+  /** Infer type from object */
+  protected TSDataType inferType(Object value) {
+    TSDataType dataType;
+    if (value instanceof Boolean) {
+      dataType = TSDataType.BOOLEAN;
+    } else if (value instanceof Integer) {
+      dataType = TSDataType.INT32;
+    } else if (value instanceof Long) {
+      dataType = TSDataType.INT64;
+    } else if (value instanceof Double) {
+      dataType = TSDataType.DOUBLE;
+    } else {
+      dataType = TSDataType.TEXT;
+    }
+    return dataType;
   }
 }

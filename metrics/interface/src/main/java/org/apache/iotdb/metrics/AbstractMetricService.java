@@ -29,6 +29,7 @@ import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.reporter.SessionIoTDBReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -36,15 +37,17 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -146,6 +149,10 @@ public abstract class AbstractMetricService {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }
+    }
+    if (metricConfig.getMetricReporterList().contains(ReporterType.IOTDB)) {
+      Reporter reporter = new SessionIoTDBReporter(metricManager);
+      compositeReporter.addReporter(reporter);
     }
   }
 
@@ -328,59 +335,40 @@ public abstract class AbstractMetricService {
     if (metric instanceof DoNothingMetric) {
       return;
     }
-    if (metric instanceof Counter) {
-      Counter counter = (Counter) metric;
-      internalReporter.updateValue(name, counter.count(), TSDataType.INT64, tags);
-    } else if (metric instanceof AutoGauge) {
-      internalReporter.addAutoGauge((AutoGauge) metric, name, tags);
-    } else if (metric instanceof Gauge) {
-      internalReporter.updateValue(name, ((Gauge) metric).value(), TSDataType.INT64, tags);
-    } else if (metric instanceof Rate) {
-      Rate rate = (Rate) metric;
-      Long time = System.currentTimeMillis();
-      internalReporter.updateValue(name + "_count", rate.getCount(), TSDataType.INT64, time, tags);
-      internalReporter.updateValue(
-          name + "_mean", rate.getMeanRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_1min", rate.getOneMinuteRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_5min", rate.getFiveMinuteRate(), TSDataType.DOUBLE, time, tags);
-      internalReporter.updateValue(
-          name + "_15min", rate.getFifteenMinuteRate(), TSDataType.DOUBLE, time, tags);
-    } else if (metric instanceof Histogram) {
-      Histogram histogram = (Histogram) metric;
-      internalReporter.writeSnapshotAndCount(name, histogram.takeSnapshot(), tags);
-    } else if (metric instanceof Timer) {
-      Timer timer = (Timer) metric;
-      internalReporter.writeSnapshotAndCount(name, timer.takeSnapshot(), tags);
-    }
+    Map<Pair<String, String>, Object> values = new HashMap<>();
+    IoTDBMetricsUtils.exportMetricToIoTDBFormat(metric, values, name, tags);
+    internalReporter.writeToIoTDB(values, System.currentTimeMillis());
   }
 
-  public List<String[]> getAllMetricKeys() {
+  public List<Pair<String, String[]>> getAllMetricKeys() {
     return metricManager.getAllMetricKeys();
   }
 
-  public Map<String[], Counter> getAllCounters() {
+  public Map<Pair<String, String[]>, IMetric> getAllMetrics() {
+    return metricManager.getAllMetrics();
+  }
+
+  public Map<Pair<String, String[]>, Counter> getAllCounters() {
     return metricManager.getAllCounters();
   }
 
-  public Map<String[], Gauge> getAllGauges() {
+  public Map<Pair<String, String[]>, Gauge> getAllGauges() {
     return metricManager.getAllGauges();
   }
 
-  public Map<String[], AutoGauge> getAllAutoGauges() {
+  public Map<Pair<String, String[]>, AutoGauge> getAllAutoGauges() {
     return metricManager.getAllAutoGauges();
   }
 
-  public Map<String[], Rate> getAllRates() {
+  public Map<Pair<String, String[]>, Rate> getAllRates() {
     return metricManager.getAllRates();
   }
 
-  public Map<String[], Histogram> getAllHistograms() {
+  public Map<Pair<String, String[]>, Histogram> getAllHistograms() {
     return metricManager.getAllHistograms();
   }
 
-  public Map<String[], Timer> getAllTimers() {
+  public Map<Pair<String, String[]>, Timer> getAllTimers() {
     return metricManager.getAllTimers();
   }
 
