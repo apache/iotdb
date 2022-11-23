@@ -258,7 +258,7 @@ The relevant configuration of the metric module is in `conf/iotdb-{datanode/conf
 
 Take DataNode as example:
 
-```yaml
+```properties
 # Whether enable metric module
 # Datatype: boolean
 dn_enable_metric=true

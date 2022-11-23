@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 public class MetricConfigTest {
 
   @Test
-  public void testYamlConfig() {
+  public void testConfig() {
     List<String> prefixes = Arrays.asList("cn_", "dn_");
     List<Properties> propertiesList = new ArrayList<>();
     for (String prefix : prefixes) {

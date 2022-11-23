@@ -257,7 +257,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 ### 1.4.1. 配置文件
 以DataNode为例
 
-```yaml
+```properties
 # Whether enable metric module
 # Datatype: boolean
 dn_enable_metric=true
