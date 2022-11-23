@@ -97,10 +97,10 @@ public abstract class AbstractMetricManager {
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
-  public <T> Gauge getOrCreateAutoGauge(
+  public <T> AutoGauge getOrCreateAutoGauge(
       String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isValid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingGauge;
+      return DoNothingMetricManager.doNothingAutoGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
     IMetric metric =
@@ -111,8 +111,8 @@ public abstract class AbstractMetricManager {
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
-    if (metric instanceof Gauge) {
-      return (Gauge) metric;
+    if (metric instanceof AutoGauge) {
+      return (AutoGauge) metric;
     }
     throw new IllegalArgumentException(
         metricInfo + " is already used for a different type of name");
@@ -381,6 +381,21 @@ public abstract class AbstractMetricManager {
     for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
       if (entry.getValue() instanceof Gauge) {
         gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
+      }
+    }
+    return gaugeMap;
+  }
+
+  /**
+   * Get all autoGauges
+   *
+   * @return [name, tags...] -> autoGauge
+   */
+  protected Map<String[], AutoGauge> getAllAutoGauges() {
+    Map<String[], AutoGauge> gaugeMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof AutoGauge) {
+        gaugeMap.put(entry.getKey().toStringArray(), (AutoGauge) entry.getValue());
       }
     }
     return gaugeMap;

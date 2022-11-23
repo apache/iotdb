@@ -193,7 +193,7 @@ public abstract class AbstractMetricService {
     return metricManager.getOrCreateCounter(metric, metricLevel, tags);
   }
 
-  public <T> Gauge getOrCreateAutoGauge(
+  public <T> AutoGauge getOrCreateAutoGauge(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     return metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
   }
@@ -244,9 +244,9 @@ public abstract class AbstractMetricService {
   }
 
   /** GetOrCreateAutoGauge with internal report */
-  public <T> Gauge getOrCreateAutoGaugeWithInternalReport(
+  public <T> AutoGauge getOrCreateAutoGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    Gauge gauge = metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+    AutoGauge gauge = metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
     report(gauge, metric, tags);
     return gauge;
   }
@@ -362,6 +362,10 @@ public abstract class AbstractMetricService {
 
   public Map<String[], Gauge> getAllGauges() {
     return metricManager.getAllGauges();
+  }
+
+  public Map<String[], AutoGauge> getAllAutoGauges() {
+    return metricManager.getAllAutoGauges();
   }
 
   public Map<String[], Rate> getAllRates() {

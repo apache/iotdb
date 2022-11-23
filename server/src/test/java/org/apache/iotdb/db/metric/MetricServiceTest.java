@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -136,7 +137,7 @@ public class MetricServiceTest {
 
     // test auto gauge
     List<Integer> list = new ArrayList<>();
-    Gauge autoGauge =
+    AutoGauge autoGauge =
         metricService.getOrCreateAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
     assertEquals(0L, autoGauge.value());
@@ -149,7 +150,8 @@ public class MetricServiceTest {
     list = null;
     System.gc();
     assertEquals(0L, autoGauge.value());
-    assertEquals(5, metricService.getAllGauges().size());
+    assertEquals(4, metricService.getAllGauges().size());
+    assertEquals(1, metricService.getAllAutoGauges().size());
     metricService.remove(MetricType.GAUGE, "autoGauge", "tag", "value");
     assertEquals(4, metricService.getAllGauges().size());
     assertEquals(8, metricService.getAllMetricKeys().size());
