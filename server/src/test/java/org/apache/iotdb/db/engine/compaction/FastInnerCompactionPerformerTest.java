@@ -72,7 +72,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    validateSeqFiles(true);
     super.tearDown();
     for (TsFileResource tsFileResource : seqResources) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());

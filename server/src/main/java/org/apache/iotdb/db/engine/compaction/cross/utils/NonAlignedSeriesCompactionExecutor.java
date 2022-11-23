@@ -67,7 +67,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   }
 
   @Override
-  public void excute()
+  public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactFiles();
     if (hasStartMeasurement) {

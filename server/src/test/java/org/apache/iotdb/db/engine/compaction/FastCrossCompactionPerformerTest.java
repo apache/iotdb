@@ -3791,12 +3791,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
   }
 
   private void validateSeqFiles() {
+    TsFileValidationTool.clearMap(true);
     List<File> files = new ArrayList<>();
     for (TsFileResource resource : targetResources) {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
-    TsFileValidationTool.clearMap(true);
   }
 }

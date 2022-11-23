@@ -422,13 +422,13 @@ public class AbstractCompactionTest {
   }
 
   protected void validateSeqFiles(boolean isSeq) {
+    TsFileValidationTool.clearMap(true);
     List<File> files = new ArrayList<>();
     for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
-    TsFileValidationTool.clearMap(true);
   }
 
   protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
