@@ -123,7 +123,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("CREATE DATABASE root.sgtest"));
 
-        adminStmt.execute("GRANT USER sgtest PRIVILEGES SET_STORAGE_GROUP ON root.*");
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES CREATE_DATABASE ON root.*");
 
         try {
           userStmt.execute("CREATE DATABASE root.sgtest");
@@ -197,7 +197,7 @@ public class IoTDBAuthIT {
         // grant a non-existing user
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER nulluser PRIVILEGES SET_STORAGE_GROUP on root.a"));
+            () -> adminStmt.execute("GRANT USER nulluser PRIVILEGES CREATE_DATABASE on root.a"));
         // grant a non-existing privilege
         Assert.assertThrows(
             SQLException.class,
@@ -273,7 +273,7 @@ public class IoTDBAuthIT {
         // grant and revoke the user the privilege to create time series
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -282,13 +282,13 @@ public class IoTDBAuthIT {
         // privilege already exists
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a"));
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a"));
         // no privilege to create this one any more
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
         // no privilege to create timeseries
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         // no privilege to create this one any more
         Assert.assertThrows(
             SQLException.class,
@@ -319,7 +319,7 @@ public class IoTDBAuthIT {
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -366,7 +366,7 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute(
-            "GRANT ROLE admin PRIVILEGES SET_STORAGE_GROUP,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
+            "GRANT ROLE admin PRIVILEGES CREATE_DATABASE,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
         adminStmt.execute("GRANT admin TO tempuser");
 
         userStmt.execute("CREATE DATABASE root.a");

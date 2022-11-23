@@ -39,7 +39,7 @@ public class LoadTsFileStatement extends Statement {
   private int sgLevel;
   private boolean verifySchema;
   private boolean deleteAfterLoad;
-  private boolean autoCreateSchema;
+  private boolean autoCreateDatabase;
 
   private List<File> tsFiles;
   private List<TsFileResource> resources;
@@ -49,7 +49,7 @@ public class LoadTsFileStatement extends Statement {
     this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = true;
-    this.autoCreateSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
@@ -103,8 +103,8 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = verifySchema;
   }
 
-  public void setAutoCreateSchema(boolean autoCreateSchema) {
-    this.autoCreateSchema = autoCreateSchema;
+  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
+    this.autoCreateDatabase = autoCreateDatabase;
   }
 
   public boolean isVerifySchema() {
@@ -115,8 +115,8 @@ public class LoadTsFileStatement extends Statement {
     return deleteAfterLoad;
   }
 
-  public boolean isAutoCreateSchema() {
-    return autoCreateSchema;
+  public boolean isAutoCreateDatabase() {
+    return autoCreateDatabase;
   }
 
   public int getSgLevel() {

@@ -78,3 +78,6 @@ In addition, if you do not use the `-s` and `-q` parameters, after the export sc
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f myTsFile
 ```
+
+### example
+- It is recommended not to execute the write data command at the same time when loading data, which may lead to insufficient memory in the JVM.

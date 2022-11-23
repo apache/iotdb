@@ -25,20 +25,14 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -68,7 +62,6 @@ import java.util.function.Function;
  *   <li>Interfaces for initialization、recover and clear
  *   <li>Interfaces for schema region Info query and operation
  *   <li>Interfaces for Timeseries operation
- *   <li>Interfaces for auto create device
  *   <li>Interfaces for metadata info Query
  *       <ol>
  *         <li>Interfaces for metadata count
@@ -80,7 +73,6 @@ import java.util.function.Function;
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces for InsertPlan process
  *   <li>Interfaces for Template operations
- *   <li>Interfaces for Trigger
  * </ol>
  */
 public interface ISchemaRegion {
@@ -154,11 +146,6 @@ public interface ISchemaRegion {
   void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
   // endregion
 
-  // region Interfaces for auto create device
-  // auto create a deviceMNode, currently only used for schema sync operation
-  void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException;
-  // endregion
-
   // region Interfaces for metadata info Query
   /**
    * Check whether the path exists.
@@ -203,28 +190,12 @@ public interface ISchemaRegion {
    * counted.
    */
   int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
-   * path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query
   // Get paths of nodes in given level and matching the pathPattern.
   List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException;
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern.
@@ -314,11 +285,6 @@ public interface ISchemaRegion {
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
-
-  // attention: this path must be a device node
-  List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException;
-
   // endregion
   // endregion
 
@@ -407,25 +373,6 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Template operations
-  /**
-   * Get all paths set designated template
-   *
-   * @param templateName designated template name, blank string for any template exists
-   * @return paths set
-   */
-  Set<String> getPathsSetTemplate(String templateName) throws MetadataException;
-
-  Set<String> getPathsUsingTemplate(String templateName) throws MetadataException;
-
-  boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException;
-
-  void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException;
-
-  void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException;
-
-  void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException;
-
   void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException;
 
@@ -442,11 +389,5 @@ public interface ISchemaRegion {
 
   int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
 
-  // endregion
-
-  // region Interfaces for Trigger
-  IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException;
-
-  void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException;
   // endregion
 }

@@ -203,9 +203,9 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
       case TTL:
-        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+        return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+        return PrivilegeType.DELETE_DATABASE.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:
@@ -292,9 +292,9 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
       case TTL:
-        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+        return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+        return PrivilegeType.DELETE_DATABASE.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:

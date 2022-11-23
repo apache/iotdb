@@ -155,6 +155,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of write memory for loading TsFile */
+  private double loadTsFileProportion = 0.125;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -307,7 +310,7 @@ public class IoTDBConfig {
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
+  private int queryThreadCount = Math.max(4, Runtime.getRuntime().availableProcessors());
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -3256,6 +3259,10 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getLoadTsFileProportion() {
+    return loadTsFileProportion;
   }
 
   public void setCompactionProportion(double compactionProportion) {

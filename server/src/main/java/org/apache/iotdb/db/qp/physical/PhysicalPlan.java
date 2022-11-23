@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -50,7 +49,6 @@ import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
@@ -66,8 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -402,18 +398,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case STORAGE_GROUP_MNODE:
           plan = new StorageGroupMNodePlan();
-          break;
-        case CREATE_TRIGGER:
-          plan = new CreateTriggerPlan();
-          break;
-        case DROP_TRIGGER:
-          plan = new DropTriggerPlan();
-          break;
-        case START_TRIGGER:
-          plan = new StartTriggerPlan();
-          break;
-        case STOP_TRIGGER:
-          plan = new StopTriggerPlan();
           break;
         case CLUSTER_LOG:
           plan = new LogPlan();

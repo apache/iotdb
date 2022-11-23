@@ -146,8 +146,8 @@ public class AuthUtils {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
-        case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
+        case CREATE_DATABASE:
+        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -165,8 +165,8 @@ public class AuthUtils {
     } else {
       switch (type) {
         case READ_TIMESERIES:
-        case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
+        case CREATE_DATABASE:
+        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -373,6 +373,12 @@ public class AuthUtils {
     for (String s : authorizationList) {
       PrivilegeType[] types = PrivilegeType.values();
       boolean legal = false;
+      if ("SET_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.CREATE_DATABASE.name();
+      }
+      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.DELETE_DATABASE.name();
+      }
       for (PrivilegeType privilegeType : types) {
         if (s.equalsIgnoreCase(privilegeType.name())) {
           result.add(privilegeType.ordinal());

@@ -26,11 +26,7 @@
 
 ### 字符串常量
 
-> 我们参照了 MySQL 对 字符串的定义：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
-
-MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
-
-即在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
+在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
 
 ```Plain%20Text
 'a string'
