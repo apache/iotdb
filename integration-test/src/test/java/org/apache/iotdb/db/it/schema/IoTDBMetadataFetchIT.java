@@ -658,6 +658,11 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
 
   @Test
   public void showDeadbandInfo() throws SQLException {
+    if (schemaTestMode.equals(SchemaTestMode.SchemaFileNonMemory)
+        || schemaTestMode.equals(SchemaTestMode.SchemaFilePartialMemory)) {
+      // TODO: delete this condition after SchemaFile supports props
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
