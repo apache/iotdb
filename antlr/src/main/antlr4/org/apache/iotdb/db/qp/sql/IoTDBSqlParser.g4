@@ -387,7 +387,7 @@ showPathsUsingSchemaTemplate
 
 // Show Space Quota
 showSpaceQuota
-    : SHOW SPACE QUOTA (OF DATABASE prefixPath (COMMA prefixPath)*)?
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
     ;
 
 // Count Storage Group

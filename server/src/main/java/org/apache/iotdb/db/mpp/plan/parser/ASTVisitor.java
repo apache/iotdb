@@ -2212,8 +2212,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
       if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
         setSpaceQuotaStatement.setDeviceNum(0);
-      } else if (Integer.parseInt(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)) <= 0) {
-        throw new SQLParserException("Please set the disk size greater than 0");
       } else {
         setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
       }
@@ -2228,7 +2226,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
     List<PartialPath> storageGroups = null;
-    if (ctx.OF() != null) {
+    if (ctx.prefixPath() != null) {
       storageGroups = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         storageGroups.add(parsePrefixPath(prefixPathContext));
@@ -2243,6 +2241,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private long parseUnit(String data) {
     String unit = data.substring(data.length() - 1);
     long disk = Long.parseLong(data.substring(0, data.length() - 1));
+    if (disk <= 0) {
+      throw new SQLParserException("Please set the disk size greater than 0");
+    }
     switch (unit) {
       case "M":
       case "m":
