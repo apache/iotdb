@@ -61,7 +61,7 @@ Supported datatypes:
 The following is an example of using SDT compression.
 
 ```
-IoTDB> CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2
+IoTDB> CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,DEADBAND=SDT,COMPDEV=2
 ```
 
 Prior to flushing and SDT compression, the results are shown below:

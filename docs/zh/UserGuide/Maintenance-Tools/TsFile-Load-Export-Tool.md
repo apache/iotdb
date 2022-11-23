@@ -19,13 +19,13 @@
 
 -->
 
-# TsFile Tool
+# 导入导出 TsFile
 
-TsFile can help you export the result set in the format of TsFile file to the specified path by executing the sql, command line sql, and sql file.
+TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式将结果集以TsFile文件的格式导出至指定路径.
 
-## Usage of export-tsfile.sh
+## 使用 export-tsfile.sh
 
-### Syntax
+### 运行方法
 
 ```shell
 # Unix/OS X
@@ -35,29 +35,30 @@ TsFile can help you export the result set in the format of TsFile file to the sp
 > tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
 ```
 
+参数:
 * `-h <host>`:
-  - The host address of the IoTDB service.
+  - IoTDB服务的主机地址。
 * `-p <port>`:
-  - The port number of the IoTDB service.
+  - IoTDB服务的端口号。
 * `-u <username>`:
-  - The username of the IoTDB service.
+  - IoTDB服务的用户名。
 * `-pw <password>`:
-  - Password for IoTDB service.
+  - IoTDB服务的密码。
 * `-td <directory>`:
-  - Specify the output path for the exported TsFile file.
+  - 为导出的TsFile文件指定输出路径。
 * `-f <tsfile name>`:
-  - For the file name of the exported TsFile file, just write the file name, and cannot include the file path and suffix. If the sql file or console input contains multiple sqls, multiple files will be generated in the order of sql.
-  - Example: There are three SQLs in the file or command line, and -f param is "dump", then three TsFile files: dump0.tsfile、dump1.tsfile、dump2.tsfile will be generated in the target path.
+  - 为导出的TsFile文件的文件名，只需写文件名称，不能包含文件路径和后缀。如果sql文件或控制台输入时包含多个sql，会按照sql顺序生成多个TsFile文件。
+  - 例如：文件中或命令行共有3个SQL，-f 为"dump"，那么会在目标路径下生成 dump0.tsfile、dump1.tsfile、dump2.tsfile三个TsFile文件。
 * `-q <query command>`:
-  - Directly specify the query statement you want to execute in the command.
-  - Example: `select * from root.** limit 100`
+  - 在命令中直接指定想要执行的查询语句。
+  - 例如: `select * from root.** limit 100`
 * `-s <sql file>`:
-  - Specify a SQL file that contains one or more SQL statements. If an SQL file contains multiple SQL statements, the SQL statements should be separated by newlines. Each SQL statement corresponds to an output TsFile file.
+  - 指定一个SQL文件，里面包含一条或多条SQL语句。如果一个SQL文件中包含多条SQL语句，SQL语句之间应该用换行符进行分割。每一条SQL语句对应一个输出的TsFile文件。
 
 
-In addition, if you do not use the `-s` and `-q` parameters, after the export script is started, you need to enter the query statement as prompted by the program, and different query results will be saved to different TsFile files.
+除此之外，如果你没有使用`-s`和`-q`参数，在导出脚本被启动之后你需要按照程序提示输入查询语句，不同的查询结果会被保存到不同的TsFile文件中。
 
-### example
+### 运行示例
 
 ```shell
 # Unix/OS X
@@ -78,3 +79,7 @@ In addition, if you do not use the `-s` and `-q` parameters, after the export sc
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f myTsFile
 ```
+
+### Q&A
+
+- 建议在导入数据时不要同时执行写入数据命令，这将有可能导致JVM内存不足的情况。

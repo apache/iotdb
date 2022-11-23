@@ -73,7 +73,7 @@ public class CommonConfig {
           + "procedure";
 
   /** Sync directory, including the log and hardlink tsfiles */
-  private String syncFolder =
+  private String syncDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** WAL directories */
@@ -125,7 +125,7 @@ public class CommonConfig {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-    syncFolder = addHomeDir(syncFolder, homeDir);
+    syncDir = addHomeDir(syncDir, homeDir);
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i], homeDir);
     }
@@ -214,12 +214,12 @@ public class CommonConfig {
     this.procedureWalFolder = procedureWalFolder;
   }
 
-  public String getSyncFolder() {
-    return syncFolder;
+  public String getSyncDir() {
+    return syncDir;
   }
 
-  public void setSyncFolder(String syncFolder) {
-    this.syncFolder = syncFolder;
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
   }
 
   public String[] getWalDirs() {

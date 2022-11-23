@@ -129,7 +129,7 @@ Here is a list of Status Code and related message:
 |1004|DATANODE_NOT_EXIST|DataNode not exist error|
 |1005|DATANODE_STOP_ERROR|DataNode stop error|
 |1006|REMOVE_DATANODE_ERROR|Remove datanode failed|
-|1007|REGISTER_REMOVED_DATANODE|The DataNode to be registered is removed before|
+|1007|REGISTER_DATANODE_WITH_WRONG_ID|The DataNode to be registered has incorrect register id|
 |1008|CAN_NOT_CONNECT_DATANODE|Can not connect to DataNode|
 |1100|LOAD_FILE_ERROR|Meet error while loading file|
 |1101|LOAD_PIECE_OF_TSFILE_ERROR|Error when load a piece of TsFile when loading|

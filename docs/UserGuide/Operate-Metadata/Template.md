@@ -30,7 +30,7 @@ Note: The `schema` keyword in the following statements can be omitted.
 The SQL syntax for creating a metadata template is as follows:
 
 ```sql
-CREATE SCHEMA? TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
+CREATE SCHEMA TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
 ```
 
 **Example 1:** Create a template containing two non-aligned timeseires

@@ -186,6 +186,7 @@ public class IoTDBDescriptor {
         // update all data seriesPath
         conf.updatePath();
         commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
@@ -1535,7 +1536,7 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     MetricService.getInstance().reloadProperties(reloadLevel);
   }
 
