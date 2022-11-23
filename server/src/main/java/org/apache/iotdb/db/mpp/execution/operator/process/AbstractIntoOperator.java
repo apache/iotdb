@@ -142,8 +142,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   private boolean existNonEmptyStatement(
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
+    if (insertTabletStatementGenerators == null) {
+      return false;
+    }
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      if (!generator.isEmpty()) {
+      if (generator != null && !generator.isEmpty()) {
         return true;
       }
     }

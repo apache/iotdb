@@ -46,7 +46,7 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
   @Override
   protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
     Description description = describeChild(method);
-    if (description.getClassName().contains("SelectIntoIT")) {
+    if (description.getClassName().contains("SelectInto")) {
       logger.info("Run {}", description.getMethodName());
       long currentTime = System.currentTimeMillis();
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
