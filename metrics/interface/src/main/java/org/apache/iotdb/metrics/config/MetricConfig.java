@@ -40,9 +40,6 @@ public class MetricConfig {
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList = Collections.emptyList();
 
-  /** The type of internal report */
-  private InternalReportType internalReportType = InternalReportType.MEMORY;
-
   /** The level of metric service */
   private MetricLevel metricLevel = MetricLevel.CORE;
 
@@ -53,6 +50,9 @@ public class MetricConfig {
 
   /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
+
+  /** The type of internal report */
+  private InternalReportType internalReportType = InternalReportType.MEMORY;
 
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value */
@@ -161,7 +161,8 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
-    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
+    ioTDBReporterConfig = newMetricConfig.getIoTDBReporterConfig();
+    internalReportType = newMetricConfig.getInternalReportType();
   }
 
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
@@ -257,6 +258,7 @@ public class MetricConfig {
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
-        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
+        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
+        && internalReportType.equals(anotherMetricConfig.getInternalReportType());
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
+import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -141,8 +142,10 @@ public abstract class AbstractMetricService {
     }
   }
 
+  public abstract void reloadInternalReporter(InternalReporter internalReporter);
+
   /** Reload metric service according to reloadLevel */
-  protected abstract void reloadProperties(ReloadLevel reloadLevel);
+  protected abstract void reloadService(ReloadLevel reloadLevel);
 
   // region interface from metric reporter
 

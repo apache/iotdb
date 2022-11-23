@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.service.metric.InternalReporter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReportType;
@@ -63,8 +63,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBIInternalReporter implements InternalReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBIInternalReporter.class);
+public class IoTDBInternalReporter implements InternalReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
@@ -75,7 +75,7 @@ public class IoTDBIInternalReporter implements InternalReporter {
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Map<Pair<String, String[]>, Gauge> autoGauges = new ConcurrentHashMap<>();
 
-  public IoTDBIInternalReporter() {
+  public IoTDBInternalReporter() {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
@@ -84,17 +84,6 @@ public class IoTDBIInternalReporter implements InternalReporter {
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
     }
     SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-              service,
-              this::collectAutoGauge,
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
-    }
   }
 
   private void collectAutoGauge() {
@@ -107,6 +96,16 @@ public class IoTDBIInternalReporter implements InternalReporter {
   @Override
   public void addAutoGauge(Gauge gauge, String name, String... tags) {
     autoGauges.put(new Pair<>(name, tags), gauge);
+  }
+
+  @Override
+  public void addAutoGauge(Map<Pair<String, String[]>, Gauge> gauges) {
+    autoGauges.putAll(gauges);
+  }
+
+  @Override
+  public Map<Pair<String, String[]>, Gauge> getAllAutoGauge() {
+    return autoGauges;
   }
 
   @Override
@@ -166,6 +165,21 @@ public class IoTDBIInternalReporter implements InternalReporter {
   @Override
   public InternalReportType getType() {
     return InternalReportType.IOTDB;
+  }
+
+  @Override
+  public void start() {
+    if (currentServiceFuture == null) {
+      currentServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+              service,
+              this::collectAutoGauge,
+              1,
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getAsyncCollectPeriodInSecond(),
+              TimeUnit.SECONDS);
+    }
   }
 
   @Override

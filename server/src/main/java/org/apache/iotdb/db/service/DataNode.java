@@ -66,7 +66,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
-import org.apache.iotdb.db.service.metrics.IoTDBIInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
@@ -75,6 +75,8 @@ import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -161,9 +163,18 @@ public class DataNode implements DataNodeMBean {
       // setup rpc service
       setUpRPCService();
       registerManager.register(MetricService.getInstance());
-      MetricService.getInstance().updateInternalReporter(new IoTDBIInternalReporter());
+
+      // init metric service
+      if (MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .getInternalReportType()
+          .equals(InternalReportType.IOTDB)) {
+        MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
+      }
+      MetricService.getInstance().startInternalReporter();
       // bind predefined metrics
       DataNodeMetricsHelper.bind();
+
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {

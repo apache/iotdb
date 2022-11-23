@@ -57,6 +57,10 @@ public class MetricConfigDescriptor {
               .getAsyncCollectPeriodInSecond()
               .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
         reloadLevel = ReloadLevel.RESTART_METRIC;
+      } else if (!metricConfig
+          .getInternalReportType()
+          .equals(newMetricConfig.getInternalReportType())) {
+        reloadLevel = ReloadLevel.RESTART_INTERNAL_REPORTER;
       } else {
         reloadLevel = ReloadLevel.RESTART_REPORTER;
       }

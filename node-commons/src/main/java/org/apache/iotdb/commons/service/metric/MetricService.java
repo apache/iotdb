@@ -28,6 +28,8 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetric;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.reporter.InternalReporter;
+import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -66,7 +68,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
     }
   }
 
-  public void restart() {
+  private void restart() {
     logger.info("Restart metric Service.");
     restartService();
     logger.info("Finish restart metric Service");
@@ -198,8 +200,18 @@ public class MetricService extends AbstractMetricService implements MetricServic
   }
 
   @Override
-  public void reloadProperties(ReloadLevel reloadLevel) {
-    logger.info("Reload properties of metric service");
+  public void reloadInternalReporter(InternalReporter internalReporter) {
+    logger.info("Reload internal reporter");
+    internalReporter.addAutoGauge(this.internalReporter.getAllAutoGauge());
+    this.internalReporter.stop();
+    this.internalReporter = internalReporter;
+    this.internalReporter.start();
+    logger.info("Finish reloading internal reporter");
+  }
+
+  @Override
+  public void reloadService(ReloadLevel reloadLevel) {
+    logger.info("Reload metric service");
     synchronized (this) {
       switch (reloadLevel) {
         case RESTART_METRIC:
@@ -226,9 +238,11 @@ public class MetricService extends AbstractMetricService implements MetricServic
   }
 
   public void updateInternalReporter(InternalReporter InternalReporter) {
-    if (metricConfig.getInternalReportType().equals(InternalReporter.getType())) {
-      this.internalReporter = InternalReporter;
-    }
+    this.internalReporter = InternalReporter;
+  }
+
+  public void startInternalReporter() {
+    this.internalReporter.start();
   }
 
   public static MetricService getInstance() {

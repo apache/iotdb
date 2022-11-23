@@ -17,16 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.service.metric;
+package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MemoryInternalReporter implements InternalReporter {
   @Override
   public void addAutoGauge(Gauge gauge, String name, String... tags) {}
+
+  @Override
+  public void addAutoGauge(Map<Pair<String, String[]>, Gauge> gauges) {}
+
+  @Override
+  public Map<Pair<String, String[]>, Gauge> getAllAutoGauge() {
+    return new HashMap<>();
+  }
 
   @Override
   public void clear() {}
@@ -44,6 +56,9 @@ public class MemoryInternalReporter implements InternalReporter {
   public InternalReportType getType() {
     return InternalReportType.MEMORY;
   }
+
+  @Override
+  public void start() {}
 
   @Override
   public void stop() {}

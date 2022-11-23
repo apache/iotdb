@@ -17,15 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.service.metric;
+package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.Map;
 
 public interface InternalReporter {
   void addAutoGauge(Gauge gauge, String name, String... tags);
+
+  void addAutoGauge(Map<Pair<String, String[]>, Gauge> gauges);
+
+  Map<Pair<String, String[]>, Gauge> getAllAutoGauge();
 
   void clear();
 
@@ -36,6 +43,8 @@ public interface InternalReporter {
   void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags);
 
   InternalReportType getType();
+
+  void start();
 
   void stop();
 }
