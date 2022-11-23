@@ -203,20 +203,20 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 * mpp\_data\_exchange\_core\_pool\_size
 
-|Name| mpp\_data\_exchange\_core\_pool\_size |
-|:---:|:---|
-|Description| Core size of ThreadPool of MPP data exchange|
-|Type| int |
-|Default| 1 |
-|Effective|After restarting system|
+|Name| mpp\_data\_exchange\_core\_pool\_size        |
+|:---:|:---------------------------------------------|
+|Description| Core size of ThreadPool of MPP data exchange |
+|Type| int                                          |
+|Default| 10                                           |
+|Effective| After restarting system                      |
 
 * mpp\_data\_exchange\_max\_pool\_size
 
 |Name| mpp\_data\_exchange\_max\_pool\_size |
-|:---:|:---|
+|:---:|:--|
 |Description| Max size of ThreadPool of MPP data exchange |
 |Type| int |
-|Default| 5 |
+|Default| 10 |
 |Effective|After restarting system|
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
