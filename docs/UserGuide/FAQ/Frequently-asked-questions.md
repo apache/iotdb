@@ -87,7 +87,7 @@ By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can ch
 
 **Where can I find IoTDB data files?**
 
-By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data```.
+By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data/datanode/data```.
 
 **How do I know how many time series are stored in IoTDB?**
 

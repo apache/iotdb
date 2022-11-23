@@ -21,15 +21,17 @@
 
 # DataNode/Standalone Configuration Parameters
 
-We use the same configuration files for IoTDB DataNode and Standalone version, all under the `datanode/conf`.
+We use the same configuration files for IoTDB DataNode and Standalone version, all under the `conf`.
 
 * `datanode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of DataNode and Standalone.
 
 * `iotdb-datanode.properties`：IoTDB DataNode/Standalone system configurations.
 
+* `iotdb-common.properties`：IoTDB common configurations.
+
 ## Hot Modification Configuration
 
-For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` during the system operation and applying them to the system immediately. 
+For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately. 
 In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
 
 Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
@@ -102,22 +104,22 @@ The user and passwords are in ${IOTDB\_CONF}/conf/jmx.password.
 
 The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
-## DataNode/Standalone Configuration File (iotdb-datanode.properties)
+## DataNode/Standalone Configuration File (iotdb-datanode.properties and iotdb-common.properties)
 
 ### Client RPC Service
 
-* rpc\_address
+* dn\_rpc\_address
 
-|Name| rpc\_address |
-|:---:|:---|
-|Description| The client rpc service listens on the address.|
-|Type|String|
-|Default| 0.0.0.0 |
-|Effective|After restarting system|
+|Name| dn\_rpc\_address                               |
+|:---:|:-----------------------------------------------|
+|Description| The client rpc service listens on the address. |
+|Type| String                                         |
+|Default| 127.0.0.1                                      |
+|Effective| After restarting system                        |
 
-* rpc\_port
+* dn\_rpc\_port
 
-|Name| rpc\_port |
+|Name| dn\_rpc\_port |
 |:---:|:---|
 |Description| The client rpc service listens on the port.|
 |Type|Short Int : [0,65535]|
@@ -141,6 +143,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
+
+* rpc\_selector\_thread\_count
+
+|Name| rpc\_selector\_thread\_count       |
+|:---:|:-----------------------------------|
+|Description| The number of rpc selector thread. |
+|Type| int                                |
+|Default| false                              |
+|Effective| After restarting system            |
+
+* rpc\_min\_concurrent\_client\_num
+
+|Name| rpc\_min\_concurrent\_client\_num  |
+|:---:|:-----------------------------------|
+|Description| Minimum concurrent rpc connections |
+|Type| Short Int : [0,65535]              |
+|Description| 1                                  |
+|Effective| After restarting system            |
 
 * rpc\_max\_concurrent\_client\_num
 
