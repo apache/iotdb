@@ -46,33 +46,40 @@ public class LoadScoreGreedyRouter implements IRouter {
 
     replicaSets.forEach(
         replicaSet -> {
-          TRegionReplicaSet sortedReplicaSet = new TRegionReplicaSet();
-          sortedReplicaSet.setRegionId(replicaSet.getRegionId());
-
-          // List<Pair<loadScore, TDataNodeLocation>> for sorting
-          List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
-          replicaSet
-              .getDataNodeLocations()
-              .forEach(
-                  dataNodeLocation -> {
-                    // The absenteeism of loadScoreMap means ConfigNode-leader doesn't receive any
-                    // heartbeat from that DataNode.
-                    // In this case we put a maximum loadScore into the sortList.
-                    sortList.add(
-                        new Pair<>(
-                            dataNodeLoadScoreMap.computeIfAbsent(
-                                dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
-                            dataNodeLocation));
-                  });
-
-          sortList.sort(Comparator.comparingLong(Pair::getLeft));
-          for (Pair<Long, TDataNodeLocation> entry : sortList) {
-            sortedReplicaSet.addToDataNodeLocations(entry.getRight());
-          }
-
+          TRegionReplicaSet sortedReplicaSet =
+              sortReplicasByLoadScore(replicaSet, dataNodeLoadScoreMap);
           regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
         });
 
     return regionPriorityMap;
+  }
+
+  protected static TRegionReplicaSet sortReplicasByLoadScore(
+      TRegionReplicaSet replicaSet, Map<Integer, Long> dataNodeLoadScoreMap) {
+    TRegionReplicaSet sortedReplicaSet = new TRegionReplicaSet();
+    sortedReplicaSet.setRegionId(replicaSet.getRegionId());
+
+    // List<Pair<loadScore, TDataNodeLocation>> for sorting
+    List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
+    replicaSet
+        .getDataNodeLocations()
+        .forEach(
+            dataNodeLocation -> {
+              // The absenteeism of loadScoreMap means ConfigNode-leader doesn't receive any
+              // heartbeat from that DataNode.
+              // In this case we put a maximum loadScore into the sortList.
+              sortList.add(
+                  new Pair<>(
+                      dataNodeLoadScoreMap.computeIfAbsent(
+                          dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
+                      dataNodeLocation));
+            });
+
+    sortList.sort(Comparator.comparingLong(Pair::getLeft));
+    for (Pair<Long, TDataNodeLocation> entry : sortList) {
+      sortedReplicaSet.addToDataNodeLocations(entry.getRight());
+    }
+
+    return sortedReplicaSet;
   }
 }

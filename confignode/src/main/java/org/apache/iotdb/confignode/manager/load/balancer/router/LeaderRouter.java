@@ -19,18 +19,15 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** The LeaderRouter always pick the leader Replica */
-public class LeaderRouter implements IRouter {
+public class LeaderRouter extends LoadScoreGreedyRouter implements IRouter {
 
   public LeaderRouter() {
     // Empty constructor
@@ -46,39 +43,19 @@ public class LeaderRouter implements IRouter {
 
     replicaSets.forEach(
         replicaSet -> {
+          /* 1. Sort replicaSet by loadScore */
+          TRegionReplicaSet sortedReplicaSet =
+              sortReplicasByLoadScore(replicaSet, dataNodeLoadScoreMap);
+
+          /* 2. Pick leader if leader exists and available */
           int leaderId = regionLeaderMap.getOrDefault(replicaSet.getRegionId(), -1);
-          TRegionReplicaSet sortedReplicaSet = new TRegionReplicaSet();
-          sortedReplicaSet.setRegionId(replicaSet.getRegionId());
-
-          /* 1. Pick leader if leader exists */
-          if (leaderId != -1) {
-            for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-              if (dataNodeLocation.getDataNodeId() == leaderId) {
-                sortedReplicaSet.addToDataNodeLocations(dataNodeLocation);
+          if (leaderId != -1
+              && dataNodeLoadScoreMap.getOrDefault(leaderId, Long.MAX_VALUE) < Long.MAX_VALUE) {
+            for (int i = 0; i < sortedReplicaSet.getDataNodeLocationsSize(); i++) {
+              if (sortedReplicaSet.getDataNodeLocations().get(i).getDataNodeId() == leaderId) {
+                Collections.swap(sortedReplicaSet.getDataNodeLocations(), 0, i);
+                break;
               }
-            }
-          }
-
-          /* 2. Sort replicaSets by loadScore and pick the rest */
-          // List<Pair<loadScore, TDataNodeLocation>> for sorting
-          List<Pair<Long, TDataNodeLocation>> sortList = new Vector<>();
-          replicaSet
-              .getDataNodeLocations()
-              .forEach(
-                  dataNodeLocation -> {
-                    // The absenteeism of loadScoreMap means ConfigNode-leader doesn't receive any
-                    // heartbeat from that DataNode.
-                    // In this case we put a maximum loadScore into the sortList.
-                    sortList.add(
-                        new Pair<>(
-                            dataNodeLoadScoreMap.computeIfAbsent(
-                                dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
-                            dataNodeLocation));
-                  });
-          sortList.sort(Comparator.comparingLong(Pair::getLeft));
-          for (Pair<Long, TDataNodeLocation> entry : sortList) {
-            if (entry.getRight().getDataNodeId() != leaderId) {
-              sortedReplicaSet.addToDataNodeLocations(entry.getRight());
             }
           }
 
