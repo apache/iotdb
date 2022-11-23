@@ -19,7 +19,7 @@
 
 -->
 
-
+# KeyWords and Reserved Words
 
 Keywords are words that have significance in SQL. Keywords can be used as an identifier. Certain keywords, such as TIME/TIMESTAMP and ROOT, are reserved and cannot use as identifiers.
 

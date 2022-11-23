@@ -19,7 +19,7 @@
 
 -->
 
-
+# Literal Values
 
 This section describes how to write literal values in IoTDB. These include strings, numbers, timestamp values, boolean values, and NULL.
 

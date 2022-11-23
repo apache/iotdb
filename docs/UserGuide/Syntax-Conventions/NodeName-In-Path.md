@@ -19,7 +19,7 @@
 
 -->
 
-
+# Node Name in Path
 
 Node name is a special identifier, it can also be wildcard `*` and `**`. When creating timeseries, node name can not be wildcard. In query statment, you can use wildcard to match one or more nodes of path.
 
