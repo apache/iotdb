@@ -35,6 +35,21 @@ DataNode 是集群的数据节点，管理多个数据分片、元数据分片�
 
 Client 只能通过 DataNode 进行数据读写。
 
+### 名词解释
+
+| 名词                | 类型            | 解释                                   |
+|:------------------|:--------------|:-------------------------------------|
+| ConfigNode        | 节点角色          | 配置节点，管理集群节点信息、分区信息，监控集群状态、控制负载均衡     |
+| DataNode          | 节点角色          | 数据节点，管理数据、元数据                        |
+| Database          | 元数据           | 数据库，不同数据库的数据物理隔离                     |
+| DeviceId          | 设备名           | 元数据树中从 root 到倒数第二级的全路径表示一个设备名        |
+| SeriesSlot        | 序列分区槽         | 每个 Database 会对应固定个数的序列槽，包含其中序列的元数据   |
+| SeriesTimeSlot    | 一个序列槽的一个时间分区槽 | 对应一个 SeriesSlot 内所有序列一个时间分区的数据       |
+| DataRegion        | 一组数据分区        | 多个 SeriesTimeSlot 的集合                |
+| DataRegionGroup   | 逻辑概念          | 包含数据副本数个 DataRegion，管理相同的数据，互为备份     |
+| SchemaRegion      | 一组元数据分区       | 多个 SeriesSlot 的集合                    |
+| SchemaRegionGroup | 逻辑概念          | 包含元数据副本数个 SchemaRegion，管理相同的元数据，互为备份 |
+
 ## 集群特点
 
 * 原生分布式

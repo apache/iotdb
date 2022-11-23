@@ -769,8 +769,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    int preDeletedNum = 0;
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    long preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
         // Given pathPatterns may match one timeseries multi times, which may results in the
@@ -962,20 +962,20 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * path. All timeseries start with the matched prefix path will be counted.
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(
@@ -991,24 +991,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * counted.
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevicesNum(pathPattern, isPrefixMatch);
   }
 
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
-  }
-
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -1662,9 +1657,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    int preDeactivateNum = 0;
+    long preDeactivateNum = 0;
     Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       for (IEntityMNode entityMNode :
@@ -1732,9 +1727,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
-    int result = 0;
+    long result = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }

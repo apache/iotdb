@@ -64,7 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -177,8 +177,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetTimePartitionInterval:
           plan = new SetTimePartitionIntervalPlan();
           break;
-        case AdjustMaxRegionGroupCount:
-          plan = new AdjustMaxRegionGroupCountPlan();
+        case AdjustMaxRegionGroupNum:
+          plan = new AdjustMaxRegionGroupNumPlan();
           break;
         case CountStorageGroup:
           plan = new CountStorageGroupPlan();

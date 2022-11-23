@@ -54,7 +54,7 @@ public class TsFileLoader implements ILoader {
       statement.setDeleteAfterLoad(true);
       statement.setSgLevel(parseSgLevel());
       statement.setVerifySchema(true);
-      statement.setAutoCreateSchema(true);
+      statement.setAutoCreateDatabase(false);
 
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
