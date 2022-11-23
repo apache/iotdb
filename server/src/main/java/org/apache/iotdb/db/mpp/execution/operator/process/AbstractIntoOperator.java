@@ -92,6 +92,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   protected void insertMultiTabletsInternally(boolean needCheck) {
+    LOGGER.info("insertMultiTabletsInternally, needCheck = {}", needCheck);
+
     if (insertTabletStatementGenerators == null
         || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
       return;
@@ -138,6 +140,16 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return false;
   }
 
+  private boolean existNonEmptyStatement(
+      List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!generator.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   protected int findWritten(String device, String measurement) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (!Objects.equals(generator.getDevice(), device)) {
@@ -160,7 +172,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    boolean hasNext = existNonEmptyStatement(insertTabletStatementGenerators) && child.hasNext();
+    LOGGER.info("in driver, hasNext() = {}", hasNext);
+    return hasNext;
   }
 
   @Override
@@ -173,7 +187,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return child.isFinished();
+    return !hasNext();
   }
 
   @Override
