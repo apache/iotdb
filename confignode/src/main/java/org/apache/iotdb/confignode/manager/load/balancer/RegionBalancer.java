@@ -125,6 +125,7 @@ public class RegionBalancer {
     switch (regionAllocateStrategy) {
       case COPY_SET:
         return new CopySetRegionAllocator();
+      case GREEDY:
       default:
         return new GreedyRegionAllocator();
     }
