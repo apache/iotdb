@@ -100,6 +100,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String deviceId;
 
+  protected String measurementId;
+
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
@@ -109,8 +111,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
+      measurementId = "";
     } else {
       chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
+      measurementId = measurementSchemaList.get(0).getMeasurementId();
     }
   }
 

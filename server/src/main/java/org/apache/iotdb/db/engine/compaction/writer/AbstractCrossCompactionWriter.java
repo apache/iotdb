@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -182,7 +183,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       throws IOException {
     if (timestamp <= lastTime[subTaskId]) {
       throw new RuntimeException(
-          "Timestamp of the current point is "
+          "Timestamp of the current point of "
+              + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId)
+              + " is "
               + timestamp
               + ", which should be later than the last time "
               + lastTime[subTaskId]);
