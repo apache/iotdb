@@ -30,7 +30,7 @@ IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元�
 创建元数据模板的 SQL 语法如下：
 
 ```sql
-CREATE SCHEMA? TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
+CREATE SCHEMA TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
 ```
 
 **示例1：** 创建包含两个非对齐序列的元数据模板
