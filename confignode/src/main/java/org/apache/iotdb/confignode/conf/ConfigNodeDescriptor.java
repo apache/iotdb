@@ -128,6 +128,7 @@ public class ConfigNodeDescriptor {
         commonDescriptor
             .getConfig()
             .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());

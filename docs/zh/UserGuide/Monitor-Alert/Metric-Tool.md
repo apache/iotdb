@@ -252,48 +252,35 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 ## 1.4. 怎样获取这些系统监控指标？
 
-metric采集默认是关闭的，需要先到```conf/iotdb-{datanode/confignode}-metric.yml中打开后启动server，目前也支持启动后，通过`load configuration`热加载。
+监控模块的相关配置均在`conf/iotdb-{datanode/confignode}.properties`中，所有配置项支持通过`load configuration`命令热加载。
 
 ### 1.4.1. 配置文件
+以DataNode为例
 
-```yaml
-# 是否启动监控模块，默认为false
-enableMetric: false
+```properties
+# Whether enable metric module
+# Datatype: boolean
+dn_enable_metric=true
 
-# 是否启用操作延迟统计
-enablePerformanceStat: false
+# The reporters of metric module to report metrics
+# If there are more than one reporter, please separate them by commas ",".
+# Options: [JMX, PROMETHEUS, IOTDB]
+# Datatype: String
+dn_metric_reporter_list=JMX,PROMETHEUS
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB], IOTDB是默认关闭的。
-metricReporterList:
-  - JMX
-  - PROMETHEUS
+# The level of metric module
+# Options: [Core, Important, Normal, All]
+# Datatype: String
+dn_metric_level=CORE
 
-# 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
-
-# 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: IMPORTANT
-
-# Prometheus Reporter 使用的端口
-prometheusExporterPort: 9091
-
-# IoTDB Reporter相关的配置
-ioTDBReporterConfig:
-  host: 127.0.0.1
-  port: 6667
-  username: root
-  password: root
-  maxConnectionNumber: 3
-  location: metric
-  pushPeriodInSecond: 15
+# The port of prometheus reporter of metric module
+# Datatype: int
+dn_metric_prometheus_reporter_port=9091
 ```
 
-然后按照下面的操作获取监控指标数据
-
-1. 打开配置文件中的metric开关
-2. 其他参数使用默认配置即可
-3. 启动IoTDB
-4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
+1. 在配置文件中修改如上配置
+2. 启动IoTDB
+3. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
 
 ```
 ...
@@ -496,8 +483,8 @@ static_configs:
 ## 4.2. 配置参数
 
 - 配置文件位置
-  - datanode：conf/iotdb-datanode-metric.yml
-  - confignode：conf/iotdb-confignode-metric.yml
+  - datanode：conf/iotdb-datanode.properties
+  - confignode：conf/iotdb-confignode.properties
 
 <center>
 
