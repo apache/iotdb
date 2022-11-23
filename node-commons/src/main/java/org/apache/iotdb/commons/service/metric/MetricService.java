@@ -54,15 +54,9 @@ public class MetricService extends AbstractMetricService implements MetricServic
     }
   }
 
-  private void restart() {
-    logger.info("Restart metric Service.");
-    restartService();
-    logger.info("Finish restart metric Service");
-  }
-
-  /** restart metric service */
+  /** Restart metric service */
   public void restartService() {
-    logger.info("Restart Core Module");
+    logger.info("Restart metric service");
     stopCoreModule();
     internalReporter.clear();
     startCoreModule();
@@ -71,16 +65,17 @@ public class MetricService extends AbstractMetricService implements MetricServic
       metricSet.unbindFrom(this);
       metricSet.bindTo(this);
     }
+    logger.info("Finish restarting metric service");
   }
 
   @Override
   public void stop() {
-    logger.info("Stop metric Service.");
+    logger.info("Stop metric service");
     internalReporter.stop();
     internalReporter = new MemoryInternalReporter();
     stopService();
     JMXService.deregisterMBean(mbeanName);
-    logger.info("Finish stop metric Service");
+    logger.info("Finish stopping metric service");
   }
 
   @Override
@@ -95,11 +90,10 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   @Override
   public void reloadService(ReloadLevel reloadLevel) {
-    logger.info("Reload metric service");
     synchronized (this) {
       switch (reloadLevel) {
         case RESTART_METRIC:
-          restart();
+          restartService();
           break;
         case RESTART_REPORTER:
           stopAllReporter();

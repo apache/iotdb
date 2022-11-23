@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -134,7 +133,6 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(true);
