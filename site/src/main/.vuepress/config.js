@@ -903,7 +903,6 @@ var config = {
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
 							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
-							['Write-Data/CSV-Tool','CSV Tool'],
 							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
@@ -962,8 +961,8 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tools']
-
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
+							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
 					{
@@ -1851,7 +1850,6 @@ var config = {
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
 							['Write-Data/Load-External-Tsfile','加载 TsFile'],
-							['Write-Data/CSV-Tool','导入导出 CSV'],
 							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
@@ -1941,7 +1939,8 @@ var config = {
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具']
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
+							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
 					{
