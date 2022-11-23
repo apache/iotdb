@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -44,15 +43,11 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
@@ -353,9 +348,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {}
-
-  @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     throw new UnsupportedOperationException("isPathExist");
   }
@@ -421,18 +413,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getNodesCountInGivenLevel");
-  }
-
-  @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getNodesListInGivenLevel");
   }
 
@@ -673,12 +655,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    throw new UnsupportedOperationException("getAllMeasurementByDevicePath");
-  }
-
-  @Override
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path.getFullPath());
     if (deviceEntry == null) throw new PathNotExistException(path.getFullPath());
@@ -816,37 +792,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsSetTemplate");
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsUsingTemplate");
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements)
-      throws MetadataException {
-    throw new UnsupportedOperationException("isTemplateAppendable");
-  }
-
-  @Override
-  public void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setSchemaTemplate");
-  }
-
-  @Override
-  public void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("unsetSchemaTemplate");
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setUsingSchemaTemplate");
-  }
-
-  @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     throw new UnsupportedOperationException("activateSchemaTemplate");
@@ -879,16 +824,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
     return 0;
-  }
-
-  @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException("getMNodeForTrigger");
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    throw new UnsupportedOperationException("releaseMNodeAfterDropTrigger");
   }
 
   @Override

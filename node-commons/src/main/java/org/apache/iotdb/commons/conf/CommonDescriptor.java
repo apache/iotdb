@@ -85,10 +85,13 @@ public class CommonDescriptor {
             properties
                 .getProperty("default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))
                 .trim()));
-    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()).trim());
+    config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
-        properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).trim().split(","));
+        properties
+            .getProperty("dn_wal_dirs", String.join(",", config.getWalDirs()))
+            .trim()
+            .split(","));
 
     config.setCnRpcThriftCompressionEnabled(
         Boolean.parseBoolean(

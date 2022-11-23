@@ -108,10 +108,6 @@
         <!--            <outputDirectory>confignode</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>-->
         <!--        </fileSet>-->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
-        </fileSet>
     </fileSets>
     <!--    <files>-->
     <!--        <file>-->

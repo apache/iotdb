@@ -95,16 +95,13 @@ An example is as follows:
     select code from root.sg1.d1 where code not in ('200', '300', '400', '500');
     ````
 
-## Null Filter
-Use null filters to filter data whose data value is null or not.
-
-1. Select data with values is null:
+6. Select data with values is null:
 
     ```sql
     select code from root.sg1.d1 where temperature is null;
     ````
 
-2. Select data with values is not null:
+7. Select data with values is not null:
 
     ```sql
     select code from root.sg1.d1 where temperature is not null;

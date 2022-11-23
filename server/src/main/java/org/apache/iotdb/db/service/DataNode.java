@@ -57,7 +57,6 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -160,6 +159,9 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      registerManager.register(MetricService.getInstance());
+      // bind predefined metrics
+      DataNodeMetricsHelper.bind();
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
@@ -253,6 +255,10 @@ public class DataNode implements DataNodeMBean {
 
           logger.info("Register to the cluster successfully");
           return;
+        } else if (dataNodeRegisterResp.getStatus().getCode()
+            == TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode()) {
+          logger.error(dataNodeRegisterResp.getStatus().getMessage());
+          throw new StartupException("Cannot register to the cluster.");
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
@@ -363,15 +369,11 @@ public class DataNode implements DataNodeMBean {
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
     // registerManager.register(SettleService.getINSTANCE());
-    registerManager.register(TriggerRegistrationService.getInstance());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
-    registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
-    // bind predefined metrics
-    DataNodeMetricsHelper.bind();
   }
 
   /** set up RPC and protocols after DataNode is available */

@@ -39,7 +39,6 @@ import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -48,15 +47,11 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
@@ -850,11 +845,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     if (IoTDBConstant.PATH_ROOT.equals(path.getFullPath())) {
       return true;
@@ -912,35 +902,6 @@ public class RSchemaRegion implements ISchemaRegion {
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, nodetype);
-    return atomicInteger.get();
-  }
-
-  @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    // todo support wildcard
-    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      throw new UnsupportedOperationException(
-          "Wildcards are not currently supported for this operation"
-              + " [COUNT NODES pathPattern].");
-    }
-    String innerNameByLevel =
-        RSchemaUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
-    AtomicInteger atomicInteger = new AtomicInteger(0);
-    Function<String, Boolean> function =
-        s -> {
-          atomicInteger.incrementAndGet();
-          return true;
-        };
-    Arrays.stream(ALL_NODE_TYPE_ARRAY)
-        .parallel()
-        .forEach(
-            x -> {
-              String getKeyByInnerNameLevel =
-                  x + innerNameByLevel + RSchemaConstants.PATH_SEPARATOR + level;
-              readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel, function);
-            });
-
     return atomicInteger.get();
   }
 
@@ -1053,8 +1014,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
@@ -1313,29 +1273,6 @@ public class RSchemaRegion implements ISchemaRegion {
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 
     return allResult;
-  }
-
-  @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    List<MeasurementPath> result = new ArrayList<>();
-    String nextLevelPathName =
-        RSchemaUtils.convertPartialPathToInner(
-            devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
-    Map<byte[], byte[]> allMeasurementPath =
-        readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
-    for (Map.Entry<byte[], byte[]> entry : allMeasurementPath.entrySet()) {
-      PartialPath pathName;
-      try {
-        pathName = new PartialPath(new String(entry.getKey()));
-      } catch (IllegalPathException e) {
-        throw new PathNotExistException(e.getMessage());
-      }
-      MeasurementSchema measurementSchema =
-          (MeasurementSchema) RSchemaUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
-      result.add(new MeasurementPath(pathName, measurementSchema));
-    }
-    return result;
   }
 
   @Override
@@ -1867,36 +1804,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(ISetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void unsetSchemaTemplate(IUnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(IActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     throw new UnsupportedOperationException();
@@ -1928,16 +1835,6 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

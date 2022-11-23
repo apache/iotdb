@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
@@ -37,9 +36,6 @@ import java.util.Set;
  */
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
-  // traverse for specific database
-  protected StorageGroupFilter storageGroupFilter = null;
-
   // level query option
   protected int targetLevel = -1;
 
@@ -48,16 +44,6 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-  }
-
-  @Override
-  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
-    if (storageGroupFilter != null
-        && node.isStorageGroup()
-        && !storageGroupFilter.satisfy(node.getFullPath())) {
-      return;
-    }
-    super.traverse(node, idx, level);
   }
 
   @Override
@@ -94,10 +80,6 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   }
 
   protected abstract void transferToResult(IMNode node);
-
-  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
-    this.storageGroupFilter = storageGroupFilter;
-  }
 
   public void setTargetLevel(int targetLevel) {
     this.targetLevel = targetLevel;
