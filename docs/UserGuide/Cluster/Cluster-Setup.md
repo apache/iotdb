@@ -85,16 +85,18 @@ The total process are three steps:
 
 ### Start the first ConfigNode
 
-Please set parameters about RPC in conf/iotdb-confignode.properties:
+Please set the important parameters in conf/iotdb-confignode.properties and conf/iotdb-common.properties:
 
-| **Configuration**                          | **Description**                                                                              |
-|--------------------------------------------|----------------------------------------------------------------------------------------------|
-| cn\_internal\_address                      | Internal rpc service address of ConfigNode                                                   |
-| cn\_internal\_port                         | Internal rpc service address of ConfigNode                                                   |
-| cn\_consensus\_port                        | ConfigNode replication consensus protocol communication port                                 |
-| cn\_target\_config\_node\_list             | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
+iotdb-confignode.properties:
 
-Please set parameters about replication in conf/iotdb-common.properties:
+| **Configuration**              | **Description**                                                                              |
+|--------------------------------|----------------------------------------------------------------------------------------------|
+| cn\_internal\_address          | Internal rpc service address of ConfigNode                                                   |
+| cn\_internal\_port             | Internal rpc service port of ConfigNode                                                      |
+| cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                 |
+| cn\_target\_config\_node\_list | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
+
+iotdb-common.properties:
 
 | **Configuration**                          | **Description**                                                                                      |
 |--------------------------------------------|------------------------------------------------------------------------------------------------------|
@@ -121,15 +123,15 @@ More details  [ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Mas
 
 ### Add ConfigNode (Optional)
 
-This will add the replication factor of ConfigNode, except for the port couldn't conflict, make sure other configurations are the same with existing ConfigNode in Cluster, and set parameter cn\_target\_config\_nodes\_list as an active ConfigNode in Cluster.
+This will add the replication factor of ConfigNode, except for the ports that couldn't conflict with, make sure other configurations are the same with existing ConfigNode in Cluster, and set parameter cn\_target\_config\_nodes\_list as an active ConfigNode in Cluster.
 
 The adding ConfigNode also use the start-confignode.sh/bat.
 
 ### Start DataNode
 
-You could add no less than the number of data/schema_replication_factor DataNode.
+You could add any number of DataNode.
 
-Please set the important parameters in iotdb-datanode.properties.
+Please set the important parameters in iotdb-datanode.properties:
 
 | **Configuration**                   | **Description**                                  |
 |-------------------------------------|--------------------------------------------------|
@@ -198,14 +200,14 @@ confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 
 ### Remove DataNode
 
-Execute the remove-datanode shell on an active , and make sure that there are no less than the number of data/schema_replication_factor DataNodes in Cluster after removing.
+Execute the remove-datanode shell on an active, and make sure that there are no less than the number of data/schema_replication_factor DataNodes in Cluster after removing.
 
 Remove on Linux:
 ```
 # Remove the DataNode with datanode_id
 ./datanode/sbin/remove-datanode.sh <datanode_id>
 
-# Remove the DataNode with internal address:port
+# Remove the DataNode with rpc address:port
 ./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
