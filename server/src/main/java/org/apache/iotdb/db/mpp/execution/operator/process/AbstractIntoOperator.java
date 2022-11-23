@@ -172,7 +172,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    boolean hasNext = existNonEmptyStatement(insertTabletStatementGenerators) && child.hasNext();
+    boolean hasNext = existNonEmptyStatement(insertTabletStatementGenerators) || child.hasNext();
     LOGGER.info("in driver, hasNext() = {}", hasNext);
     return hasNext;
   }
