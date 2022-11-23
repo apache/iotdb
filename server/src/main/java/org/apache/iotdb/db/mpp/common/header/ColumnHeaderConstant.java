@@ -196,18 +196,18 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> countDevicesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_DEVICES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_DEVICES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countNodesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_NODES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_NODES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countLevelTimeSeriesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN, TSDataType.TEXT),
-          new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
+          new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countStorageGroupColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));

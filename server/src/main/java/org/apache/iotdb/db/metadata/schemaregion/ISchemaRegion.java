@@ -160,22 +160,22 @@ public interface ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 
   // The measurements will be grouped by the node in given level and then counted for each group.
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -189,7 +189,7 @@ public interface ISchemaRegion {
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
-  int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query

@@ -983,7 +983,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
@@ -992,7 +992,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
@@ -1008,12 +1008,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+  public long getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException {
     CounterTraverser counter =
@@ -1031,7 +1031,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
@@ -1045,7 +1045,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
+  public long getDevicesNum(PartialPath pathPattern) throws MetadataException {
     return getDevicesNum(pathPattern, false);
   }
 
@@ -1055,7 +1055,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * will be counted.
    */
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  public long getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     MNodeLevelCounter counter = new MNodeLevelCounter(storageGroupMNode, pathPattern, store, level);
     counter.setPrefixMatch(isPrefixMatch);
@@ -1064,7 +1064,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MeasurementGroupByLevelCounter counter =
         new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
@@ -1074,7 +1074,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -1360,7 +1360,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+  public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     CounterTraverser counterTraverser =
         new CounterTraverser(storageGroupMNode, pathPattern, store) {
