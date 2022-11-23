@@ -177,9 +177,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Dcom.sun.management.jmxremote.ssl=false",
               "-Dcom.sun.management.jmxremote.authenticate=false",
               "-Djava.rmi.server.hostname=" + getIp(),
-              "-Xms200m",
-              "-Xmx200m",
-              "-XX:MaxDirectMemorySize=200m",
+              "-Xms400m",
+              "-Xmx400m",
+              "-XX:MaxDirectMemorySize=400m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-cp",
               templateNodeLibPath));
