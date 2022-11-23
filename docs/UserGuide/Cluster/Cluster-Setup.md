@@ -252,7 +252,7 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 +------+----------+-------+---------------+------------+
 Total line number = 2
@@ -269,18 +269,18 @@ For folder cluster1:
 
 + Modify ConfigNode configurations:
 
-| **configuration item**         | **value**     |
-|--------------------------------|---------------|
-| cn\_internal\_address          | 0.0.0.0       |
-| cn\_internal\_port             | 22279         |
-| cn\_consensus\_port            | 22280         |
-| cn\_target\_config\_node\_list | 0.0.0.0:22277 |
+| **configuration item**         | **value**       |
+|--------------------------------|-----------------|
+| cn\_internal\_address          | 127.0.0.1       |
+| cn\_internal\_port             | 22279           |
+| cn\_consensus\_port            | 22280           |
+| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
 
 + Modify DataNode configurations:
 
 | **configuration item**              | **value**       |
 |-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 0.0.0.0         |
+| dn\_rpc\_address                    | 127.0.0.1       |
 | dn\_rpc\_port                       | 6668            |
 | dn\_internal\_address               | 127.0.0.1       |
 | dn\_internal\_port                  | 9004            |
@@ -293,18 +293,18 @@ For folder cluster2:
 
 + Modify ConfigNode configurations:
 
-| **configuration item**         | **value**     |
-|--------------------------------|---------------|
-| cn\_internal\_address          | 0.0.0.0       |
-| cn\_internal\_port             | 22281         |
-| cn\_consensus\_port            | 22282         |
-| cn\_target\_config\_node\_list | 0.0.0.0:22277 |
+| **configuration item**         | **value**       |
+|--------------------------------|-----------------|
+| cn\_internal\_address          | 127.0.0.1       |
+| cn\_internal\_port             | 22281           |
+| cn\_consensus\_port            | 22282           |
+| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
 
 + Modify DataNode configurations:
 
 | **configuration item**              | **value**       |
 |-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 0.0.0.0         |
+| dn\_rpc\_address                    | 127.0.0.1       |
 | dn\_rpc\_port                       | 6669            |
 | dn\_internal\_address               | 127.0.0.1       |
 | dn\_internal\_port                  | 9005            |
@@ -333,9 +333,9 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     2|ConfigNode|Running|        0.0.0.0|       22279|
-|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     2|ConfigNode|Running|      127.0.0.1|       22279|
+|     3|ConfigNode|Running|      127.0.0.1|       22281|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 |     4|  DataNode|Running|      127.0.0.1|        9004|
 |     5|  DataNode|Running|      127.0.0.1|        9005|
@@ -364,8 +364,8 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|        0.0.0.0|       22277|
-|     3|ConfigNode|Running|        0.0.0.0|       22281|
+|     0|ConfigNode|Running|      127.0.0.1|       22277|
+|     3|ConfigNode|Running|      127.0.0.1|       22281|
 |     1|  DataNode|Running|      127.0.0.1|        9003|
 |     5|  DataNode|Running|      127.0.0.1|        9005|
 +------+----------+-------+---------------+------------+
