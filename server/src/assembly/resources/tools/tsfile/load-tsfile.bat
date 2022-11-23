@@ -53,6 +53,7 @@ set on_success_parameter=
 
 echo %* | findstr /c:"-f">nul || (goto :load_err)
 
+@Rem get every param of input
 :loop
 set param=%1
 if %param%!== ! (
