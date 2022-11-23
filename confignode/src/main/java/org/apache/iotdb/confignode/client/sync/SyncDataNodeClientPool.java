@@ -172,7 +172,7 @@ public class SyncDataNodeClientPool {
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
-      LOGGER.error("Change regions leader error on Date node: {}", dataNode);
+      LOGGER.error("Change regions leader error on Date node: {}, e", dataNode);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
