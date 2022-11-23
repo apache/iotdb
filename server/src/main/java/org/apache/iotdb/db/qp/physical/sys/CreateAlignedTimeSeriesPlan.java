@@ -215,7 +215,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
       stream.write(encoding.ordinal());
     }
     for (CompressionType compressor : compressors) {
-      stream.write(compressor.ordinal());
+      stream.write(compressor.serialize());
     }
     if (tagOffsets == null) {
       tagOffsets = new ArrayList<>();
@@ -282,7 +282,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
       buffer.put((byte) encoding.ordinal());
     }
     for (CompressionType compressor : compressors) {
-      buffer.put((byte) compressor.ordinal());
+      buffer.put(compressor.serialize());
     }
     for (Long tagOffset : getTagOffsets()) {
       buffer.putLong(tagOffset);
@@ -339,7 +339,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
       buffer.put((byte) encoding.ordinal());
     }
     for (CompressionType compressor : compressors) {
-      buffer.put((byte) compressor.ordinal());
+      buffer.put(compressor.serialize());
     }
 
     // alias
@@ -383,7 +383,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan
     }
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[buffer.get()]);
+      compressors.add(CompressionType.deserialize(buffer.get()));
     }
     if (!isOldVersion) {
       tagOffsets = new ArrayList<>();

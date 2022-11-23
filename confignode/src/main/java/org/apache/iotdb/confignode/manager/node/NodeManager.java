@@ -198,8 +198,10 @@ public class NodeManager {
     ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
     ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
 
+    ratisConfig.setDataMaxRetryAttempts(conf.getDataRegionRatisMaxRetryAttempts());
     ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
     ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
@@ -249,8 +251,9 @@ public class NodeManager {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REGISTER_REMOVED_DATANODE.getStatusCode());
-      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
+      status.setCode(TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode());
+      status.setMessage(
+          "Cannot register datanode with wrong id. Maybe it's already removed, or it has another datanode's run-time properties.");
     }
 
     dataSet.setStatus(status);

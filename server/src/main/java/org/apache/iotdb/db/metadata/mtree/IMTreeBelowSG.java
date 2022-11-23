@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -239,11 +238,7 @@ public interface IMTreeBelowSG {
 
   /** Get all paths from root to the given level */
   List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException;
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get the count of timeseries matching the given path.
@@ -251,7 +246,7 @@ public interface IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
   /**
@@ -261,7 +256,7 @@ public interface IMTreeBelowSG {
    * @param templateMap <TemplateId, Template>
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -270,14 +265,14 @@ public interface IMTreeBelowSG {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
+  long getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get the count of timeseries matching the given path by tag.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException;
 
@@ -288,27 +283,27 @@ public interface IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get the count of devices matching the given path.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getDevicesNum(PartialPath pathPattern) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get the count of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.
    */
-  int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  long getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -336,76 +331,10 @@ public interface IMTreeBelowSG {
   List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
       throws MetadataException;
 
-  /**
-   * check whether there is template on given path and the subTree has template return true,
-   * otherwise false
-   */
-  void checkTemplateOnPath(PartialPath path) throws MetadataException;
-
-  /**
-   * Check route 1: If template has no direct measurement, just pass the check.
-   *
-   * <p>Check route 2: If template has direct measurement and mounted node is Internal, it should be
-   * set to Entity.
-   *
-   * <p>Check route 3: If template has direct measurement and mounted node is Entity,
-   *
-   * <ul>
-   *   <p>route 3.1: mounted node has no measurement child, then its alignment will be set as the
-   *   template.
-   *   <p>route 3.2: mounted node has measurement child, then alignment of it and template should be
-   *   identical, otherwise cast a exception.
-   * </ul>
-   *
-   * @return return the node competent to be mounted.
-   */
-  IMNode checkTemplateAlignmentWithMountedNode(IMNode mountedNode, Template template)
-      throws MetadataException;
-
-  void checkIsTemplateCompatibleWithChild(IMNode node, Template template) throws MetadataException;
-
-  void checkTemplateInUseOnLowerNode(IMNode node) throws MetadataException;
-
-  /**
-   * Check that each node set with tarTemplate and its descendants have overlapping nodes with
-   * appending measurements
-   */
-  boolean isTemplateAppendable(Template tarTemplate, List<String> appendMeasurements)
-      throws MetadataException;
-
-  /**
-   * Note that template and MTree cannot have overlap paths.
-   *
-   * @return true iff path corresponding to a measurement inside a template, whether using or not.
-   */
-  boolean isPathExistsWithinTemplate(PartialPath path) throws MetadataException;
-
-  /**
-   * Check measurement path and return the mounted node index on path. The node could have not
-   * created yet. The result is used for getDeviceNodeWithAutoCreate, which return corresponding
-   * IMNode on MTree.
-   *
-   * @return index on full path of the node which matches all measurements path with its
-   *     upperTemplate.
-   */
-  int getMountedNodeIndexOnMeasurementPath(PartialPath devicePath, String[] measurements)
-      throws MetadataException;
-
-  List<String> getPathsSetOnTemplate(String templateName) throws MetadataException;
-
-  List<String> getPathsUsingTemplate(String templateName) throws MetadataException;
-
-  /**
-   * Get template name on give path if any node of it has been set a template
-   *
-   * @return null if no template has been set on path
-   */
-  String getTemplateOnPath(PartialPath path) throws MetadataException;
-
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
 
   List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException;
 
-  int countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
+  long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

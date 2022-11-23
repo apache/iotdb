@@ -174,10 +174,10 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long sum = 0;
+    long max = 0;
     for (Operator operator : deviceOperators) {
-      sum += operator.calculateRetainedSizeAfterCallingNext();
+      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
-    return sum;
+    return max;
   }
 }

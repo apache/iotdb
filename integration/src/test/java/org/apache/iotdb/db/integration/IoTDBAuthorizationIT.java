@@ -98,7 +98,7 @@ public class IoTDBAuthorizationIT {
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
         userStmt.execute("SELECT * from root.a");
-        userStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         userStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.b.b");
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
@@ -349,7 +349,7 @@ public class IoTDBAuthorizationIT {
         // grant a non-existing user
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER nulluser PRIVILEGES SET_STORAGE_GROUP on root.a"));
+            () -> adminStmt.execute("GRANT USER nulluser PRIVILEGES CREATE_DATABASE on root.a"));
         // grant a non-existing privilege
         Assert.assertThrows(
             SQLException.class,
@@ -430,7 +430,7 @@ public class IoTDBAuthorizationIT {
         // grant and revoke the user the privilege to create time series
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -439,13 +439,13 @@ public class IoTDBAuthorizationIT {
         // privilege already exists
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a"));
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a"));
         // no privilege to create this one any more
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
         // no privilege to create timeseries
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         // no privilege to create this one any more
         Assert.assertThrows(
             SQLException.class,
@@ -499,7 +499,7 @@ public class IoTDBAuthorizationIT {
                   Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES SET_STORAGE_GROUP ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_DATABASE ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_TIMESERIES ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -551,7 +551,7 @@ public class IoTDBAuthorizationIT {
 
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute(
-            "GRANT ROLE admin PRIVILEGES SET_STORAGE_GROUP,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
+            "GRANT ROLE admin PRIVILEGES CREATE_DATABASE,CREATE_TIMESERIES,DELETE_TIMESERIES,READ_TIMESERIES,INSERT_TIMESERIES on root.**");
         adminStmt.execute("GRANT admin TO tempuser");
 
         userStmt.execute("CREATE DATABASE root.a");

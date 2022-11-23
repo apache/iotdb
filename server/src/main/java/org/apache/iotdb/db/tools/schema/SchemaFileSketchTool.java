@@ -44,7 +44,7 @@ import java.io.PrintWriter;
 public class SchemaFileSketchTool {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFileSketchTool.class);
-  private static final String SFST_CLI_PREFIX = "SchemaFileSketchTool";
+  private static final String SFST_CLI_PREFIX = "print-schema-file";
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "schema file";

@@ -51,7 +51,7 @@ public class DropwizardPrometheusReporter implements Reporter {
     if (httpServer != null) {
       return false;
     }
-    int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
+    int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusReporterPort();
     httpServer =
         HttpServer.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)

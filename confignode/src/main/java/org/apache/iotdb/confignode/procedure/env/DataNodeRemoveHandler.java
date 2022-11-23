@@ -402,7 +402,6 @@ public class DataNodeRemoveHandler {
         "{}, Begin to stop DataNode and kill the DataNode process {}",
         REMOVE_DATANODE_PROCESS,
         dataNode);
-
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithGivenRetry(

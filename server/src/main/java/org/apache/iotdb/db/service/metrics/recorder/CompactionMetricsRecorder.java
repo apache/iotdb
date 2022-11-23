@@ -48,9 +48,7 @@ public class CompactionMetricsRecorder {
             Tag.NAME.toString(),
             compactionType.toString(),
             Tag.TYPE.toString(),
-            aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.TYPE.toString(),
-            processChunkType.toString());
+            (aligned ? "ALIGNED" : "NOT_ALIGNED") + "_" + processChunkType.toString());
     MetricService.getInstance()
         .count(
             byteNum / 1024L,

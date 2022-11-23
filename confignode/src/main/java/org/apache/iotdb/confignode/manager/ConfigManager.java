@@ -793,7 +793,8 @@ public class ConfigManager implements IManager {
         if (consensusManager == null) {
           Thread.sleep(1000);
         } else {
-          consensusManager.createPeerForConsensusGroup(configNodeLocations);
+          // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
+          consensusManager.createPeerForConsensusGroup(Collections.emptyList());
           return StatusUtils.OK;
         }
       } catch (InterruptedException e) {

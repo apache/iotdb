@@ -34,7 +34,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   // level query option
   private int groupByLevel;
 
-  private Map<PartialPath, Integer> result = new HashMap<>();
+  private Map<PartialPath, Long> result = new HashMap<>();
   private List<String> timeseries = new ArrayList<>();
   private boolean hasTag = false;
 
@@ -78,7 +78,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       level--;
       if (level == groupByLevel) {
         path = parent.getPartialPath();
-        result.putIfAbsent(path, 0);
+        result.putIfAbsent(path, 0L);
         break;
       }
       parent = parent.getParent();
@@ -90,7 +90,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     if (level == groupByLevel) {
       path = node.getPartialPath();
-      result.putIfAbsent(path, 0);
+      result.putIfAbsent(path, 0L);
     }
     return false;
   }
@@ -100,7 +100,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     if (level == groupByLevel) {
       path = node.getPartialPath();
-      result.putIfAbsent(path, 0);
+      result.putIfAbsent(path, 0L);
     }
     if (!node.isMeasurement()) {
       return false;
@@ -116,11 +116,11 @@ public class MeasurementGroupByLevelCounter extends Traverser {
     return true;
   }
 
-  public Map<PartialPath, Integer> getResult() {
+  public Map<PartialPath, Long> getResult() {
     return result;
   }
 
-  public void setResult(Map<PartialPath, Integer> result) {
+  public void setResult(Map<PartialPath, Long> result) {
     this.result = result;
   }
 }
