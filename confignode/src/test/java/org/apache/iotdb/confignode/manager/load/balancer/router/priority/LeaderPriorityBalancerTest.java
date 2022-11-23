@@ -153,8 +153,8 @@ public class LeaderPriorityBalancerTest {
 
     // Check result
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LeaderRouter()
-            .getLatestRegionRouteMap(
+        new LeaderPriorityBalancer()
+            .generateOptimalRoutePriority(
                 Collections.singletonList(regionReplicaSet1), leaderMap, loadScoreMap);
     // Only sorted by loadScore since the leader is unavailable
     Assert.assertEquals(

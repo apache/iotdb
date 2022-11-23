@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** The GreedyRouter always pick the Replica with the lowest loadScore */
+/** The GreedyPriorityBalancer always pick the Replica with the lowest loadScore */
 public class GreedyPriorityBalancer implements IPriorityBalancer {
 
   public GreedyPriorityBalancer() {
