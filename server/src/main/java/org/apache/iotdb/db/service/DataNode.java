@@ -76,7 +76,7 @@ import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -168,7 +168,7 @@ public class DataNode implements DataNodeMBean {
       if (MetricConfigDescriptor.getInstance()
           .getMetricConfig()
           .getInternalReportType()
-          .equals(InternalReportType.IOTDB)) {
+          .equals(InternalReporterType.IOTDB)) {
         MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
       }
       MetricService.getInstance().startInternalReporter();

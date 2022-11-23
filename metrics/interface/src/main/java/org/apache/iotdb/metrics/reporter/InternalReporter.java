@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -42,7 +42,7 @@ public interface InternalReporter {
 
   void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags);
 
-  InternalReportType getType();
+  InternalReporterType getType();
 
   void start();
 

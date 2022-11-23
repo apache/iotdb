@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -147,7 +147,7 @@ public class MetricConfigDescriptor {
                 properties)));
 
     loadConfig.setInternalReportType(
-        InternalReportType.valueOf(
+        InternalReporterType.valueOf(
             properties.getProperty(
                 "dn_metric_internal_reporter_type",
                 loadConfig.getInternalReportType().toString())));

@@ -50,7 +50,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1544,7 +1544,7 @@ public class IoTDBDescriptor {
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       InternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
-          == InternalReportType.IOTDB) {
+          == InternalReporterType.IOTDB) {
         internalReporter = new IoTDBInternalReporter();
       } else {
         internalReporter = new MemoryInternalReporter();

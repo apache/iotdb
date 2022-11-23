@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -52,7 +52,7 @@ public class MetricConfig {
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
   /** The type of internal report */
-  private InternalReportType internalReportType = InternalReportType.MEMORY;
+  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
 
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value */
@@ -162,7 +162,7 @@ public class MetricConfig {
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
     ioTDBReporterConfig = newMetricConfig.getIoTDBReporterConfig();
-    internalReportType = newMetricConfig.getInternalReportType();
+    internalReporterType = newMetricConfig.getInternalReportType();
   }
 
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
@@ -199,12 +199,12 @@ public class MetricConfig {
     }
   }
 
-  public InternalReportType getInternalReportType() {
-    return internalReportType;
+  public InternalReporterType getInternalReportType() {
+    return internalReporterType;
   }
 
-  public void setInternalReportType(InternalReportType internalReportType) {
-    this.internalReportType = internalReportType;
+  public void setInternalReportType(InternalReporterType internalReporterType) {
+    this.internalReporterType = internalReporterType;
   }
 
   public MetricLevel getMetricLevel() {
@@ -259,6 +259,6 @@ public class MetricConfig {
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
         && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
-        && internalReportType.equals(anotherMetricConfig.getInternalReportType());
+        && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
   }
 }

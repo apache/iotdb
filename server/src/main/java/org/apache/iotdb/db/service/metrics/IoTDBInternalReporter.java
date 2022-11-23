@@ -40,7 +40,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.InternalReporter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.utils.InternalReportType;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -163,8 +163,8 @@ public class IoTDBInternalReporter implements InternalReporter {
   }
 
   @Override
-  public InternalReportType getType() {
-    return InternalReportType.IOTDB;
+  public InternalReporterType getType() {
+    return InternalReporterType.IOTDB;
   }
 
   @Override

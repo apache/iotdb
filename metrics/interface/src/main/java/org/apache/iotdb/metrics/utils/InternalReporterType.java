@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.utils;
 
-public enum InternalReportType {
+public enum InternalReporterType {
   MEMORY,
   IOTDB;
 
