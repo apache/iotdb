@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/** Leader distribution balancer that uses greedy algorithm */
 public class GreedyLeaderBalancer implements ILeaderBalancer {
 
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap;
