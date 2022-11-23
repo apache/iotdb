@@ -28,30 +28,39 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -62,23 +71,24 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -111,14 +121,22 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus result;
+    if (setStorageGroupPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
+      IllegalPathException illegalPathException =
+          new IllegalPathException(
+              setStorageGroupPlan.getSchema().getName(),
+              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+      return RpcUtils.getStatus(
+          illegalPathException.getErrorCode(), illegalPathException.getMessage());
+    }
     try {
       clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
       return result;
@@ -134,9 +152,12 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
-    // Adjust the maximum RegionGroup number of each StorageGroup
-    adjustMaxRegionGroupCount();
-    return getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+    TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+    // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      adjustMaxRegionGroupCount();
+    }
+    return result;
   }
 
   /**
@@ -186,7 +207,7 @@ public class ClusterSchemaManager {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
             .setStatus(
-                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
       }
 
@@ -196,8 +217,24 @@ public class ClusterSchemaManager {
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
+  public Map<String, Long> getAllTTLInfo() {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp)
+            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return infoMap;
+    }
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
+    }
+    return infoMap;
+  }
+
   /**
-   * Update TTL for the specific StorageGroup or all storage groups in a path
+   * Update TTL for the specific StorageGroup or all databases in a path
    *
    * @param setTTLPlan setTTLPlan
    * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path
@@ -211,40 +248,42 @@ public class ClusterSchemaManager {
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
-          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          TSStatusCode.DATABASE_NOT_EXIST,
           "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
-    Map<Integer, TDataNodeLocation> dataNodeLocationMaps = new ConcurrentHashMap<>();
+
+    // Map<DataNodeId, TDataNodeLocation>
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    // Map<DataNodeId, StorageGroupPatterns>
     Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
     for (String storageGroup : storageSchemaMap.keySet()) {
-
+      // Get related DataNodes
       Set<TDataNodeLocation> dataNodeLocations =
           getPartitionManager()
               .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        if (!dataNodeLocationMaps.containsKey(dataNodeLocation.getDataNodeId())) {
-          dataNodeLocationMaps.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-          List<String> storageGroups = new ArrayList<>();
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        } else {
-          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
-          storageGroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
-        }
+        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+        dnlToSgMap
+            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
+            .add(storageGroup);
       }
     }
 
-    for (Map.Entry<Integer, List<String>> entry : dnlToSgMap.entrySet()) {
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-      dataNodeLocationMap.put(entry.getKey(), dataNodeLocationMaps.get(entry.getKey()));
-      AsyncDataNodeClientPool.getInstance()
-          .sendAsyncRequestToDataNodeWithRetry(
-              new TSetTTLReq(entry.getValue(), setTTLPlan.getTTL()),
-              dataNodeLocationMap,
-              DataNodeRequestType.SET_TTL,
-              null);
-    }
+    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+    dnlToSgMap
+        .keySet()
+        .forEach(
+            dataNodeId -> {
+              TSetTTLReq setTTLReq =
+                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
+              clientHandler.putRequest(dataNodeId, setTTLReq);
+              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
+            });
+    // TODO: Check response
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 
@@ -344,6 +383,23 @@ public class ClusterSchemaManager {
   }
 
   /**
+   * Only leader use this interface
+   *
+   * @param storageGroup StorageGroupName
+   * @param consensusGroupType SchemaRegion for SchemaReplicationFactor and DataRegion for
+   *     DataReplicationFactor
+   * @return SchemaReplicationFactor or DataReplicationFactor
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   */
+  public int getReplicationFactor(String storageGroup, TConsensusGroupType consensusGroupType)
+      throws StorageGroupNotExistsException {
+    TStorageGroupSchema storageGroupSchema = getStorageGroupSchemaByName(storageGroup);
+    return consensusGroupType == TConsensusGroupType.SchemaRegion
+        ? storageGroupSchema.getSchemaReplicationFactor()
+        : storageGroupSchema.getDataReplicationFactor();
+  }
+
+  /**
    * Only leader use this interface.
    *
    * @param rawPathList List<StorageGroupName>
@@ -434,18 +490,10 @@ public class ClusterSchemaManager {
 
     Template template = resp.getTemplateList().get(0);
 
-    // prepare template data and req
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(1, outputStream);
-      template.serialize(outputStream);
-      ReadWriteIOUtils.write(1, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-    }
+    // prepare req
     TUpdateTemplateReq req = new TUpdateTemplateReq();
     req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
-    req.setTemplateInfo(outputStream.toByteArray());
+    req.setTemplateInfo(TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, path));
 
     // sync template set info to all dataNodes
     TSStatus status;
@@ -479,14 +527,8 @@ public class ClusterSchemaManager {
     // construct the rollbackReq
     TUpdateTemplateReq rollbackReq = new TUpdateTemplateReq();
     rollbackReq.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateId, outputStream);
-      ReadWriteIOUtils.write(path, outputStream);
-    } catch (IOException ignored) {
-
-    }
-    rollbackReq.setTemplateInfo(outputStream.toByteArray());
+    rollbackReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(templateId, path));
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
@@ -524,11 +566,104 @@ public class ClusterSchemaManager {
     }
   }
 
+  /**
+   * get all template set info to sync to all dataNodes, the pre unset template info won't be taken
+   */
   public byte[] getAllTemplateSetInfo() {
     AllTemplateSetInfoResp resp =
         (AllTemplateSetInfoResp)
             getConsensusManager().read(new GetAllTemplateSetInfoPlan()).getDataset();
     return resp.getTemplateInfo();
+  }
+
+  public TemplateSetInfoResp getTemplateSetInfo(List<PartialPath> patternList) {
+    return (TemplateSetInfoResp)
+        getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
+  }
+
+  public Pair<TSStatus, Template> checkIsTemplateSetOnPath(String templateName, String path) {
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+                String.format("Undefined template name: %s", templateName)),
+            null);
+      }
+    } else {
+      return new Pair<>(templateResp.getStatus(), null);
+    }
+
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> templateSetPathList = pathInfoResp.getPathList();
+      if (templateSetPathList == null
+          || templateSetPathList.isEmpty()
+          || !pathInfoResp.getPathList().contains(path)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
+                String.format("No template on %s", path)),
+            null);
+      } else {
+        return new Pair<>(templateResp.getStatus(), templateResp.getTemplateList().get(0));
+      }
+    } else {
+      return new Pair<>(pathInfoResp.getStatus(), null);
+    }
+  }
+
+  public TSStatus preUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new PreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus rollbackPreUnsetSchemaTemplate(int templateId, PartialPath path) {
+    return getConsensusManager()
+        .write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path))
+        .getStatus();
+  }
+
+  public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
+    return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
+  }
+
+  public synchronized TSStatus dropSchemaTemplate(String templateName) {
+
+    // check template existence
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateInfoResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateInfoResp.getStatus();
+    } else if (templateInfoResp.getTemplateList() == null
+        || templateInfoResp.getTemplateList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
+          String.format("Undefined template name: %s", templateName));
+    }
+
+    // check is template set on some path, block all template set operation
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp pathInfoResp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return pathInfoResp.getStatus();
+    } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.METADATA_ERROR.getStatusCode(),
+          String.format(
+              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
+    }
+
+    // execute drop template
+    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
   private NodeManager getNodeManager() {

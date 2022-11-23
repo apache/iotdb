@@ -245,7 +245,7 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -260,7 +260,7 @@ public class MemMTreeSnapshotUtil {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -289,6 +289,7 @@ public class MemMTreeSnapshotUtil {
         node.getSchema().serializeTo(outputStream);
         ReadWriteIOUtils.write(node.getAlias(), outputStream);
         ReadWriteIOUtils.write(node.getOffset(), outputStream);
+        ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -347,6 +348,7 @@ public class MemMTreeSnapshotUtil {
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
       node.setOffset(tagOffset);
+      node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
 

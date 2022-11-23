@@ -74,7 +74,7 @@ IoTDB> login successfully
 |-pw <`password`>|string 类型，不需要引号|否|IoTDB 连接服务器所使用的密码。如果没有输入密码 IoTDB 会在 Cli 端提示输入密码。|-pw root|
 |-u <`username`>|string 类型，不需要引号|是|IoTDB 连接服务器锁使用的用户名。|-u root|
 |-maxPRC <`maxPrintRowCount`>|int 类型|否|设置 IoTDB 返回客户端命令行中所显示的最大行数。|-maxPRC 10|
-|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show storage group"|
+|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show databases"|
 |-c | 空 | 否 | 如果服务器设置了 `rpc_thrift_compression_enable=true`, 则 CLI 必须使用 `-c` | -c |
 
 下面展示一条客户端命令，功能是连接 IP 为 10.129.187.21 的主机，端口为 6667 ，用户名为 root，密码为 root，以数字的形式打印时间戳，IoTDB 命令行显示的最大行数为 10。
@@ -90,12 +90,26 @@ Windows 系统启动命令如下：
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
+### CLI 特殊命令
+下面列举了一些CLI的特殊命令。
+| 命令 | 描述 / 例子 |
+|:---|:---|
+| `set time_display_type=xxx` | 例如： long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | 显示时间显示方式 |
+| `set time_zone=xxx` | 例如： +08:00, Asia/Shanghai |
+| `show time_zone` | 显示CLI的时区 |
+| `set fetch_size=xxx` | 设置从服务器查询数据时的读取条数 |
+| `show fetch_size` |  显示读取条数的大小 |
+| `set max_display_num=xxx` | 设置 CLI 一次展示的最大数据条数， 设置为-1表示无限制 |
+| `help` | 获取CLI特殊命令的提示 |
+| `exit/quit` | 退出CLI |
+
 ### 使用 OpenID 作为用户名认证登录
 
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
 
 #### 配置
-配置位于 iotdb-engines.properties，设定 authorizer_provider_class 为 org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
+配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
 
 ```
 authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
@@ -143,7 +157,7 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
-9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建存储组、添加用户、角色等功能
+9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建 database、添加用户、角色等功能
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
@@ -214,7 +228,7 @@ Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {s
 
 假设用户希望对一个新启动的 IoTDB 进行如下操作：
 
-1. 创建名为 root.demo 的存储组
+1. 创建名为 root.demo 的 database
 
 2. 创建名为 root.demo.s1 的时间序列
 
@@ -232,7 +246,7 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "CREATE DATABASE root.demo"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"

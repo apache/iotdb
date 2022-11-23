@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.transport.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
@@ -50,7 +50,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.utils.SyncConstant.DATA_CHUNK_SIZE;
 
 public class IoTDBSyncClient implements ISyncClient {
 
@@ -69,21 +69,40 @@ public class IoTDBSyncClient implements ISyncClient {
   private final int port;
   /* local IP address*/
   private final String localIP;
+  /* database name that client belongs to*/
+  private final String databaseName;
 
   private final Pipe pipe;
 
   /**
+   * Create IoTDBSyncClient only for data transfer
+   *
    * @param pipe sync task
-   * @param ipAddress remote ip address
+   * @param remoteAddress remote ip address
    * @param port remote port
-   * @param localIP local ip address
+   * @param localAddress local ip address
+   * @param databaseName database name that client belongs to
    */
-  public IoTDBSyncClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSyncClient(
+      Pipe pipe, String remoteAddress, int port, String localAddress, String databaseName) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
-    this.ipAddress = ipAddress;
+    this.ipAddress = remoteAddress;
     this.port = port;
-    this.localIP = localIP;
+    this.localIP = localAddress;
+    this.databaseName = databaseName;
+  }
+
+  /**
+   * Create IoTDBSyncClient only for heartbeat
+   *
+   * @param pipe sync task
+   * @param remoteAddress remote ip address
+   * @param port remote port
+   * @param localAddress local ip address
+   */
+  public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String localAddress) {
+    this(pipe, remoteAddress, port, localAddress, "");
   }
 
   /**
@@ -122,14 +141,17 @@ public class IoTDBSyncClient implements ISyncClient {
 
       TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
-              localIP, pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion());
+              localIP,
+              pipe.getName(),
+              pipe.getCreateTime(),
+              config.getIoTDBMajorVersion(),
+              databaseName);
       TSStatus status = serviceClient.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("The receiver rejected the synchronization task because {}", status.message);
         return false;
       }
     } catch (TException e) {
-      logger.warn("Cannot connect to the receiver because {}", e.getMessage());
       throw new SyncConnectionException(
           String.format("Cannot connect to the receiver because %s.", e.getMessage()));
     }
@@ -200,7 +222,7 @@ public class IoTDBSyncClient implements ISyncClient {
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
           position += dataLength;
-        } else if (status.code == TSStatusCode.SYNC_FILE_REBASE.getStatusCode()) {
+        } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           logger.error(

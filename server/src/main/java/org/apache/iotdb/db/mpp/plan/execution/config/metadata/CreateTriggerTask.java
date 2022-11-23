@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
@@ -30,34 +27,16 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class CreateTriggerTask implements IConfigTask {
-  private final String triggerName;
 
-  private final String className;
-
-  private final String jarPath;
-
-  private final boolean usingURI;
-
-  private final TriggerEvent triggerEvent;
-
-  private final TriggerType triggerType;
-
-  private final PartialPath pathPattern;
+  private final CreateTriggerStatement createTriggerStatement;
 
   public CreateTriggerTask(CreateTriggerStatement createTriggerStatement) {
-    this.triggerName = createTriggerStatement.getTriggerName();
-    this.className = createTriggerStatement.getClassName();
-    this.jarPath = createTriggerStatement.getJarPath();
-    this.usingURI = createTriggerStatement.isUsingURI();
-    this.triggerEvent = createTriggerStatement.getTriggerEvent();
-    this.triggerType = createTriggerStatement.getTriggerType();
-    this.pathPattern = createTriggerStatement.getPathPattern();
+    this.createTriggerStatement = createTriggerStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTrigger(
-        triggerName, className, jarPath, usingURI, triggerEvent, triggerType, pathPattern);
+    return configTaskExecutor.createTrigger(createTriggerStatement);
   }
 }

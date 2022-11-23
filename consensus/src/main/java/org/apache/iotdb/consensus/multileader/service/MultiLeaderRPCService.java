@@ -74,7 +74,7 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
           new ThriftServiceThread(
               (TBaseAsyncProcessor) processor,
               getID().getName(),
-              ThreadName.MULTI_LEADER_CONSENSUS_RPC_CLIENT.getName(),
+              ThreadName.MULTI_LEADER_CONSENSUS_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpc().getRpcSelectorThreadNum(),
@@ -89,7 +89,7 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.MULTI_LEADER_CONSENSUS_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.MULTI_LEADER_CONSENSUS_RPC_SERVICE.getName());
   }
 
   @Override

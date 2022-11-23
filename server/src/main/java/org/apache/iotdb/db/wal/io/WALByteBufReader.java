@@ -44,7 +44,7 @@ public class WALByteBufReader implements Closeable {
   public WALByteBufReader(File logFile) throws IOException {
     this.logFile = logFile;
     this.channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ);
-    if (!readTailMagic().equals(MAGIC_STRING)) {
+    if (channel.size() < MAGIC_STRING_BYTES || !readTailMagic().equals(MAGIC_STRING)) {
       throw new IOException(String.format("Broken wal file %s", logFile));
     }
     // load metadata size

@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -44,11 +42,7 @@ public interface IMeasurementMNode extends IMNode {
 
   void setOffset(long offset);
 
-  TriggerExecutor getTriggerExecutor();
+  boolean isPreDeleted();
 
-  void setTriggerExecutor(TriggerExecutor triggerExecutor);
-
-  ILastCacheContainer getLastCacheContainer();
-
-  void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+  void setPreDeleted(boolean preDeleted);
 }

@@ -47,8 +47,9 @@ public class RecoveryTest {
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                ConsensusFactory.MultiLeaderConsensus,
+                ConsensusFactory.MULTI_LEADER_CONSENSUS,
                 ConsensusConfig.newBuilder()
+                    .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
                     .setStorageDir("target" + java.io.File.separator + "recovery")
                     .build(),
@@ -58,7 +59,7 @@ public class RecoveryTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            ConsensusFactory.MultiLeaderConsensus)));
+                            ConsensusFactory.MULTI_LEADER_CONSENSUS)));
     consensusImpl.start();
   }
 
@@ -77,7 +78,7 @@ public class RecoveryTest {
   public void recoveryTest() throws Exception {
     consensusImpl.createPeer(
         schemaRegionId,
-        Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
+        Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
     consensusImpl.deletePeer(schemaRegionId);
 
@@ -89,7 +90,7 @@ public class RecoveryTest {
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
             schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
+            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
     Assert.assertTrue(response.isSuccess());
   }

@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
@@ -49,6 +54,8 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private final String threadName;
 
+  private static final TsBlockSerde serde = new TsBlockSerde();
+
   public LocalSourceHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
@@ -61,8 +68,7 @@ public class LocalSourceHandle implements ISourceHandle {
     this.queue = Validate.notNull(queue);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
-    this.threadName =
-        createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
+    this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
   @Override
@@ -93,12 +99,28 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
+        logger.debug(
+            "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+            currSequenceId,
+            tsBlock.getRetainedSizeInBytes());
         currSequenceId++;
-        logger.info(
-            "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
       }
       checkAndInvokeOnFinished();
       return tsBlock;
+    }
+  }
+
+  @Override
+  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    TsBlock tsBlock = receive();
+    if (tsBlock != null) {
+      try {
+        return serde.serialize(tsBlock);
+      } catch (Exception e) {
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+      }
+    } else {
+      return null;
     }
   }
 
@@ -139,7 +161,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("Source handle is being aborted.");
+      logger.debug("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -150,7 +172,28 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.info("Source handle is aborted");
+      logger.debug("[EndAbortLocalSourceHandle]");
+    }
+  }
+
+  @Override
+  public void abort(Throwable t) {
+    if (aborted || closed) {
+      return;
+    }
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.debug("[StartAbortLocalSourceHandle]");
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          queue.abort(t);
+          aborted = true;
+          sourceHandleListener.onAborted(this);
+        }
+      }
+      logger.debug("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -160,7 +203,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("Source handle is being closed.");
+      logger.debug("[StartCloseLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -171,7 +214,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      logger.info("Source handle is closed");
+      logger.debug("[EndCloseLocalSourceHandle]");
     }
   }
 

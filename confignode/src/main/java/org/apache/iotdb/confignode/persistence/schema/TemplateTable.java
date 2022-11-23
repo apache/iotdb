@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -54,6 +55,7 @@ public class TemplateTable {
 
   private final AtomicInteger templateIdGenerator;
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
 
   private final String snapshotFileName = "template_info.bin";
 
@@ -67,9 +69,23 @@ public class TemplateTable {
       templateReadWriteLock.readLock().lock();
       Template template = templateMap.get(name);
       if (template == null) {
-        throw new MetadataException(String.format("Template %s not exits", name));
+        throw new MetadataException(String.format("Template %s does not exist", name));
       }
       return templateMap.get(name);
+    } finally {
+      templateReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Template getTemplate(int templateId) throws MetadataException {
+    try {
+      templateReadWriteLock.readLock().lock();
+      Template template = templateIdMap.get(templateId);
+      if (template == null) {
+        throw new MetadataException(
+            String.format("Template with id=%s does not exist", templateId));
+      }
+      return template;
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
@@ -95,6 +111,21 @@ public class TemplateTable {
       }
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
+      templateIdMap.put(template.getId(), template);
+    } finally {
+      templateReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void dropTemplate(String templateName) throws MetadataException {
+    try {
+      templateReadWriteLock.writeLock().lock();
+      Template temp = this.templateMap.remove(templateName);
+      if (temp == null) {
+        LOGGER.error("Undefined template {}", templateName);
+        throw new UndefinedTemplateException(templateName);
+      }
+      templateIdMap.remove(temp.getId());
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }
@@ -123,6 +154,7 @@ public class TemplateTable {
     while (size > 0) {
       Template template = deserializeTemplate(byteBuffer);
       templateMap.put(template.getName(), template);
+      templateIdMap.put(template.getId(), template);
       size--;
     }
   }

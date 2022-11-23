@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -62,8 +63,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s2 where time <= 40");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
       statement.execute("delete from root.sg1.d1.s5 where time <= 31 and time > 20");
@@ -138,10 +138,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         map.put(resultSetMetaData.getColumnName(i), i);
       }
-      // here we temporarily delete the following assert, because we replace "delete timeseries
-      // root.sg1.d1.s2" with "delete from root.sg1.d1.s2 where time <= 40"
-      // TODO add it while supporting delete timeseries in cluster mode
-      //      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
       int cnt = 0;
       while (resultSet.next()) {
         StringBuilder builder = new StringBuilder();
@@ -229,10 +226,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         map.put(resultSetMetaData.getColumnName(i), i);
       }
-      // here we temporarily delete the following assert, because we replace "delete timeseries
-      // root.sg1.d1.s2" with "delete from root.sg1.d1.s2 where time <= 40"
-      // TODO add it while supporting delete timeseries in cluster mode
-      //      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
       int cnt = 0;
       while (resultSet.next()) {
         StringBuilder builder = new StringBuilder();
@@ -295,10 +289,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         map.put(resultSetMetaData.getColumnName(i), i);
       }
-      // here we temporarily delete the following assert, because we replace "delete timeseries
-      // root.sg1.d1.s2" with "delete from root.sg1.d1.s2 where time <= 40"
-      // TODO add it while supporting delete timeseries in cluster mode
-      //      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+      assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
       int cnt = 0;
       while (resultSet.next()) {
         StringBuilder builder = new StringBuilder();

@@ -69,7 +69,7 @@ void ActivateTemplate() {
 }
 
 void showDevices() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with storage group");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with database");
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
     }

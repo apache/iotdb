@@ -45,6 +45,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -78,7 +79,7 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
   @Test
   public void testCompact()
       throws IOException, MetadataException, InterruptedException, StorageEngineException,
-          WriteProcessException {
+          WriteProcessException, ExecutionException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -118,7 +119,7 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId(), true);
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
         TsFileReader readTsFile = new TsFileReader(reader)) {

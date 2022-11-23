@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -35,6 +36,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -71,8 +73,11 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
+      Assert.fail();
     } catch (SQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template
@@ -80,12 +85,15 @@ public class IoTDBSchemaTemplateIT {
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
 
     // test drop template which has been set
-    //    try {
-    //      statement.execute("DROP SCHEMA TEMPLATE t1");
-    //    } catch (SQLException e) {
-    //      Assert.assertEquals(
-    //          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
-    //    }
+    try {
+      statement.execute("DROP SCHEMA TEMPLATE t1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode()
+              + ": Template [t1] has been set on MTree, cannot be dropped now.",
+          e.getMessage());
+    }
 
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
       Assert.assertFalse(resultSet.next());
@@ -106,13 +114,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**"); ) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -121,7 +129,7 @@ public class IoTDBSchemaTemplateIT {
 
     try (ResultSet resultSet = statement.executeQuery("COUNT TIMESERIES root.sg1.**")) {
       resultSet.next();
-      Assert.assertEquals(4, resultSet.getInt(1));
+      Assert.assertEquals(4, resultSet.getLong(1));
     }
 
     expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
@@ -129,18 +137,23 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
     }
     Assert.assertTrue(expectedResult.isEmpty());
 
-    //    try {
-    //      statement.executeQuery("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-    //    } catch (SQLException e) {
-    //      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
-    //    }
+    try {
+      statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
+    }
   }
 
   @Test
@@ -149,8 +162,11 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
+      Assert.fail();
     } catch (SQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template
@@ -176,13 +192,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -191,7 +207,7 @@ public class IoTDBSchemaTemplateIT {
 
     try (ResultSet resultSet = statement.executeQuery("COUNT TIMESERIES root.sg1.**")) {
       resultSet.next();
-      Assert.assertEquals(4, resultSet.getInt(1));
+      Assert.assertEquals(4, resultSet.getLong(1));
     }
 
     expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
@@ -199,21 +215,25 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
     }
     Assert.assertTrue(expectedResult.isEmpty());
 
-    //    try {
-    //      statement.executeQuery("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-    //    } catch (SQLException e) {
-    //      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
-    //    }
+    try {
+      statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
+    }
   }
 
-  @Ignore
   @Test
   public void testDropAndShowSchemaTemplates() throws SQLException {
     // show schema templates
@@ -221,8 +241,9 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
-        expectedResultSet.remove(resultSet.getString("template name"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -233,8 +254,9 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
-        expectedResultSet.remove(resultSet.getString("template name"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -248,13 +270,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW NODES IN SCHEMA TEMPLATE t1")) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("child nodes")
+            resultSet.getString(ColumnHeaderConstant.CHILD_NODES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertTrue(expectedResultSet.contains(actualResult));
         expectedResultSet.remove(actualResult);
       }
@@ -329,7 +351,7 @@ public class IoTDBSchemaTemplateIT {
 
   @Test
   public void testSetAndActivateTemplateOnSGNode() throws SQLException {
-    statement.execute("CREATE STORAGE GROUP root.test.sg_satosg");
+    statement.execute("CREATE DATABASE root.test.sg_satosg");
     statement.execute("SET SCHEMA TEMPLATE t1 TO root.test.sg_satosg");
     statement.execute("INSERT INTO root.test.sg_satosg(time, s1) VALUES (1, 1)");
     statement.execute("INSERT INTO root.test.sg_satosg(time, s1) VALUES (2, 2)");
@@ -341,7 +363,7 @@ public class IoTDBSchemaTemplateIT {
     int resCnt = 0;
     while (resultSet.next()) {
       resCnt++;
-      expRes.remove(resultSet.getString("timeseries"));
+      expRes.remove(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
     }
     Assert.assertEquals(2, resCnt);
     Assert.assertTrue(expRes.isEmpty());
@@ -353,13 +375,137 @@ public class IoTDBSchemaTemplateIT {
   }
 
   private void prepareTemplate() throws SQLException {
-    // create storage group
-    statement.execute("CREATE STORAGE GROUP root.sg1");
-    statement.execute("CREATE STORAGE GROUP root.sg2");
-    statement.execute("CREATE STORAGE GROUP root.sg3");
+    // create database
+    statement.execute("CREATE DATABASE root.sg1");
+    statement.execute("CREATE DATABASE root.sg2");
+    statement.execute("CREATE DATABASE root.sg3");
 
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
     statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+  }
+
+  @Test
+  public void testDeleteTimeSeriesWhenUsingTemplate() throws SQLException {
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
+
+    statement.execute("CREATE TIMESERIES root.sg3.d1.s1 INT64");
+
+    // set using schema template
+    statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d2(time,s1) ALIGNED VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg3.d1(time,s1) VALUES (1,1)");
+
+    Set<String> expectedResult = new HashSet<>(Collections.singletonList("1,1,1,1,"));
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+      while (resultSet.next()) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 1; i <= 4; i++) {
+          stringBuilder.append(resultSet.getString(i)).append(",");
+        }
+        String actualResult = stringBuilder.toString();
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    statement.execute("DELETE TIMESERIES root.**.s1");
+
+    expectedResult =
+        new HashSet<>(
+            Arrays.asList("root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d2.s1,INT64,RLE,SNAPPY"));
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
+      while (resultSet.next()) {
+        String actualResult =
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+      Assert.assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void testSchemaQueryAndFetchWithUnrelatedTemplate() throws SQLException {
+    statement.execute("CREATE SCHEMA TEMPLATE t3 (s3 INT64, s4 DOUBLE)");
+
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d2");
+
+    // set using schema template
+    statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d2(time,s3) VALUES (1,1)");
+
+    Set<String> expectedResult = new HashSet<>(Collections.singletonList("1,1,"));
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+      while (resultSet.next()) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 1; i <= 2; i++) {
+          stringBuilder.append(resultSet.getString(i)).append(",");
+        }
+        String actualResult = stringBuilder.toString();
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,SNAPPY"));
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
+      while (resultSet.next()) {
+        String actualResult =
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+  }
+
+  @Test
+  public void testUnsetTemplate() throws SQLException {
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    // show paths set schema template
+    String[] expectedResult = new String[] {"root.sg1.d1"};
+    Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+      String resultRecord;
+      while (resultSet.next()) {
+        resultRecord = resultSet.getString(1);
+        Assert.assertTrue(expectedResultSet.contains(resultRecord));
+        expectedResultSet.remove(resultRecord);
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+    // unset schema template
+    statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+    try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+      Assert.assertFalse(resultSet.next());
+    }
   }
 }

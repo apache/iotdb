@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.mpp.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -33,11 +33,14 @@ public class SchemaFetchStatement extends Statement {
 
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
+  private final boolean withTags;
 
-  public SchemaFetchStatement(PathPatternTree patternTree, Map<Integer, Template> templateMap) {
+  public SchemaFetchStatement(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;
+    this.withTags = withTags;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -57,5 +60,9 @@ public class SchemaFetchStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return patternTree.getAllPathPatterns();
+  }
+
+  public boolean isWithTags() {
+    return withTags;
   }
 }

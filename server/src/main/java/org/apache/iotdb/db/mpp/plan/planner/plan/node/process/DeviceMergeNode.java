@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class DeviceMergeNode extends MultiChildNode {
+public class DeviceMergeNode extends MultiChildProcessNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
@@ -42,16 +42,6 @@ public class DeviceMergeNode extends MultiChildNode {
 
   // the list of selected devices
   private final List<String> devices;
-
-  public DeviceMergeNode(
-      PlanNodeId id,
-      List<PlanNode> children,
-      OrderByParameter mergeOrderParameter,
-      List<String> devices) {
-    super(id, children);
-    this.mergeOrderParameter = mergeOrderParameter;
-    this.devices = devices;
-  }
 
   public DeviceMergeNode(
       PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> devices) {
@@ -66,21 +56,6 @@ public class DeviceMergeNode extends MultiChildNode {
 
   public List<String> getDevices() {
     return devices;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -147,13 +122,12 @@ public class DeviceMergeNode extends MultiChildNode {
     }
     DeviceMergeNode that = (DeviceMergeNode) o;
     return Objects.equals(mergeOrderParameter, that.mergeOrderParameter)
-        && Objects.equals(devices, that.devices)
-        && Objects.equals(children, that.children);
+        && Objects.equals(devices, that.devices);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrderParameter, devices, children);
+    return Objects.hash(super.hashCode(), mergeOrderParameter, devices);
   }
 
   @Override

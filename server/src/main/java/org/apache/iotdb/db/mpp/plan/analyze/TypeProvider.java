@@ -43,16 +43,17 @@ public class TypeProvider {
     this.typeMap = typeMap;
   }
 
-  public TSDataType getType(String path) {
-    checkState(typeMap.containsKey(path), String.format("no data type found for path: %s", path));
-    return typeMap.get(path);
+  public TSDataType getType(String symbol) {
+    checkState(
+        typeMap.containsKey(symbol), String.format("no data type found for symbol: %s", symbol));
+    return typeMap.get(symbol);
   }
 
-  public void setType(String path, TSDataType dataType) {
+  public void setType(String symbol, TSDataType dataType) {
     checkState(
-        !typeMap.containsKey(path) || typeMap.get(path) == dataType,
-        String.format("inconsistent data type for path: %s", path));
-    this.typeMap.put(path, dataType);
+        !typeMap.containsKey(symbol) || typeMap.get(symbol) == dataType,
+        String.format("inconsistent data type for symbol: %s", symbol));
+    this.typeMap.put(symbol, dataType);
   }
 
   public boolean containsTypeInfoOf(String path) {

@@ -35,13 +35,14 @@ public class IoTDBMetricsUtils {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMetricsUtils.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final String STORAGE_GROUP =
-      "root." + metricConfig.getIoTDBReporterConfig().getDatabase();
+  private static final String STORAGE_GROUP = "root.__system";
 
   public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
         .append(STORAGE_GROUP)
+        .append(".")
+        .append(metricConfig.getIoTDBReporterConfig().getLocation())
         .append(".`")
         .append(metricConfig.getRpcAddress())
         .append(":")
@@ -65,7 +66,7 @@ public class IoTDBMetricsUtils {
 
   public static void checkOrCreateStorageGroup(SessionPool session) {
     try (SessionDataSetWrapper result =
-        session.executeQueryStatement("show storage group " + STORAGE_GROUP)) {
+        session.executeQueryStatement("SHOW DATABASES " + STORAGE_GROUP)) {
       if (!result.hasNext()) {
         session.setStorageGroup(STORAGE_GROUP);
       }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,7 +42,7 @@ public class Aggregator {
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
 
-  protected TimeRange curTimeRange = new TimeRange(0, Long.MAX_VALUE);
+  protected IWindow curWindow;
 
   // Used for SeriesAggregateScanOperator
   public Aggregator(Accumulator accumulator, AggregationStep step) {
@@ -63,22 +65,19 @@ public class Aggregator {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-    if (inputLocationList == null) {
-      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
-    } else {
-      int lastReadReadIndex = 0;
-      for (InputLocation[] inputLocations : inputLocationList) {
-        checkArgument(
-            inputLocations[0].getTsBlockIndex() == 0,
-            "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] timeValueColumn = new Column[2];
-        timeValueColumn[0] = tsBlock.getTimeColumn();
-        timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        lastReadReadIndex =
-            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
-      }
-      return lastReadReadIndex;
+    int lastReadReadIndex = 0;
+    for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "RawDataAggregateOperator can only process one tsBlock input.");
+      Column[] controlTimeAndValueColumn = new Column[3];
+      controlTimeAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
+      controlTimeAndValueColumn[1] = tsBlock.getTimeColumn();
+      controlTimeAndValueColumn[2] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      lastReadReadIndex =
+          Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
     }
+    return lastReadReadIndex;
   }
 
   // Used for AggregateOperator
@@ -128,20 +127,21 @@ public class Aggregator {
   }
 
   public void reset() {
-    curTimeRange = new TimeRange(0, Long.MAX_VALUE);
+    curWindow = null;
     accumulator.reset();
   }
 
   public boolean hasFinalResult() {
-    return accumulator.hasFinalResult();
+    return curWindow.hasFinalResult(accumulator);
   }
 
   public void updateTimeRange(TimeRange curTimeRange) {
     reset();
-    this.curTimeRange = curTimeRange;
+    this.curWindow = new TimeWindow(curTimeRange);
   }
 
-  public TimeRange getCurTimeRange() {
-    return curTimeRange;
+  public void updateWindow(IWindow curWindow) {
+    reset();
+    this.curWindow = curWindow;
   }
 }

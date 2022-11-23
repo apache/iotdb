@@ -264,8 +264,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "seq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -284,8 +283,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "unseq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -307,7 +305,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
       SystemInfo.getInstance()
           .setMemorySizeForCompaction(
-              29000L * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+              29000L * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
       try {
         RewriteCrossSpaceCompactionSelector selector =
             new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -348,8 +346,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -368,8 +365,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -392,7 +388,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -423,8 +419,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -443,8 +438,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -467,7 +461,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -542,7 +536,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -573,8 +567,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -593,8 +586,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -620,7 +612,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -652,8 +644,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -674,8 +665,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -701,7 +691,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -933,7 +923,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);

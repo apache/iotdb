@@ -19,34 +19,30 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import java.util.List;
 
 public interface ISyncInfoFetcher {
 
   // region Interfaces of PipeSink
-  // TODO(sync): delete this in new-standalone version
-  TSStatus addPipeSink(CreatePipeSinkPlan plan);
 
   TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
   TSStatus dropPipeSink(String name);
 
-  PipeSink getPipeSink(String name);
+  PipeSink getPipeSink(String name) throws PipeSinkException;
 
   List<PipeSink> getAllPipeSinks();
   // endregion
 
   // region Interfaces of Pipe
 
-  // TODO: use CreatePipeNode as parameter
-  TSStatus addPipe(CreatePipePlan plan, long createTime);
+  TSStatus addPipe(PipeInfo pipeInfo);
 
   TSStatus stopPipe(String pipeName);
 
@@ -56,11 +52,7 @@ public interface ISyncInfoFetcher {
 
   List<PipeInfo> getAllPipeInfos();
 
-  PipeInfo getRunningPipeInfo();
+  TSStatus recordMsg(String pipeName, PipeMessage message);
 
   // endregion
-
-  String getPipeMsg(String pipeName, long createTime);
-
-  TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage);
 }

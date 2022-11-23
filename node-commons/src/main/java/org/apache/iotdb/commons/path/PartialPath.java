@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -32,8 +33,8 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,7 +63,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
-   * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
@@ -100,6 +100,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     } else {
       this.nodes = new String[] {path};
     }
+  }
+
+  public boolean hasWildcard() {
+    for (String node : nodes) {
+      if (ONE_LEVEL_PATH_WILDCARD.equals(node) || MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -160,8 +169,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * "root.a.b.b.c", "root.a.b.**.b.c", since the multi-level wildcard can match 'a', 'a.b', and any
    * other sub paths start with 'a.b'.
    *
-   * <p>The goal of this method is to reduce the search space when querying a storage group with a
-   * path with wildcard.
+   * <p>The goal of this method is to reduce the search space when querying a database with a path
+   * with wildcard.
+   *
+   * <p>If this path or path pattern doesn't start with given prefix, return empty list. For
+   * example, "root.a.b.c".alterPrefixPath("root.b") or "root.a.**".alterPrefixPath("root.b")
+   * returns [].
    *
    * @param prefix The prefix. Cannot be null and cannot contain any wildcard.
    */
@@ -356,21 +369,81 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
+   * Test if this path pattern includes input path pattern. e.g. "root.**" includes "root.sg.**",
+   * "root.*.d.s" includes "root.sg.d.s", "root.sg.**" does not include "root.**.s", "root.*.d.s"
+   * does not include "root.sg.d1.*"
+   *
+   * @param rPath a pattern path of a timeseries
+   * @return true if this path pattern includes input path pattern, otherwise return false
+   */
+  public boolean include(PartialPath rPath) {
+    String[] rNodes = rPath.getNodes();
+    String[] lNodes = nodes.clone();
+    // Replace * with ** if they are adjacent to each other
+    for (int i = 1; i < lNodes.length; i++) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(lNodes[i - 1])
+          && ONE_LEVEL_PATH_WILDCARD.equals(lNodes[i])) {
+        lNodes[i] = MULTI_LEVEL_PATH_WILDCARD;
+      }
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(lNodes[lNodes.length - i])
+          && ONE_LEVEL_PATH_WILDCARD.equals(lNodes[lNodes.length - 1 - i])) {
+        lNodes[lNodes.length - 1 - i] = MULTI_LEVEL_PATH_WILDCARD;
+      }
+    }
+    // dp[i][j] means if nodes1[0:i) includes nodes[0:j)
+    // for example: "root.sg.**" includes "root.sg.d1.*"
+    // 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0
+    // 0 0 0 0 0 |↓| 0 1 0 0 0 |→| 0 1 0 0 0 |→| 0 1 0 0 0
+    // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 1 0 0 |→| 0 0 1 0 0
+    // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 1 1
+    // Since the derivation of the next row depends only on the previous row, the calculation can
+    // be performed using a one-dimensional array
+    boolean[] dp = new boolean[rNodes.length + 1];
+    dp[0] = true;
+    for (int i = 1; i <= lNodes.length; i++) {
+      boolean[] newDp = new boolean[rNodes.length + 1];
+      for (int j = i; j <= rNodes.length; j++) {
+        if (lNodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+          // if encounter MULTI_LEVEL_PATH_WILDCARD
+          if (dp[j - 1]) {
+            for (int k = j; k <= rNodes.length; k++) {
+              newDp[k] = true;
+            }
+            break;
+          }
+        } else {
+          // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
+          if (!rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
+              && (lNodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+                  || lNodes[i - 1].equals(rNodes[j - 1]))) {
+            // if nodes1[i-1] includes rNodes[j-1], dp[i][j] = dp[i-1][j-1]
+            newDp[j] |= dp[j - 1];
+          }
+        }
+      }
+      dp = newDp;
+    }
+    return dp[rNodes.length];
+  }
+
+  /**
    * Test if this path pattern overlaps with input path pattern. Overlap means the result sets
    * generated by two path pattern share some common elements. e.g. "root.sg.**" overlaps with
    * "root.**", "root.*.d.s" overlaps with "root.sg.d.s", "root.sg.**" overlaps with "root.**.s",
    * "root.*.d.s" doesn't overlap with "root.sg.d1.*"
    *
-   * @param rPath a plain full path of a timeseries
-   * @return true if a successful match, otherwise return false
+   * @param rPath a pattern path of a timeseries
+   * @return true if overlapping otherwise return false
    */
   public boolean overlapWith(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     for (int i = 0; i < this.nodes.length && i < rNodes.length; i++) {
+      // if encounter MULTI_LEVEL_PATH_WILDCARD
       if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)
           || rNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return true;
+        return checkOverlapWithMultiLevelWildcard(nodes, rNodes);
       }
+      // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
       if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || rNodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
         continue;
       }
@@ -379,6 +452,52 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return this.nodes.length == rNodes.length;
+  }
+
+  /**
+   * Try to check overlap between nodes1 and nodes2 with MULTI_LEVEL_PATH_WILDCARD. Time complexity
+   * O(n^2).
+   *
+   * @return true if overlapping, otherwise return false
+   */
+  private boolean checkOverlapWithMultiLevelWildcard(String[] nodes1, String[] nodes2) {
+    // dp[i][j] means if nodes1[0:i) and nodes[0:j) overlapping
+    boolean[][] dp = new boolean[nodes1.length + 1][nodes2.length + 1];
+    dp[0][0] = true;
+    for (int i = 1; i <= nodes1.length; i++) {
+      for (int j = 1; j <= nodes2.length; j++) {
+        if (nodes1[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
+            || nodes2[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+          // if encounter MULTI_LEVEL_PATH_WILDCARD
+          if (nodes1[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            // if nodes1[i-1] is MULTI_LEVEL_PATH_WILDCARD, dp[i][k(k>=j)]=dp[i-1][j-1]
+            if (dp[i - 1][j - 1]) {
+              for (int k = j; k <= nodes2.length; k++) {
+                dp[i][k] = true;
+              }
+            }
+          }
+          if (nodes2[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            // if nodes2[j-1] is MULTI_LEVEL_PATH_WILDCARD, dp[k(k>=i)][j]=dp[i-1][j-1]
+            if (dp[i - 1][j - 1]) {
+              for (int k = i; k <= nodes1.length; k++) {
+                dp[k][j] = true;
+              }
+            }
+          }
+        } else {
+          // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
+          if (nodes1[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+              || nodes2[j - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+              || nodes1[i - 1].equals(nodes2[j - 1])) {
+            // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
+            dp[i][j] |= dp[i - 1][j - 1];
+          }
+        }
+      }
+    }
+
+    return dp[nodes1.length][nodes2.length];
   }
 
   @Override
@@ -501,6 +620,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return true;
   }
 
+  public boolean startWith(String otherNode) {
+    return nodes[0].equals(otherNode);
+  }
+
+  public boolean containNode(String otherNode) {
+    for (String node : nodes) {
+      if (node.equals(otherNode)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public String toString() {
     return getFullPath();
@@ -510,9 +642,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
   }
 
+  public List<PartialPath> getDevicePathPattern() {
+    List<PartialPath> result = new ArrayList<>();
+    result.add(getDevicePath());
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      result.add(new PartialPath(nodes));
+    }
+    return result;
+  }
+
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDevice(), getMeasurement());
+    return new Path(getDevice(), getMeasurement(), true);
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
@@ -550,6 +691,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return new PartialPath(this.getNodes().clone());
   }
 
+  public ByteBuffer serialize() throws IOException {
+    PublicBAOS publicBAOS = new PublicBAOS();
+    serialize((OutputStream) publicBAOS);
+    return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+  }
+
+  @Override
+  public void serialize(OutputStream stream) throws IOException {
+    PathType.Partial.serialize(stream);
+    serializeWithoutType(stream);
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Partial.serialize(byteBuffer);
@@ -557,7 +710,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(PublicBAOS stream) throws IOException {
     PathType.Partial.serialize(stream);
     serializeWithoutType(stream);
   }
@@ -572,7 +725,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+  protected void serializeWithoutType(OutputStream stream) throws IOException {
     super.serializeWithoutType(stream);
     ReadWriteIOUtils.write(nodes.length, stream);
     for (String node : nodes) {

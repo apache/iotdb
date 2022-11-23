@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.trigger.api;
 
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public interface Trigger {
@@ -54,6 +55,16 @@ public interface Trigger {
    * @throws Exception e
    */
   default void restore() throws Exception {}
+
+  /**
+   * Overrides this method to set the expected FailureStrategy, {@link FailureStrategy#OPTIMISTIC}
+   * is the default strategy.
+   *
+   * @return {@link FailureStrategy}
+   */
+  default FailureStrategy getFailureStrategy() {
+    return FailureStrategy.OPTIMISTIC;
+  }
 
   /**
    * @param tablet see {@link Tablet} for detailed information of data structure. Data that is

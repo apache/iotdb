@@ -21,28 +21,33 @@ package org.apache.iotdb.db.metadata.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_PARAMETERS;
 
 public class MetaUtils {
 
   private MetaUtils() {}
 
   /**
-   * Get storage group path when creating schema automatically is enable
+   * Get database path when creating schema automatically is enable
    *
    * <p>e.g., path = root.a.b.c and level = 1, return root.a
    *
@@ -246,5 +251,22 @@ public class MetaUtils {
       result.put(alignedPath, aggregationDescriptorList);
     }
     return result;
+  }
+
+  public static Pair<String, String> parseDeadbandInfo(Map<String, String> props) {
+    if (props == null) {
+      return new Pair<>(null, null);
+    }
+    String deadband = props.get(LOSS);
+    deadband = deadband == null ? null : deadband.toUpperCase(Locale.ROOT);
+    Map<String, String> deadbandParameters = new HashMap<>();
+    for (String k : SDT_PARAMETERS) {
+      if (props.containsKey(k)) {
+        deadbandParameters.put(k, props.get(k));
+      }
+    }
+
+    return new Pair<>(
+        deadband, deadbandParameters.isEmpty() ? null : String.format("%s", deadbandParameters));
   }
 }

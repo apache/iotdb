@@ -23,8 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.Counter;
@@ -44,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
@@ -53,8 +51,6 @@ public abstract class AbstractMetricService {
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** Is the first initialization of metric service */
-  private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -68,36 +64,53 @@ public abstract class AbstractMetricService {
 
   /** start metric service */
   public void startService() {
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** restart metric service */
+  public void restartService() {
+    logger.info("Restart Core Module");
+    stopCoreModule();
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** stop metric service */
+  public void stopService() {
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(this);
+    }
+    stopCoreModule();
+  }
+  /** start metric core module */
+  private void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
     loadManager();
     // load metric reporter
     loadReporter();
     // do start all reporter without first time
-    if (!isFirstInitialization.getAndSet(false)) {
-      startAllReporter();
-    }
-    for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
-      enablePredefinedMetrics(predefinedMetric);
-    }
-    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
+    startAllReporter();
   }
 
-  /** stop metric service */
-  public void stopService() {
-    compositeReporter.stopAll();
+  /** stop metric core module */
+  private void stopCoreModule() {
+    stopAllReporter();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.stopAsyncCollectedMetrics();
-    }
-    metricSets = new ArrayList<>();
   }
 
   /** Load metric manager according to configuration */
   private void loadManager() {
-    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
+    logger.info("Load metricManager, type: {}", metricConfig.getMetricFrameType());
     ServiceLoader<AbstractMetricManager> metricManagers =
         ServiceLoader.load(AbstractMetricManager.class);
     int size = 0;
@@ -106,7 +119,7 @@ public abstract class AbstractMetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
+          .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -133,15 +146,12 @@ public abstract class AbstractMetricService {
               .getClass()
               .getName()
               .toLowerCase()
-              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
+              .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }
     }
   }
-
-  /** Enable predefined Metrics */
-  protected abstract void enablePredefinedMetrics(PredefinedMetric metric);
 
   /** Reload metric service according to reloadLevel */
   protected abstract void reloadProperties(ReloadLevel reloadLevel);
@@ -154,6 +164,14 @@ public abstract class AbstractMetricService {
       return;
     }
     compositeReporter.startAll();
+  }
+
+  /** Stop all reporters */
+  public void stopAllReporter() {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stopAll();
   }
 
   /** Start reporter according to type */
@@ -258,5 +276,21 @@ public abstract class AbstractMetricService {
 
   public boolean isEnable() {
     return isEnableMetric;
+  }
+
+  /** bind metrics and store metric set */
+  public void addMetricSet(IMetricSet metricSet) {
+    if (!metricSets.contains(metricSet)) {
+      metricSet.bindTo(this);
+      metricSets.add(metricSet);
+    }
+  }
+
+  /** remove metrics */
+  public void removeMetricSet(IMetricSet metricSet) {
+    if (metricSets.contains(metricSet)) {
+      metricSet.unbindFrom(this);
+      metricSets.remove(metricSet);
+    }
   }
 }

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -48,6 +48,13 @@ public class TimeSeriesOperand extends LeafOperand {
 
   public TimeSeriesOperand(ByteBuffer byteBuffer) {
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+  }
+
+  public static TimeSeriesOperand constructColumnHeaderExpression(
+      String columnName, TSDataType dataType) {
+    MeasurementPath measurementPath =
+        new MeasurementPath(new PartialPath(columnName, false), dataType);
+    return new TimeSeriesOperand(measurementPath);
   }
 
   public PartialPath getPath() {
@@ -88,11 +95,6 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     pathSet.add(path);
-  }
-
-  @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) {
-    return typeProvider.getType(toString());
   }
 
   @Override

@@ -23,9 +23,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+// TODO: remove this
 public class StopPipeOperator extends Operator {
   private String pipeName;
 
@@ -39,6 +39,6 @@ public class StopPipeOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new OperatePipePlan(pipeName, operatorType);
+    return null;
   }
 }

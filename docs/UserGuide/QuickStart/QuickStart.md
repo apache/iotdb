@@ -64,23 +64,38 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -b
+```
 or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+```shell
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+```
 
+parameters:
+- by default, iotdb will run in the background
+- "-v": show iotdb version
+- "-f": run iotdb on the foreground and print logs on the console (by default)
+- "-d": run iotdb in the background which does not print logs on the console
+- "-p \<pidfile\>": save the pid into target pidfile
+- "-h": help
+- "printgc"(must be at the end of the command): print the GC log 
+- "-g": print the GC log
+- "-c \<config folder\>": set IOTDB_CONF parameter
+- "-D <a=b>": set system variables to IoTDB program.
+- "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\>"
+- "-X \<command\> equal to -XX:\<command\>"
+
+```
 # Windows
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-server.bat -c <conf_path>
 ```
 
-- "-c" and "-rpc_port" are optional.
-- option "-c" specifies the system configuration file directory.
-- option "-rpc_port" specifies the rpc port.
-- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
-
-if you want to use JMX to connect IOTDB, you may need to add 
+Notice that Windows OS only support -v, -c, -f and -b.
+if you want to use JMX to connect IOTDB, you may need to add/modify 
 
 ```
--Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
+-Dcom.sun.management.jmxremote.rmi.port=<PORT> -Djava.rmi.server.hostname=<IP> 
 ```
 to $IOTDB_JMX_OPTS in datanode-env.sh. or datanode-env.bat
 
@@ -122,25 +137,25 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data. 
 
-The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP, and here is an example: 
+The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a database. Before defining a timeseries, we should define a database using create DATABASE, and here is an example: 
 
 ``` 
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> create database root.ln
 ```
 
-We can also use SHOW STORAGE GROUP to check created storage group:
+We can also use SHOW DATABASES to check created databases:
 
 ```
-IoTDB> SHOW STORAGE GROUP
+IoTDB> SHOW DATABASES
 +-----------------------------------+
-|                      Storage Group|
+|                           Database|
 +-----------------------------------+
 |                            root.ln|
 +-----------------------------------+
-storage group number = 1
+Database number = 1
 ```
 
-After the storage group is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
+After the database is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -154,7 +169,7 @@ To query the specific timeseries, use SHOW TIMESERIES \<Path\>. \<Path\> represe
 ```
 IoTDB> SHOW TIMESERIES
 +-------------------------------+---------------+--------+--------+
-|                     Timeseries|  Storage Group|DataType|Encoding|
+|                     Timeseries|       Database|DataType|Encoding|
 +-------------------------------+---------------+--------+--------+
 |       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
 |  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
@@ -167,7 +182,7 @@ Total timeseries number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------------+--------------+--------+--------+
-|                    Timeseries| Storage Group|DataType|Encoding|
+|                    Timeseries|      Database|DataType|Encoding|
 +------------------------------+--------------+--------+--------+
 |      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
 +------------------------------+--------------+--------+--------+

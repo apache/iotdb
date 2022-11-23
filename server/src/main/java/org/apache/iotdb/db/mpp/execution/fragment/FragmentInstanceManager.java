@@ -30,8 +30,8 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -80,7 +80,7 @@ public class FragmentInstanceManager {
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
 
-    this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
+    this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
@@ -108,7 +108,8 @@ public class FragmentInstanceManager {
                     instanceContext.computeIfAbsent(
                         instanceId,
                         fragmentInstanceId ->
-                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                            createFragmentInstanceContext(
+                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
                 try {
                   DataDriver driver =
@@ -133,7 +134,19 @@ public class FragmentInstanceManager {
                 }
               });
 
-      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      if (execution != null) {
+        execution
+            .getStateMachine()
+            .addStateChangeListener(
+                newState -> {
+                  if (newState.isDone()) {
+                    instanceExecution.remove(instanceId);
+                  }
+                });
+        return execution.getInstanceInfo();
+      } else {
+        return createFailedInstanceInfo(instanceId);
+      }
     }
   }
 
@@ -151,7 +164,8 @@ public class FragmentInstanceManager {
                   instanceContext.computeIfAbsent(
                       instanceId,
                       fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                          createFragmentInstanceContext(
+                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
                 SchemaDriver driver =
@@ -170,7 +184,19 @@ public class FragmentInstanceManager {
                 return null;
               }
             });
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    if (execution != null) {
+      execution
+          .getStateMachine()
+          .addStateChangeListener(
+              newState -> {
+                if (newState.isDone()) {
+                  instanceExecution.remove(instanceId);
+                }
+              });
+      return execution.getInstanceInfo();
+    } else {
+      return createFailedInstanceInfo(instanceId);
+    }
   }
 
   /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
@@ -186,7 +212,7 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
-    logger.debug("cancelTask");
+    logger.debug("[CancelFI]");
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);
@@ -220,7 +246,10 @@ public class FragmentInstanceManager {
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     FragmentInstanceContext context = instanceContext.get(instanceId);
     return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED, context.getEndTime(), context.getFailedCause());
+        FragmentInstanceState.FAILED,
+        context.getEndTime(),
+        context.getFailedCause(),
+        context.getFailureInfoList());
   }
 
   private void removeOldInstances() {

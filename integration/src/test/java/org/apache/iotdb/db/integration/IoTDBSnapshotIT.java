@@ -21,8 +21,10 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.integration.env.EnvFactory;
 
@@ -66,10 +69,10 @@ public class IoTDBSnapshotIT {
   @Test
   public void testTakeSnapshot()
       throws SQLException, IllegalPathException, StorageEngineException, IOException,
-          DirectoryNotLegalException {
+          DirectoryNotLegalException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -83,7 +86,8 @@ public class IoTDBSnapshotIT {
         statement.execute("flush");
       }
 
-      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
+      DataRegion region =
+          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + ".d0.s"));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (snapshotDir.exists()) {
         FileUtils.forceDelete(snapshotDir);
@@ -94,28 +98,47 @@ public class IoTDBSnapshotIT {
       Assert.assertTrue(snapshotDir.exists());
       Assert.assertTrue(snapshotDir.isDirectory());
       File[] seqTsfiles =
-          snapshotDir.listFiles((dir, name) -> name.endsWith(".tsfile") && name.startsWith("seq"));
+          new File(
+                  snapshotDir.getAbsolutePath()
+                      + File.separator
+                      + "snapshot"
+                      + File.separator
+                      + "unsequence"
+                      + File.separator
+                      + "root.snapshotTest"
+                      + File.separator
+                      + "0"
+                      + File.separator
+                      + "0")
+              .listFiles();
       File[] unseqTsfiles =
-          snapshotDir.listFiles(
-              (dir, name) -> name.endsWith(".tsfile") && name.startsWith("unseq"));
-      File[] tsfileResources =
-          snapshotDir.listFiles((dir, name) -> name.endsWith(".tsfile.resource"));
+          new File(
+                  snapshotDir.getAbsolutePath()
+                      + File.separator
+                      + "snapshot"
+                      + File.separator
+                      + "sequence"
+                      + File.separator
+                      + "root.snapshotTest"
+                      + File.separator
+                      + "0"
+                      + File.separator
+                      + "0")
+              .listFiles();
       Assert.assertNotNull(seqTsfiles);
       Assert.assertNotNull(unseqTsfiles);
-      Assert.assertNotNull(tsfileResources);
-      Assert.assertEquals(10, seqTsfiles.length);
-      Assert.assertEquals(10, unseqTsfiles.length);
-      Assert.assertEquals(20, tsfileResources.length);
+      Assert.assertEquals(20, seqTsfiles.length);
+      Assert.assertEquals(20, unseqTsfiles.length);
     }
   }
 
   @Test(expected = DirectoryNotLegalException.class)
   public void testTakeSnapshotInNotEmptyDir()
       throws SQLException, IOException, IllegalPathException, StorageEngineException,
-          DirectoryNotLegalException {
+          DirectoryNotLegalException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -129,7 +152,8 @@ public class IoTDBSnapshotIT {
         statement.execute("flush");
       }
 
-      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
+      DataRegion region =
+          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + ".d0.s"));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
@@ -145,11 +169,11 @@ public class IoTDBSnapshotIT {
   @Test
   public void testLoadSnapshot()
       throws SQLException, MetadataException, StorageEngineException, DirectoryNotLegalException,
-          IOException {
+          IOException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       Map<String, Integer> resultMap = new HashMap<>();
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -172,7 +196,8 @@ public class IoTDBSnapshotIT {
         }
       }
 
-      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
+      DataRegion region =
+          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + ".d0.s"));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
@@ -201,11 +226,11 @@ public class IoTDBSnapshotIT {
   @Test
   public void testTakeAndLoadSnapshotWhenCompaction()
       throws SQLException, MetadataException, StorageEngineException, InterruptedException,
-          DirectoryNotLegalException, IOException {
+          DirectoryNotLegalException, IOException, DataRegionException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       Map<String, Integer> resultMap = new HashMap<>();
-      statement.execute("set storage group to " + SG_NAME);
+      statement.execute("CREATE DATABASE " + SG_NAME);
       for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
           statement.execute(
@@ -235,7 +260,8 @@ public class IoTDBSnapshotIT {
       }
       IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
       statement.execute("merge");
-      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
+      DataRegion region =
+          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + ".d0.s"));
       new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
       region.abortCompaction();
       StorageEngineV2.getInstance()

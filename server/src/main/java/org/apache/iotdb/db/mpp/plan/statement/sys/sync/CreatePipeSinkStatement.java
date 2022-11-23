@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
@@ -41,8 +41,8 @@ public class CreatePipeSinkStatement extends Statement implements IConfigStateme
 
   private Map<String, String> attributes;
 
-  public CreatePipeSinkStatement(StatementType createPipeSinkStatement) {
-    this.statementType = createPipeSinkStatement;
+  public CreatePipeSinkStatement() {
+    this.statementType = StatementType.CREATE_PIPESINK;
   }
 
   public String getPipeSinkName() {
@@ -90,8 +90,7 @@ public class CreatePipeSinkStatement extends Statement implements IConfigStateme
       throw new IOException(
           "Parsing CreatePipeSinkStatement error. Attributes is less than expected.");
     }
-    CreatePipeSinkStatement createPipeSinkStatement =
-        new CreatePipeSinkStatement(StatementType.CREATE_PIPESINK);
+    CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
     createPipeSinkStatement.setPipeSinkName(split[0]);
     createPipeSinkStatement.setPipeSinkType(split[1]);
     int size = (Integer.parseInt(split[2]) << 1);

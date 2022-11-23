@@ -48,8 +48,8 @@ public class IoTDBVersionIT {
   public void testVersionPersist() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.versionTest1");
-      statement.execute("SET STORAGE GROUP TO root.versionTest2");
+      statement.execute("CREATE DATABASE root.versionTest1");
+      statement.execute("CREATE DATABASE root.versionTest2");
       statement.execute(
           "CREATE TIMESERIES root.versionTest1.s0" + " WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute(

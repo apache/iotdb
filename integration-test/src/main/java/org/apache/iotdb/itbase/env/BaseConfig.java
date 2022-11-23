@@ -94,10 +94,6 @@ public interface BaseConfig {
     return this;
   }
 
-  default BaseConfig setEnablePartition(boolean enablePartition) {
-    return this;
-  }
-
   default BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     return this;
   }
@@ -119,6 +115,14 @@ public interface BaseConfig {
   }
 
   default BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    return this;
+  }
+
+  default boolean isEnableMemControl() {
+    return true;
+  }
+
+  default BaseConfig setEnableMemControl(boolean enableMemControl) {
     return this;
   }
 
@@ -199,7 +203,7 @@ public interface BaseConfig {
   }
 
   default String getConfigNodeConsesusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaRegionConsensusProtocolClass(
@@ -208,7 +212,7 @@ public interface BaseConfig {
   }
 
   default String getSchemaRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
@@ -216,7 +220,31 @@ public interface BaseConfig {
   }
 
   default String getDataRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
+  }
+
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
+  default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    return this;
+  }
+
+  default int getSchemaReplicationFactor() {
+    return 1;
+  }
+
+  default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    return this;
+  }
+
+  default int getDataReplicationFactor() {
+    return 1;
   }
 
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
@@ -225,5 +253,97 @@ public interface BaseConfig {
 
   default long getTimePartitionInterval() {
     return 86400;
+  }
+
+  default BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    return this;
+  }
+
+  default int getRatisSnapshotTriggerThreshold() {
+    return 400000;
+  }
+
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+    return 4000;
+  }
+
+  default BaseConfig setCompactionThreadCount(int compactionThreadCount) {
+    return this;
+  }
+
+  default int getConcurrentCompactionThread() {
+    return 10;
+  }
+
+  default BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    return this;
+  }
+
+  default int getMaxDegreeOfIndexNode() {
+    return 256;
+  }
+
+  default BaseConfig setEnableWatermark(boolean enableWatermark) {
+    return this;
+  }
+
+  default boolean isEnableWatermark() {
+    return false;
+  }
+
+  default String getWatermarkSecretKey() {
+    return "IoTDB*2019@Beijing";
+  }
+
+  default BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    return this;
+  }
+
+  default String getWatermarkBitString() {
+    return "100101110100";
+  }
+
+  default BaseConfig setWatermarkBitString(String watermarkBitString) {
+    return this;
+  }
+
+  default String getWatermarkMethod() {
+    return "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
+  }
+
+  default BaseConfig setWatermarkMethod(String watermarkMethod) {
+    return this;
+  }
+
+  default boolean isEnableMQTTService() {
+    return false;
+  }
+
+  default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
+  }
+
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
+  }
+
+  default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    return this;
+  }
+
+  default int getSelectIntoInsertTabletPlanRowLimit() {
+    return 10000;
+  }
+
+  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    return this;
+  }
+
+  default boolean isEnableLeaderBalancing() {
+    return false;
   }
 }

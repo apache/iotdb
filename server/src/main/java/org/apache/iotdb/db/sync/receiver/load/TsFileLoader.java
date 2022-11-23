@@ -18,49 +18,68 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileLoader.class);
 
-  private File tsFile;
+  private final File tsFile;
+  private final String database;
 
-  public TsFileLoader(File tsFile) {
+  public TsFileLoader(File tsFile, String database) {
     this.tsFile = tsFile;
+    this.database = database;
   }
 
   @Override
   public void load() throws PipeDataLoadException {
     try {
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      FileLoaderUtils.loadOrGenerateResource(tsFileResource);
-      List<TsFileResource> splitResources = new ArrayList();
-      if (tsFileResource.isSpanMultiTimePartitions()) {
-        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
-        tsFileResource.writeLock();
-        tsFileResource.removeModFile();
-        tsFileResource.writeUnlock();
-      }
 
-      if (splitResources.isEmpty()) {
-        splitResources.add(tsFileResource);
-      }
+      LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
+      statement.setDeleteAfterLoad(true);
+      statement.setSgLevel(parseSgLevel());
+      statement.setVerifySchema(true);
+      statement.setAutoCreateDatabase(false);
 
-      for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource, false);
+      long queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .execute(
+                  statement,
+                  queryId,
+                  null,
+                  "",
+                  PARTITION_FETCHER,
+                  SCHEMA_FETCHER,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logger.error(
+            String.format("Load TsFile %s error, statement: %s.", tsFile.getPath(), statement));
+        logger.error(String.format("Load TsFile result status : %s.", result.status));
+        throw new LoadFileException(
+            String.format("Can not execute load TsFile statement: %s", statement));
       }
     } catch (Exception e) {
       throw new PipeDataLoadException(e.getMessage());
     }
+  }
+
+  private int parseSgLevel() throws IllegalPathException {
+    return new PartialPath(database).getNodeLength() - 1;
   }
 }

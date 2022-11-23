@@ -23,12 +23,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -42,6 +44,8 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calcula
  */
 public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
+  private final IWindowManager windowManager;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -49,12 +53,22 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       Operator child,
       boolean ascending,
       long maxReturnSize) {
-    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
+    this.windowManager = new TimeWindowManager(timeRangeIterator);
+  }
+
+  private boolean hasMoreData() {
+    return inputTsBlock != null || child.hasNext();
+  }
+
+  @Override
+  public boolean hasNext() {
+    return windowManager.hasNext(hasMoreData());
   }
 
   @Override
   protected boolean calculateNextAggregationResult() {
-    while (!calcFromRawData()) {
+    while (!calculateFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
@@ -65,20 +79,86 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // if child still has next but can't be invoked now
         return false;
       } else {
+        // If there are no points belong to last window, the last window will not
+        // initialize window and aggregators
+        if (!windowManager.isCurWindowInit()) {
+          initWindowAndAggregators();
+        }
         break;
       }
     }
 
-    // update result using aggregators
     updateResultTsBlock();
+    // Step into next window
+    windowManager.next();
 
     return true;
   }
 
-  private boolean calcFromRawData() {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending);
-    inputTsBlock = calcResult.getRight();
-    return calcResult.getLeft();
+  private boolean calculateFromRawData() {
+
+    // if window is not initialized, we should init window status and reset aggregators
+    if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
+      return false;
+    }
+
+    // If current window has been initialized, we should judge whether inputTsBlock is empty
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+
+    if (windowManager.satisfiedCurWindow(inputTsBlock)) {
+
+      int lastReadRowIndex = 0;
+      for (Aggregator aggregator : aggregators) {
+        // Current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+      }
+      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+        inputTsBlock = null;
+        // For the last index of TsBlock, if we can know the aggregation calculation is over
+        // we can directly updateResultTsBlock and return true
+        return isAllAggregatorsHasFinalResult(aggregators);
+      } else {
+        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+        return true;
+      }
+    }
+
+    boolean isTsBlockOutOfBound = windowManager.isTsBlockOutOfBound(inputTsBlock);
+    return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
+  }
+
+  @Override
+  protected void updateResultTsBlock() {
+    appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
+  }
+
+  private boolean skipPreviousWindowAndInitCurWindow() {
+    // Before we initialize windowManager and aggregators, we should ensure that we have consumed
+    // all points belong to previous window
+    inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+    // After skipping, if tsBlock is empty, we cannot ensure that we have consumed all points belong
+    // to previous window, we should go back to calculateNextAggregationResult() to get a new
+    // tsBlock
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+    // If we have consumed all points belong to previous window, we can initialize current window
+    // and aggregators
+    initWindowAndAggregators();
+    return true;
+  }
+
+  private void initWindowAndAggregators() {
+    windowManager.initCurWindow(inputTsBlock);
+    IWindow curWindow = windowManager.getCurWindow();
+    for (Aggregator aggregator : aggregators) {
+      aggregator.updateWindow(curWindow);
+    }
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -26,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,7 +41,6 @@ import java.sql.Statement;
  * IoTDB server should be defined as integration test.
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateAlignedTimeseriesIT {
 
   private Statement statement;
@@ -63,6 +62,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
@@ -70,14 +70,14 @@ public class IoTDBCreateAlignedTimeseriesIT {
           "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
 
-    statement.execute("SET STORAGE GROUP TO root.sg1");
+    statement.execute("CREATE DATABASE root.sg1");
     try {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
     } catch (SQLException ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
     statement.close();
@@ -86,19 +86,19 @@ public class IoTDBCreateAlignedTimeseriesIT {
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
-    //    // ensure storage group in cache is right after recovering.
+    //    // ensure database in cache is right after recovering.
     //    assertTimeseriesEquals(timeSeriesArray);
   }
 
-  @Ignore
   @Test
+  @Category({ClusterIT.class})
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
           "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
 
-    statement.execute("SET STORAGE GROUP TO root.sg1");
+    statement.execute("CREATE DATABASE root.sg1");
     try {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
@@ -109,16 +109,14 @@ public class IoTDBCreateAlignedTimeseriesIT {
       e.printStackTrace();
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
-    statement.close();
-    connection.close();
     // todo
     //    EnvironmentUtils.stopDaemon();
-    setUp();
+    //    setUp();
 
-    // ensure storage group in cache is right after recovering.
+    // ensure database in cache is right after recovering.
     assertTimeseriesEquals(timeSeriesArray);
   }
 
@@ -128,13 +126,13 @@ public class IoTDBCreateAlignedTimeseriesIT {
     try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
       while (resultSet.next()) {
         String ActualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertEquals(timeSeriesArray[count], ActualResult);
         count++;
       }

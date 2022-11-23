@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -67,9 +68,7 @@ public class IoTDBAggregationWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
     } catch (Exception e) {
       fail(e.getMessage());
@@ -447,10 +446,9 @@ public class IoTDBAggregationWithDeletionIT {
 
   @Test
   public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0", "0", "9", "11", "6"};
+    String[] retArray = new String[] {"0", "9", "11", "6"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s2)",
       "count(root.sg1.d1.s3)",
       "count(root.sg1.d1.s4)",
       "count(root.sg1.d1.s5)"

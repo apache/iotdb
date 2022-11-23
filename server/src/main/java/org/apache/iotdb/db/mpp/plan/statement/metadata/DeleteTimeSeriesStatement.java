@@ -20,26 +20,48 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
-public class DeleteTimeSeriesStatement extends Statement {
+public class DeleteTimeSeriesStatement extends Statement implements IConfigStatement {
 
-  List<PartialPath> partialPaths;
+  List<PartialPath> pathPatternList;
+
+  public DeleteTimeSeriesStatement() {
+    super();
+    statementType = StatementType.DELETE_TIMESERIES;
+  }
+
+  public DeleteTimeSeriesStatement(List<PartialPath> pathPatternList) {
+    this();
+    this.pathPatternList = pathPatternList;
+  }
 
   @Override
   public List<PartialPath> getPaths() {
-    return partialPaths;
+    return pathPatternList;
   }
 
-  public void setPartialPaths(List<PartialPath> partialPaths) {
-    this.partialPaths = partialPaths;
+  public List<PartialPath> getPathPatternList() {
+    return pathPatternList;
+  }
+
+  public void setPathPatternList(List<PartialPath> pathPatternList) {
+    this.pathPatternList = pathPatternList;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitDeleteTimeseries(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 }

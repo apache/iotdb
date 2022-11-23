@@ -20,10 +20,10 @@ package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
@@ -48,15 +48,15 @@ import java.util.concurrent.Future;
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   /** true when the recover procedure has started */
   private volatile boolean hasStarted = false;
-  /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
+  /** start recovery after all data regions have submitted unsealed zero-level TsFiles */
   private volatile CountDownLatch allDataRegionScannedLatch;
   /** threads to recover wal nodes */
   private ExecutorService recoverThreadPool;
-  /** stores all UnsealedTsFileRecoverPerformer submitted by virtual storage group processors */
+  /** stores all UnsealedTsFileRecoverPerformer submitted by data region processors */
   private final Map<String, UnsealedTsFileRecoverPerformer> absolutePath2RecoverPerformer =
       new ConcurrentHashMap<>();
 
@@ -67,7 +67,7 @@ public class WALRecoverManager {
     try {
       // collect wal nodes' information
       List<File> walNodeDirs = new ArrayList<>();
-      for (String walDir : config.getWalDirs()) {
+      for (String walDir : commonConfig.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
         File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
         if (nodeDirs == null) {
@@ -79,7 +79,7 @@ public class WALRecoverManager {
           }
         }
       }
-      // wait until all virtual storage groups have submitted their unsealed TsFiles,
+      // wait until all data regions have submitted their unsealed TsFiles,
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();

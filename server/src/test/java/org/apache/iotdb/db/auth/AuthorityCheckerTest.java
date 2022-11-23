@@ -83,7 +83,7 @@ public class AuthorityCheckerTest {
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, PrivilegeType.DELETE_ROLE.ordinal());
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, PrivilegeType.DELETE_USER.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.SET_STORAGE_GROUP.ordinal());
+        user.getName(), nodeName, PrivilegeType.CREATE_DATABASE.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.CREATE_TIMESERIES.ordinal());
     authorizer.grantPrivilegeToUser(

@@ -40,7 +40,7 @@ import static org.junit.Assert.fail;
 public class TSPlanContextAuthorTest {
 
   private static Path[] emptyPaths = new Path[] {};
-  private static Path[] testPaths = new Path[] {new Path("root.node1.a", "b")};
+  private static Path[] testPaths = new Path[] {new Path("root.node1.a", "b", true)};
 
   private String inputSQL;
   private Path[] paths;
@@ -59,19 +59,19 @@ public class TSPlanContextAuthorTest {
           {"CREATE ROLE rolename", emptyPaths},
           {"DROP ROLE rolename", emptyPaths},
           {
-            "GRANT USER username PRIVILEGES SET_STORAGE_GROUP,INSERT_TIMESERIES ON root.node1.a.b",
+            "GRANT USER username PRIVILEGES CREATE_DATABASE,INSERT_TIMESERIES ON root.node1.a.b",
             testPaths
           },
           {
-            "REVOKE USER username PRIVILEGES SET_STORAGE_GROUP,INSERT_TIMESERIES ON root.node1.a.b",
+            "REVOKE USER username PRIVILEGES CREATE_DATABASE,INSERT_TIMESERIES ON root.node1.a.b",
             testPaths
           },
           {
-            "GRANT ROLE rolename PRIVILEGES SET_STORAGE_GROUP,INSERT_TIMESERIES ON root.node1.a.b",
+            "GRANT ROLE rolename PRIVILEGES CREATE_DATABASE,INSERT_TIMESERIES ON root.node1.a.b",
             testPaths
           },
           {
-            "REVOKE ROLE rolename PRIVILEGES SET_STORAGE_GROUP,INSERT_TIMESERIES ON root.node1.a.b",
+            "REVOKE ROLE rolename PRIVILEGES CREATE_DATABASE,INSERT_TIMESERIES ON root.node1.a.b",
             testPaths
           },
           {"GRANT rolename TO username", emptyPaths},

@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -139,6 +140,52 @@ public class BytesUtilsTest {
     byte[] bs = new byte[width * 2];
     BytesUtils.longToBytes(l, bs, 0, width);
     assertEquals(l, BytesUtils.bytesToLong(bs, 0, width));
+  }
+
+  @Test
+  public void bytesToIntOffsetTest1() {
+    int l1 = 123;
+    int width1 = 64 - Integer.numberOfLeadingZeros(l1);
+    int l2 = -124;
+    int width2 = 64 - Integer.numberOfLeadingZeros(l2);
+    byte[] bs = new byte[1000];
+    BytesUtils.intToBytes(l1, bs, 0, width1);
+    int res_val1_1 = BytesUtils.bytesToInt(bs, 0, width1);
+    BytesUtils.intToBytes(l2, bs, width1, width2);
+    int res_val1_2 = BytesUtils.bytesToInt(bs, 0, width1);
+    Assert.assertEquals(res_val1_1, res_val1_2);
+  }
+
+  @Test
+  public void bytesToLongOffsetTest1() {
+    long l1 = 1600650710304L;
+    int width1 = 64 - Long.numberOfLeadingZeros(l1);
+    long l2 = -16L;
+    int width2 = 64 - Long.numberOfLeadingZeros(l2);
+    byte[] bs = new byte[1000];
+    BytesUtils.longToBytes(l1, bs, 0, width1);
+    long res_val1_1 = BytesUtils.bytesToLong(bs, 0, width1);
+    BytesUtils.longToBytes(l2, bs, width1, width2);
+    long res_val1_2 = BytesUtils.bytesToLong(bs, 0, width1);
+    Assert.assertEquals(res_val1_1, res_val1_2);
+  }
+
+  @Test
+  public void bytesToLongOffsetTest2() {
+    long l1 = 123L;
+    int width1 = 64 - Long.numberOfLeadingZeros(l1);
+    long l2 = -123L;
+    int width2 = 64 - Long.numberOfLeadingZeros(l2);
+    long l3 = 123L;
+    int width3 = 64 - Long.numberOfLeadingZeros(l3);
+    byte[] bs = new byte[1000];
+    BytesUtils.longToBytes(l1, bs, 0, width1);
+    assertEquals(l1, BytesUtils.bytesToLong(bs, 0, width1));
+    BytesUtils.longToBytes(l2, bs, width1, width2);
+    BytesUtils.longToBytes(l3, bs, width1 + width2, width3);
+    assertEquals(l1, BytesUtils.bytesToLong(bs, 0, width1));
+    assertEquals(l2, BytesUtils.bytesToLong(bs, width1, width2));
+    assertEquals(l3, BytesUtils.bytesToLong(bs, width1 + width2, width3));
   }
 
   @Test

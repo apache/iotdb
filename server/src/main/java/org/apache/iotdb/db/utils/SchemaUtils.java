@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -34,8 +31,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -111,25 +106,6 @@ public class SchemaUtils {
         logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
       }
     }
-  }
-
-  public static void cacheTimeseriesSchema(TimeseriesSchema schema) {
-    PartialPath path;
-    try {
-      path = new PartialPath(schema.getFullPath());
-    } catch (IllegalPathException e) {
-      logger.error("Cannot cache an illegal path {}", schema.getFullPath());
-      return;
-    }
-    TSDataType dataType = schema.getType();
-    TSEncoding encoding = schema.getEncodingType();
-    CompressionType compressionType = schema.getCompressor();
-    IMeasurementSchema measurementSchema =
-        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
-
-    IMeasurementMNode measurementMNode =
-        MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {

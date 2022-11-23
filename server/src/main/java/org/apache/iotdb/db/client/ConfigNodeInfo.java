@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -53,7 +53,7 @@ public class ConfigNodeInfo {
   // latest config nodes
   private final Set<TEndPoint> onlineConfigNodes;
 
-  public static PartitionRegionId partitionRegionId = new PartitionRegionId(0);
+  public static ConfigNodeRegionId configNodeRegionId = new ConfigNodeRegionId(0);
 
   private File propertiesFile;
 

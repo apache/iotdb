@@ -18,29 +18,83 @@
     specific language governing permissions and limitations
     under the License.
 -->
-<import-control pkg="org.apache.iotdb.db.it">
+<import-control pkg="org.apache.iotdb">
   <disallow class="java.sql.DriverManager"/>
   <disallow class="javax.sql.DataSource"/>
-  <disallow pkg="org.apache.iotdb.jdbc.*"/>
-  <allow pkg="java.util"/>
-  <allow pkg="java.sql"/>
-  <allow pkg="java.io"/>
-  <allow pkg="java.math"/>
-  <allow pkg="java.text"/>
+  <allow class="java.security.SecureRandom" />
   <allow pkg="org\.junit.*" regex="true"/>
+  <allow pkg="java.io" />
+  <allow pkg="java.nio"/>
+  <allow pkg="java.util" />
+  <allow pkg="java.math" />
+  <allow pkg="java.sql" />
+  <allow pkg="java.time" />
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.rpc.*" regex="true"/>
   <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
-  <allow pkg="org\.apache\.thrift.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.commons\.auth\.entity.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.mpp\.common\.header.*" regex="true" />
+  <allow pkg="org\.slf4j.*" regex="true" />
+  <subpackage name="db.it">
+    <disallow pkg="org.apache.iotdb.jdbc.*"/>
+    <allow class="org.apache.iotdb.db.constant.TestConstant" />
+    <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="org.apache.iotdb.db.utils.MathUtils" />
+    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
+    <allow class="org.fusesource.mqtt.client.QoS" />
+    <allow class="org.apache.iotdb.commons.path.PartialPath" />
+    <allow pkg="java.text"/>
+    <allow pkg="org.apache.iotdb.db.it.utils" />
+    <allow pkg="org\.apache\.iotdb\.db\.conf.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
+    <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
+    <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>
+    <allow pkg="org\.apache\.iotdb\.db\.mpp\.common\.header.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.exception\.write.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.engine\.trigger\.sink\.mqtt.*" regex="true" />
+  </subpackage>
+  <subpackage name="confignode.it">
+    <allow class="java.nio.ByteBuffer" />
+    <allow class="org.apache.iotdb.commons.path.PartialPath" />
+    <allow class="org.apache.iotdb.commons.path.PathPatternTree" />
+    <allow class="org.apache.iotdb.commons.path.PathDeserializeUtil" />
+    <allow class="org.apache.iotdb.tsfile.utils.PublicBAOS" />
+    <allow class="org.apache.iotdb.commons.exception.IllegalPathException" />
+    <allow class="org.apache.commons.codec.digest.DigestUtils" />
+    <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
+    <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
+    <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
+    <allow class="org.apache.iotdb.commons.cq.CQState" />
+    <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
+    <allow class="org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils" />
+    <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.commons\.cluster.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.commons\.auth\.entity.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true" />
+    <allow pkg="org\.apache\.thrift.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.trigger\.api\.enums.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.confignode\.it\.utils\.ConfigNodeTestUtils.*" regex="true"/>
+  </subpackage>
+  <subpackage name="session.it">
+    <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
+    <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
+    <allow class="org.apache.iotdb.db.conf.OperationType" />
+    <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
+    <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
+    <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
+    <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
+    <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
+    <allow pkg="org.apache.iotdb.session.template" />
+  </subpackage>
 </import-control>

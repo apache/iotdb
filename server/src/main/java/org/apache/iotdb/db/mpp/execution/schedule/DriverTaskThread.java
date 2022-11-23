@@ -23,10 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -48,8 +48,9 @@ public class DriverTaskThread extends AbstractDriverThread {
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
-      ITaskScheduler scheduler) {
-    super(workerId, tg, queue, scheduler);
+      ITaskScheduler scheduler,
+      ThreadProducer producer) {
+    super(workerId, tg, queue, scheduler, producer);
   }
 
   @Override

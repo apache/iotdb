@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class AuthorityChecker {
 
@@ -47,8 +47,7 @@ public class AuthorityChecker {
       CommonDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
-  private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
-  private static SessionManager sessionManager = SessionManager.getInstance();
+  private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   private AuthorityChecker() {}
 
@@ -127,11 +126,7 @@ public class AuthorityChecker {
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return true;
-    } else {
-      return false;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)
@@ -149,11 +144,11 @@ public class AuthorityChecker {
   }
 
   /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, long sessionId) {
+  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     try {
-      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+      if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION_ERROR,
+            TSStatusCode.NO_PERMISSION,
             "No permissions for this operation, please add privilege "
                 + PrivilegeType.values()[
                     AuthorityChecker.translateToPermissionId(statement.getType())]);
@@ -162,8 +157,8 @@ public class AuthorityChecker {
       logger.warn("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return onQueryException(
+          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -208,9 +203,9 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
       case TTL:
-        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+        return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+        return PrivilegeType.DELETE_DATABASE.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:
@@ -297,9 +292,9 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
       case TTL:
-        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+        return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+        return PrivilegeType.DELETE_DATABASE.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:
@@ -347,18 +342,17 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_TRIGGER.ordinal();
       case DROP_TRIGGER:
         return PrivilegeType.DROP_TRIGGER.ordinal();
-      case START_TRIGGER:
-        return PrivilegeType.START_TRIGGER.ordinal();
-      case STOP_TRIGGER:
-        return PrivilegeType.STOP_TRIGGER.ordinal();
       case CREATE_CONTINUOUS_QUERY:
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
       case CREATE_TEMPLATE:
+      case DROP_TEMPLATE:
         return PrivilegeType.UPDATE_TEMPLATE.ordinal();
       case SET_TEMPLATE:
       case ACTIVATE_TEMPLATE:
+      case DEACTIVATE_TEMPLATE:
+      case UNSET_TEMPLATE:
         return PrivilegeType.APPLY_TEMPLATE.ordinal();
       case SHOW_SCHEMA_TEMPLATE:
       case SHOW_NODES_IN_SCHEMA_TEMPLATE:

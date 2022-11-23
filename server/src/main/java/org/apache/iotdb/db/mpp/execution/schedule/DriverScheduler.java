@@ -34,9 +34,9 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private static final int MAX_CAPACITY =
       IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
+      IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
@@ -92,14 +92,48 @@ public class DriverScheduler implements IDriverScheduler, IService {
   @Override
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
+      int index = i;
+      String threadName = "Query-Worker-Thread-" + i;
+      ThreadProducer producer =
+          new ThreadProducer() {
+            @Override
+            public void produce(
+                String threadName,
+                ThreadGroup workerGroups,
+                IndexedBlockingQueue<DriverTask> queue,
+                ThreadProducer producer) {
+              DriverTaskThread newThread =
+                  new DriverTaskThread(threadName, workerGroups, readyQueue, scheduler, this);
+              threads.set(index, newThread);
+              newThread.start();
+            }
+          };
       AbstractDriverThread t =
-          new DriverTaskThread("Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+          new DriverTaskThread(threadName, workerGroups, readyQueue, scheduler, producer);
       threads.add(t);
       t.start();
     }
+
+    String threadName = "Query-Sentinel-Thread";
+    ThreadProducer producer =
+        new ThreadProducer() {
+          @Override
+          public void produce(
+              String threadName,
+              ThreadGroup workerGroups,
+              IndexedBlockingQueue<DriverTask> queue,
+              ThreadProducer producer) {
+            DriverTaskTimeoutSentinelThread newThread =
+                new DriverTaskTimeoutSentinelThread(
+                    threadName, workerGroups, timeoutQueue, scheduler, this);
+            threads.set(WORKER_THREAD_NUM, newThread);
+            newThread.start();
+          }
+        };
+
     AbstractDriverThread t =
         new DriverTaskTimeoutSentinelThread(
-            "Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
+            threadName, workerGroups, timeoutQueue, scheduler, producer);
     threads.add(t);
     t.start();
   }

@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.util.TestEntry;
 import org.apache.iotdb.consensus.multileader.util.TestStateMachine;
 
@@ -45,16 +44,16 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MultiLeaderConsensusTest {
-
+  private static final long CHECK_POINT_GAP = 500;
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderConsensusTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
 
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, new TEndPoint("127.0.0.1", 6000)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6001)),
-          new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+          new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)),
+          new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)),
+          new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
 
   private final List<File> peersStorage =
       Arrays.asList(
@@ -89,8 +88,9 @@ public class MultiLeaderConsensusTest {
       servers.add(
           (MultiLeaderConsensus)
               ConsensusFactory.getConsensusImpl(
-                      ConsensusFactory.MultiLeaderConsensus,
+                      ConsensusFactory.MULTI_LEADER_CONSENSUS,
                       ConsensusConfig.newBuilder()
+                          .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
                           .setStorageDir(peersStorage.get(i).getAbsolutePath())
                           .build(),
@@ -100,7 +100,7 @@ public class MultiLeaderConsensusTest {
                           new IllegalArgumentException(
                               String.format(
                                   ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.MultiLeaderConsensus))));
+                                  ConsensusFactory.MULTI_LEADER_CONSENSUS))));
       servers.get(i).start();
     }
   }
@@ -124,7 +124,7 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
 
-    for (int i = 0; i < IndexController.FLUSH_INTERVAL; i++) {
+    for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
       servers.get(2).write(gid, new TestEntry(i, peers.get(2)));
@@ -135,8 +135,7 @@ public class MultiLeaderConsensusTest {
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
-      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
-          < IndexController.FLUSH_INTERVAL) {
+      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to replicate entries");
@@ -146,20 +145,14 @@ public class MultiLeaderConsensusTest {
     }
 
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(0).getRequestSet().size());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(1).getRequestSet().size());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(2).getRequestSet().size());
+        CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+    Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(0).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(1).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(2).getRequestSet().size());
     Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
 
@@ -170,14 +163,13 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(1).getImpl(gid).getIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(2).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
-      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
-          < IndexController.FLUSH_INTERVAL) {
+      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to recover entries");
@@ -187,14 +179,11 @@ public class MultiLeaderConsensusTest {
     }
 
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
   }
 
   /**
@@ -211,7 +200,7 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
 
-    for (int i = 0; i < IndexController.FLUSH_INTERVAL; i++) {
+    for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
       Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getIndex());
@@ -230,16 +219,15 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < 2; i++) {
       long start = System.currentTimeMillis();
-      // should be [IndexController.FLUSH_INTERVAL, IndexController.FLUSH_INTERVAL * 2 - 1] after
+      // should be [CHECK_POINT_GAP, CHECK_POINT_GAP * 2 - 1] after
       // replicating all entries
-      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
-          < IndexController.FLUSH_INTERVAL) {
+      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           logger.error("{}", servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
@@ -249,12 +237,9 @@ public class MultiLeaderConsensusTest {
       }
     }
 
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(0).getRequestSet().size());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(1).getRequestSet().size());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(2).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(0).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(1).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(2).getRequestSet().size());
 
     Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());

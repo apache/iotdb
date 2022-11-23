@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -27,10 +27,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -38,7 +34,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -312,75 +307,27 @@ public class LastQueryExecutor {
 
   private static class SchemaProcessorLastCacheAccessor implements LastCacheAccessor {
 
-    private final MeasurementPath path;
-    private IMeasurementMNode node;
-
-    SchemaProcessorLastCacheAccessor(PartialPath seriesPath) {
-      this.path = (MeasurementPath) seriesPath;
-    }
+    SchemaProcessorLastCacheAccessor(PartialPath seriesPath) {}
 
     public TimeValuePair read() {
-      try {
-        node = IoTDB.schemaProcessor.getMeasurementMNode(path);
-      } catch (MetadataException e) {
-        // cluster mode may not get remote node
-        TimeValuePair timeValuePair;
-        timeValuePair = IoTDB.schemaProcessor.getLastCache(path);
-        if (timeValuePair != null) {
-          return timeValuePair;
-        }
-      }
-
-      if (node == null) {
-        return null;
-      }
-
-      return IoTDB.schemaProcessor.getLastCache(node);
+      return null;
     }
 
-    public void write(TimeValuePair pair) {
-      if (node == null) {
-        IoTDB.schemaProcessor.updateLastCache(path, pair, false, Long.MIN_VALUE);
-      } else {
-        IoTDB.schemaProcessor.updateLastCache(node, pair, false, Long.MIN_VALUE);
-      }
-    }
+    public void write(TimeValuePair pair) {}
   }
 
   private static class IDTableLastCacheAccessor implements LastCacheAccessor {
 
-    private PartialPath fullPath;
-
-    IDTableLastCacheAccessor(PartialPath seriesPath) {
-      fullPath = seriesPath;
-    }
+    IDTableLastCacheAccessor(PartialPath seriesPath) {}
 
     @Override
     public TimeValuePair read() {
-      try {
-        IDTable table =
-            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
-        return table.getLastCache(new TimeseriesID(fullPath));
-      } catch (StorageEngineException | MetadataException e) {
-        logger.error("last query can't find storage group: path is: " + fullPath);
-      }
-
       return null;
     }
 
     @Override
-    public void write(TimeValuePair pair) {
-      try {
-        IDTable table =
-            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
-        table.updateLastCache(new TimeseriesID(fullPath), pair, false, Long.MIN_VALUE);
-      } catch (MetadataException | StorageEngineException e) {
-        logger.error("last query can't find storage group: path is: " + fullPath);
-      }
-    }
+    public void write(TimeValuePair pair) {}
   }
 
-  public static void clear() {
-    ID_TABLE_ENABLED = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
-  }
+  public static void clear() {}
 }

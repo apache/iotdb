@@ -94,8 +94,6 @@ public enum StatementType {
 
   CREATE_TRIGGER,
   DROP_TRIGGER,
-  START_TRIGGER,
-  STOP_TRIGGER,
 
   CREATE_TEMPLATE,
   SET_TEMPLATE,
@@ -147,5 +145,9 @@ public enum StatementType {
   CREATE_PIPE,
   START_PIPE,
   STOP_PIPE,
-  DROP_PIPE
+  DROP_PIPE,
+
+  SHOW_TRIGGERS,
+
+  DEACTIVATE_TEMPLATE,
 }

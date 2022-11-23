@@ -80,7 +80,7 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
+    engineProperties.setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -108,12 +108,6 @@ public class MppConfig implements BaseConfig {
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
         "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
-    return this;
-  }
-
-  @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
     return this;
   }
 
@@ -228,9 +222,108 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    confignodeProperties.setProperty(
+        "schema_replication_factor", String.valueOf(schemaReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    confignodeProperties.setProperty(
+        "enable_data_partition_inherit_policy", String.valueOf(enableDataPartitionInheritPolicy));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    confignodeProperties.setProperty(
+        "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
+
+  @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
         "time_partition_interval", String.valueOf(timePartitionInterval));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMemControl(boolean enableMemControl) {
+    confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    confignodeProperties.setProperty(
+        "config_node_ratis_snapshot_trigger_threshold",
+        String.valueOf(ratisSnapshotTriggerThreshold));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
+    confignodeProperties.setProperty(
+        "compaction_thread_count", String.valueOf(concurrentCompactionThread));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableWatermark(boolean enableWatermark) {
+    engineProperties.setProperty("watermark_module_opened", String.valueOf(enableWatermark));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    engineProperties.setProperty("watermark_secret_key", watermarkSecretKey);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkBitString(String watermarkBitString) {
+    engineProperties.setProperty("watermark_bit_string", watermarkBitString);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkMethod(String watermarkMethod) {
+    engineProperties.setProperty("watermark_method", watermarkMethod);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    engineProperties.setProperty(
+        "select_into_insert_tablet_plan_row_limit",
+        String.valueOf(selectIntoInsertTabletPlanRowLimit));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+    confignodeProperties.setProperty(
+        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
     return this;
   }
 }

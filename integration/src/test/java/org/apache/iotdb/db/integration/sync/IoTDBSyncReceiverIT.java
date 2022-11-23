@@ -19,25 +19,17 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.IoTDBSyncClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -49,8 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Category({LocalStandaloneTest.class})
@@ -91,9 +81,9 @@ public class IoTDBSyncReceiverIT {
     FileUtils.moveDirectory(srcDir, tmpDir);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
-    Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
+    Pipe pipe = new TsFilePipe(createdTime1, pipeName1, new IoTDBPipeSink("sink"), 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1");
+    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1", "root.vehicle");
     client.handshake();
   }
 
@@ -120,54 +110,6 @@ public class IoTDBSyncReceiverIT {
 
       // 2. send pipe data
       int serialNum = 0;
-      List<PhysicalPlan> planList = new ArrayList<>();
-      planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
-      planList.add(
-          new CreateTimeSeriesPlan(
-              new PartialPath("root.vehicle.d0.s0"),
-              new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE)));
-      planList.add(
-          new CreateTimeSeriesPlan(
-              new PartialPath("root.vehicle.d0.s1"),
-              new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN)));
-      planList.add(
-          new CreateTimeSeriesPlan(
-              new PartialPath("root.vehicle.d1.s2"),
-              new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE)));
-      planList.add(
-          new CreateTimeSeriesPlan(
-              new PartialPath("root.vehicle.d1.s3"),
-              new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.PLAIN)));
-      planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
-      planList.add(
-          new CreateAlignedTimeSeriesPlan(
-              new PartialPath("root.sg1.d1"),
-              Arrays.asList("s1", "s2", "s3", "s4", "s5"),
-              Arrays.asList(
-                  TSDataType.FLOAT,
-                  TSDataType.INT32,
-                  TSDataType.INT64,
-                  TSDataType.BOOLEAN,
-                  TSDataType.TEXT),
-              Arrays.asList(
-                  TSEncoding.RLE,
-                  TSEncoding.GORILLA,
-                  TSEncoding.RLE,
-                  TSEncoding.RLE,
-                  TSEncoding.PLAIN),
-              Arrays.asList(
-                  CompressionType.SNAPPY,
-                  CompressionType.SNAPPY,
-                  CompressionType.SNAPPY,
-                  CompressionType.SNAPPY,
-                  CompressionType.SNAPPY),
-              null,
-              null,
-              null));
-      planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
-      for (PhysicalPlan plan : planList) {
-        client.send(new SchemaPipeData(plan, serialNum++));
-      }
       List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
       SyncTestUtil.renameTsFiles(tsFiles);
       for (File f : tsFiles) {

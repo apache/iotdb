@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
@@ -69,6 +69,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.RegularTrans
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.IOException;
@@ -382,9 +383,7 @@ public class IntermediateLayerVisitor
         context.queryId,
         context.memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        expressions.stream()
-            .map(f -> context.typeProvider.getType(f.toString()))
-            .collect(Collectors.toList()),
+        expressions.stream().map(context::getType).collect(Collectors.toList()),
         functionExpression.getFunctionAttributes());
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
@@ -434,7 +433,7 @@ public class IntermediateLayerVisitor
 
     Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-    TypeProvider typeProvider;
+    Map<NodeRef<Expression>, TSDataType> expressionTypes;
 
     LayerMemoryAssigner memoryAssigner;
 
@@ -443,14 +442,18 @@ public class IntermediateLayerVisitor
         UDTFContext udtfContext,
         QueryDataSetInputLayer rawTimeSeriesInputLayer,
         Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-        TypeProvider typeProvider,
+        Map<NodeRef<Expression>, TSDataType> expressionTypes,
         LayerMemoryAssigner memoryAssigner) {
       this.queryId = queryId;
       this.udtfContext = udtfContext;
       this.rawTimeSeriesInputLayer = rawTimeSeriesInputLayer;
       this.expressionIntermediateLayerMap = expressionIntermediateLayerMap;
-      this.typeProvider = typeProvider;
+      this.expressionTypes = expressionTypes;
       this.memoryAssigner = memoryAssigner;
+    }
+
+    public TSDataType getType(Expression expression) {
+      return expressionTypes.get(NodeRef.of(expression));
     }
   }
 }

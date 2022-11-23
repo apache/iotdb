@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -36,8 +37,10 @@ import java.util.Objects;
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
   // TODO once you add field for this class you need to change the serialize and deserialize methods
-  private PlanFragmentId id;
+  private final PlanFragmentId id;
   private PlanNode planNodeTree;
+
+  // map from output column name (for every node) to its datatype
   private TypeProvider typeProvider;
 
   // indicate whether this PlanFragment is the root of the whole Fragment-Plan-Tree or not
@@ -67,6 +70,10 @@ public class PlanFragment {
 
   public void setTypeProvider(TypeProvider typeProvider) {
     this.typeProvider = typeProvider;
+  }
+
+  public void generateTypeProvider(TypeProvider allTypes) {
+    this.typeProvider = SubPlanTypeExtractor.extractor(planNodeTree, allTypes);
   }
 
   public boolean isRoot() {

@@ -188,7 +188,7 @@ public class IoTDBUDFManagementIT {
         statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("Failed to register"));
+        assertTrue(throwable.getMessage().contains("Failed to create"));
       }
     }
   }
@@ -203,12 +203,36 @@ public class IoTDBUDFManagementIT {
         statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(
-            throwable
-                .getMessage()
-                .contains(
-                    "with the same function name and the class name has already been registered"));
+        assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
       }
+    }
+  }
+
+  @Test
+  public void testCreateFunctionWithInvalidURI() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                "a", "org.apache.iotdb.test", "", "test"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
+                "a", "org.apache.iotdb.test", "file:///data/udf/upload-test.jar", "test"));
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("URI"));
+      }
+    } catch (SQLException throwable) {
+      fail();
     }
   }
 
@@ -220,10 +244,10 @@ public class IoTDBUDFManagementIT {
       statement.execute("drop function udf");
 
       try {
+        // drop UDF that does not exist will not throw exception now.
         statement.execute("drop function udf");
-        fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("does not exist"));
+        assertTrue(throwable.getMessage().contains("this UDF has not been created"));
       }
     }
   }
@@ -232,10 +256,10 @@ public class IoTDBUDFManagementIT {
   public void testDropFunction2() { // drop
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // drop UDF that does not exist will not throw exception now.
       statement.execute("drop function udf");
-      fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("does not exist"));
+      assertTrue(throwable.getMessage().contains("this UDF has not been created"));
     }
   }
 
@@ -279,10 +303,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function sin as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("the given function name is the same as a built-in UDF function name"));
+      assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
     }
   }
 

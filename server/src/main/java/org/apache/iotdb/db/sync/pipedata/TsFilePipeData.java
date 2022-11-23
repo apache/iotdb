@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
@@ -44,7 +44,7 @@ public class TsFilePipeData extends PipeData {
 
   private String parentDirPath;
   private String tsFileName;
-  private String storageGroupName;
+  private String database;
 
   public TsFilePipeData() {
     super();
@@ -63,7 +63,7 @@ public class TsFilePipeData extends PipeData {
       parentDirPath = "";
     }
 
-    initStorageGroupName();
+    initDatabaseName();
   }
 
   public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
@@ -71,24 +71,24 @@ public class TsFilePipeData extends PipeData {
     this.parentDirPath = parentDirPath;
     this.tsFileName = tsFileName;
 
-    initStorageGroupName();
+    initDatabaseName();
   }
 
-  // == get StorageGroup Info from tsFileName
-  private void initStorageGroupName() {
+  // == get Database Info from tsFileName
+  private void initDatabaseName() {
     if (tsFileName == null) {
-      storageGroupName = null;
+      database = null;
       return;
     }
 
     String[] parts = tsFileName.trim().split("-");
     if (parts.length < 8) {
-      storageGroupName = null;
+      database = null;
       return;
     }
-    storageGroupName = parts[1];
+    database = parts[1];
     for (int i = 2; i < (parts.length - 6); i++) {
-      storageGroupName += "-" + parts[i];
+      database += "-" + parts[i];
     }
   }
 
@@ -112,12 +112,16 @@ public class TsFilePipeData extends PipeData {
     return getTsFilePath() + ModificationFile.FILE_SUFFIX;
   }
 
-  public String getStorageGroupName() {
-    return storageGroupName;
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.TSFILE;
   }
 
@@ -136,12 +140,12 @@ public class TsFilePipeData extends PipeData {
       parentDirPath = "";
     }
     tsFileName = ReadWriteIOUtils.readString(stream);
-    initStorageGroupName();
+    initDatabaseName();
   }
 
   @Override
   public ILoader createLoader() {
-    return new TsFileLoader(new File(getTsFilePath()));
+    return new TsFileLoader(new File(getTsFilePath()), database);
   }
 
   public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {

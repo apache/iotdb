@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,7 +61,7 @@ public class PreviousFill extends IFill {
   }
 
   public PreviousFill(String beforeStr, boolean untilLast) {
-    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
+    this.beforeRange = DateTimeUtils.convertDurationStrToLong(beforeStr);
     this.untilLast = untilLast;
     if (beforeStr.toLowerCase().contains("mo")) {
       this.isBeforeByMonth = true;

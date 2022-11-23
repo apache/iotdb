@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -45,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesNode extends WritePlanNode {
+public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSeriesPlan {
   private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
@@ -54,6 +55,10 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
+
+  // only used inside schemaRegion to be serialized to mlog, no need to be serialized for mpp
+  // transport
+  private long tagOffset = -1;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -146,6 +151,16 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
+  public long getTagOffset() {
+    return tagOffset;
+  }
+
+  @Override
+  public void setTagOffset(long tagOffset) {
+    this.tagOffset = tagOffset;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();
   }
@@ -189,7 +204,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     }
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
-    compressor = CompressionType.values()[byteBuffer.get()];
+    compressor = CompressionType.deserialize(byteBuffer.get());
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -234,7 +249,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     byteBuffer.put(bytes);
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
-    byteBuffer.put((byte) compressor.ordinal());
+    byteBuffer.put(compressor.serialize());
 
     // alias
     if (alias != null) {
@@ -284,7 +299,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     stream.write(bytes);
     stream.write((byte) dataType.ordinal());
     stream.write((byte) encoding.ordinal());
-    stream.write((byte) compressor.ordinal());
+    stream.write(compressor.serialize());
 
     // alias
     if (alias != null) {

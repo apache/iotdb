@@ -96,7 +96,7 @@ public class SharedTsBlockQueue {
 
   /** Notify no more tsblocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
-    logger.info("SharedTsBlockQueue receive no more TsBlocks signal.");
+    logger.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
       logger.warn("queue has been destroyed");
       return;
@@ -196,8 +196,6 @@ public class SharedTsBlockQueue {
     }
   }
 
-  // TODO add Throwable t as a parameter of this method, and then call blocked.setException(t);
-  // instead of blocked.cancel(true);
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
   public void abort() {
     if (closed) {
@@ -206,6 +204,27 @@ public class SharedTsBlockQueue {
     closed = true;
     if (!blocked.isDone()) {
       blocked.cancel(true);
+    }
+    if (blockedOnMemory != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+    }
+    queue.clear();
+    if (bufferRetainedSizeInBytes > 0L) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
+  }
+
+  /** Destroy the queue and cancel the future. Should only be called in abnormal case */
+  public void abort(Throwable t) {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    if (!blocked.isDone()) {
+      blocked.setException(t);
     }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);

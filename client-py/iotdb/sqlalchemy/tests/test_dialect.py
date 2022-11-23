@@ -51,8 +51,8 @@ def test_dialect():
         )
         registry.register("iotdb", "iotdb.sqlalchemy.IoTDBDialect", "IoTDBDialect")
         eng = create_engine(url)
-        eng.execute("create storage group root.cursor")
-        eng.execute("create storage group root.cursor_s1")
+        eng.execute("create database root.cursor")
+        eng.execute("create database root.cursor_s1")
         eng.execute(
             "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
         )
@@ -78,8 +78,8 @@ def test_dialect():
         if len(columns) != 3:
             test_fail()
             print_message("test get_columns failed!")
-        eng.execute("delete storage group root.cursor")
-        eng.execute("delete storage group root.cursor_s1")
+        eng.execute("delete database root.cursor")
+        eng.execute("delete database root.cursor_s1")
         # close engine
         eng.dispose()
 

@@ -35,21 +35,31 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class CountMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
-  private boolean isFinished;
+
+  private final TsBlock[] childrenTsBlocks;
+
+  private List<TsBlock> resultTsBlockList;
+  private int currentIndex = 0;
 
   private final List<Operator> children;
+
+  private final boolean isGroupByLevel;
 
   public CountMergeOperator(
       PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
+    isGroupByLevel = children.get(0) instanceof LevelTimeSeriesCountOperator;
+
+    childrenTsBlocks = new TsBlock[children.size()];
   }
 
   @Override
@@ -59,79 +69,102 @@ public class CountMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
-    for (Operator child : children) {
-      ListenableFuture<?> blocked = child.isBlocked();
-      if (!blocked.isDone()) {
-        listenableFutures.add(blocked);
+    List<ListenableFuture<?>> listenableFutureList = new ArrayList<>(children.size());
+    for (int i = 0; i < children.size(); i++) {
+      if (childrenTsBlocks[i] == null) {
+        ListenableFuture<?> blocked = children.get(i).isBlocked();
+        if (!blocked.isDone()) {
+          listenableFutureList.add(blocked);
+        }
       }
     }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
+
+    return listenableFutureList.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutureList);
   }
 
   @Override
   public TsBlock next() {
-    isFinished = true;
-    if (children.get(0) instanceof LevelTimeSeriesCountOperator) {
-      return nextWithGroupByLevel();
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
-    return nextWithoutGroupByLevel();
-  }
-
-  private TsBlock nextWithoutGroupByLevel() {
-    List<TsBlock> tsBlocks = new ArrayList<>(children.size());
-    for (Operator child : children) {
-      if (child.hasNext()) {
-        tsBlocks.add(child.next());
+    if (resultTsBlockList != null) {
+      currentIndex++;
+      return resultTsBlockList.get(currentIndex - 1);
+    }
+    boolean allChildrenReady = true;
+    for (int i = 0; i < children.size(); i++) {
+      if (childrenTsBlocks[i] == null) {
+        // when this operator is not blocked, it means all children that have not return TsBlock is
+        // not blocked.
+        if (children.get(i).hasNext()) {
+          TsBlock tsBlock = children.get(i).next();
+          if (tsBlock == null || tsBlock.isEmpty()) {
+            allChildrenReady = false;
+          } else {
+            childrenTsBlocks[i] = tsBlock;
+          }
+        }
       }
     }
-    int totalCount = 0;
-    for (TsBlock tsBlock : tsBlocks) {
-      int count = tsBlock.getColumn(0).getInt(0);
+    if (allChildrenReady) {
+      generateResultTsBlockList();
+      currentIndex++;
+      return resultTsBlockList.get(currentIndex - 1);
+    } else {
+      return null;
+    }
+  }
+
+  private void generateResultTsBlockList() {
+    if (isGroupByLevel) {
+      generateResultWithGroupByLevel();
+    } else {
+      generateResultWithoutGroupByLevel();
+    }
+  }
+
+  private void generateResultWithoutGroupByLevel() {
+    long totalCount = 0;
+    for (TsBlock tsBlock : childrenTsBlocks) {
+      long count = tsBlock.getColumn(0).getLong(0);
       totalCount += count;
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(totalCount);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(totalCount);
     tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
+    this.resultTsBlockList = Collections.singletonList(tsBlockBuilder.build());
   }
 
-  private TsBlock nextWithGroupByLevel() {
-    List<TsBlock> tsBlocks = new ArrayList<>(children.size());
-    for (Operator child : children) {
-      if (child.hasNext()) {
-        tsBlocks.add(child.next());
-      }
-    }
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    Map<String, Integer> countMap = new HashMap<>();
-    for (TsBlock tsBlock : tsBlocks) {
+  private void generateResultWithGroupByLevel() {
+    Map<String, Long> countMap = new HashMap<>();
+    for (TsBlock tsBlock : childrenTsBlocks) {
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         String columnName = tsBlock.getColumn(0).getBinary(i).getStringValue();
-        int count = tsBlock.getColumn(1).getInt(i);
-        countMap.put(columnName, countMap.getOrDefault(columnName, 0) + count);
+        long count = tsBlock.getColumn(1).getLong(i);
+        countMap.put(columnName, countMap.getOrDefault(columnName, 0L) + count);
       }
     }
-    countMap.forEach(
-        (column, count) -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(column));
-          tsBlockBuilder.getColumnBuilder(1).writeInt(count);
-          tsBlockBuilder.declarePosition();
-        });
-    return tsBlockBuilder.build();
+    this.resultTsBlockList =
+        SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+            countMap.entrySet().iterator(),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT64),
+            (entry, tsBlockBuilder) -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
+              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
+              tsBlockBuilder.declarePosition();
+            });
   }
 
   @Override
   public boolean hasNext() {
-    return !isFinished;
+    return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
   @Override
   public boolean isFinished() {
-    return isFinished;
+    return !hasNext();
   }
 
   @Override

@@ -28,8 +28,12 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -54,6 +58,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -70,16 +75,14 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private DataRegion region;
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
-  private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
+  private static final long CACHE_WINDOW_TIME_IN_MS =
+      IoTDBDescriptor.getInstance().getConfig().getCacheWindowTimeInMs();
 
-  private final Lock queueLock = new ReentrantLock();
-  private final Condition queueSortCondition = queueLock.newCondition();
-  private final PriorityQueue<InsertNodeWrapper> requestCache;
-  private long nextSyncIndex = -1;
+  private ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
-    this.requestCache = new PriorityQueue<>();
+    this.cacheQueueMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -109,6 +112,22 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
+  public boolean takeSnapshot(File snapshotDir, String snapshotId) {
+    try {
+      return new SnapshotTaker(region)
+          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotId, true);
+    } catch (Exception e) {
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getStorageGroupName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
+    }
+  }
+
+  @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     DataRegion newRegion =
         new SnapshotLoader(
@@ -124,6 +143,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
     try {
       StorageEngineV2.getInstance()
           .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     } catch (Exception e) {
       logger.error("Exception occurs when replacing data region in storage engine.", e);
     }
@@ -134,75 +156,95 @@ public class DataRegionStateMachine extends BaseStateMachine {
    * in follower the same as the leader. And besides order insurance, we can make the
    * deserialization of PlanNode to be concurrent
    */
-  private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
-    queueLock.lock();
-    try {
-      requestCache.add(insertNodeWrapper);
-      // If the peek is not hold by current thread, it should notify the corresponding thread to
-      // process the peek when the queue is full
-      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
-          && requestCache.peek().getStartSyncIndex() != insertNodeWrapper.getStartSyncIndex()) {
-        queueSortCondition.signalAll();
-      }
-      while (true) {
-        // If current InsertNode is the next target InsertNode, write it
-        if (insertNodeWrapper.getStartSyncIndex() == nextSyncIndex) {
-          requestCache.remove(insertNodeWrapper);
-          nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
-          break;
-        }
-        // If all write thread doesn't hit nextSyncIndex and the heap is full, write
-        // the peek request. This is used to keep the whole write correct when nextSyncIndex
-        // is not set. We won't persist the value of nextSyncIndex to reduce the complexity.
-        // There are some cases that nextSyncIndex is not set:
-        //   1. When the system was just started
-        //   2. When some exception occurs during SyncLog
+  private class SyncLogCacheQueue {
+    private final String sourcePeerId;
+    private final Lock queueLock = new ReentrantLock();
+    private final Condition queueSortCondition = queueLock.newCondition();
+    private final PriorityQueue<InsertNodeWrapper> requestCache;
+    private long nextSyncIndex = -1;
+
+    public SyncLogCacheQueue(String sourcePeerId, int queueSize, long timeout) {
+      this.sourcePeerId = sourcePeerId;
+      this.requestCache = new PriorityQueue<>();
+    }
+
+    /**
+     * This method is used for write of MultiLeader SyncLog. By this method, we can keep write order
+     * in follower the same as the leader. And besides order insurance, we can make the
+     * deserialization of PlanNode to be concurrent
+     */
+    private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
+      queueLock.lock();
+      try {
+        requestCache.add(insertNodeWrapper);
+        // If the peek is not hold by current thread, it should notify the corresponding thread to
+        // process the peek when the queue is full
         if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
-            && requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
-          requestCache.remove();
-          nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
-          break;
+            && requestCache.peek().getStartSyncIndex() != insertNodeWrapper.getStartSyncIndex()) {
+          queueSortCondition.signalAll();
         }
-        try {
-          boolean timeout =
-              !queueSortCondition.await(CACHE_WINDOW_TIME_IN_MS, TimeUnit.MILLISECONDS);
-          if (timeout) {
-            // although the timeout is triggered, current thread cannot write its request
-            // if current thread does not hold the peek request. And there should be some
-            // other thread who hold the peek request. In this scenario, current thread
-            // should go into await again and wait until its request becoming peek request
-            if (requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
-              // current thread hold the peek request thus it can write the peek immediately.
-              logger.info(
-                  "waiting target request timeout. current index: {}, target index: {}",
-                  insertNodeWrapper.getStartSyncIndex(),
-                  nextSyncIndex);
-              requestCache.remove(insertNodeWrapper);
-              break;
-            }
+        while (true) {
+          // If current InsertNode is the next target InsertNode, write it
+          if (insertNodeWrapper.getStartSyncIndex() == nextSyncIndex) {
+            requestCache.remove(insertNodeWrapper);
+            nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
+            break;
           }
-        } catch (InterruptedException e) {
-          logger.warn(
-              "current waiting is interrupted. SyncIndex: {}. Exception: {}",
-              insertNodeWrapper.getStartSyncIndex(),
-              e);
-          Thread.currentThread().interrupt();
+          // If all write thread doesn't hit nextSyncIndex and the heap is full, write
+          // the peek request. This is used to keep the whole write correct when nextSyncIndex
+          // is not set. We won't persist the value of nextSyncIndex to reduce the complexity.
+          // There are some cases that nextSyncIndex is not set:
+          //   1. When the system was just started
+          //   2. When some exception occurs during SyncLog
+          if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
+              && requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
+            requestCache.remove();
+            nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
+            break;
+          }
+          try {
+            boolean timeout =
+                !queueSortCondition.await(CACHE_WINDOW_TIME_IN_MS, TimeUnit.MILLISECONDS);
+            if (timeout) {
+              // although the timeout is triggered, current thread cannot write its request
+              // if current thread does not hold the peek request. And there should be some
+              // other thread who hold the peek request. In this scenario, current thread
+              // should go into await again and wait until its request becoming peek request
+              if (requestCache.peek().getStartSyncIndex()
+                  == insertNodeWrapper.getStartSyncIndex()) {
+                // current thread hold the peek request thus it can write the peek immediately.
+                logger.info(
+                    "waiting target request timeout. current index: {}, target index: {}",
+                    insertNodeWrapper.getStartSyncIndex(),
+                    nextSyncIndex);
+                requestCache.remove(insertNodeWrapper);
+                break;
+              }
+            }
+          } catch (InterruptedException e) {
+            logger.warn(
+                "current waiting is interrupted. SyncIndex: {}. Exception: {}",
+                insertNodeWrapper.getStartSyncIndex(),
+                e);
+            Thread.currentThread().interrupt();
+          }
         }
+        logger.debug(
+            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+            sourcePeerId,
+            region.getDataRegionId(),
+            requestCache.size(),
+            insertNodeWrapper.getStartSyncIndex(),
+            insertNodeWrapper.getEndSyncIndex());
+        List<TSStatus> subStatus = new LinkedList<>();
+        for (PlanNode planNode : insertNodeWrapper.getInsertNodes()) {
+          subStatus.add(write(planNode));
+        }
+        queueSortCondition.signalAll();
+        return new TSStatus().setSubStatus(subStatus);
+      } finally {
+        queueLock.unlock();
       }
-      logger.debug(
-          "region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
-          region.getDataRegionId(),
-          requestCache.size(),
-          insertNodeWrapper.getStartSyncIndex(),
-          insertNodeWrapper.getEndSyncIndex());
-      List<TSStatus> subStatus = new LinkedList<>();
-      for (PlanNode planNode : insertNodeWrapper.getInsertNodes()) {
-        subStatus.add(write(planNode));
-      }
-      queueSortCondition.signalAll();
-      return new TSStatus().setSubStatus(subStatus);
-    } finally {
-      queueLock.unlock();
     }
   }
 
@@ -297,7 +339,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
       } else if (request instanceof BatchIndexedConsensusRequest) {
         InsertNodeWrapper insertNodeWrapper =
             deserializeAndWrap((BatchIndexedConsensusRequest) request);
-        return cacheAndInsertLatestNode(insertNodeWrapper);
+        String sourcePeerId = ((BatchIndexedConsensusRequest) request).getSourcePeerId();
+        return cacheQueueMap
+            .computeIfAbsent(
+                sourcePeerId,
+                k -> new SyncLogCacheQueue(k, MAX_REQUEST_CACHE_SIZE, CACHE_WINDOW_TIME_IN_MS))
+            .cacheAndInsertLatestNode(insertNodeWrapper);
       } else {
         planNode = getPlanNode(request);
       }
@@ -378,5 +425,23 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     }
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return super.getSleepTime();
   }
 }

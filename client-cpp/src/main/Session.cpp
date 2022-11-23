@@ -274,14 +274,24 @@ void Tablet::setAligned(bool isAligned) {
 
 string SessionUtils::getTime(const Tablet &tablet) {
     MyStringBuffer timeBuffer;
+    unsigned int n = 8u * tablet.rowSize;
+    if (n > timeBuffer.str.capacity()) {
+        timeBuffer.reserve(n);
+    }
+
     for (size_t i = 0; i < tablet.rowSize; i++) {
-        timeBuffer.putLong(tablet.timestamps[i]);
+        timeBuffer.putInt64(tablet.timestamps[i]);
     }
     return timeBuffer.str;
 }
 
 string SessionUtils::getValue(const Tablet &tablet) {
     MyStringBuffer valueBuffer;
+    unsigned int n = 8u * tablet.schemas.size() * tablet.rowSize;
+    if (n > valueBuffer.str.capacity()) {
+        valueBuffer.reserve(n);
+    }
+
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
         const BitMap& bitMap = tablet.bitMaps[i];
@@ -314,10 +324,10 @@ string SessionUtils::getValue(const Tablet &tablet) {
                 int64_t* valueBuf = (int64_t*)(tablet.values[i]);
                 for (size_t index = 0; index < tablet.rowSize; index++) {
                     if (!bitMap.isMarked(index)) {
-                        valueBuffer.putLong(valueBuf[index]);
+                        valueBuffer.putInt64(valueBuf[index]);
                     }
                     else {
-                        valueBuffer.putLong((numeric_limits<int64_t>::min)());
+                        valueBuffer.putInt64((numeric_limits<int64_t>::min)());
                     }
                 }
                 break;
@@ -654,7 +664,7 @@ void Session::sortTablet(Tablet& tablet) {
         index[i] = i;
     }
 
-    this->sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
+    sortIndexByTimestamp(index, tablet.timestamps, tablet.rowSize);
     tablet.timestamps = sortList(tablet.timestamps, index, tablet.rowSize);
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
@@ -743,7 +753,7 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType> &types, const 
                 appendValues(buf, values[i], sizeof(double));
                 break;
             case TSDataType::TEXT: {
-                uint32_t len = (uint32_t) strlen(values[i]);
+                int32_t len = (uint32_t) strlen(values[i]);
                 appendValues(buf, (char *) (&len), sizeof(uint32_t));
                 // no need to change the byte order of string value
                 buf.append(values[i], len);
@@ -1129,7 +1139,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
             index[i] = (int)i;
         }
 
-        this->sortIndexByTimestamp(index, times, (int)(times.size()));
+        sortIndexByTimestamp(index, times, (int)(times.size()));
         times = sortList(times, index, (int)(times.size()));
         measurementsList = sortList(measurementsList, index, (int)(times.size()));
         typesList = sortList(typesList, index, (int)(times.size()));
@@ -1181,7 +1191,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
             index[i] = (int)i;
         }
 
-        this->sortIndexByTimestamp(index, times, (int)(times.size()));
+        sortIndexByTimestamp(index, times, (int)(times.size()));
         times = sortList(times, index, (int)(times.size()));
         measurementsList = sortList(measurementsList, index, (int)(times.size()));
         typesList = sortList(typesList, index, (int)(times.size()));
@@ -1223,23 +1233,28 @@ void Session::insertTablet(Tablet &tablet) {
     }
 }
 
-void Session::insertTablet(Tablet &tablet, bool sorted) {
-    if (!checkSorted(tablet)) {
+void Session::buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted) {
+    if ((!sorted) && !checkSorted(tablet)) {
         sortTablet(tablet);
     }
 
-    TSInsertTabletReq request;
     request.__set_sessionId(sessionId);
     request.prefixPath = tablet.deviceId;
+
+    request.measurements.reserve(tablet.schemas.size());
+    request.types.reserve(tablet.schemas.size());
     for (pair<string, TSDataType::TSDataType> schema: tablet.schemas) {
         request.measurements.push_back(schema.first);
         request.types.push_back(schema.second);
     }
-    request.__set_timestamps(SessionUtils::getTime(tablet));
-    request.__set_values(SessionUtils::getValue(tablet));
+
+    request.values = move(SessionUtils::getValue(tablet));
+    request.timestamps = move(SessionUtils::getTime(tablet));
     request.__set_size(tablet.rowSize);
     request.__set_isAligned(tablet.isAligned);
+}
 
+void Session::insertTablet(const TSInsertTabletReq &request){
     try {
         TSStatus respStatus;
         client->insertTablet(respStatus, request);
@@ -1249,6 +1264,12 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
+}
+
+void Session::insertTablet(Tablet &tablet, bool sorted) {
+    TSInsertTabletReq request;
+    buildInsertTabletReq(request, sessionId, tablet, sorted);
+    insertTablet(request);
 }
 
 void Session::insertAlignedTablet(Tablet &tablet) {
@@ -1302,8 +1323,8 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
         }
         request.measurementsList.push_back(measurements);
         request.typesList.push_back(dataTypes);
-        request.timestampsList.push_back(SessionUtils::getTime(*(item.second)));
-        request.valuesList.push_back(SessionUtils::getValue(*(item.second)));
+        request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
+        request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
         request.sizeList.push_back(item.second->rowSize);
     }
     request.__set_isAligned(isFirstTabletAligned);
@@ -1360,8 +1381,8 @@ void Session::testInsertTablet(const Tablet &tablet) {
         request.measurements.push_back(schema.first);
         request.types.push_back(schema.second);
     }
-    request.__set_timestamps(SessionUtils::getTime(tablet));
-    request.__set_values(SessionUtils::getValue(tablet));
+    request.__set_timestamps(move(SessionUtils::getTime(tablet)));
+    request.__set_values(move(SessionUtils::getValue(tablet)));
     request.__set_size(tablet.rowSize);
 
     try {
@@ -1637,6 +1658,10 @@ bool Session::checkTimeseriesExists(const string &path) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
+}
+
+int64_t Session::getSessionId() {
+    return sessionId;
 }
 
 string Session::getTimeZone() {

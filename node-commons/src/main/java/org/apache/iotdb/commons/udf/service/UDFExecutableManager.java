@@ -19,44 +19,21 @@
 
 package org.apache.iotdb.commons.udf.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 
-public class UDFExecutableManager extends ExecutableManager implements IService, SnapshotProcessor {
+public class UDFExecutableManager extends ExecutableManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDFExecutableManager.class);
 
   private UDFExecutableManager(String temporaryLibRoot, String udfLibRoot) {
     super(temporaryLibRoot, udfLibRoot);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // IService
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @Override
-  public void start() throws StartupException {
-    try {
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-    } catch (Exception e) {
-      throw new StartupException(e);
-    }
-  }
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.UDF_EXECUTABLE_MANAGER_SERVICE;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,8 +43,11 @@ public class UDFExecutableManager extends ExecutableManager implements IService,
   private static UDFExecutableManager INSTANCE = null;
 
   public static synchronized UDFExecutableManager setupAndGetInstance(
-      String temporaryLibRoot, String udfLibRoot) {
+      String temporaryLibRoot, String udfLibRoot) throws IOException {
     if (INSTANCE == null) {
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(udfLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(udfLibRoot + File.separator + INSTALL_DIR);
       INSTANCE = new UDFExecutableManager(temporaryLibRoot, udfLibRoot);
     }
     return INSTANCE;
@@ -75,28 +55,5 @@ public class UDFExecutableManager extends ExecutableManager implements IService,
 
   public static UDFExecutableManager getInstance() {
     return INSTANCE;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // SnapshotProcessor
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return SnapshotUtils.takeSnapshotForDir(
-            temporaryLibRoot,
-            snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary")
-        && SnapshotUtils.takeSnapshotForDir(
-            libRoot,
-            snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf");
-  }
-
-  @Override
-  public void processLoadSnapshot(File snapshotDir) throws IOException {
-    SnapshotUtils.loadSnapshotForDir(
-        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary",
-        temporaryLibRoot);
-    SnapshotUtils.loadSnapshotForDir(
-        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf", libRoot);
   }
 }

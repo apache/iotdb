@@ -201,7 +201,7 @@ The `SlidingSizeWindowAccessStrategy` is shown schematically below.
 
 The sliding step parameter is optional. If the parameter is not provided, the sliding step will be set to the same as the window size.
 
-The `SessionTimeWindowAccessStrategy` is shown schematically below.
+The `SessionTimeWindowAccessStrategy` is shown schematically below. **Time intervals less than or equal to the given minimum time interval `sessionGap` are assigned in one group**
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/sessionWindow.png">
 
 `SessionTimeWindowAccessStrategy`: `SessionTimeWindowAccessStrategy` has many constructors, you can pass 2 types of parameters to them:
@@ -209,7 +209,7 @@ The `SessionTimeWindowAccessStrategy` is shown schematically below.
 - Parameter 2: The minimum time interval `sessionGap` of two adjacent windows.
 
 
-The `StateWindowAccessStrategy` is shown schematically below.
+The `StateWindowAccessStrategy` is shown schematically below. **For numerical data, if the state difference is less than or equal to the given threshold `delta`, it will be assigned in one group. **
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
 
 `StateWindowAccessStrategy` has four constructors.
@@ -217,6 +217,8 @@ The `StateWindowAccessStrategy` is shown schematically below.
 - Constructor 2: For text data and boolean data, there are 3 parameters: the time axis can be provided to display the start and end time of the time window. For both data types, the data within a single window is same, and there is no need to provide an allowable change threshold.
 - Constructor 3: For numerical data, there are 1 parameters: you can only provide the threshold delta that is allowed to change within a single window. The start time of the time axis display time window will be defined as the smallest timestamp in the entire query result set, and the time axis display time window end time will be defined as The largest timestamp in the entire query result set.
 - Constructor 4: For text data and boolean data, you can provide no parameter. The start and end timestamps are explained in Constructor 3.
+
+StateWindowAccessStrategy can only take one column as input for now.
 
 Please see the Javadoc for more details. 
 
@@ -404,8 +406,9 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
-   **Note that when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
+3. Optional. You can place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
+   **Note that if you choose to place the JAR in advance when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
+The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf/install`.
    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
@@ -413,13 +416,13 @@ The process of registering a UDF in IoTDB is as follows:
 The following shows the SQL syntax of how to register a UDF.
 
 ```sql
-CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
+CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
 Here is an example:
 
 ```sql
-CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF'
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF' USING URI 'http://jar/example.jar'
 ```
 
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.
@@ -458,16 +461,8 @@ The usage of UDF is similar to that of built-in aggregation functions.
 
 * Support `SLIMIT` / `SOFFSET`
 * Support `LIMIT` / `OFFSET`
-* Support `NON ALIGN`
 * Support queries with time filters
 * Support queries with value filters
-
-
-
-### Queries with Aligned Timeseries 
-
-Aligned Timeseries has not been supported in UDF queries yet. An error message is expected if you use UDF functions with Aligned Timeseries selected.
-
 
 
 ### Queries with * in SELECT Clauses
@@ -566,8 +561,8 @@ This part mainly introduces how external users can contribute their own UDFs to 
 
 #### UDF Source Code
 
-1. Create the UDF main class and related classes in `src/main/java/org/apache/iotdb/db/query/udf/builtin` or in its subfolders.
-2. Register your UDF in `src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`.
+1. Create the UDF main class and related classes in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin` or in its subfolders.
+2. Register your UDF in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/BuiltinTimeSeriesGeneratingFunction.java`.
 
 
 
@@ -575,7 +570,7 @@ This part mainly introduces how external users can contribute their own UDFs to 
 
 At a minimum, you need to write integration tests for the UDF.
 
-You can add a test class in `server/src/test/java/org/apache/iotdb/db/integration`. 
+You can add a test class in `integration-test/src/test/java/org/apache/iotdb/db/it/udf`. 
 
 
 

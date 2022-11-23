@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -71,6 +70,18 @@ public interface IStateMachine {
   boolean takeSnapshot(File snapshotDir);
 
   /**
+   * Take a snapshot of current statemachine. Snapshot.log will be stored under snapshotDir, The
+   * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
+   *
+   * @param snapshotDir required storage dir
+   * @param snapshotId the id of the snapshot
+   * @return true if snapshot is successfully taken
+   */
+  default boolean takeSnapshot(File snapshotDir, String snapshotId) {
+    return takeSnapshot(snapshotDir);
+  }
+
+  /**
    * Load the latest snapshot from given dir
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
@@ -92,6 +103,39 @@ public interface IStateMachine {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 
+  /**
+   * To guarantee the statemachine replication property, when {@link #write(IConsensusRequest)}
+   * failed in this statemachine, Upper consensus implementation like RatisConsensus may choose to
+   * retry the operation until it succeed.
+   */
+  interface RetryPolicy {
+
+    /** Given the last write result, should we retry? */
+    default boolean shouldRetry(TSStatus writeResult) {
+      return false;
+    }
+
+    /**
+     * Use the latest write result to update final write result
+     *
+     * @param previousResult previous write result
+     * @param retryResult latest write result
+     * @return the aggregated result upon current retry
+     */
+    default TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+      return retryResult;
+    }
+
+    /**
+     * sleep time before the next retry
+     *
+     * @return time in millis
+     */
+    default long getSleepTime() {
+      return 100;
+    };
+  }
+
   /** An optional API for event notifications. */
   interface EventApi {
     /**
@@ -99,9 +143,9 @@ public interface IStateMachine {
      * can possibly be this server.
      *
      * @param groupId The id of this consensus group.
-     * @param newLeader The id of the new leader.
+     * @param newLeaderId The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {}
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a

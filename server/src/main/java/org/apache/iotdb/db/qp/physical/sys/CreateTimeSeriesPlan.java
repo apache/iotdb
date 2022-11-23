@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -37,7 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-public class CreateTimeSeriesPlan extends PhysicalPlan {
+public class CreateTimeSeriesPlan extends PhysicalPlan implements ICreateTimeSeriesPlan {
 
   private PartialPath path;
   private TSDataType dataType;
@@ -179,7 +180,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     stream.write(bytes);
     stream.write(dataType.ordinal());
     stream.write(encoding.ordinal());
-    stream.write(compressor.ordinal());
+    stream.write(compressor.serialize());
     stream.writeLong(tagOffset);
 
     // alias
@@ -225,7 +226,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     buffer.put(bytes);
     buffer.put((byte) dataType.ordinal());
     buffer.put((byte) encoding.ordinal());
-    buffer.put((byte) compressor.ordinal());
+    buffer.put(compressor.serialize());
     buffer.putLong(tagOffset);
 
     // alias
@@ -271,7 +272,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     path = new PartialPath(new String(bytes));
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
-    compressor = CompressionType.values()[buffer.get()];
+    compressor = CompressionType.deserialize(buffer.get());
     tagOffset = buffer.getLong();
 
     // alias

@@ -45,8 +45,8 @@ public class IoTDBUserDefinedAggregationFunctionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -55,7 +55,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       };
   private static String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -72,7 +72,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
       };
   private static String[] dataSet3 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.sg.d1(timestamp,s1) values(5,5)",
         "insert into root.sg.d1(timestamp,s1) values(12,12)",
@@ -91,11 +91,11 @@ public class IoTDBUserDefinedAggregationFunctionIT {
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
   private static long prevPartitionInterval =
-      IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(1000000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -104,7 +104,7 @@ public class IoTDBUserDefinedAggregationFunctionIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
   }
 
   // add test for part of points in page don't satisfy filter

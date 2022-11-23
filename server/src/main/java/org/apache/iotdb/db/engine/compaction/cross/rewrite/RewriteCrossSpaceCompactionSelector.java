@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -46,6 +47,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final int SELECT_WARN_THRESHOLD = 10;
   protected String logicalStorageGroupName;
   protected String dataRegionId;
   protected long timePartition;
@@ -54,8 +56,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private CrossSpaceCompactionResource resource;
 
   private long totalCost;
+  private long totalSize;
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
+  private final long maxCrossCompactionFileSize;
 
   private List<TsFileResource> selectedUnseqFiles;
   private List<TsFileResource> selectedSeqFiles;
@@ -77,10 +81,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.memoryBudget =
-        SystemInfo.getInstance().getMemorySizeForCompaction()
-            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+        (long)
+            ((double)
+                    (SystemInfo.getInstance().getMemorySizeForCompaction()
+                        / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount())
+                * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    this.maxCrossCompactionFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
+
     this.compactionEstimator =
         ICompactionSelector.getCompactionEstimator(
             IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
@@ -156,6 +166,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     selectedUnseqFiles = new ArrayList<>();
 
     totalCost = 0;
+    totalSize = 0;
 
     int unseqIndex = 0;
     long startTime = System.currentTimeMillis();
@@ -190,8 +201,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
       for (int seqIndex : tmpSelectedSeqFiles) {
-        tmpSelectedSeqFileResources.add(resource.getSeqFiles().get(seqIndex));
+        TsFileResource tsFileResource = resource.getSeqFiles().get(seqIndex);
+        tmpSelectedSeqFileResources.add(tsFileResource);
+        totalSize += tsFileResource.getTsFileSize();
       }
+      totalSize += unseqFile.getTsFileSize();
+
       long newCost =
           compactionEstimator.estimateCrossCompactionMemory(tmpSelectedSeqFileResources, unseqFile);
       if (!updateSelectedFiles(newCost, unseqFile)) {
@@ -214,6 +229,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     if (selectedUnseqFiles.size() == 0
         || (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
                 <= maxCrossCompactionFileNum
+            && totalSize <= maxCrossCompactionFileSize
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
 
@@ -275,12 +291,32 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           continue;
         }
 
+        int crossSpaceCompactionTimes = 0;
+        try {
+          TsFileNameGenerator.TsFileName tsFileName =
+              TsFileNameGenerator.getTsFileName(seqFile.getTsFile().getName());
+          crossSpaceCompactionTimes = tsFileName.getCrossCompactionCnt();
+        } catch (IOException e) {
+          LOGGER.warn("Meets IOException when selecting files for cross space compaction", e);
+        }
+
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
         if (!seqFile.isClosed()) {
           // for unclosed file, only select those that overlap with the unseq file
           if (unseqEndTime >= seqStartTime) {
             tmpSelectedSeqFiles.add(i);
+            if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+              LOGGER.warn(
+                  "{} is selected for cross space compaction, it is overlapped with {} in device {}. Sequence file time range:[{},{}], Unsequence file time range:[{},{}]",
+                  seqFile.getTsFile().getAbsolutePath(),
+                  unseqFile.getTsFile().getAbsolutePath(),
+                  deviceId,
+                  seqStartTime,
+                  seqEndTime,
+                  unseqStartTime,
+                  unseqEndTime);
+            }
           }
         } else if (unseqEndTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 30-40, or
@@ -288,10 +324,32 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           noMoreOverlap = true;
+          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+            LOGGER.warn(
+                "{} is selected for cross space compaction, it is overlapped with {} in device {}. Sequence file time range:[{},{}], Unsequence file time range:[{},{}]",
+                seqFile.getTsFile().getAbsolutePath(),
+                unseqFile.getTsFile().getAbsolutePath(),
+                deviceId,
+                seqStartTime,
+                seqEndTime,
+                unseqStartTime,
+                unseqEndTime);
+          }
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
+          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+            LOGGER.warn(
+                "{} is selected for cross space compaction, it is overlapped with {} in device {}. Sequence file time range:[{},{}], Unsequence file time range:[{},{}]",
+                seqFile.getTsFile().getAbsolutePath(),
+                unseqFile.getTsFile().getAbsolutePath(),
+                deviceId,
+                seqStartTime,
+                seqEndTime,
+                unseqStartTime,
+                unseqEndTime);
+          }
         }
       }
     }
@@ -300,15 +358,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   /**
    * This method creates a specific file selector according to the file selection strategy of
    * crossSpace compaction, uses the file selector to select all unseqFiles and seqFiles to be
-   * compacted under the time partition of the virtual storage group, and creates a compaction task
-   * for them. The task is put into the compactionTaskQueue of the {@link CompactionTaskManager}.
+   * compacted under the time partition of the data region, and creates a compaction task for them.
+   * The task is put into the compactionTaskQueue of the {@link CompactionTaskManager}.
    *
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
   public List selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-    if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
+    if ((CompactionTaskManager.currentTaskNum.get() >= config.getCompactionThreadCount())
         || (!config.isEnableCrossSpaceCompaction())) {
       return Collections.emptyList();
     }

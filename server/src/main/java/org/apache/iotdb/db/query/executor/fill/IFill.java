@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Set;
 
-import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
+import static org.apache.iotdb.db.qp.utils.DateTimeUtils.MS_TO_MONTH;
 
 public abstract class IFill {
 
@@ -142,7 +142,7 @@ public abstract class IFill {
 
   protected long slideMonth(long startTime, int monthNum) {
     Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     calendar.add(Calendar.MONTH, monthNum);
     return calendar.getTimeInMillis();

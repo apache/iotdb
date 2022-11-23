@@ -34,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
@@ -43,29 +46,29 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void writeValues(
+  public boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    int emptyColumnCount = 0;
+    boolean flushFlag = false;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
-        emptyColumnCount++;
         continue;
       }
-      IWritableMemChunk memChunk =
-          createMemChunkIfNotExistAndGet(schemaList.get(i - emptyColumnCount));
-      memChunk.write(
-          times,
-          columns[i],
-          bitMaps == null ? null : bitMaps[i],
-          schemaList.get(i - emptyColumnCount).getType(),
-          start,
-          end);
+      IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
+      flushFlag |=
+          memChunk.writeWithFlushCheck(
+              times,
+              columns[i],
+              bitMaps == null ? null : bitMaps[i],
+              schemaList.get(i).getType(),
+              start,
+              end);
     }
+    return flushFlag;
   }
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
@@ -95,17 +98,17 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int emptyColumnCount = 0;
+  public boolean writeWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    boolean flushFlag = false;
     for (int i = 0; i < objectValue.length; i++) {
       if (objectValue[i] == null) {
-        emptyColumnCount++;
         continue;
       }
-      IWritableMemChunk memChunk =
-          createMemChunkIfNotExistAndGet(schemaList.get(i - emptyColumnCount));
-      memChunk.write(insertTime, objectValue[i]);
+      IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
+      flushFlag |= memChunk.writeWithFlushCheck(insertTime, objectValue[i]);
     }
+    return flushFlag;
   }
 
   @Override
@@ -117,27 +120,55 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   public int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     int deletedPointsNumber = 0;
-    Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
-    while (iter.hasNext()) {
-      Entry<String, IWritableMemChunk> entry = iter.next();
-      IWritableMemChunk chunk = entry.getValue();
-      // the key is measurement rather than component of multiMeasurement
-      PartialPath fullPath = devicePath.concatNode(entry.getKey());
-      if (originalPath.matchFullPath(fullPath)) {
-        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
-        // and delete timeseries
+    String targetMeasurement = originalPath.getMeasurement();
+    if (targetMeasurement.equals(ONE_LEVEL_PATH_WILDCARD)
+        || targetMeasurement.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
+      while (iter.hasNext()) {
+        Entry<String, IWritableMemChunk> entry = iter.next();
+        IWritableMemChunk chunk = entry.getValue();
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();
+          deletedPointsNumber += chunk.count();
+          chunk.release();
+        } else {
+          deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
+          if (chunk.count() == 0) {
+            iter.remove();
+          }
         }
-        deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
+      }
+    } else {
+      IWritableMemChunk chunk = memChunkMap.get(targetMeasurement);
+      if (chunk != null) {
+        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+          memChunkMap.remove(targetMeasurement);
+          deletedPointsNumber += chunk.count();
+          chunk.release();
+        } else {
+          deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
+          if (chunk.count() == 0) {
+            memChunkMap.remove(targetMeasurement);
+          }
+        }
       }
     }
+
     return deletedPointsNumber;
   }
 
   @Override
   public long getCurrentTVListSize(String measurement) {
     return memChunkMap.get(measurement).getTVList().rowCount();
+  }
+
+  @Override
+  public long getMaxTime() {
+    long maxTime = Long.MIN_VALUE;
+    for (IWritableMemChunk memChunk : memChunkMap.values()) {
+      maxTime = Math.max(maxTime, memChunk.getMaxTime());
+    }
+    return maxTime;
   }
 
   @Override

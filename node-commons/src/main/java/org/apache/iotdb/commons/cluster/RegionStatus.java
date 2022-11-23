@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.commons.cluster;
 
-/** Node status for showing regions */
+/** Region status for showing regions */
 public enum RegionStatus {
-  // Node running properly
-  Up("Up");
+  /** Region running properly */
+  Running("Running"),
+
+  /** Region connection failure */
+  Unknown("Unknown"),
+
+  /** Region is in removing */
+  Removing("Removing"),
+
+  /** Only query statements are permitted */
+  ReadOnly("ReadOnly");
 
   private final String status;
 
@@ -32,5 +41,19 @@ public enum RegionStatus {
 
   public String getStatus() {
     return status;
+  }
+
+  public static RegionStatus parse(String status) {
+    for (RegionStatus regionStatus : RegionStatus.values()) {
+      if (regionStatus.status.equals(status)) {
+        return regionStatus;
+      }
+    }
+    throw new RuntimeException(String.format("RegionStatus %s doesn't exist.", status));
+  }
+
+  public static boolean isNormalStatus(RegionStatus status) {
+    // Currently, the only normal status is Running
+    return status != null && status.equals(RegionStatus.Running);
   }
 }

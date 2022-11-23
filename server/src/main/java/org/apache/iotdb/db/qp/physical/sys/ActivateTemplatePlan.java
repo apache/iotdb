@@ -56,6 +56,10 @@ public class ActivateTemplatePlan extends PhysicalPlan {
     return prefixPath;
   }
 
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
+  }
+
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.ACTIVATE_TEMPLATE.ordinal());

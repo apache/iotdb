@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -35,19 +36,27 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
@@ -132,7 +141,16 @@ public enum PlanNodeType {
   NODE_PATHS_COUNT((short) 51),
   INTERNAL_CREATE_TIMESERIES((short) 52),
   ACTIVATE_TEMPLATE((short) 53),
-  PATHS_USING_TEMPLATE_SCAN((short) 54);
+  PATHS_USING_TEMPLATE_SCAN((short) 54),
+  LOAD_TSFILE((short) 55),
+  CONSTRUCT_SCHEMA_BLACK_LIST_NODE((short) 56),
+  ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57),
+  GROUP_BY_TAG((short) 58),
+  PRE_DEACTIVATE_TEMPLATE_NODE((short) 59),
+  ROLLBACK_PRE_DEACTIVATE_TEMPLATE_NODE((short) 60),
+  DEACTIVATE_TEMPLATE_NODE((short) 61),
+  INTO((short) 62),
+  DEVICE_VIEW_INTO((short) 63);
 
   public static final int BYTES = Short.BYTES;
 
@@ -291,6 +309,24 @@ public enum PlanNodeType {
         return ActivateTemplateNode.deserialize(buffer);
       case 54:
         return PathsUsingTemplateScanNode.deserialize(buffer);
+      case 55:
+        return LoadTsFilePieceNode.deserialize(buffer);
+      case 56:
+        return ConstructSchemaBlackListNode.deserialize(buffer);
+      case 57:
+        return RollbackSchemaBlackListNode.deserialize(buffer);
+      case 58:
+        return GroupByTagNode.deserialize(buffer);
+      case 59:
+        return PreDeactivateTemplateNode.deserialize(buffer);
+      case 60:
+        return RollbackPreDeactivateTemplateNode.deserialize(buffer);
+      case 61:
+        return DeactivateTemplateNode.deserialize(buffer);
+      case 62:
+        return IntoNode.deserialize(buffer);
+      case 63:
+        return DeviceViewIntoNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

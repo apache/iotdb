@@ -27,6 +27,7 @@ import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +49,8 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_USERNAME;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ZONE_ID;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.SET_TIMESTAMP_DISPLAY;
 
+// TODO remember to add it back after new standalone iotdb is finished
+@Ignore
 public class IoTDBInterpreterTest {
 
   private IoTDBInterpreter interpreter;
@@ -70,7 +73,7 @@ public class IoTDBInterpreterTest {
   }
 
   private void initInsert() {
-    interpreter.internalInterpret("set storage group to root.test.wf01", null);
+    interpreter.internalInterpret("CREATE DATABASE root.test.wf01", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
         null);
@@ -87,7 +90,7 @@ public class IoTDBInterpreterTest {
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
         null);
 
-    interpreter.internalInterpret("set storage group to root.test.wf02", null);
+    interpreter.internalInterpret("CREATE DATABASE root.test.wf02", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf02.wt02 (timestamp, temperature, status, hardware) VALUES (44, 4.4, false, 44)",
         null);
@@ -242,7 +245,7 @@ public class IoTDBInterpreterTest {
   @Test
   public void TestMultiLines() {
     String insert =
-        "SET STORAGE GROUP TO root.test.wf01.wt01;\n"
+        "CREATE DATABASE root.test.wf01.wt01;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\n"
             + "CREATE TIMESERIES root.test.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n"
@@ -265,7 +268,7 @@ public class IoTDBInterpreterTest {
             + "\n";
     String[] gt =
         new String[] {
-          "SET STORAGE GROUP TO root.test.wf01.wt01",
+          "CREATE DATABASE root.test.wf01.wt01",
           "CREATE TIMESERIES root.test.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
           "CREATE TIMESERIES root.test.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.test.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -305,7 +308,9 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowVersion() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW VERSION", null);
-    String gt = "version\n" + IoTDBConstant.VERSION;
+    String gt =
+        String.format(
+            "version\tbuild info\n%s\t%s", IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -315,13 +320,13 @@ public class IoTDBInterpreterTest {
   public void testShowTimeseries() {
     InterpreterResult actual = interpreter.internalInterpret("show timeseries", null);
     String gt =
-        "timeseries\talias\tstorage group\tdataType\tencoding\tcompression\ttags\tattributes\n"
-            + "root.test.wf02.wt02.temperature\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
-            + "root.test.wf02.wt02.status\tnull\troot.test.wf02\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\n"
-            + "root.test.wf02.wt02.hardware\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
-            + "root.test.wf01.wt01.temperature\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
-            + "root.test.wf01.wt01.status\tnull\troot.test.wf01\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\n"
-            + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull";
+        "timeseries\talias\tdatabase\tdataType\tencoding\tcompression\ttags\tattributes\tdeadband\tdeadbandparameters\n"
+            + "root.test.wf02.wt02.temperature\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf02.wt02.status\tnull\troot.test.wf02\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf02.wt02.hardware\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf01.wt01.temperature\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf01.wt01.status\tnull\troot.test.wf01\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -339,10 +344,9 @@ public class IoTDBInterpreterTest {
 
   @Test
   public void testShowDevicesWithSg() {
-    InterpreterResult actual =
-        interpreter.internalInterpret("show devices with storage group", null);
+    InterpreterResult actual = interpreter.internalInterpret("show devices with database", null);
     String gt =
-        "devices\tstorage group\tisAligned\n"
+        "devices\tdatabase\tisAligned\n"
             + "root.test.wf02.wt02\troot.test.wf02\tfalse\n"
             + "root.test.wf01.wt01\troot.test.wf01\tfalse";
     Assert.assertNotNull(actual);
@@ -355,7 +359,7 @@ public class IoTDBInterpreterTest {
   public void testShowAllTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW ALL TTL", null);
-    String gt = "storage group\tttl\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
+    String gt = "database\tttl\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -365,7 +369,7 @@ public class IoTDBInterpreterTest {
   public void testShowTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW TTL ON root.test.wf01", null);
-    String gt = "storage group\tttl\n" + "root.test.wf01\t12345";
+    String gt = "database\tttl\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -373,8 +377,8 @@ public class IoTDBInterpreterTest {
 
   @Test
   public void testShowStorageGroup() {
-    InterpreterResult actual = interpreter.internalInterpret("SHOW STORAGE GROUP", null);
-    String gt = "storage group\n" + "root.test.wf02\n" + "root.test.wf01";
+    InterpreterResult actual = interpreter.internalInterpret("SHOW DATABASES", null);
+    String gt = "database\n" + "root.test.wf02\n" + "root.test.wf01";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());

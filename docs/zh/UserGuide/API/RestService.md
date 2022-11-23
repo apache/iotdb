@@ -27,14 +27,14 @@ RESTful 服务默认情况是关闭的
  * 开发者  
    
    找到sever模块中`org.apache.iotdb.db.conf.rest` 下面的`IoTDBRestServiceConfig`类，修改`enableRestService=true`即可。
- 
+
  * 使用者  
    
-   找到IoTDB安装目录下面的`conf/iotdb.properties`文件，将 `enable_rest_service` 设置为 `true` 以启用该模块。
-    
+   找到IoTDB安装目录下面的`conf/iotdb-common.properties`文件，将 `enable_rest_service` 设置为 `true` 以启用该模块。
+   
    ```properties
     enable_rest_service=true
-    ```
+   ```
 
 ### 鉴权
 除了检活接口 `/ping`，RESTful 服务使用了基础（basic）鉴权，每次 URL 请求都需要在 header 中携带 `'Authorization': 'Basic ' + base64.encode(username + ':' + password)`。
@@ -242,7 +242,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -270,7 +270,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 {
   "expressions": null,
   "columnNames": [
-    "storage group",
+    "database",
     "ttl"
   ],
   "timestamps": null,
@@ -337,7 +337,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -411,7 +411,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "columnNames": [
     "timeseries",
     "alias",
-    "storage group",
+    "database",
     "dataType",
     "encoding",
     "compression",
@@ -544,9 +544,9 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 }
 ```
 
-请求示例 show devices with storage group:
+请求示例 show devices with database:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with storage group"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
 ```
 
 响应示例:
@@ -556,7 +556,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
   "expressions": null,
   "columnNames": [
     "devices",
-    "storage group",
+    "database",
     "isAligned"
   ],
   "timestamps": null,
@@ -798,7 +798,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
 响应参数:
@@ -835,7 +835,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 | dataTypes | array | 是  | 数据类型  |
 |  values | array | 是  | 值列，每一列中的值可以为 `null` |
 |  isAligned | boolean | 是  | 是否是对齐时间序列 |
-|  deviceId | boolean | 是  | 设备名称 |
+|  deviceId | string | 是  | 设备名称 |
 
 请求示例：
 ```shell
@@ -861,7 +861,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 ### 配置
 
-配置位于 `iotdb-rest.properties` 中。
+配置位于 `iotdb-common.properties` 中。
 
 
 
@@ -875,6 +875,12 @@ enable_rest_service=true
 
 ```properties
 rest_service_port=18080
+```
+
+* 将 'enable_swagger' 设置 'true' 启用swagger来展示rest接口信息, 而设置为 'false' 关闭该功能. 默认情况下，该值为 `false`。
+
+```properties
+enable_swagger=false
 ```
 
 * 一次查询能返回的结果集最大行数。当返回结果集的行数超出参数限制时，您只会得到在行数范围内的结果集，且将得到状态码`411`。

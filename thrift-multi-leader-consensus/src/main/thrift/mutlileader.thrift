@@ -27,14 +27,100 @@ struct TLogBatch {
 }
 
 struct TSyncLogReq {
+  # source peer where the TSyncLogReq is generated
+  1: required string peerId
+  2: required common.TConsensusGroupId consensusGroupId
+  3: required list<TLogBatch> batches
+}
+
+struct TInactivatePeerReq {
   1: required common.TConsensusGroupId consensusGroupId
-  2: required list<TLogBatch> batches
+}
+
+struct TInactivatePeerRes {
+  1: required common.TSStatus status
+}
+
+struct TActivatePeerReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TActivatePeerRes {
+  1: required common.TSStatus status
 }
 
 struct TSyncLogRes {
   1: required list<common.TSStatus> status
 }
 
+struct TBuildSyncLogChannelReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required common.TEndPoint endPoint
+  3: required i32 nodeId
+}
+
+struct TBuildSyncLogChannelRes {
+  1: required common.TSStatus status
+}
+
+struct TRemoveSyncLogChannelReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required common.TEndPoint endPoint
+  3: required i32 nodeId
+}
+
+struct TRemoveSyncLogChannelRes {
+  1: required common.TSStatus status
+}
+
+struct TSendSnapshotFragmentReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string snapshotId
+  3: required string filePath
+  4: required i64 chunkLength
+  5: required binary fileChunk
+}
+
+struct TWaitSyncLogCompleteReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TWaitSyncLogCompleteRes {
+  1: required bool complete
+  2: required i64 searchIndex
+  3: required i64 safeIndex
+}
+
+struct TSendSnapshotFragmentRes {
+  1: required common.TSStatus status
+}
+
+struct TTriggerSnapshotLoadReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string snapshotId
+}
+
+struct TTriggerSnapshotLoadRes {
+  1: required common.TSStatus status
+}
+
+struct TCleanupTransferredSnapshotReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string snapshotId
+}
+
+struct TCleanupTransferredSnapshotRes {
+  1: required common.TSStatus status
+}
+
 service MultiLeaderConsensusIService {
   TSyncLogRes syncLog(TSyncLogReq req)
+  TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
+  TActivatePeerRes activatePeer(TActivatePeerReq req)
+  TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
+  TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)
+  TWaitSyncLogCompleteRes waitSyncLogComplete(TWaitSyncLogCompleteReq req)
+  TSendSnapshotFragmentRes sendSnapshotFragment(TSendSnapshotFragmentReq req)
+  TTriggerSnapshotLoadRes triggerSnapshotLoad(TTriggerSnapshotLoadReq req)
+  TCleanupTransferredSnapshotRes cleanupTransferredSnapshot(TCleanupTransferredSnapshotReq req)
 }

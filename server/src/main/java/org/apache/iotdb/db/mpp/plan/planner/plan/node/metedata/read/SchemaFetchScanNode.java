@@ -21,9 +21,9 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -48,19 +48,21 @@ public class SchemaFetchScanNode extends SourceNode {
   private final PartialPath storageGroup;
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
-
+  private final boolean withTags;
   private TRegionReplicaSet schemaRegionReplicaSet;
 
   public SchemaFetchScanNode(
       PlanNodeId id,
       PartialPath storageGroup,
       PathPatternTree patternTree,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      boolean withTags) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
     this.templateMap = templateMap;
+    this.withTags = withTags;
   }
 
   public PartialPath getStorageGroup() {
@@ -85,7 +87,8 @@ public class SchemaFetchScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchScanNode(getPlanNodeId(), storageGroup, patternTree, templateMap);
+    return new SchemaFetchScanNode(
+        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags);
   }
 
   @Override
@@ -101,7 +104,7 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public String toString() {
     return String.format(
-        "SchemaFetchScan-%s:[StorageGroup: %s, DataRegion: %s]",
+        "SchemaFetchScanNode-%s:[StorageGroup: %s, DataRegion: %s]",
         this.getPlanNodeId(),
         storageGroup,
         PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
@@ -117,6 +120,7 @@ public class SchemaFetchScanNode extends SourceNode {
     for (Template template : templateMap.values()) {
       template.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(withTags, byteBuffer);
   }
 
   @Override
@@ -128,6 +132,7 @@ public class SchemaFetchScanNode extends SourceNode {
     for (Template template : templateMap.values()) {
       template.serialize(stream);
     }
+    ReadWriteIOUtils.write(withTags, stream);
   }
 
   public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
@@ -142,9 +147,9 @@ public class SchemaFetchScanNode extends SourceNode {
       template.deserialize(byteBuffer);
       templateMap.put(template.getId(), template);
     }
-
+    boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree, templateMap);
+    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree, templateMap, withTags);
   }
 
   @Override
@@ -166,5 +171,9 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSchemaFetchScan(this, context);
+  }
+
+  public boolean isWithTags() {
+    return withTags;
   }
 }

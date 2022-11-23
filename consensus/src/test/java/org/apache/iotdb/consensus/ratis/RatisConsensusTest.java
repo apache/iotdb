@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -41,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -73,8 +75,9 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.RatisConsensus,
+                  ConsensusFactory.RATIS_CONSENSUS,
                   ConsensusConfig.newBuilder()
+                      .setThisNodeId(peers.get(i).getNodeId())
                       .setThisNode(peers.get(i).getEndpoint())
                       .setRatisConfig(config)
                       .setStorageDir(peersStorage.get(i).getAbsolutePath())
@@ -85,7 +88,7 @@ public class RatisConsensusTest {
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.RatisConsensus))));
+                              ConsensusFactory.RATIS_CONSENSUS))));
       servers.get(i).start();
     }
   }
@@ -94,9 +97,9 @@ public class RatisConsensusTest {
   public void setUp() throws IOException {
     gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6000)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+    peers.add(new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)));
+    peers.add(new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)));
+    peers.add(new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
     peersStorage.add(new File("target" + java.io.File.separator + "1"));
     peersStorage.add(new File("target" + java.io.File.separator + "2"));
@@ -137,10 +140,10 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     // add 2 members
-    servers.get(1).createPeer(group.getGroupId(), peers);
+    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addPeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createPeer(group.getGroupId(), peers);
+    servers.get(2).createPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).changePeer(group.getGroupId(), peers);
 
     Assert.assertEquals(stateMachines.get(0).getConfiguration().size(), 3);
@@ -165,6 +168,27 @@ public class RatisConsensusTest {
   }
 
   @Test
+  public void oneMemberGroupChange1() throws Exception {
+    oneMemberGroupChangeImpl(false);
+  }
+
+  @Test
+  public void oneMemberGroupChange2() throws Exception {
+    oneMemberGroupChangeImpl(true);
+  }
+
+  private void oneMemberGroupChangeImpl(boolean previousRemove) throws Exception {
+    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+    servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
+    servers.get(previousRemove ? 0 : 1).removePeer(group.getGroupId(), peers.get(0));
+    servers.get(0).deletePeer(group.getGroupId());
+  }
+
+  @Test
   public void crashAndStart() throws Exception {
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
@@ -179,10 +203,25 @@ public class RatisConsensusTest {
     servers.clear();
 
     makeServers();
+    doConsensus(servers.get(0), gid, 10, 210);
+  }
+
+  @Test
+  public void transferLeader() throws Exception {
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createPeer(group.getGroupId(), group.getPeers());
-    doConsensus(servers.get(0), gid, 10, 210);
+
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    int leaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
+
+    ConsensusGenericResponse resp =
+        servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
+    Assert.assertTrue(resp.isSuccess());
+
+    int newLeaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
+    Assert.assertEquals((leaderIndex + 1) % 3, newLeaderIndex);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)

@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -113,7 +114,7 @@ public class LocalSinkHandle implements ISinkHandle {
       if (queue.hasNoMoreTsBlocks()) {
         return;
       }
-      logger.info("send TsBlocks");
+      logger.debug("[StartSendTsBlockOnLocal]");
       synchronized (this) {
         blocked = queue.add(tsBlock);
       }
@@ -129,9 +130,8 @@ public class LocalSinkHandle implements ISinkHandle {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        logger.info("set noMoreTsBlocks.");
+        logger.debug("[StartSetNoMoreTsBlocksOnLocal]");
         if (aborted || closed) {
-          logger.info("SinkHandle has been aborted={} or closed={}.", aborted, closed);
           return;
         }
         queue.setNoMoreTsBlocks(true);
@@ -139,28 +139,32 @@ public class LocalSinkHandle implements ISinkHandle {
       }
     }
     checkAndInvokeOnFinished();
-    logger.info("noMoreTsBlocks has been set.");
+    logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }
 
   @Override
   public void abort() {
-    logger.info("Sink handle is being aborted.");
+    logger.debug("[StartAbortLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
           return;
         }
         aborted = true;
-        queue.abort();
-        sinkHandleListener.onAborted(this);
+        Optional<Throwable> t = sinkHandleListener.onAborted(this);
+        if (t.isPresent()) {
+          queue.abort(t.get());
+        } else {
+          queue.abort();
+        }
       }
     }
-    logger.info("Sink handle is aborted");
+    logger.debug("[EndAbortLocalSinkHandle]");
   }
 
   @Override
   public void close() {
-    logger.info("Sink handle is being closed.");
+    logger.debug("[StartCloseLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -171,7 +175,7 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onFinish(this);
       }
     }
-    logger.info("Sink handle is closed");
+    logger.debug("[EndCloseLocalSinkHandle]");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {

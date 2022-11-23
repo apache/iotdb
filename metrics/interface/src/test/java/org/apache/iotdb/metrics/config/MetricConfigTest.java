@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -37,36 +35,50 @@ import static org.junit.Assert.assertTrue;
 public class MetricConfigTest {
 
   @Test
-  public void testYamlConfig() {
-    String url = this.getClass().getClassLoader().getResource("iotdb-metric.yml").getPath();
+  public void testConfig() {
+    List<String> prefixes = Arrays.asList("cn_", "dn_");
+    List<Properties> propertiesList = new ArrayList<>();
+    for (String prefix : prefixes) {
+      Properties properties = new Properties();
+      properties.setProperty(prefix + "enable_metric", "true");
+      properties.setProperty(prefix + "enable_performance_stat", "true");
+      properties.setProperty(prefix + "metric_reporter_list", "JMX,PROMETHEUS,IOTDB");
+      properties.setProperty(prefix + "metric_frame_type", "DROPWIZARD");
+      properties.setProperty(prefix + "metric_level", "ALL");
+      properties.setProperty(prefix + "metric_async_collect_period", "10");
+      properties.setProperty(prefix + "metric_prometheus_reporter_port", "9090");
+      properties.setProperty(prefix + "iotdb_reporter_host", "0.0.0.0");
+      properties.setProperty(prefix + "iotdb_reporter_port", "6669");
+      properties.setProperty(prefix + "iotdb_reporter_username", "user");
+      properties.setProperty(prefix + "iotdb_reporter_password", "password");
+      properties.setProperty(prefix + "iotdb_reporter_max_connection_number", "1");
+      properties.setProperty(prefix + "iotdb_reporter_location", "metric");
+      properties.setProperty(prefix + "iotdb_reporter_push_period", "5");
 
-    MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-    Constructor constructor = new Constructor(MetricConfig.class);
-    Yaml yaml = new Yaml(constructor);
-    if (url != null) {
-      try (InputStream inputStream = new FileInputStream(url)) {
-        metricConfig = (MetricConfig) yaml.load(inputStream);
-      } catch (IOException e) {
-        Assert.fail();
-      }
+      propertiesList.add(properties);
     }
 
-    assertTrue(metricConfig.getEnableMetric());
-    assertTrue(metricConfig.getEnablePerformanceStat());
-    assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());
-    assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
-    assertEquals(5, metricConfig.getPredefinedMetrics().size());
-    assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
-    assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
+    for (Properties properties : propertiesList) {
+      MetricConfigDescriptor.getInstance().loadProps(properties);
 
-    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
-    assertEquals("0.0.0.0", reporterConfig.getHost());
-    assertEquals(6669, (int) reporterConfig.getPort());
-    assertEquals("user", reporterConfig.getUsername());
-    assertEquals("password", reporterConfig.getPassword());
-    assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
-    assertEquals("metric", reporterConfig.getDatabase());
-    assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
+      MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+
+      assertTrue(metricConfig.getEnableMetric());
+      assertTrue(metricConfig.getEnablePerformanceStat());
+      assertEquals(3, metricConfig.getMetricReporterList().size());
+      assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
+      assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
+      assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
+      assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
+
+      MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
+      assertEquals("0.0.0.0", reporterConfig.getHost());
+      assertEquals(6669, (int) reporterConfig.getPort());
+      assertEquals("user", reporterConfig.getUsername());
+      assertEquals("password", reporterConfig.getPassword());
+      assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
+      assertEquals("metric", reporterConfig.getLocation());
+      assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
+    }
   }
 }

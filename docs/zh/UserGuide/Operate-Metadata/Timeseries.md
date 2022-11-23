@@ -67,12 +67,13 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 ## 删除时间序列
 
-我们可以使用`DELETE TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
+我们可以使用`(DELETE | DROP) TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
+IoTDB> drop timeseries root.ln.wf02.*
 ```
 
 ## 查看时间序列
@@ -81,7 +82,7 @@ IoTDB> delete timeseries root.ln.wf02.*
 
   SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
-时间序列信息具体包括：时间序列路径名，存储组，Measurement 别名，数据类型，编码方式，压缩方式，属性和标签。
+时间序列信息具体包括：时间序列路径名，database，Measurement 别名，数据类型，编码方式，压缩方式，属性和标签。
 
 示例：
 
@@ -102,7 +103,7 @@ IoTDB> show timeseries root.ln.**
 
 ```
 +-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
-|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
+|                     timeseries|   alias|database|dataType|encoding|compression|                                       tags|                                              attributes|
 +-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
 |root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
 |     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
@@ -116,7 +117,7 @@ Total line number = 7
 It costs 0.016s
 
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |   root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|null|      null|
 |     root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -158,7 +159,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 
 ```
 +-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
-|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
+|                     timeseries|   alias|database|dataType|encoding|compression|                                       tags|                                              attributes|
 +-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
 |root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
 |     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
@@ -287,7 +288,7 @@ show timeseries root.ln.** where description contains 'test1'
 
 ```
 +--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
+|                timeseries|alias|database|dataType|encoding|compression|        tags|attributes|
 +--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
 |root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
 +--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
@@ -295,7 +296,7 @@ Total line number = 1
 It costs 0.005s
 
 +------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|                   tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
 |root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
 +------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
@@ -361,7 +362,7 @@ create aligned timeseries root.sg1.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes
 
 ```
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
-|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
+|    timeseries|alias|database|dataType|encoding|compression|                     tags|                 attributes|
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
 |root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
 |root.sg1.d1.s2| null|     root.sg1|  DOUBLE| GORILLA|     SNAPPY|{"tag4":"v4","tag3":"v3"}|{"attr4":"v4","attr3":"v3"}|
@@ -371,11 +372,11 @@ create aligned timeseries root.sg1.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes
 支持查询：
 
 ```
-IoTDB> show storage group where tag1='v1'
+IoTDB> show databases where tag1='v1'
 Msg: 401: Error occurred while parsing SQL to physical plan: line 1:19 mismatched input 'where' expecting {<EOF>, ';'}
 IoTDB> show timeseries where tag1='v1'
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
-|    timeseries|alias|storage group|dataType|encoding|compression|                     tags|                 attributes|
+|    timeseries|alias|database|dataType|encoding|compression|                     tags|                 attributes|
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+
 |root.sg1.d1.s1| null|     root.sg1|   INT32|     RLE|     SNAPPY|{"tag1":"v1","tag2":"v2"}|{"attr2":"v2","attr1":"v1"}|
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+

@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -73,7 +73,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.CONFIG_NODE_CLIENT_POOL_THREAD_NAME.getName()),
+              ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
               .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
               .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
@@ -135,7 +135,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME.getName()),
+              ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
               .build()
               .getConfig());
@@ -143,10 +143,10 @@ public class DataNodeClientPoolFactory {
   }
 
   public static class ConfigNodeClientPoolFactory
-      implements IClientPoolFactory<PartitionRegionId, ConfigNodeClient> {
+      implements IClientPoolFactory<ConfigNodeRegionId, ConfigNodeClient> {
     @Override
-    public KeyedObjectPool<PartitionRegionId, ConfigNodeClient> createClientPool(
-        ClientManager<PartitionRegionId, ConfigNodeClient> manager) {
+    public KeyedObjectPool<ConfigNodeRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<ConfigNodeRegionId, ConfigNodeClient> manager) {
       return new GenericKeyedObjectPool<>(
           new ConfigNodeClient.Factory(
               manager,
@@ -154,6 +154,30 @@ public class DataNodeClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<ConfigNodeClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
+    }
+  }
+
+  public static class ClusterDeletionConfigNodeClientPoolFactory
+      implements IClientPoolFactory<ConfigNodeRegionId, ConfigNodeClient> {
+    @Override
+    public KeyedObjectPool<ConfigNodeRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<ConfigNodeRegionId, ConfigNodeClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new ConfigNodeClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(
+                      conf.getSelectorNumOfClientManager() / 10 > 0
+                          ? conf.getSelectorNumOfClientManager() / 10
+                          : 1)
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
     }

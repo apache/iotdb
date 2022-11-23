@@ -109,7 +109,7 @@ public class IoTDBSequenceDataQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // create storage group and measurement
+      // create database and measurement
       for (String sql : TestConstant.createSql) {
         statement.execute(sql);
       }

@@ -23,13 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.cache.PartitionCache;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,8 +69,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private final PartitionCache partitionCache;
 
-  private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+  private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
           .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterPartitionFetcherHolder {
@@ -93,7 +93,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
@@ -116,6 +116,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaPartition;
     } catch (TException | IOException e) {
+      logger.error("Get Schema Partition error", e);
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -124,7 +125,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
@@ -156,7 +157,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
@@ -169,12 +170,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when query */
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
       if (null == dataPartition) {
         TDataPartitionTableResp dataPartitionTableResp =
@@ -196,43 +196,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when write */
-  @Override
-  public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(dataPartitionQueryParams, false);
-      DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
-      if (null == dataPartition) {
-        TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReq(splitDataPartitionQueryParams));
-
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  dataPartitionTableResp.getStatus().getMessage(),
-                  dataPartitionTableResp.getStatus().getCode()));
-        }
-      }
-      return dataPartition;
-    } catch (TException | IOException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getDataPartition():" + e.getMessage());
-    }
-  }
-
-  /** get data partition when query */
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     // Do not use data partition cache
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
       if (null == dataPartition) {
         TDataPartitionTableResp dataPartitionTableResp =
@@ -254,12 +223,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  /** get data partition when write */
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, true);
       DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
@@ -296,7 +264,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     partitionCache.invalidAllCache();
   }
 
-  /** split data partition query param by storage group */
+  /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
     List<String> devicePaths = new ArrayList<>();

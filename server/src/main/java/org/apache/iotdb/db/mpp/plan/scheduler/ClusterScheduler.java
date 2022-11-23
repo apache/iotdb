@@ -86,13 +86,18 @@ public class ClusterScheduler implements IScheduler {
               stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              scheduledExecutor, queryContext, instances, internalServiceClientManager);
+              scheduledExecutor,
+              queryContext,
+              instances,
+              internalServiceClientManager,
+              stateTracker);
     }
   }
 
   private boolean needRetry(TSStatus failureStatus) {
     return failureStatus != null
-        && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
+        && queryType == QueryType.READ
+        && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode();
   }
 
   @Override
@@ -133,7 +138,7 @@ public class ClusterScheduler implements IScheduler {
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
-    logger.info("state tracker starts");
+    logger.debug("state tracker starts");
   }
 
   @Override

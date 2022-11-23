@@ -20,14 +20,11 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -106,30 +103,8 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
             .build();
-
     // add metrics
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CACHE_HIT.toString(),
-            MetricLevel.IMPORTANT,
-            lruCache,
-            l -> (long) (l.stats().hitRate() * 100),
-            Tag.NAME.toString(),
-            "timeSeriesMeta");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CACHE_HIT.toString(),
-            MetricLevel.IMPORTANT,
-            bloomFilterPreventCount,
-            prevent -> {
-              if (bloomFilterRequestCount.get() == 0L) {
-                return 1L;
-              }
-              return (long)
-                  ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
-            },
-            Tag.NAME.toString(),
-            "bloomFilter");
+    MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
   }
 
   public static TimeSeriesMetadataCache getInstance() {
@@ -152,7 +127,8 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
+          reader.readTimeseriesMetadata(
+              new Path(key.device, key.measurement, true), ignoreNotExists);
       return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
           ? null
           : timeseriesMetadata;
@@ -172,7 +148,7 @@ public class TimeSeriesMetadataCache {
         // double check
         timeseriesMetadata = lruCache.getIfPresent(key);
         if (timeseriesMetadata == null) {
-          Path path = new Path(key.device, key.measurement);
+          Path path = new Path(key.device, key.measurement, true);
           // bloom filter part
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()
@@ -241,6 +217,14 @@ public class TimeSeriesMetadataCache {
 
   public long getAverageSize() {
     return entryAverageSize.get();
+  }
+
+  public long calculateBloomFilterHitRatio() {
+    if (bloomFilterRequestCount.get() == 0L) {
+      return 1L;
+    }
+    return (long)
+        ((double) bloomFilterPreventCount.get() / (double) bloomFilterRequestCount.get() * 100L);
   }
 
   /** clear LRUCache. */

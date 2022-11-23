@@ -46,7 +46,7 @@ public class IMetadataQuerierByFileImplTest {
   public void before() throws IOException {
     TsFileGeneratorForTest.generateFile(10000, 1024, 100);
     reader = new TsFileSequenceReader(FILE_PATH);
-    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6"));
+    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6", true));
     for (ChunkMetadata chunkMetaData : d1s6List) {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
@@ -63,7 +63,7 @@ public class IMetadataQuerierByFileImplTest {
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
 
-    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));
+    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1", true));
     for (ChunkMetadata chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(
           new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
@@ -90,8 +90,8 @@ public class IMetadataQuerierByFileImplTest {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1", "s6"));
-    paths.add(new Path("d2", "s1"));
+    paths.add(new Path("d1", "s6", true));
+    paths.add(new Path("d2", "s1", true));
 
     ArrayList<TimeRange> resTimeRanges =
         new ArrayList<>(metadataQuerierByFile.convertSpace2TimePartition(paths, 0L, 0L));
@@ -104,8 +104,8 @@ public class IMetadataQuerierByFileImplTest {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1", "s6"));
-    paths.add(new Path("d2", "s1"));
+    paths.add(new Path("d1", "s6", true));
+    paths.add(new Path("d2", "s1", true));
 
     long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
@@ -127,8 +127,8 @@ public class IMetadataQuerierByFileImplTest {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1", "s6"));
-    paths.add(new Path("d2", "s1"));
+    paths.add(new Path("d1", "s6", true));
+    paths.add(new Path("d2", "s1", true));
 
     long spacePartitionStartPos = d2chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];

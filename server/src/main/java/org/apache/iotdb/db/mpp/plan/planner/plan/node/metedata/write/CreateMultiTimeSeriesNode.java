@@ -21,7 +21,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -38,12 +39,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class CreateMultiTimeSeriesNode extends WritePlanNode {
+
+  private static final int SPLIT_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getMaxMeasurementNumOfInternalRequest();
 
   private final Map<PartialPath, MeasurementGroup> measurementGroupMap;
 
@@ -67,6 +72,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     super(id);
     measurementGroupMap = new HashMap<>();
 
+    // gather measurements of same device
     int size = paths.size();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
@@ -103,6 +109,15 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       PlanNodeId planNodeId, Map<PartialPath, MeasurementGroup> measurementGroupMap) {
     super(planNodeId);
     this.measurementGroupMap = measurementGroupMap;
+  }
+
+  private CreateMultiTimeSeriesNode(
+      PlanNodeId planNodeId,
+      Map<PartialPath, MeasurementGroup> measurementGroupMap,
+      TRegionReplicaSet regionReplicaSet) {
+    super(planNodeId);
+    this.measurementGroupMap = measurementGroupMap;
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   private void addMeasurementGroup(PartialPath devicePath, MeasurementGroup measurementGroup) {
@@ -207,20 +222,68 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    Map<TRegionReplicaSet, CreateMultiTimeSeriesNode> splitMap = new HashMap<>();
+    // gather devices to same target region
+    Map<TRegionReplicaSet, Map<PartialPath, MeasurementGroup>> splitMap = new HashMap<>();
     for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet =
           analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getFullPath());
-      CreateMultiTimeSeriesNode tmpNode;
-      if (splitMap.containsKey(regionReplicaSet)) {
-        tmpNode = splitMap.get(regionReplicaSet);
-      } else {
-        tmpNode = new CreateMultiTimeSeriesNode(this.getPlanNodeId());
-        tmpNode.setRegionReplicaSet(regionReplicaSet);
-        splitMap.put(regionReplicaSet, tmpNode);
-      }
-      tmpNode.addMeasurementGroup(entry.getKey(), entry.getValue());
+      splitMap
+          .computeIfAbsent(regionReplicaSet, k -> new HashMap<>())
+          .put(entry.getKey(), entry.getValue());
     }
-    return new ArrayList<>(splitMap.values());
+
+    // split each region's requests to ensure each request is not that huge, which makes the system
+    // more stable and may enhance the concurrency
+    List<WritePlanNode> result = new ArrayList<>();
+    for (Map.Entry<TRegionReplicaSet, Map<PartialPath, MeasurementGroup>> entry :
+        splitMap.entrySet()) {
+      for (Map<PartialPath, MeasurementGroup> measurementGroupMap :
+          splitAndRegroupMeasurements(entry.getValue())) {
+        result.add(
+            new CreateMultiTimeSeriesNode(getPlanNodeId(), measurementGroupMap, entry.getKey()));
+      }
+    }
+
+    return result;
+  }
+
+  private static List<Map<PartialPath, MeasurementGroup>> splitAndRegroupMeasurements(
+      Map<PartialPath, MeasurementGroup> measurementGroupMap) {
+    List<Map<PartialPath, MeasurementGroup>> result = new ArrayList<>();
+    // keep measurements of same device as much as possible
+    int tmpSum = 0;
+    Map<PartialPath, MeasurementGroup> tmpMap = new HashMap<>();
+    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+      if (entry.getValue().size() > SPLIT_SIZE) {
+        for (MeasurementGroup splitMeasurementGroup : entry.getValue().split(SPLIT_SIZE)) {
+          if (splitMeasurementGroup.size() == SPLIT_SIZE) {
+            result.add(Collections.singletonMap(entry.getKey(), splitMeasurementGroup));
+          } else {
+            // each device has at most one splitMeasurementGroup with size < splitSize
+            if (tmpSum + splitMeasurementGroup.size() > SPLIT_SIZE) {
+              result.add(tmpMap);
+              tmpMap = new HashMap<>();
+              tmpSum = 0;
+            }
+            tmpSum += splitMeasurementGroup.size();
+            tmpMap.put(entry.getKey(), splitMeasurementGroup);
+          }
+        }
+      } else {
+        if (tmpSum + entry.getValue().size() > SPLIT_SIZE) {
+          result.add(tmpMap);
+          tmpMap = new HashMap<>();
+          tmpSum = 0;
+        }
+        tmpSum += entry.getValue().size();
+        tmpMap.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    if (!tmpMap.isEmpty()) {
+      result.add(tmpMap);
+    }
+
+    return result;
   }
 }

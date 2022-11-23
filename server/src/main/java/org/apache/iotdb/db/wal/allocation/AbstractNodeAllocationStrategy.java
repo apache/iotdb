@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.wal.allocation;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.directories.FolderManager;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -37,7 +37,7 @@ import java.util.Arrays;
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
   private static final Logger logger =
       LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   /** manage wal folders */
   protected FolderManager folderManager;
@@ -46,7 +46,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     try {
       folderManager =
           new FolderManager(
-              Arrays.asList(config.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
+              Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Fail to create wal node allocation strategy because all disks of wal folders are full.",

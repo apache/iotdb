@@ -19,40 +19,35 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** Is metric service enabled */
-  private Boolean enableMetric = false;
+  private Boolean enableMetric = true;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MonitorType monitorType = MonitorType.DROPWIZARD;
+  private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
   /** The list of reporters provide data for external system */
-  private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
+  private List<ReporterType> metricReporterList = Collections.emptyList();
 
   /** The level of metric service */
-  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
-
-  /** The list of predefined metrics in metric service */
-  private List<PredefinedMetric> predefinedMetrics =
-      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
+  private MetricLevel metricLevel = MetricLevel.CORE;
 
   private Integer asyncCollectPeriodInSecond = 5;
 
   /** The http server's port for prometheus reporter to get metric data. */
-  private Integer prometheusExporterPort = 9091;
+  private Integer prometheusReporterPort = 9091;
 
   /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
@@ -68,8 +63,8 @@ public class MetricConfig {
     private String password = "root";
     /** The max number of connection */
     private Integer maxConnectionNumber = 3;
-    /** The monitor database of iotdb */
-    private String database = "_metric";
+    /** The location of iotdb metrics */
+    private String location = "metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
 
@@ -113,12 +108,12 @@ public class MetricConfig {
       this.maxConnectionNumber = maxConnectionNumber;
     }
 
-    public String getDatabase() {
-      return database;
+    public String getLocation() {
+      return location;
     }
 
-    public void setDatabase(String database) {
-      this.database = database;
+    public void setLocation(String location) {
+      this.location = location;
     }
 
     public Integer getPushPeriodInSecond() {
@@ -142,13 +137,13 @@ public class MetricConfig {
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)
           && Objects.equals(password, that.password)
-          && Objects.equals(database, that.database)
+          && Objects.equals(location, that.location)
           && Objects.equals(pushPeriodInSecond, that.pushPeriodInSecond);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(host, port, username, password, database, pushPeriodInSecond);
+      return Objects.hash(host, port, username, password, location, pushPeriodInSecond);
     }
   }
 
@@ -159,12 +154,12 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
-    monitorType = newMetricConfig.getMonitorType();
+    enablePerformanceStat = newMetricConfig.getEnablePerformanceStat();
+    metricFrameType = newMetricConfig.getMetricFrameType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
-    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
-    prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
+    prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
   }
 
@@ -189,20 +184,25 @@ public class MetricConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
-  public MonitorType getMonitorType() {
-    return monitorType;
+  public MetricFrameType getMetricFrameType() {
+    return metricFrameType;
   }
 
-  public void setMonitorType(MonitorType monitorType) {
-    this.monitorType = monitorType;
+  public void setMetricFrameType(MetricFrameType metricFrameType) {
+    this.metricFrameType = metricFrameType;
   }
 
   public List<ReporterType> getMetricReporterList() {
     return metricReporterList;
   }
 
-  public void setMetricReporterList(List<ReporterType> metricReporterList) {
-    this.metricReporterList = metricReporterList;
+  public void setMetricReporterList(String metricReporterList) {
+    this.metricReporterList = new ArrayList<>();
+    for (String type : metricReporterList.split(",")) {
+      if (type.trim().length() != 0) {
+        this.metricReporterList.add(ReporterType.valueOf(type));
+      }
+    }
   }
 
   public MetricLevel getMetricLevel() {
@@ -213,14 +213,6 @@ public class MetricConfig {
     this.metricLevel = metricLevel;
   }
 
-  public List<PredefinedMetric> getPredefinedMetrics() {
-    return predefinedMetrics;
-  }
-
-  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
-    this.predefinedMetrics = predefinedMetrics;
-  }
-
   public Integer getAsyncCollectPeriodInSecond() {
     return asyncCollectPeriodInSecond;
   }
@@ -229,12 +221,12 @@ public class MetricConfig {
     this.asyncCollectPeriodInSecond = asyncCollectPeriodInSecond;
   }
 
-  public Integer getPrometheusExporterPort() {
-    return prometheusExporterPort;
+  public Integer getPrometheusReporterPort() {
+    return prometheusReporterPort;
   }
 
-  public void setPrometheusExporterPort(Integer prometheusExporterPort) {
-    this.prometheusExporterPort = prometheusExporterPort;
+  public void setPrometheusReporterPort(Integer prometheusReporterPort) {
+    this.prometheusReporterPort = prometheusReporterPort;
   }
 
   public IoTDBReporterConfig getIoTDBReporterConfig() {
@@ -260,12 +252,11 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && monitorType.equals(anotherMetricConfig.getMonitorType())
+        && metricFrameType.equals(anotherMetricConfig.getMetricFrameType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
-        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
-        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
+        && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
         && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
   }
 }

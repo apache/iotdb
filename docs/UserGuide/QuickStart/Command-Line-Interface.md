@@ -86,7 +86,7 @@ Enter ```quit``` or `exit` can exit Cli. The cli will shows `quit normally`
 |-pw <`password`>|string, no quotation marks|No|The password used for IoTDB to connect to the server. If no password is entered, IoTDB will ask for password in Cli command|-pw root|
 |-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
 |-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
-|-e <`execute`> |string|No|manipulate IoTDB in batches without entering cli input mode|-e "show storage group"|
+|-e <`execute`> |string|No|manipulate IoTDB in batches without entering cli input mode|-e "show databases"|
 |-c | empty | No | If the server enables `rpc_thrift_compression_enable=true`, then cli must use `-c` | -c |
 
 Following is a cli command which connects the host with IP
@@ -103,12 +103,26 @@ The Windows system startup commands are as follows:
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
+### CLI Special Command
+Special commands of Cli are below.
+| Command | Description / Example |
+|:---|:---|
+| `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | show time display type |
+| `set time_zone=xxx` | eg. +08:00, Asia/Shanghai |
+| `show time_zone` | show cli time zone |
+| `set fetch_size=xxx` | set fetch size when querying data from server |
+| `show fetch_size` |  show fetch size |
+| `set max_display_num=xxx` |  set max lines for cli to output, -1 equals to unlimited |
+| `help` |  Get hints for CLI special commands |
+| `exit/quit` |  Exit CLI |
+
 ### Note on using the CLI with OpenID Connect Auth enabled on Server side
 
 Openid connect (oidc) uses keycloack as the authority authentication service of oidc service
 
 #### configuration
-The configuration is located in iotdb-engines.properties , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
+The configuration is located in iotdb-datanode.properties(iotdb-confignode.properties) , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
 
 ```
 authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
@@ -154,7 +168,7 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
-9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create storage group, add users, roles and other functions
+9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create database, add users, roles and other functions
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
@@ -230,7 +244,7 @@ In the Windows environment, the SQL statement of the -e parameter needs to use `
 
 In order to better explain the use of -e parameter, take following as an example(On linux system).
 
-Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
+Suppose you want to create a database root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
 
 ```shell
 # !/bin/bash
@@ -240,7 +254,7 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create database root.demo"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
 ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"

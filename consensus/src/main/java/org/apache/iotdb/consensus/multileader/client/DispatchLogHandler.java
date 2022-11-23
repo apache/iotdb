@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.consensus.multileader.client;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.multileader.logdispatcher.PendingBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -36,18 +40,18 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
 
   private final LogDispatcherThread thread;
   private final PendingBatch batch;
+  private final long createTime;
   private int retryCount;
 
   public DispatchLogHandler(LogDispatcherThread thread, PendingBatch batch) {
     this.thread = thread;
     this.batch = batch;
+    this.createTime = System.currentTimeMillis();
   }
 
   @Override
   public void onComplete(TSyncLogRes response) {
-    if (response.getStatus().size() == 1
-        && response.getStatus().get(0).getCode()
-            == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+    if (response.getStatus().size() == 1 && needRetry(response.getStatus().get(0).getCode())) {
       logger.warn(
           "Can not send {} to peer {} for {} times because {}",
           batch,
@@ -60,6 +64,23 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
       // update safely deleted search index after current sync index is updated by removeBatch
       thread.updateSafelyDeletedSearchIndex();
     }
+    MetricService.getInstance()
+        .getOrCreateHistogram(
+            Metric.STAGE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.MULTI_LEADER.toString(),
+            Tag.TYPE.toString(),
+            "syncLogTimePerRequest",
+            Tag.REGION.toString(),
+            this.thread.getPeer().getGroupId().toString())
+        .update((System.currentTimeMillis() - createTime) / batch.getBatches().size());
+  }
+
+  private boolean needRetry(int statusCode) {
+    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
   @Override

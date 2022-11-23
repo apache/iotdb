@@ -37,7 +37,7 @@ public class SchemaPartitionResp implements DataSet {
   private final boolean allPartitionsExist;
 
   // Map<StorageGroup, SchemaPartitionTable>
-  // TODO: Replace this map whit new SchemaPartition
+  // TODO: Replace this map with new SchemaPartition
   private final Map<String, SchemaPartitionTable> schemaPartition;
 
   public SchemaPartitionResp(

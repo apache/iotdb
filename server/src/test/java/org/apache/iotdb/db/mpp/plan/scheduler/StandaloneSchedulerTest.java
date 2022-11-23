@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionTest;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.localconfignode.LocalDataPartitionTable;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -64,6 +65,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -73,12 +75,13 @@ import java.util.concurrent.ExecutorService;
 
 public class StandaloneSchedulerTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
 
   static LocalConfigNode configNode;
 
   @Before
   public void setUp() throws Exception {
-    conf.setMppMode(true);
     conf.setDataNodeId(0);
 
     configNode = LocalConfigNode.getInstance();
@@ -86,6 +89,7 @@ public class StandaloneSchedulerTest {
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
     StorageEngineV2.getInstance().start();
+    LocalDataPartitionTable.DataRegionIdGenerator.getInstance().reset();
   }
 
   @After
@@ -96,7 +100,6 @@ public class StandaloneSchedulerTest {
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
-    conf.setMppMode(false);
   }
 
   @Test
@@ -135,7 +138,8 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            conf.getQueryTimeoutThreshold());
+            conf.getQueryTimeoutThreshold(),
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.wt01.status"));
@@ -238,7 +242,8 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            conf.getQueryTimeoutThreshold());
+            conf.getQueryTimeoutThreshold(),
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.GPS"));
@@ -351,7 +356,8 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            conf.getQueryTimeoutThreshold());
+            conf.getQueryTimeoutThreshold(),
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.d3"));
@@ -402,7 +408,8 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            conf.getQueryTimeoutThreshold());
+            conf.getQueryTimeoutThreshold(),
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(deviceId));
@@ -483,7 +490,8 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            conf.getQueryTimeoutThreshold());
+            conf.getQueryTimeoutThreshold(),
+            sessionInfo);
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(deviceId);

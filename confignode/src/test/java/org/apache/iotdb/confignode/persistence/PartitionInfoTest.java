@@ -29,13 +29,16 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -136,8 +139,7 @@ public class PartitionInfoTest {
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
     partitionInfo.createDataPartition(createDataPartitionPlan);
 
-    partitionInfo.getDeletedRegionSet().add(dataRegionReplicaSet);
-    partitionInfo.getDeletedRegionSet().add(schemaRegionReplicaSet);
+    partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
 
     partitionInfo.processTakeSnapshot(snapshotDir);
 
@@ -184,10 +186,7 @@ public class PartitionInfoTest {
     Assert.assertEquals(regionInfoList1.getRegionInfoList().size(), 20);
     regionInfoList1
         .getRegionInfoList()
-        .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
-            });
+        .forEach((regionInfo) -> Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1"));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
     RegionInfoListResp regionInfoList2 =
@@ -196,10 +195,9 @@ public class PartitionInfoTest {
     regionInfoList2
         .getRegionInfoList()
         .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(
-                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
-            });
+            (regionInfo) ->
+                Assert.assertEquals(
+                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     RegionInfoListResp regionInfoList3 =
@@ -208,10 +206,9 @@ public class PartitionInfoTest {
     regionInfoList3
         .getRegionInfoList()
         .forEach(
-            (regionInfo) -> {
-              Assert.assertEquals(
-                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
-            });
+            (regionInfo) ->
+                Assert.assertEquals(
+                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion));
     showRegionReq.setConsensusGroupType(null);
     showRegionReq.setStorageGroups(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =
@@ -244,6 +241,31 @@ public class PartitionInfoTest {
     }
     tRegionReplicaSet.setDataNodeLocations(dataNodeLocations);
     return tRegionReplicaSet;
+  }
+
+  private OfferRegionMaintainTasksPlan generateOfferRegionMaintainTasksPlan() {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+
+    OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
+    offerPlan.appendRegionMaintainTask(
+        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet).setTTL(86400));
+    offerPlan.appendRegionMaintainTask(
+        new RegionDeleteTask(
+            dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));
+
+    return offerPlan;
   }
 
   private CreateSchemaPartitionPlan generateCreateSchemaPartitionReq(

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -289,8 +289,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         }
       }
     }
-    return StorageEngine.getTimePartition(pageHeader.getStartTime())
-        != StorageEngine.getTimePartition(pageHeader.getEndTime());
+    return StorageEngineV2.getTimePartition(pageHeader.getStartTime())
+        != StorageEngineV2.getTimePartition(pageHeader.getEndTime());
   }
 
   /**
@@ -376,7 +376,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws PageException {
-    long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
+    long partitionId = StorageEngineV2.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     ChunkWriterImpl chunkWriter =
         partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
@@ -416,7 +416,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                 .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
-              currentDeletion.getStartTime(), currentDeletion.getEndTime());
+              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
         }
       }
       return chunkMetadata.getDeleteIntervalList();
@@ -431,7 +431,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
-      long partitionId = StorageEngine.getTimePartition(time);
+      long partitionId = StorageEngineV2.getTimePartition(time);
 
       ChunkWriterImpl chunkWriter =
           partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
@@ -492,10 +492,10 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
   protected TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
       throws IOException {
-    tsFileIOWriter.endFile();
-    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
     Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
         tsFileIOWriter.getDeviceTimeseriesMetadataMap();
+    tsFileIOWriter.endFile();
+    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
     for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
       String device = entry.getKey();
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {

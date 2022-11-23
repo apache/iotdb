@@ -20,8 +20,9 @@ package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -491,7 +492,7 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     UpdateLastCacheOperator updateLastCacheOperator =
-        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, true);
+        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, false);
 
     assertEquals(2048, updateLastCacheOperator.calculateMaxPeekMemory());
     assertEquals(1024, updateLastCacheOperator.calculateMaxReturnSize());
@@ -582,13 +583,16 @@ public class OperatorMemoryTest {
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
       Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(1024L);
-      expectedMaxPeekMemory += 1024L;
       childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
-      expectedRetainedSizeAfterCallingNext += 1024L;
+      expectedRetainedSizeAfterCallingNext =
+          Math.max(
+              expectedRetainedSizeAfterCallingNext, child.calculateRetainedSizeAfterCallingNext());
       children.add(child);
     }
 
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory)
+            + expectedRetainedSizeAfterCallingNext;
 
     DeviceViewOperator deviceViewOperator =
         new DeviceViewOperator(
@@ -744,7 +748,10 @@ public class OperatorMemoryTest {
 
       PathsUsingTemplateScanOperator operator =
           new PathsUsingTemplateScanOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), 0);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              Collections.singletonList(new PartialPath(new String[] {"root", "**"})),
+              0);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
@@ -932,7 +939,12 @@ public class OperatorMemoryTest {
 
       SchemaFetchScanOperator operator =
           new SchemaFetchScanOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, null, null);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              null,
+              null,
+              null,
+              false);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());

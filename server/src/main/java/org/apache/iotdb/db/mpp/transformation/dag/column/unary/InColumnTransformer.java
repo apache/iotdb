@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -47,7 +48,10 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       Set<String> values) {
     super(returnType, childColumnTransformer);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
-    this.childType = childColumnTransformer.getType().getTypeEnum();
+    this.childType =
+        childColumnTransformer.getType() == null
+            ? null
+            : childColumnTransformer.getType().getTypeEnum();
     initTypedSet(values);
   }
 
@@ -85,35 +89,58 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void initTypedSet(Set<String> values) {
+    if (childType == null) {
+      return;
+    }
     switch (childType) {
       case INT32:
         intSet = new HashSet<>();
         for (String value : values) {
-          intSet.add(Integer.valueOf(value));
+          try {
+            intSet.add(Integer.valueOf(value));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(
+                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+          }
         }
         break;
       case INT64:
         longSet = new HashSet<>();
         for (String value : values) {
-          longSet.add(Long.valueOf(value));
+          try {
+            longSet.add(Long.valueOf(value));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(
+                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+          }
         }
         break;
       case FLOAT:
         floatSet = new HashSet<>();
         for (String value : values) {
-          floatSet.add(Float.valueOf(value));
+          try {
+            floatSet.add(Float.valueOf(value));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(
+                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+          }
         }
         break;
       case DOUBLE:
         doubleSet = new HashSet<>();
         for (String value : values) {
-          doubleSet.add(Double.valueOf(value));
+          try {
+            doubleSet.add(Double.valueOf(value));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(
+                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+          }
         }
         break;
       case BOOLEAN:
         booleanSet = new HashSet<>();
         for (String value : values) {
-          booleanSet.add(Boolean.valueOf(value));
+          booleanSet.add(strictCastToBool(value));
         }
         break;
       case BINARY:
@@ -122,6 +149,15 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);
     }
+  }
+
+  private boolean strictCastToBool(String s) {
+    if ("true".equalsIgnoreCase(s)) {
+      return true;
+    } else if ("false".equalsIgnoreCase(s)) {
+      return false;
+    }
+    throw new SemanticException(String.format("\"%s\" cannot be cast to [BOOLEAN]", s));
   }
 
   private interface Satisfy {

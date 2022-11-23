@@ -44,12 +44,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
   private final IStateMachine applicationStateMachine;
+  private final IStateMachine.RetryPolicy retryPolicy;
 
   // Raft Storage sub dir for statemachine data, default (_sm)
   private File statemachineDir;
@@ -58,6 +61,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    retryPolicy =
+        applicationStateMachine instanceof IStateMachine.RetryPolicy
+            ? (IStateMachine.RetryPolicy) applicationStateMachine
+            : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine);
     applicationStateMachine.start();
     groupId = id;
@@ -117,23 +124,44 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    Message ret;
+    Message ret = null;
     waitUntilSystemNotReadOnly();
+    TSStatus finalStatus = null;
+    boolean shouldRetry = false;
+    boolean firstTry = true;
     do {
       try {
+        if (!firstTry) {
+          Thread.sleep(retryPolicy.getSleepTime());
+        }
         TSStatus result = applicationStateMachine.write(applicationRequest);
-        ret = new ResponseMessage(result);
-        break;
-      } catch (Exception rte) {
+
+        if (firstTry) {
+          finalStatus = result;
+          firstTry = false;
+        } else {
+          finalStatus = retryPolicy.updateResult(finalStatus, result);
+        }
+
+        shouldRetry = retryPolicy.shouldRetry(finalStatus);
+        if (!shouldRetry) {
+          ret = new ResponseMessage(finalStatus);
+          break;
+        }
+      } catch (InterruptedException i) {
+        logger.warn("{} interrupted when retry sleep", this);
+        Thread.currentThread().interrupt();
+      } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
         if (applicationStateMachine.isReadOnly()) {
           waitUntilSystemNotReadOnly();
+          shouldRetry = true;
         } else {
           break;
         }
       }
-    } while (!applicationStateMachine.isReadOnly());
+    } while (shouldRetry);
 
     return CompletableFuture.completedFuture(ret);
   }
@@ -168,30 +196,42 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to take the latest snapshot
-    String metadata = Utils.getMetadataFromTermIndex(lastApplied);
-    File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+    final String metadata = Utils.getMetadataFromTermIndex(lastApplied);
+    File snapshotTmpDir = snapshotStorage.getSnapshotTmpDir(metadata);
 
     // delete snapshotDir fully in case of last takeSnapshot() crashed
-    FileUtils.deleteFully(snapshotDir);
+    FileUtils.deleteFully(snapshotTmpDir);
 
-    snapshotDir.mkdirs();
-    if (!snapshotDir.isDirectory()) {
-      logger.error("Unable to create snapshotDir at {}", snapshotDir);
+    snapshotTmpDir.mkdirs();
+    if (!snapshotTmpDir.isDirectory()) {
+      logger.error("Unable to create temp snapshotDir at {}", snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
+    boolean applicationTakeSnapshotSuccess =
+        applicationStateMachine.takeSnapshot(snapshotTmpDir, metadata);
     if (!applicationTakeSnapshotSuccess) {
-      deleteIncompleteSnapshot(snapshotDir);
+      deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean addTermIndexMetafileSuccess =
-        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
-    if (!addTermIndexMetafileSuccess) {
-      deleteIncompleteSnapshot(snapshotDir);
+    File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+
+    FileUtils.deleteFully(snapshotDir);
+    try {
+      Files.move(snapshotTmpDir.toPath(), snapshotDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      logger.error(
+          "{} atomic rename {} to {} failed with exception {}",
+          this,
+          snapshotTmpDir,
+          snapshotDir,
+          e);
+      deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
+
+    snapshotStorage.updateSnapshotCache();
 
     return lastApplied.getIndex();
   }
@@ -207,6 +247,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   private void loadSnapshot(File latestSnapshotDir) {
+    snapshotStorage.updateSnapshotCache();
     if (latestSnapshotDir == null) {
       return;
     }
@@ -228,7 +269,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         .event()
         .notifyLeaderChanged(
             Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId()),
-            Utils.formRaftPeerIdToTEndPoint(newLeaderId));
+            Utils.fromRaftPeerIdToNodeId(newLeaderId));
   }
 
   @Override

@@ -67,7 +67,7 @@ public class QueryResourceManager {
   /**
    * Record QueryDataSource used in queries
    *
-   * <p>Key: query job id. Value: QueryDataSource corresponding to each virtual storage group.
+   * <p>Key: query job id. Value: QueryDataSource corresponding to each data region.
    */
   private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
 
@@ -82,12 +82,8 @@ public class QueryResourceManager {
   }
 
   /** Register a new query. When a query request is created firstly, this method must be invoked. */
-  public long assignQueryId(boolean isDataQuery) {
-    long queryId = queryIdAtom.incrementAndGet();
-    if (isDataQuery) {
-      filePathsManager.addQueryId(queryId);
-    }
-    return queryId;
+  public long assignQueryId() {
+    return queryIdAtom.incrementAndGet();
   }
 
   /**
@@ -118,8 +114,8 @@ public class QueryResourceManager {
    * The method is called in mergeLock() when executing query. This method will get all the
    * QueryDataSource needed for this query and put them in the cachedQueryDataSourcesMap.
    *
-   * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
-   *     under the virtual storage group
+   * @param processorToSeriesMap Key: processor of the data region. Value: selected series under the
+   *     data region
    */
   public void initQueryDataSourceCache(
       Map<DataRegion, List<PartialPath>> processorToSeriesMap,
@@ -218,9 +214,6 @@ public class QueryResourceManager {
 
     // close and delete UDF temp files
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
-
-    // remove query info in QueryTimeManager
-    QueryTimeManager.getInstance().unRegisterQuery(queryId, true);
 
     // remove cached QueryDataSource
     cachedQueryDataSourcesMap.remove(queryId);

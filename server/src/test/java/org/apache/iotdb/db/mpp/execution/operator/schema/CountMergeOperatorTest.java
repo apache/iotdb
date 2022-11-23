@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -114,7 +115,7 @@ public class CountMergeOperatorTest {
         tsBlock = timeSeriesCountOperator.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(100, tsBlock.getColumn(0).getInt(0));
+      assertEquals(100, tsBlock.getColumn(0).getLong(0));
       TimeSeriesCountOperator timeSeriesCountOperator2 =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -128,7 +129,7 @@ public class CountMergeOperatorTest {
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());
-      assertEquals(10, tsBlock.getColumn(0).getInt(0));
+      assertEquals(10, tsBlock.getColumn(0).getLong(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -187,18 +188,21 @@ public class CountMergeOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
       TsBlock tsBlock = null;
+      Assert.assertTrue(countMergeOperator.isBlocked().isDone());
       while (countMergeOperator.hasNext()) {
         tsBlock = countMergeOperator.next();
-        assertFalse(countMergeOperator.hasNext());
+        if (tsBlock != null) {
+          assertFalse(countMergeOperator.hasNext());
+        }
       }
       assertNotNull(tsBlock);
       for (int i = 0; i < 10; i++) {
         String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
         assertTrue(path.startsWith(COUNT_MERGE_OPERATOR_TEST_SG + ".device"));
         if (path.equals(COUNT_MERGE_OPERATOR_TEST_SG + ".device2")) {
-          assertEquals(20, tsBlock.getColumn(1).getInt(i));
+          assertEquals(20, tsBlock.getColumn(1).getLong(i));
         } else {
-          assertEquals(10, tsBlock.getColumn(1).getInt(i));
+          assertEquals(10, tsBlock.getColumn(1).getLong(i));
         }
       }
     } catch (MetadataException e) {
