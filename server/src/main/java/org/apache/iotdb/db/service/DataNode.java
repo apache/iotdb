@@ -160,6 +160,10 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      registerManager.register(MetricService.getInstance());
+      MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
+      // bind predefined metrics
+      DataNodeMetricsHelper.bind();
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
@@ -253,6 +257,10 @@ public class DataNode implements DataNodeMBean {
 
           logger.info("Register to the cluster successfully");
           return;
+        } else if (dataNodeRegisterResp.getStatus().getCode()
+            == TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode()) {
+          logger.error(dataNodeRegisterResp.getStatus().getMessage());
+          throw new StartupException("Cannot register to the cluster.");
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
@@ -368,10 +376,6 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(CompactionTaskManager.getInstance());
-    registerManager.register(MetricService.getInstance());
-    MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
-    // bind predefined metrics
-    DataNodeMetricsHelper.bind();
   }
 
   /** set up RPC and protocols after DataNode is available */

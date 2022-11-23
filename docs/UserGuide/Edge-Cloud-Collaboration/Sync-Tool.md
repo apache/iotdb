@@ -369,3 +369,6 @@ It costs 0.134s
 - Execute `DROP PIPE p`  get message  `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}. Please execute [DROP PIPE p] later to retry.`
   - Cause by: There are some DataNodes with the status Running cannot be connected. Pipe has been deleted on some nodes and the status has been set to ***DROP***.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
+- Sync.log prompts `org.apache.iotdb.commons.exception.IoTDBException: root.** already been created as database`
+  - Cause by: The synchronization tool attempts to automatically create a database at the sender at the receiver. This is a normal phenomenon.
+  - Solution: No intervention is required.

@@ -95,85 +95,134 @@ The 0.14.0-preview1 version only contains the new cluster version.
  |----------------------------------|---------------------|
  | target_confignode / config_nodes | target_config_nodes |
 
-## Acknowledgements:
+# Apache IoTDB 0.13.3
 
-543202718,
-23931017wu,
-Alima777,
-Beyyes,
-Bigreybear,
-cchen1115,
-chaow,
-Chengjianyun,
-ChengShengHan,
-ChenSiHou,
-Choubenson,
-chuchaofan,
-ChuShaoHuan,
-Cigarl,
-CloudWise-Lukemiao,
-Cmlmakahts,
-Cornmonster,
-Cpaulzy,
-CRZbulabula,
-dafei1288,
-Ericpai,
-Flashzxi,
-FrankHWD,
-greenhandatsjtu,
-HeimingZ,
-HTHou,
-huanhuanerer,
-huzk8,
-irvine0109,
-iskytek,
-JackieTien97,
-jamber001,
-JerryZhangZZY,
-jiazhiren,
-jixuan1989,
-jun0315,
-Krystal-xiao,
-leety1228,
-leonardodalinky,
-Liuminghui233,
-LIU-WEI-git,
-ljn55966005,
-lyssom,
-MarosZyk,
-MinaQin,
-MrQuanzy,
-Mychaow,
-Noorall,
-OneSizeFitsQuorum,
-Plutooooooo,
-Qiaojialin,
-RYH61,
-Samperson1997,
-SilverNarcissus,
-SpriCoder,
-SteveYurongSu,
-swpulk,
-SzyWilliam,
-THUMarkLau,
-tisonkun,
-trin1t,
-Tsunghanjacktsai,
-wallezhang,
-wangchao316,
-wanghui42,
-wayblink,
-Wei-hao-Li,
-Xiaoyehanren,
-Xingtanzjr,
-Xinzhongtianxia,
-Xuanronaldo,
-Yifuzhou,
-Yschengzi,
-Yuyuankang,
-yyt86,
-ZhanGHanG9991,
-zjx1230
+## Improvements
+
+* [IOTDB-4525] Accelerate restart process
+* [IOTDB-3164] Add compaction memory control
+* [IOTDB-4364] Reduce read amplification in compaction
+* [IOTDB-4424] Specify error message when time value of insert sql can not be correctly parsed
+* [IOTDB-4492] Control total file size of cross space compaction task
+* [IOTDB-4542] Optimize schema validate error message
+* Optimize pattern matching in Regexp
+
+## Bug Fixes
+
+* [IOTDB-3988] Fix reload problem of metric module and refactor metric module
+* [IOTDB-4239] fix NPE to insert a null value into a TEXT timeseries
+* [IOTDB-4318] Fix RESTAPI data type conversion failed
+* [IOTDB-4320] Fix insert row with null cause recover throw NPE
+* [IOTDB-4343] Fix NPE when using MQTT protocol
+* [IOTDB-4357] fix start in windows, IOTDB_LOG_DIR_IS_UNDEFINED folder appears
+* [IOTDB-4585] Incorrect query result after deleting data for aligned timeseries
+* [IOTDB-4615] TTL adapts timestamp precision
+* [IOTDB-4636] IndexOutOfBoundsException when compacting aligned series
+* Fix PathAlreadyExistException during concurrent auto creating aligned timeseries
+
+# Apache IoTDB 0.13.2
+
+## Improvements
+
+[IOTDB-2669] Improve C++ client insertTablet performance
+[IOTDB-3087] enlarge default value of avg_series_point_number_threshold
+[IOTDB-3861] Enable insert null values in Session
+[IOTDB-3996] REST API nonQuery support Continuous Query
+[IOTDB-4120] Optimize memory allocation of Expression
+[IOTDB-4190] update documents about nifi-iotdb-bundle
+REST support "select into" in nonQuery API
+Import-CSV supports specify data type and no need quotation for text value
+
+## Bug Fixes
+
+[IOTDB-2736] DELETE_STORAGE_GROUP can not be granted to user (reporting 401)
+[IOTDB-2760] Ordinary users do not grant any permissions, but can still show operations
+[IOTDB-2769] Fix auth mapping of GRANT_ROLE_PRIVILEGE and GRANT_USER_ROLE
+[IOTDB-3302] Without any authorization, ordinary users still have the right to query other user information
+[IOTDB-4023] The C++ interface query result returns records error
+[IOTDB-4047] Query NPE after change device alignment
+[IOTDB-4096] Fix the names of metric pushed to Prometheus are inconsistency in micrometer and dropwizard
+[IOTDB-4194] IOException happened in Compaction
+[IOTDB-4215] Fix incorrect aggregate query results due to wrong unseq file traversal order
+[IOTDB-4216] Fix execute create aligned timeseries but a non-aligned timeseries created
+[IOTDB-4222] DeadLock when concurrently deleting and creating storage groups
+[ISSUE-6774] Connection error when using DataGrip with JDBC driver
+[ISSUE-6937] After restart, the aligned series turns to non-aligned
+[ISSUE-6987] Fix select error when selecting a single quotation mark
+
+# Apache IoTDB 0.13.1
+
+## New Features
+
+* [IOTDB-2602] "Without null" supports filtering based on partial columns
+* [IOTDB-3873] Aligned timeseries support single point fill query
+* [ISSUE-6171] Support createTimeseriesOfTemplate in Session
+* [IOTDB-3742] Support COUNT NODES by root.**
+
+## Improvements
+
+* [IOTDB-2820] Update UserGuide SQL about Trigger
+* [IOTDB-2837] Add check and sort for NumpyTablet to make sure timestamps are ordered
+* [IOTDB-2838] Check and auto correct endian type for NumpyTablet
+* [IOTDB-2873] provide json template for grafana
+* [IOTDB-2888] Unary expression can followed by a constant
+* [IOTDB-3747] Default Paging of Schema Query with limit 10000
+* [IOTDB-3797] Print detailed info in session when connection fails
+* [IOTDB-3851] C++ client method of tablet sorting optimization
+* [IOTDB-3879] Modify document about the Programming-Cpp-Native-API
+* [IOTDB-3901] C++ client method of insertRecordsOfOneDevice sorting optimization
+
+## Bug Fixes
+
+* [IOTDB-2753] Insert a time series with a null value and report 500
+* [IOTDB-2759] Result of "Show paths set schema template" or "using template" is not complete
+* [IOTDB-2775] Fix throwing exception when query non-exist device in TsFileSequenceReader
+* [IOTDB-2787] Fix aligned mem chunk concurrent problem
+* [IOTDB-2826] Fix can not drop schema template
+* [IOTDB-2828] Update system_version in system.properties after upgrading
+* [IOTDB-2835] Fix empty page in selfcheck method of TsFileSequenceReader
+* [IOTDB-2837] Add check and sort for NumpyTablet to make sure timestamps are ordered
+* [IOTDB-2852] The import-csv tool can not import the data to nonaligned device
+* [IOTDB-2859] Fix python tablet with None value is incorrect
+* [IOTDB-2862] Fix SQL injection risks of grafana-connector
+* [IOTDB-2864] Fix Read-only occurred when insert Text value to aligned timeseries
+* [IOTDB-2882] Fix unary expression display bug
+* [IOTDB-2902] Handling user privileges for aligned timeseries related features
+* [IOTDB-2903] Fix show latest timeseries result does not sorted by time
+* [IOTDB-2910] Fix count result not right after deleting storage group
+* [IOTDB-2915] MLogTxtWriter error while parsing CreateAlignedTimeseriesPlan
+* [IOTDB-2922] Fix NPE when compacting with files that contains zero device
+* [IOTDB-2924] UDF Framework: index overflow while iterating sliding windows
+* [IOTDB-2983] Serialization error in Partial insert
+* [IOTDB-2999] Remove useless config and fix default value error.
+* [IOTDB-3018] Fix compaction bugs on handling deleted target file
+* [IOTDB-3029] The prefix path generated by the select into target sequence contains * and ** currently unchecked
+* [IOTDB-3045] The query result contains some timeseries that have been deleted
+* [IOTDB-3120] Print the tsfile name when meet IOException
+* [IOTDB-3158] Fix NPE exception when use iotdb-reporter
+* [IOTDB-3160] TsFile will be corrupted when flushing memtable appears OOM
+* [IOTDB-3168] Forbid the path with * could be inserted
+* [IOTDB-3171] Fix NPE when getting modification file
+* [IOTDB-3219] Fix stop-server on windows
+* [IOTDB-3247] Recover aligned sensors after deleting timeseries, query lost data
+* [IOTDB-3301] Tag recover bug after IoTDB server restart
+* [IOTDB-3364] Fix Query stucked with null valued aligned timeseries bug
+* [IOTDB-3420] Fix show paths set schema template t1 error
+* [IOTDB-3494] Fix TypeError in py-session
+* [IOTDB-3523] Fix the count and COUNT not equal bug when querying with group by level
+* [IOTDB-3645] Fix use statistics bug in aggregation query
+* [IOTDB-3651] Stop compaction schedule when all compaction is disable
+* [IOTDB-3709] Fix a loop occurred in TsFileResourceList, causing the query to fail and oom occurs
+* [IOTDB-3730] Fix ArrayIndexOutOfBounds when flushing a memtable
+* [IOTDB-3795] Remove setting read-only when handling compaction exception
+* [IOTDB-3803] failed to insert data of TEXT by session
+* [IOTDB-3816] Fix /zero bug in recover
+* [IOTDB-3822] Fix cross compaction overlap bug
+* [IOTDB-3826] Fix duplicate success when concurrent creating same timeseries
+* [IOTDB-3858] IndexOutOfBoundsException: bitIndex < 0
+* [ISSUE-5482] Fix Release zip files include incorrect version of Guava
+* [ISSUE-5773] Aggregation result is not complete
+* [ISSUE-5964] Fix bug of aligned timeseries time duplicated aggregation
 
 
 # Apache IoTDB 0.13.0
@@ -306,6 +355,62 @@ zjx1230
 * Fix CPP client could not be successfully built on windows
 * Fix dead lock in setDataTTL method
 
+
+# Apache IoTDB 0.12.5
+
+## New Features
+* [IOTDB-2078] Split large TsFile tool
+* [IOTDB-2192] Support extreme function
+
+## Improvements
+* [IOTDB-1297] Refactor the memory control when enabling time partitions
+* [IOTDB-2195] Control the concurrent query execution thread
+* [IOTDB-2475] Remove sg not ready log in batch process
+* [IOTDB-2502] Add query sql in error log if encountering exception
+* [IOTDB-2506] Refine the lock granularity of the aggregation query
+* [IOTDB-2534] add character support while using double quote
+* [IOTDB-2562] Change default value of sync mlog period parameter
+* Avoid too many warning logs being printed, when opening too many file handlers
+
+
+## Bug Fixes
+* [IOTDB-1960] Fix count timeseries bug in cluster mode
+* [IOTDB-2174] Fix Regexp filter serializing and deserializing error
+* [IoTDB-2185] fix get an exception bug when parsing the header of CSV
+* [IOTDB-2194] Fix SHOW TIMESERIES will only display 2000 timeseries in cluster mode
+* [IOTDB-2197] Fix datatype conversion exception in Spark Connector
+* [IOTDB-2209] Fix logback CVE-2021-42550 issue
+* [IOTDB-2219] Fix query in-memory data is incorrect in cluster mode
+* [IOTDB-2222] Fix OOM and data was written in incorrectly bugs of Spark Connector
+* [IOTDB-2251] [IOTDB-2252] Fix Query deadlock
+* [IOTDB-2282] fix tag recover bug after tag update
+* [IOTDB-2320] MemoryLeak cause by wal Scheduled trim task thread
+* [IOTDB-2381] Fix deadlock caused by incorrect buffer pool size counter
+* [IOTDB-2400] Fix series reader bug
+* [IOTDB-2426] WAL deadlock caused by too many open files
+* [IOTDB-2445] Fix overlapped data should be consumed first bug
+* [IOTDB-2499] Fix division by zero error when recovering merge
+* [IOTDB-2507] Fix NPE when merge recover
+* [IOTDB-2528] Fix MLog corruption and recovery bug after killing system
+* [IOTDB-2532] Fix query with align by device can't get value after clear cache
+* [IOTDB-2533] Fix change max_deduplicated_path_num does not take effect
+* [IOTDB-2544] Fix tag info sync error during metadata sync
+* [IOTDB-2550] Avoid show timeseries error after alter tag on sync sender
+* [IOTDB-2567]  Fix thread and ByteBuffer leak after service stopped
+* [IOTDB-2568] "show query processlist" is blocked
+* [IOTDB-2580] Fix DirectByteBuffer and thread leak when deleting storage group
+* [IOTDB-2584] Fix cross space compaction selector
+* [IOTDB-2603] Fix compaction recover
+* [IOTDB-2604] Fix batch size is invalid in import-csv tool
+* [IOTDB-2620] Unrecognizable operator type (SHOW) for AuthorityChecker
+* [IOTDB-2624] Fix "overlapped data should be consumed first" occurs when executing query
+* [IOTDB-2640] Fix cross compaction recover bug
+* [IOTDB-2641] Fix time range of TsFile resource overlaps after unseq compaction
+* [IOTDB-2642] Fix the new file has a higher compact priority than the old file in unseq compaction
+* Fix a logical bug in processPlanLocally in cluster mode
+* Throw Exception while using last query with align by device
+* Add a judgement to determine raft log size can fit into buffer before log appending in cluster mode
+* Fix grafana can't be used bug
 
 # Apache IoTDB 0.12.4
 

@@ -1693,7 +1693,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
     // TODO(sync): Check permissions here
-    return SyncService.getInstance().handshake(info);
+    return SyncService.getInstance().handshake(info, PARTITION_FETCHER, SCHEMA_FETCHER);
   }
 
   @Override

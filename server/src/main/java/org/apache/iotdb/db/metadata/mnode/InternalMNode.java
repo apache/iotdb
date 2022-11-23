@@ -18,13 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-
-import java.io.IOException;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
@@ -247,27 +243,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeMNode(this);
-  }
-
-  @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitInternalMNode(this, context);
-  }
-
-  void serializeChildren(MLogWriter logWriter) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (IMNode child : children.values()) {
-      child.serializeTo(logWriter);
-    }
-  }
-
-  public static InternalMNode deserializeFrom(MNodePlan plan) {
-    return new InternalMNode(null, plan.getName());
   }
 }

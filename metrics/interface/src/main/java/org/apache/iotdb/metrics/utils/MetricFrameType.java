@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.config;
+package org.apache.iotdb.metrics.utils;
 
-public class MetricConstant {
+public enum MetricFrameType {
+  DROPWIZARD,
+  MICROMETER;
 
-  private MetricConstant() {}
-
-  static final String IOTDB_CONF = "IOTDB_CONF";
-
-  static final String IOTDB_HOME = "IOTDB_HOME";
-
-  static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
-
-  static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
-
-  static final String DATANODE_CONFIG_NAME = "iotdb-datanode-metric.yml";
-
-  static final String CONFIG_NODE_CONFIG_NAME = "iotdb-confignode-metric.yml";
+  @Override
+  public String toString() {
+    return name();
+  }
 }

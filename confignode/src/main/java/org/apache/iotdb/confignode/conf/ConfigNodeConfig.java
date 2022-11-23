@@ -168,7 +168,6 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long configNodeRatisSnapshotTriggerThreshold = 400000L;
-  private long configNodeSimpleConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -652,16 +651,6 @@ public class ConfigNodeConfig {
   public void setConfigNodeRatisSnapshotTriggerThreshold(
       long configNodeRatisSnapshotTriggerThreshold) {
     this.configNodeRatisSnapshotTriggerThreshold = configNodeRatisSnapshotTriggerThreshold;
-  }
-
-  public long getConfigNodeSimpleConsensusSnapshotTriggerThreshold() {
-    return configNodeSimpleConsensusSnapshotTriggerThreshold;
-  }
-
-  public void setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-      long configNodeSimpleConsensusSnapshotTriggerThreshold) {
-    this.configNodeSimpleConsensusSnapshotTriggerThreshold =
-        configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
   public boolean isConfigNodeRatisLogUnsafeFlushEnable() {

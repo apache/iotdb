@@ -77,7 +77,9 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
   private static final long MAX_MEMORY_SIZE =
-      Math.min(config.getThriftMaxFrameSize() / 2, config.getAllocateMemoryForStorageEngine() / 8);
+      Math.min(
+          config.getThriftMaxFrameSize() / 2,
+          (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -315,7 +317,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean addOrSendChunkData(ChunkData chunkData) {
-      dataSize += chunkData.getDataSize();
+      TRegionReplicaSet replicaSet =
+          singleTsFileNode
+              .getDataPartition()
+              .getDataRegionReplicaSetForWriting(
+                  chunkData.getDevice(), chunkData.getTimePartitionSlot());
+      dataSize +=
+          (1 + replicaSet.getDataNodeLocationsSize())
+              * chunkData.getDataSize(); // should multiply datanode factor
+
       if (dataSize > MAX_MEMORY_SIZE) {
         List<TRegionReplicaSet> sortedReplicaSets =
             replicaSet2Piece.keySet().stream()
@@ -332,7 +342,7 @@ public class LoadTsFileScheduler implements IScheduler {
             return false;
           }
 
-          dataSize -= pieceNode.getDataSize();
+          dataSize -= (1 + sortedReplicaSet.getDataNodeLocationsSize()) * pieceNode.getDataSize();
           replicaSet2Piece.put(
               sortedReplicaSet,
               new LoadTsFilePieceNode(
@@ -343,11 +353,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
       }
-      TRegionReplicaSet replicaSet =
-          singleTsFileNode
-              .getDataPartition()
-              .getDataRegionReplicaSetForWriting(
-                  chunkData.getDevice(), chunkData.getTimePartitionSlot());
+
       replicaSet2Piece
           .computeIfAbsent(
               replicaSet,
