@@ -37,7 +37,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MULTI_LEADER.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
@@ -49,7 +49,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "currentSyncIndex");
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MULTI_LEADER.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,

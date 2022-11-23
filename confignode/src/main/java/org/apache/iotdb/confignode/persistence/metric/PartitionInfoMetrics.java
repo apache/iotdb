@@ -40,14 +40,14 @@ public class PartitionInfoMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
         PartitionInfo::getStorageGroupPartitionTableSize,
         Tag.NAME.toString(),
         "storageGroup");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.REGION.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
@@ -56,7 +56,7 @@ public class PartitionInfoMetrics implements IMetricSet {
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.SchemaRegion.toString());
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.REGION.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
@@ -110,7 +110,7 @@ public class PartitionInfoMetrics implements IMetricSet {
 
     @Override
     public void bindTo(AbstractMetricService metricService) {
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.REGION.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -119,7 +119,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString());
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.REGION.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -129,7 +129,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.SLOT.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -138,7 +138,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           "schemaSlotNumber");
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.SLOT.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,

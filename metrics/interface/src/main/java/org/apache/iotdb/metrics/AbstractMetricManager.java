@@ -86,7 +86,7 @@ public abstract class AbstractMetricManager {
   protected abstract Counter createCounter(MetricInfo metricInfo);
 
   /**
-   * Get autoGauge. return if exists, create if not.
+   * Create autoGauge
    *
    * <p>AutoGauge keep a weak reference of the obj, so it will not prevent gc of the obj. Notice: if
    * you call this gauge's value() when the obj has already been cleared by gc, then you will get
@@ -97,21 +97,33 @@ public abstract class AbstractMetricManager {
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
-  public <T> AutoGauge getOrCreateAutoGauge(
+  public <T> AutoGauge createAutoGauge(
       String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isValid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingAutoGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              return gauge;
-            });
-    if (metric instanceof AutoGauge) {
+    AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
+    nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+    metrics.put(metricInfo, gauge);
+    return gauge;
+  }
+
+  /**
+   * Get autoGauge
+   *
+   * @param name the name of name
+   * @param metricLevel the level of name
+   */
+  public <T> AutoGauge getAutoGauge(String name, MetricLevel metricLevel, String... tags) {
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingAutoGauge;
+    }
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      return DoNothingMetricManager.doNothingAutoGauge;
+    } else if (metric instanceof AutoGauge) {
       return (AutoGauge) metric;
     }
     throw new IllegalArgumentException(

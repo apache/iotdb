@@ -138,7 +138,7 @@ public class MetricServiceTest {
     // test auto gauge
     List<Integer> list = new ArrayList<>();
     AutoGauge autoGauge =
-        metricService.getOrCreateAutoGauge(
+        metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
     assertEquals(0L, autoGauge.value());
     list.add(1);

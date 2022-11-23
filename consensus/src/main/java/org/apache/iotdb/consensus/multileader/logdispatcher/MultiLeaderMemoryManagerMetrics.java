@@ -35,7 +35,7 @@ public class MultiLeaderMemoryManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
         multiLeaderMemoryManager,

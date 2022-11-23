@@ -55,42 +55,42 @@ public class FileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
         "wal");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
         "seq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
         "wal");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
         "seq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
