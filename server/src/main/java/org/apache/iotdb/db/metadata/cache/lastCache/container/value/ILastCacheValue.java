@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,21 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.config;
+package org.apache.iotdb.db.metadata.cache.lastCache.container.value;
 
-public class MetricConstant {
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-  private MetricConstant() {}
+// this interface declares the simplest storage operation of lastCacheValue
+public interface ILastCacheValue {
 
-  static final String IOTDB_CONF = "IOTDB_CONF";
+  long getTimestamp();
 
-  static final String IOTDB_HOME = "IOTDB_HOME";
+  void setTimestamp(long timestamp);
 
-  static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
+  void setValue(TsPrimitiveType value);
 
-  static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
-
-  static final String DATANODE_CONFIG_NAME = "iotdb-datanode-metric.yml";
-
-  static final String CONFIG_NODE_CONFIG_NAME = "iotdb-confignode-metric.yml";
+  TimeValuePair getTimeValuePair();
 }

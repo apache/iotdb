@@ -128,6 +128,7 @@ public class ConfigNodeDescriptor {
         commonDescriptor
             .getConfig()
             .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
@@ -392,14 +393,6 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "config_node_ratis_snapshot_trigger_threshold",
                     String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))
-                .trim()));
-
-    conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "config_node_simple_consensus_snapshot_trigger_threshold",
-                    String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))
                 .trim()));
 
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(

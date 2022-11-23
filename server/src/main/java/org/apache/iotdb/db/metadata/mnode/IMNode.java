@@ -19,12 +19,10 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 /** This interface defines a MNode's operation interfaces. */
@@ -94,8 +92,6 @@ public interface IMNode extends Serializable {
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
-
-  void serializeTo(MLogWriter logWriter) throws IOException;
 
   CacheEntry getCacheEntry();
 

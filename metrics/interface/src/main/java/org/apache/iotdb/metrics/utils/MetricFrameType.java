@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,19 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.container.value;
+package org.apache.iotdb.metrics.utils;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+public enum MetricFrameType {
+  DROPWIZARD,
+  MICROMETER;
 
-// this interface declares the simplest storage operation of lastCacheValue
-public interface ILastCacheValue {
-
-  long getTimestamp();
-
-  void setTimestamp(long timestamp);
-
-  void setValue(TsPrimitiveType value);
-
-  TimeValuePair getTimeValuePair();
+  @Override
+  public String toString() {
+    return name();
+  }
 }

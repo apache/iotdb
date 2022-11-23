@@ -95,8 +95,7 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
         Set<String> childNodes;
         childNodes =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false, null)
-                    .stream()
+                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false).stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
 

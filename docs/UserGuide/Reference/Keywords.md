@@ -27,7 +27,8 @@ Reserved words:
 - TIME
 - TIMESTAMP
 
-Common Keywords：
+Common Keywords:
+
 - ADD
 - AFTER
 - ALIAS

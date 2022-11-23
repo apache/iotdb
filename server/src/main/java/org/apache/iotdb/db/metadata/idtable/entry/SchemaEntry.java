@@ -24,13 +24,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.IDiskSchemaManager;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.Objects;
 
@@ -40,17 +37,13 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
  * Schema entry of id table <br>
  * Notice that this class is also a last cache container for last cache
  */
-public class SchemaEntry implements ILastCacheContainer {
+public class SchemaEntry {
 
   /* 40 bits of disk pointer */
   /*  1 byte of compressor  */
   /*   1 byte of encoding   */
   /*    1 byte of type      */
   private long schema;
-
-  private long lastTime;
-
-  private TsPrimitiveType lastValue;
 
   /** This static field will not occupy memory */
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -63,8 +56,6 @@ public class SchemaEntry implements ILastCacheContainer {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
-
-    lastTime = Long.MIN_VALUE;
   }
 
   // used in recover
@@ -73,8 +64,6 @@ public class SchemaEntry implements ILastCacheContainer {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
-
-    lastTime = Long.MIN_VALUE;
 
     schema |= (diskPos << 24);
   }
@@ -90,8 +79,6 @@ public class SchemaEntry implements ILastCacheContainer {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
-
-    lastTime = Long.MIN_VALUE;
 
     // write log file
     if (config.isEnableIDTableLogFile()) {
@@ -142,51 +129,6 @@ public class SchemaEntry implements ILastCacheContainer {
    */
   public CompressionType getCompressionType() {
     return CompressionType.deserialize((byte) (schema >> 16));
-  }
-
-  public long getLastTime() {
-    return lastTime;
-  }
-
-  public Object getLastValue() {
-    return lastValue;
-  }
-
-  // region last cache
-  @Override
-  public TimeValuePair getCachedLast() {
-    return lastValue == null ? null : new TimeValuePair(lastTime, lastValue);
-  }
-
-  @Override
-  public void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) {
-      return;
-    }
-
-    if (lastValue == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
-      // update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        lastTime = timeValuePair.getTimestamp();
-        lastValue = timeValuePair.getValue();
-      }
-    } else if (timeValuePair.getTimestamp() > lastTime
-        || (timeValuePair.getTimestamp() == lastTime && highPriorityUpdate)) {
-      lastTime = timeValuePair.getTimestamp();
-      lastValue = timeValuePair.getValue();
-    }
-  }
-
-  @Override
-  public void resetLastCache() {
-    lastValue = null;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return lastValue == null;
   }
 
   @Override

@@ -122,7 +122,7 @@ Time,Device,hardware(TEXT),status(BOOLEAN)
 
 1. `,`: 导出程序会在`,`字符前加`\`来进行转义。
 
-## 使用import-csv.sh
+## 使用 import-csv.sh
 
 ### 创建元数据 (可选)
 
