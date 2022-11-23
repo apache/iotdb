@@ -53,23 +53,15 @@ public class MetricConfigDescriptor {
     MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (!metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
-        // start service or stop service.
-        reloadLevel =
-            (newMetricConfig.getEnableMetric())
-                ? ReloadLevel.START_METRIC
-                : ReloadLevel.STOP_METRIC;
-      } else if (metricConfig.getEnableMetric()) {
-        // restart reporters or restart service
-        if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig
-                .getAsyncCollectPeriodInSecond()
-                .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
-          reloadLevel = ReloadLevel.RESTART_METRIC;
-        } else {
-          reloadLevel = ReloadLevel.RESTART_REPORTER;
-        }
+      // restart reporters or restart service
+      if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
+          || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+          || !metricConfig
+              .getAsyncCollectPeriodInSecond()
+              .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
+        reloadLevel = ReloadLevel.RESTART_METRIC;
+      } else {
+        reloadLevel = ReloadLevel.RESTART_REPORTER;
       }
       metricConfig.copy(newMetricConfig);
     }
@@ -79,10 +71,6 @@ public class MetricConfigDescriptor {
   /** load properties into metric config */
   private MetricConfig generateFromProperties(Properties properties) {
     MetricConfig loadConfig = new MetricConfig();
-    loadConfig.setEnableMetric(
-        Boolean.parseBoolean(
-            getProperty(
-                "enable_metric", String.valueOf(loadConfig.getEnableMetric()), properties)));
 
     loadConfig.setEnablePerformanceStat(
         Boolean.parseBoolean(

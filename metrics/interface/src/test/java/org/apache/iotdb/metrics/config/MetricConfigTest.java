@@ -28,10 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -67,7 +63,6 @@ public class MetricConfigTest {
 
       MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
-      assertTrue(metricConfig.getEnableMetric());
       assertTrue(metricConfig.getEnablePerformanceStat());
       assertEquals(3, metricConfig.getMetricReporterList().size());
       assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
