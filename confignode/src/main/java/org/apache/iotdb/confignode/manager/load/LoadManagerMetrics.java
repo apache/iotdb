@@ -60,7 +60,7 @@ public class LoadManagerMetrics implements IMetricSet {
   }
 
   private void addNodeMetrics(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CONFIG_NODE.toString(),
         MetricLevel.CORE,
         this,
@@ -70,7 +70,7 @@ public class LoadManagerMetrics implements IMetricSet {
         Tag.STATUS.toString(),
         METRIC_STATUS_ONLINE);
 
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.DATA_NODE.toString(),
         MetricLevel.CORE,
         this,
@@ -80,7 +80,7 @@ public class LoadManagerMetrics implements IMetricSet {
         Tag.STATUS.toString(),
         METRIC_STATUS_ONLINE);
 
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CONFIG_NODE.toString(),
         MetricLevel.CORE,
         this,
@@ -90,7 +90,7 @@ public class LoadManagerMetrics implements IMetricSet {
         Tag.STATUS.toString(),
         METRIC_STATUS_UNKNOWN);
 
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.DATA_NODE.toString(),
         MetricLevel.CORE,
         this,
@@ -121,7 +121,7 @@ public class LoadManagerMetrics implements IMetricSet {
               String name =
                   NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
-              metricService.getOrCreateAutoGauge(
+              metricService.createAutoGauge(
                   Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
                   MetricLevel.IMPORTANT,
                   this,

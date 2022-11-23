@@ -688,7 +688,6 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
-      // TODO: this metric can be optimized
       MetricService.getInstance()
           .getOrCreateGauge(
               Metric.REGION.toString(),

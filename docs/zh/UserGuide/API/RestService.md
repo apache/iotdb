@@ -131,19 +131,19 @@ query 接口可以用于处理数据查询和元数据查询。
 
 参数说明:
 
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | 是  |   |
-| rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
+| 参数名称      |参数类型  |是否必填|参数描述|
+|-----------| ------------ | ------------ |------------ |
+| sql       | string | 是  |   |
+| row_limit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
 
 响应参数:
 
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| expressions | array | 用于数据查询时结果集列名的数组，用于元数据查询时为`null`|
-| columnNames | array | 用于元数据查询结果集列名数组，用于数据查询时为`null` |
-| timestamps | array | 时间戳列，用于元数据查询时为`null` |
-|values|array|二维数组，第一维与结果集列名数组的长度相同，第二维数组代表结果集的一列|
+| 参数名称         |参数类型  |参数描述|
+|--------------| ------------ | ------------|
+| expressions  | array | 用于数据查询时结果集列名的数组，用于元数据查询时为`null`|
+| column_names | array | 用于元数据查询结果集列名数组，用于数据查询时为`null` |
+| timestamps   | array | 时间戳列，用于元数据查询时为`null` |
+| values       |array|二维数组，第一维与结果集列名数组的长度相同，第二维数组代表结果集的一列|
 
 请求示例如下所示：
 
@@ -163,7 +163,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "root.sg27.s4",
     "root.sg27.s3 + 1"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     1635232143960,
     1635232153960
@@ -195,7 +195,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "child paths"
   ],
   "timestamps": null,
@@ -218,7 +218,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "child nodes"
   ],
   "timestamps": null,
@@ -241,7 +241,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "database",
     "ttl"
   ],
@@ -269,7 +269,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "database",
     "ttl"
   ],
@@ -295,7 +295,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "function name",
     "function type",
     "class name (UDF)"
@@ -306,7 +306,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
       "ABS",
       "ACOS",
       "ASIN",
-       ...
+      ...
     ],
     [
       "built-in UDTF",
@@ -334,7 +334,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "alias",
     "database",
@@ -408,7 +408,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "alias",
     "database",
@@ -482,7 +482,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count"
   ],
   "timestamps": null,
@@ -504,7 +504,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count"
   ],
   "timestamps": null,
@@ -526,7 +526,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "devices",
     "isAligned"
   ],
@@ -554,7 +554,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "devices",
     "database",
     "isAligned"
@@ -587,7 +587,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "user"
   ],
   "timestamps": null,
@@ -612,7 +612,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "count(root.sg27.s3)",
     "count(root.sg27.s4)"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     0
   ],
@@ -637,7 +637,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count(root.sg27.*)",
     "count(root.sg28.*)"
   ],
@@ -666,7 +666,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "count(root.sg27.s3)",
     "count(root.sg27.s4)"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     1635232143960,
     1635232144960,
@@ -718,7 +718,7 @@ curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "value",
     "dataType"
@@ -828,18 +828,18 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 参数说明:
 
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  timestamps | array | 是 |  时间列  |
-|  measurements | array | 是  | 测点名称 |
-| dataTypes | array | 是  | 数据类型  |
-|  values | array | 是  | 值列，每一列中的值可以为 `null` |
-|  isAligned | boolean | 是  | 是否是对齐时间序列 |
-|  deviceId | string | 是  | 设备名称 |
+| 参数名称         |参数类型  |是否必填|参数描述|
+|--------------| ------------ | ------------ |------------ |
+| timestamps   | array | 是 |  时间列  |
+| measurements | array | 是  | 测点名称 |
+| data_types   | array | 是  | 数据类型  |
+| values       | array | 是  | 值列，每一列中的值可以为 `null` |
+| is_aligned   | boolean | 是  | 是否是对齐时间序列 |
+| device       | string | 是  | 设备名称 |
 
 请求示例：
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataTypes":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"isAligned":false,"deviceId":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
 ```
 
 响应参数：

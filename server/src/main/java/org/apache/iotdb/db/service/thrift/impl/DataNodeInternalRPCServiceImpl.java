@@ -116,8 +116,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
@@ -931,14 +930,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     // Sampling load if necessary
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
-        && req.isNeedSamplingLoad()) {
+    if (req.isNeedSamplingLoad()) {
       TLoadSample loadSample = new TLoadSample();
 
       // Sample cpu load
       long cpuLoad =
           MetricService.getInstance()
-              .getOrCreateGauge(
+              .getAutoGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
@@ -1010,15 +1008,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       List<String> noHeapIds = Arrays.asList("Code Cache", "Compressed Class Space", "Metaspace");
 
       for (String id : heapIds) {
-        Gauge gauge =
+        AutoGauge gauge =
             MetricService.getInstance()
-                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
+                .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
         result += gauge.value();
       }
       for (String id : noHeapIds) {
-        Gauge gauge =
+        AutoGauge gauge =
             MetricService.getInstance()
-                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
+                .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
         result += gauge.value();
       }
     } catch (Exception e) {
@@ -1033,7 +1031,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     long freeDisk =
         MetricService.getInstance()
-            .getOrCreateGauge(
+            .getAutoGauge(
                 Metric.SYS_DISK_FREE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
@@ -1041,7 +1039,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .value();
     long totalDisk =
         MetricService.getInstance()
-            .getOrCreateGauge(
+            .getAutoGauge(
                 Metric.SYS_DISK_TOTAL_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
