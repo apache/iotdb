@@ -106,10 +106,10 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       // TODO: (xingtanzjr) a strange case here is that sometimes
       // the cancelResult is false but the trackTask is definitely cancelled
       if (!cancelResult) {
-        logger.info("cancel state tracking task failed. {}", trackTask.isCancelled());
+        logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
       }
     } else {
-      logger.info("trackTask not started");
+      logger.debug("trackTask not started");
     }
   }
 
@@ -123,7 +123,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
                   instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
           if (needPrintState(
               metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
-            logger.info("[PrintFIState] state is {}", instanceInfo.getState());
+            logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
             metrics.reset(instanceInfo.getState());
           } else {
             metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);

@@ -158,7 +158,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              logger.info("[ReleaseQueryResource] state is: {}", state);
+              logger.debug("[ReleaseQueryResource] state is: {}", state);
               Throwable cause = stateMachine.getFailureException();
               releaseResource(cause);
             }
@@ -293,7 +293,7 @@ public class QueryExecution implements IQueryExecution {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery()) {
-      logger.info(
+      logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
   }
@@ -303,7 +303,7 @@ public class QueryExecution implements IQueryExecution {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
     if (isQuery() && logger.isDebugEnabled()) {
-      logger.info(
+      logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
@@ -392,7 +392,7 @@ public class QueryExecution implements IQueryExecution {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          logger.info("[ResultHandleFinished]");
+          logger.debug("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
