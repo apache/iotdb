@@ -346,4 +346,12 @@ public interface BaseConfig {
   default boolean isEnableLeaderBalancing() {
     return false;
   }
+
+  default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    return this;
+  }
+
+  default int getLeastDataRegionGroupNum() {
+    return 5;
+  }
 }

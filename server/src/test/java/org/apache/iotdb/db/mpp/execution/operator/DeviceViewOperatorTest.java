@@ -152,6 +152,9 @@ public class DeviceViewOperatorTest {
       int count = 0;
       while (deviceViewOperator.hasNext()) {
         TsBlock tsBlock = deviceViewOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
         assertEquals(20, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
