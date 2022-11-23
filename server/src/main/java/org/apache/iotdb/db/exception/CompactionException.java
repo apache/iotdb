@@ -16,29 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+package org.apache.iotdb.db.exception;
 
-public class MergeOperator extends Operator {
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public MergeOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.MERGE;
-  }
+public class CompactionException extends IoTDBException {
 
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    if (tokenIntType == SQLConstant.TOK_FULL_MERGE) {
-      return new MergePlan(OperatorType.FULL_MERGE);
-    } else {
-      return new MergePlan();
-    }
+  private static final long serialVersionUID = 5445240999141374140L;
+
+  public CompactionException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.COMPACTION_ERROR.getStatusCode());
   }
 }

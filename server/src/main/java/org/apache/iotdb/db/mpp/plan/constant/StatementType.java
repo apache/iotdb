@@ -99,7 +99,7 @@ public enum StatementType {
   SET_TEMPLATE,
   ACTIVATE_TEMPLATE,
 
-  MERGE,
+  COMPACT,
   FULL_MERGE,
 
   MNODE,

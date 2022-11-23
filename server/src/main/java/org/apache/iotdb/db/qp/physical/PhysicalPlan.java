@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
+import org.apache.iotdb.db.qp.physical.sys.CompactPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.RollbackPreDeleteTimeSeriesPlan;
@@ -432,8 +432,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case DROP_CONTINUOUS_QUERY:
           plan = new DropContinuousQueryPlan();
           break;
-        case MERGE:
-          plan = new MergePlan();
+        case COMPACT:
+          plan = new CompactPlan();
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
@@ -518,7 +518,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
-    MERGE,
+    COMPACT,
     CREATE_SNAPSHOT, // the snapshot feature has been deprecated, this is kept for compatibility
     CLEARCACHE,
     CREATE_FUNCTION,

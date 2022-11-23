@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceComp
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.CompactionException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -79,7 +79,7 @@ public class MergeUpgradeTest {
   }
 
   @Test
-  public void testMergeUpgradeSelect() throws MergeException {
+  public void testMergeUpgradeSelect() throws CompactionException {
     TsFileManager tsFileManager = new TsFileManager("", "", "");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, true);

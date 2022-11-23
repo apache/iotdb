@@ -57,7 +57,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class DeviceMergeOperatorTest {
+public class DeviceCompactOperatorTest {
 
   private static final String DEVICE_MERGE_OPERATOR_TEST_SG = "root.DeviceMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();

@@ -16,38 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
-
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class MergeStatement extends Statement implements IConfigStatement {
+public class CompactPlan extends PhysicalPlan {
 
-  private boolean onCluster;
-
-  public MergeStatement(StatementType mergeType) {
-    this.statementType = mergeType;
+  public CompactPlan(OperatorType operatorType) {
+    super(operatorType);
   }
 
-  public boolean isOnCluster() {
-    return onCluster;
-  }
-
-  public void setOnCluster(boolean onCluster) {
-    this.onCluster = onCluster;
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+  public CompactPlan() {
+    super(OperatorType.COMPACT);
   }
 
   @Override
@@ -56,7 +45,15 @@ public class MergeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitMerge(this, context);
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.COMPACT.ordinal());
   }
+
+  @Override
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.COMPACT.ordinal());
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
 }

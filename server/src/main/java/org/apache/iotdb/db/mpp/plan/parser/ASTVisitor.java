@@ -139,10 +139,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.CompactStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -2694,25 +2694,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // Merge
   @Override
-  public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
+  public Statement visitCompact(IoTDBSqlParser.CompactContext ctx) {
+    CompactStatement compactStatement = new CompactStatement(StatementType.COMPACT);
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
     }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
+    compactStatement.setOnCluster(ctx.LOCAL() == null);
+    return compactStatement;
   }
 
   @Override
   public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
+    CompactStatement compactStatement = new CompactStatement(StatementType.FULL_MERGE);
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
     }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
+    compactStatement.setOnCluster(ctx.LOCAL() == null);
+    return compactStatement;
   }
 
   // Flush

@@ -78,10 +78,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.CompactStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -296,8 +296,8 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(deleteDataStatement, context);
   }
 
-  public R visitMerge(MergeStatement mergeStatement, C context) {
-    return visitStatement(mergeStatement, context);
+  public R visitMerge(CompactStatement compactStatement, C context) {
+    return visitStatement(compactStatement, context);
   }
 
   public R visitFlush(FlushStatement flushStatement, C context) {

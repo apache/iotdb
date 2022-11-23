@@ -350,8 +350,8 @@ LOCK
     : L O C K
     ;
 
-MERGE
-    : M E R G E
+COMPACT
+    : C O M P A C T
     ;
 
 METADATA

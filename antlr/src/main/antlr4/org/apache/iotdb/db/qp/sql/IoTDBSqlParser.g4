@@ -59,7 +59,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | explain
+    : compact | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -672,13 +672,13 @@ usernameWithRoot
  */
 
 // Merge
-merge
-    : MERGE (ON (LOCAL | CLUSTER))?
+compact
+    : COMPACT (ON (LOCAL | CLUSTER))?
     ;
 
 // Full Merge
 fullMerge
-    : FULL MERGE (ON (LOCAL | CLUSTER))?
+    : FULL COMPACT (ON (LOCAL | CLUSTER))?
     ;
 
 // Flush

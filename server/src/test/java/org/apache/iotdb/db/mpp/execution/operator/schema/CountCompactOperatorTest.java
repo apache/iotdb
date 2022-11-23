@@ -57,7 +57,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class CountMergeOperatorTest {
+public class CountCompactOperatorTest {
   private static final String COUNT_MERGE_OPERATOR_TEST_SG = "root.CountMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();

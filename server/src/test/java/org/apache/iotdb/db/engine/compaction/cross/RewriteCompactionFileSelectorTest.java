@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceComp
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.CompactionException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -58,7 +58,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
-  public void testFullSelection() throws MergeException, IOException {
+  public void testFullSelection() throws CompactionException, IOException {
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -84,7 +84,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
+  public void testWithFewMemoryBudgeSelection() throws CompactionException, IOException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
@@ -95,7 +95,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testRestrictedSelection() throws MergeException, IOException {
+  public void testRestrictedSelection() throws CompactionException, IOException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
@@ -115,7 +115,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testFileOpenSelection()
-      throws MergeException, IOException, WriteProcessException, NoSuchFieldException,
+      throws CompactionException, IOException, WriteProcessException, NoSuchFieldException,
           IllegalAccessException {
     File file =
         new File(
@@ -220,7 +220,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testFileSelectionAboutLastSeqFile()
-      throws MergeException, IOException, WriteProcessException {
+      throws CompactionException, IOException, WriteProcessException {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
@@ -254,7 +254,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testSelectContinuousUnseqFile()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     try {
@@ -337,7 +337,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testUnseqFilesOverlappedWithOneSeqFile()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
@@ -410,7 +410,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testOneUnseqFileOverlappedWithOneSeqFile()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
@@ -482,7 +482,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    * selected unseq file index: 1 2
    */
   @Test
-  public void testUnseqFilesOverlapped() throws IOException, WriteProcessException, MergeException {
+  public void testUnseqFilesOverlapped()
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
@@ -558,7 +559,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testAllUnseqFilesOverlapped()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
@@ -635,7 +636,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testAllUnseqFilesOverlappedWithSeqFileOpen()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
@@ -707,7 +708,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testMultiFileOverlapWithOneFile()
-      throws IOException, WriteProcessException, MergeException {
+      throws IOException, WriteProcessException, CompactionException {
     List<TsFileResource> seqList = new ArrayList<>();
     List<TsFileResource> unseqList = new ArrayList<>();
     // first file [0, 10]
@@ -938,7 +939,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testMaxFileSelection() throws MergeException, IOException {
+  public void testMaxFileSelection() throws CompactionException, IOException {
     int oldMaxCrossCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
@@ -958,7 +959,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
+  public void testAtLeastOneUnseqFileBeenSelected() throws IOException, CompactionException {
     int maxCrossFilesNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);

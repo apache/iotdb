@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.CompactionException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -118,7 +118,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
    */
-  private List[] select() throws MergeException {
+  private List[] select() throws CompactionException {
     long startTime = System.currentTimeMillis();
     try {
       LOGGER.debug(
@@ -131,12 +131,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return new List[0];
       }
     } catch (IOException e) {
-      throw new MergeException(e);
+      throw new CompactionException(e);
     } finally {
       try {
         compactionEstimator.clear();
       } catch (IOException e) {
-        throw new MergeException(e);
+        throw new CompactionException(e);
       }
     }
     LOGGER.info(
@@ -405,7 +405,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return Collections.singletonList(new Pair<>(mergeFiles[0], mergeFiles[1]));
       }
 
-    } catch (MergeException e) {
+    } catch (CompactionException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();

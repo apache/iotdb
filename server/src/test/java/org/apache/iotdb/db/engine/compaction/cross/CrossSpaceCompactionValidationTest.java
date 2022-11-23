@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceComp
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.CompactionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
@@ -76,7 +76,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test1() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test1()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -120,7 +121,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test2() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test2()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -168,7 +170,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test3() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test3()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1500, 1500, 1500, 100, 100, true, false);
@@ -217,7 +220,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test4() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test4()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 1500, 1500, 100, 100, true, false);
@@ -273,7 +277,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test5() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test5()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(7);
     registerTimeseriesInMManger(5, 10, true);
     createFiles(7, 5, 10, 1000, 0, 0, 100, 100, true, true);
@@ -325,7 +330,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3
    */
   @Test
-  public void test6() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test6()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3000, 1100, 1100, 100, 100, true, true);
@@ -376,7 +382,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test7() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test7()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3000, 1100, 1100, 100, 100, true, true);
@@ -430,7 +437,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test8() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test8()
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 1500, 1500, 100, 100, true, false);
@@ -488,7 +496,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile10()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -541,7 +549,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile11()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -595,7 +603,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile12()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -649,7 +657,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile20()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -703,7 +711,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile21()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -758,7 +766,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile22()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -814,7 +822,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile30()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -870,7 +878,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile31()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -927,7 +935,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile32()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -981,7 +989,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile50()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1039,7 +1047,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile51()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1097,7 +1105,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile52()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1155,7 +1163,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewAlignedDeviceAndSensorInUnseqFile53()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1216,7 +1224,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile10()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1269,7 +1277,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile11()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1323,7 +1331,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile12()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1377,7 +1385,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile20()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1431,7 +1439,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile21()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1486,7 +1494,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile22()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1542,7 +1550,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile30()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1598,7 +1606,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile31()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1655,7 +1663,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile32()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1709,7 +1717,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile50()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1767,7 +1775,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile51()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1825,7 +1833,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile52()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1883,7 +1891,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithNewDeviceAndSensorInUnseqFile53()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+      throws MetadataException, IOException, WriteProcessException, CompactionException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1940,7 +1948,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithUnclosedSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+      throws CompactionException, IOException, MetadataException, WriteProcessException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -1995,7 +2003,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithUnclosedSeqFileAndNewSensorInUnseqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+      throws CompactionException, IOException, MetadataException, WriteProcessException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(3, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 3300, 3300, 100, 100, false, true);
@@ -2046,7 +2054,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testUnseqFileOverlapWithUnclosedSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+      throws CompactionException, IOException, MetadataException, WriteProcessException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -2102,7 +2110,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testUnseqFileOverlapWithUnclosedSeqFile2()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+      throws CompactionException, IOException, MetadataException, WriteProcessException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -2159,7 +2167,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    */
   @Test
   public void testWithUnclosedUnSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+      throws CompactionException, IOException, MetadataException, WriteProcessException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);

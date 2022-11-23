@@ -91,6 +91,7 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
+import org.apache.iotdb.db.qp.logical.sys.CompactOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
@@ -114,7 +115,6 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
@@ -2129,19 +2129,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   /** 5. Utility Statements */
-
-  // Merge
-
   @Override
-  public Operator visitMerge(IoTDBSqlParser.MergeContext ctx) {
-    return new MergeOperator(SQLConstant.TOK_MERGE);
+  public Operator visitCompact(IoTDBSqlParser.CompactContext ctx) {
+    return new CompactOperator(SQLConstant.TOK_MERGE);
   }
 
   // Full Merge
-
   @Override
   public Operator visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    return new MergeOperator(SQLConstant.TOK_FULL_MERGE);
+    return new CompactOperator(SQLConstant.TOK_FULL_MERGE);
   }
 
   // Flush

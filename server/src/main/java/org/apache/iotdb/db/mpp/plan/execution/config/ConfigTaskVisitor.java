@@ -54,9 +54,9 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.UnsetSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.CompactTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeTask;
@@ -103,9 +103,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.CompactStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -183,8 +183,8 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitMerge(MergeStatement mergeStatement, TaskContext context) {
-    return new MergeTask(mergeStatement);
+  public IConfigTask visitMerge(CompactStatement compactStatement, TaskContext context) {
+    return new CompactTask(compactStatement);
   }
 
   @Override

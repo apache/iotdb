@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.CompactionException;
 
 import java.util.List;
 
@@ -29,5 +29,5 @@ import java.util.List;
  */
 public interface ICrossSpaceCompactionFileSelector {
 
-  List[] select() throws MergeException;
+  List[] select() throws CompactionException;
 }

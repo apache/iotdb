@@ -16,27 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CompactPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+public class CompactOperator extends Operator {
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-public class MergeTask implements IConfigTask {
-
-  private final MergeStatement mergeStatement;
-
-  public MergeTask(MergeStatement mergeStatement) {
-    this.mergeStatement = mergeStatement;
+  public CompactOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.COMPACT;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.merge(mergeStatement.isOnCluster());
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    if (tokenIntType == SQLConstant.TOK_FULL_MERGE) {
+      return new CompactPlan(OperatorType.FULL_MERGE);
+    } else {
+      return new CompactPlan();
+    }
   }
 }

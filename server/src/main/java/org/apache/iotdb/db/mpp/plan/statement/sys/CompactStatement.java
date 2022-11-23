@@ -16,27 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
+
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class MergePlan extends PhysicalPlan {
+public class CompactStatement extends Statement implements IConfigStatement {
 
-  public MergePlan(OperatorType operatorType) {
-    super(operatorType);
+  private boolean onCluster;
+
+  public CompactStatement(StatementType mergeType) {
+    this.statementType = mergeType;
   }
 
-  public MergePlan() {
-    super(OperatorType.MERGE);
+  public boolean isOnCluster() {
+    return onCluster;
+  }
+
+  public void setOnCluster(boolean onCluster) {
+    this.onCluster = onCluster;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 
   @Override
@@ -45,15 +56,7 @@ public class MergePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.MERGE.ordinal());
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitMerge(this, context);
   }
-
-  @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.MERGE.ordinal());
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
 }

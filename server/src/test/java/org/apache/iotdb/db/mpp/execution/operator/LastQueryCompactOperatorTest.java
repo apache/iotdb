@@ -46,7 +46,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class LastQueryMergeOperatorTest {
+public class LastQueryCompactOperatorTest {
 
   private ExecutorService instanceNotificationExecutor;
 
