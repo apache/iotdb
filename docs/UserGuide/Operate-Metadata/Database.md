@@ -44,7 +44,7 @@ The LayerName of database can only be characters, numbers, underscores. If you w
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to create databases `root.ln` and `root.LN` at the same time.
 
-## SHOW DATABASES
+## Show Databases
 
 After creating the database, we can use the [SHOW DATABASES](../Reference/SQL-Reference.md) statement and [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) to view the databases. The SQL statements are as follows:
 
@@ -77,7 +77,7 @@ IoTDB > DELETE DATABASE root.sgcc
 IoTDB > DELETE DATABASE root.**
 ```
 
-## Count Database
+## Count Databases
 
 User can use the `COUNT DATABASE <PathPattern>` statement to count the number of databases. It is allowed to specify `PathPattern` to count the number of databases matching the `PathPattern`.
 

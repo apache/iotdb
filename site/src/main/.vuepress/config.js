@@ -893,7 +893,7 @@ var config = {
 						title: 'Operate Metadata',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Database','Database'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
@@ -1845,7 +1845,7 @@ var config = {
 						title: '元数据操作',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Database','数据库操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
