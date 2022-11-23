@@ -168,7 +168,7 @@ public class SyncDataNodeClientPool {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
       status = client.changeRegionLeader(req);
     } catch (IOException e) {
-      LOGGER.error("Can't connect to Data node: {}", dataNode);
+      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
