@@ -67,7 +67,7 @@ public class SetSpaceQuotaPlan extends ConfigPhysicalPlan {
     BasicStructureSerDeUtil.write(prefixPathList, stream);
     BasicStructureSerDeUtil.write(spaceLimit.getDeviceNum(), stream);
     BasicStructureSerDeUtil.write(spaceLimit.getTimeserieNum(), stream);
-    BasicStructureSerDeUtil.write(spaceLimit.getDisk(), stream);
+    BasicStructureSerDeUtil.write(spaceLimit.getDiskSize(), stream);
   }
 
   @Override
@@ -80,7 +80,7 @@ public class SetSpaceQuotaPlan extends ConfigPhysicalPlan {
     TSpaceQuota spaceLimit = new TSpaceQuota();
     spaceLimit.setDeviceNum(deviceNum);
     spaceLimit.setTimeserieNum(timeserieNum);
-    spaceLimit.setDisk(disk);
+    spaceLimit.setDiskSize(disk);
     this.spaceLimit = spaceLimit;
   }
 

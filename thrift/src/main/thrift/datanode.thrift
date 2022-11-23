@@ -639,6 +639,11 @@ service IDataNodeRPCService {
   * Execute CQ on DataNode
   */
   common.TSStatus executeCQ(TExecuteCQ req)
+
+  /**
+   * Set space quota
+   **/
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 }
 
 service MPPDataExchangeService {

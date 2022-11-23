@@ -45,6 +45,7 @@ ddlStatement
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showClusterDetails | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
+    | showSpaceQuota
     | countStorageGroup | countDevices | countTimeseries | countNodes
     | getRegionId | getTimeSlotList | getSeriesSlotList
     ;
@@ -382,6 +383,11 @@ showPathsSetSchemaTemplate
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
     : SHOW PATHS prefixPath? USING SCHEMA? TEMPLATE templateName=identifier
+    ;
+
+// Show Space Quota
+showSpaceQuota
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
     ;
 
 // Count Storage Group

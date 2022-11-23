@@ -154,4 +154,8 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowContinuousQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showContinuousQueriesColumnHeaders, true);
   }
+
+  public static DatasetHeader getShowSpaceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
+  }
 }

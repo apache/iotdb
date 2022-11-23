@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -109,6 +110,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -224,6 +226,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
+
+  private final DataNodeSpaceQuotaManager spaceQuotaManager =
+      DataNodeSpaceQuotaManager.getInstance();
 
   public DataNodeInternalRPCServiceImpl() {
     super();
@@ -903,6 +908,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    return spaceQuotaManager.setSpaceQuota(req);
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

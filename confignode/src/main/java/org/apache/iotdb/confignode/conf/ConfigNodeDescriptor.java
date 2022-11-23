@@ -346,6 +346,11 @@ public class ConfigNodeDescriptor {
 
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
+    loadQuotaConfig(properties);
+  }
+
+  private void loadQuotaConfig(Properties properties) {
+    conf.setSpaceQuotaDir(properties.getProperty("space_quota_dir", conf.getSpaceQuotaDir()));
   }
 
   private void loadRatisConsensusConfig(Properties properties) {

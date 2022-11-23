@@ -147,6 +147,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -2169,6 +2170,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Quota
   @Override
   public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SQLParserException("Limit configuration is not enabled, please enable it first.");
+    }
+
     SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
     List<String> paths = new ArrayList<>();
@@ -2185,35 +2190,73 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
-      setSpaceQuotaStatement.setDeviceNum(
-          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+      if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setTimeSeriesNum(0);
+      } else if (Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
+        throw new SQLParserException("Please set the number of devices greater than 0");
+      } else {
+        setSpaceQuotaStatement.setDeviceNum(
+            Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+      }
     }
     if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
-      setSpaceQuotaStatement.setTimeSeriesNum(
-          Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+      if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDiskSize(0);
+      } else if (Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
+        throw new SQLParserException("Please set the number of timeseries greater than 0");
+      } else {
+        setSpaceQuotaStatement.setTimeSeriesNum(
+            Integer.parseInt(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+      }
     }
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
-      setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+      if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDeviceNum(0);
+      } else {
+        setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+      }
     }
     return setSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitShowSpaceQuota(IoTDBSqlParser.ShowSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SQLParserException("Limit configuration is not enabled, please enable it first.");
+    }
+    ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
+    List<PartialPath> storageGroups = null;
+    if (ctx.prefixPath() != null) {
+      storageGroups = new ArrayList<>();
+      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      showSpaceQuotaStatement.setStorageGroups(storageGroups);
+    } else {
+      showSpaceQuotaStatement.setStorageGroups(null);
+    }
+    return showSpaceQuotaStatement;
   }
 
   private long parseUnit(String data) {
     String unit = data.substring(data.length() - 1);
     long disk = Long.parseLong(data.substring(0, data.length() - 1));
+    if (disk <= 0) {
+      throw new SQLParserException("Please set the disk size greater than 0");
+    }
     switch (unit) {
       case "M":
       case "m":
-        return disk * 1024;
+        return disk;
       case "G":
       case "g":
-        return disk * 1024 * 1024;
+        return disk * 1024;
       case "T":
       case "t":
-        return disk * 1024 * 1024 * 1024;
+        return disk * 1024 * 1024;
       case "P":
       case "p":
-        return disk * 1024 * 1024 * 1024 * 1024;
+        return disk * 1024 * 1024 * 1024;
       default:
         throw new SQLParserException(
             "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");

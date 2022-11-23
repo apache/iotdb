@@ -123,6 +123,12 @@ public class ColumnHeaderConstant {
   public static final String CQID = "CQId";
   public static final String QUERY = "Query";
 
+  // column names for show space quota
+  public static final String COLUMN_DATABASE = "database";
+  public static final String COLUMN_QUOTA_TYPE = "quotaType";
+  public static final String COLUMN_LIMIT = "limit";
+  public static final String COLUMN_USED = "used";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -325,4 +331,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CQID, TSDataType.TEXT),
           new ColumnHeader(QUERY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_LIMIT, TSDataType.TEXT));
 }
