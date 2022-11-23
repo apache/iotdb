@@ -864,7 +864,13 @@ var config = {
 						title: 'Syntax Conventions',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions','Syntax Conventions'],
+							['Syntax-Conventions/Literal-Values', 'Literal Values'],
+							['Syntax-Conventions/Identifier', 'Identifier'],
+							['Syntax-Conventions/NodeName-In-Path', 'NodeName in Path'],
+							['Syntax-Conventions/KeyValue-Pair', 'Key-Value Pair'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', 'Keywords'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', 'Detailed Definitions of Lexical and Grammar'],
 						]
 					},
 					{
@@ -1809,7 +1815,13 @@ var config = {
 						title: '语法约定',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions', '语法约定'],
+							['Syntax-Conventions/Literal-Values', '字面值常量'],
+							['Syntax-Conventions/Identifier', '标识符'],
+							['Syntax-Conventions/NodeName-In-Path', '路径结点名'],
+							['Syntax-Conventions/KeyValue-Pair', '键值对'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', '关键字'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', '词法和文法详细定义'],
 						]
 					},
 					{
