@@ -960,7 +960,9 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
+							['Maintenance-Tools/TsFile-Tool','TsFile Export Tool']
+
 						]
 					},
 					{
@@ -1936,7 +1938,8 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
+							['Maintenance-Tools/TsFile-Tool','TsFile 导出工具']
 						]
 					},
 					{
