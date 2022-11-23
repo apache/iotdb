@@ -99,7 +99,7 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA? TEMPLATE templateName=identifier
+    : CREATE SCHEMA TEMPLATE templateName=identifier
     ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
@@ -109,7 +109,7 @@ templateMeasurementClause
 
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
+    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -213,7 +213,7 @@ deletePartition
 
 // Delete Timeseries of Schema Template
 deleteTimeseriesOfSchemaTemplate
-    : (DELETE TIMESERIES OF | DEACTIVATE) SCHEMA? TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    : (DELETE TIMESERIES OF | DEACTIVATE) SCHEMA TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
     ;
 
 // Drop Function
@@ -233,7 +233,7 @@ dropContinuousQuery
 
 // Drop Schema Template
 dropSchemaTemplate
-    : DROP SCHEMA? TEMPLATE templateName=identifier
+    : DROP SCHEMA TEMPLATE templateName=identifier
     ;
 
 // Get Region Id
@@ -266,12 +266,12 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
+    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
@@ -361,22 +361,22 @@ showConfigNodes
 
 // Show Schema Template
 showSchemaTemplates
-    : SHOW SCHEMA? TEMPLATES
+    : SHOW SCHEMA TEMPLATES
     ;
 
 // Show Measurements In Schema Template
 showNodesInSchemaTemplate
-    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
+    : SHOW NODES OPERATOR_IN SCHEMA TEMPLATE templateName=identifier
     ;
 
 // Show Paths Set Schema Template
 showPathsSetSchemaTemplate
-    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
+    : SHOW PATHS SET SCHEMA TEMPLATE templateName=identifier
     ;
 
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS prefixPath? USING SCHEMA? TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group
