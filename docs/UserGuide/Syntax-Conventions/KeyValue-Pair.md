@@ -21,7 +21,7 @@
 
 
 
-**The key/value of an attribute can be constant(including string) and identifier. **
+**The key/value of an attribute can be constant(including string) and identifier.** 
 
 Below are usage scenarios of key-value pair:
 
@@ -117,5 +117,3 @@ CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
 CREATE PIPE my_pipe TO my_iotdb FROM 
 (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
 ```
-
-## 
