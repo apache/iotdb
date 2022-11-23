@@ -65,17 +65,17 @@ public class PointPriorityReader {
   public TimeValuePair currentPoint() {
     if (shouldReadNextPoint) {
       // get the highest priority point
-      currentPoint =
-          currentPointElement != null
-              ? currentPointElement.timeValuePair
-              : pointQueue.peek().timeValuePair;
-      lastTime = currentPoint.getTimestamp();
+      if (currentPointElement == null) {
+        // the current point is overlapped with other pages
+        currentPoint = pointQueue.peek().timeValuePair;
 
-      // fill aligned null value with the same timestamp
-      if (currentPoint.getValue().getDataType().equals(TSDataType.VECTOR)) {
-        fillAlignedNullValue();
+        lastTime = currentPoint.getTimestamp();
+
+        // fill aligned null value with the same timestamp
+        if (currentPoint.getValue().getDataType().equals(TSDataType.VECTOR)) {
+          fillAlignedNullValue();
+        }
       }
-
       shouldReadNextPoint = false;
     }
     return currentPoint;
@@ -88,9 +88,7 @@ public class PointPriorityReader {
   private void fillAlignedNullValue() {
     List<PointElement> pointElementsWithSameTimestamp = new ArrayList<>();
     // remove the current point element
-    if (currentPointElement == null) {
-      pointElementsWithSameTimestamp.add(pointQueue.poll());
-    }
+    pointElementsWithSameTimestamp.add(pointQueue.poll());
 
     TsPrimitiveType[] currentValues = currentPoint.getValue().getVector();
     int nullValueNum = currentValues.length;
@@ -130,8 +128,11 @@ public class PointPriorityReader {
     if (currentPointElement != null) {
       IPointReader pointReader = currentPointElement.pointReader;
       if (pointReader.hasNextTimeValuePair()) {
-        currentPointElement.setPoint(pointReader.nextTimeValuePair());
-        if (currentPointElement.timestamp >= nextPageStartTime) {
+        // get the point directly if it is not overlapped with other points
+        currentPoint = pointReader.nextTimeValuePair();
+        if (currentPoint.getTimestamp() >= nextPageStartTime) {
+          // if the point is overlapped with other points, then add it into priority queue
+          currentPointElement.setPoint(currentPoint);
           pointQueue.add(currentPointElement);
           currentPointElement = null;
         }
@@ -157,6 +158,7 @@ public class PointPriorityReader {
                 pointQueue.size() > 0 ? pointQueue.peek().pageElement.startTime : Long.MAX_VALUE;
             if (pointElement.timestamp > lastTime && pointElement.timestamp < nextPageStartTime) {
               currentPointElement = pointElement;
+              currentPoint = currentPointElement.timeValuePair;
             } else {
               pointQueue.add(pointElement);
             }
@@ -178,7 +180,8 @@ public class PointPriorityReader {
   public void addNewPage(PageElement pageElement) throws IOException {
     if (currentPointElement != null) {
       nextPageStartTime = Math.min(nextPageStartTime, pageElement.startTime);
-      if (currentPointElement.timestamp >= nextPageStartTime) {
+      if (currentPoint.getTimestamp() >= nextPageStartTime) {
+        currentPointElement.setPoint(currentPoint);
         pointQueue.add(currentPointElement);
         currentPointElement = null;
       }
