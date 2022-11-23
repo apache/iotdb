@@ -63,8 +63,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBInternalReporter implements InternalReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
+public class IoTDBIInternalReporter implements InternalReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBIInternalReporter.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
@@ -75,7 +75,7 @@ public class IoTDBInternalReporter implements InternalReporter {
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Map<Pair<String, String[]>, Gauge> autoGauges = new ConcurrentHashMap<>();
 
-  public IoTDBInternalReporter() {
+  public IoTDBIInternalReporter() {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();

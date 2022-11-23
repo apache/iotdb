@@ -225,9 +225,9 @@ public class MetricService extends AbstractMetricService implements MetricServic
     return ServiceType.METRIC_SERVICE;
   }
 
-  public void updateInternalReporter(InternalReporter internalReporter) {
-    if (metricConfig.getInternalReportType().equals(internalReporter.getType())) {
-      this.internalReporter = internalReporter;
+  public void updateInternalReporter(InternalReporter InternalReporter) {
+    if (metricConfig.getInternalReportType().equals(InternalReporter.getType())) {
+      this.internalReporter = InternalReporter;
     }
   }
 

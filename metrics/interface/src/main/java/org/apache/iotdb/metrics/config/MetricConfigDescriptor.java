@@ -19,19 +19,16 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.InternalReportType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.stream.Collectors;
 
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
-  private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
   /** the metric config of metric service */
   private final MetricConfig metricConfig;
 
@@ -144,6 +141,12 @@ public class MetricConfigDescriptor {
                 "iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
+
+    loadConfig.setInternalReportType(
+        InternalReportType.valueOf(
+            properties.getProperty(
+                "dn_metric_internal_reporter_type",
+                loadConfig.getInternalReportType().toString())));
 
     return loadConfig;
   }
