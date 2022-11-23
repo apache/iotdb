@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router;
+package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -29,15 +29,15 @@ import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** The LeaderRouter always pick the leader Replica */
-public class LeaderRouter implements IRouter {
+/** The LeaderRouter always pick the leader Replica as first */
+public class LeaderPriorityBalancer implements IPriorityBalancer {
 
-  public LeaderRouter() {
+  public LeaderPriorityBalancer() {
     // Empty constructor
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
+  public Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
       List<TRegionReplicaSet> replicaSets,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, Long> dataNodeLoadScoreMap) {

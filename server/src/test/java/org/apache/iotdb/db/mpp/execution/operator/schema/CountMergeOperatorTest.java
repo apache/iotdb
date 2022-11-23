@@ -115,7 +115,7 @@ public class CountMergeOperatorTest {
         tsBlock = timeSeriesCountOperator.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(100, tsBlock.getColumn(0).getInt(0));
+      assertEquals(100, tsBlock.getColumn(0).getLong(0));
       TimeSeriesCountOperator timeSeriesCountOperator2 =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -129,7 +129,7 @@ public class CountMergeOperatorTest {
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());
-      assertEquals(10, tsBlock.getColumn(0).getInt(0));
+      assertEquals(10, tsBlock.getColumn(0).getLong(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -200,9 +200,9 @@ public class CountMergeOperatorTest {
         String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
         assertTrue(path.startsWith(COUNT_MERGE_OPERATOR_TEST_SG + ".device"));
         if (path.equals(COUNT_MERGE_OPERATOR_TEST_SG + ".device2")) {
-          assertEquals(20, tsBlock.getColumn(1).getInt(i));
+          assertEquals(20, tsBlock.getColumn(1).getLong(i));
         } else {
-          assertEquals(10, tsBlock.getColumn(1).getInt(i));
+          assertEquals(10, tsBlock.getColumn(1).getLong(i));
         }
       }
     } catch (MetadataException e) {

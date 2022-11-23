@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router;
+package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -24,21 +24,21 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The IRouter is a functional interface, which means a new functional class who implements the
- * IRouter must be created for generating the latest real-time routing policy.
- */
-public interface IRouter {
+public interface IPriorityBalancer {
+
+  String LEADER_POLICY = "LEADER";
+  String GREEDY_POLICY = "GREEDY";
 
   /**
-   * Generate an optimal real-time read/write requests routing policy.
+   * Generate an optimal route priority.
    *
-   * @param replicaSets All RegionReplicasEts currently owned by the cluster
-   * @return Map<TConsensusGroupId, TRegionReplicaSet>, The routing policy of read/write requests
-   *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
-   *     sorting result have higher priority.
+   * @param replicaSets All RegionGroups
+   * @param regionLeaderMap The current leader of each RegionGroup
+   * @param dataNodeLoadScoreMap The current load score of each DataNode
+   * @return Map<TConsensusGroupId, TRegionReplicaSet>, The optimal route priority for each
+   *     RegionGroup. The replica with higher sorting result have higher priority.
    */
-  Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap(
+  Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
       List<TRegionReplicaSet> replicaSets,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, Long> dataNodeLoadScoreMap);
