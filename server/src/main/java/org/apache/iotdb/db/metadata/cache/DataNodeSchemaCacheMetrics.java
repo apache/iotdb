@@ -37,7 +37,7 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         dataNodeSchemaCache,

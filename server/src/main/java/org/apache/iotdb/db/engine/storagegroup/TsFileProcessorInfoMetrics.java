@@ -40,7 +40,7 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
             memCost,

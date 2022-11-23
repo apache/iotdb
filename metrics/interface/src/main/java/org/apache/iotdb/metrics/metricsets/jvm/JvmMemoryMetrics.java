@@ -36,7 +36,7 @@ public class JvmMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.buffer.count.buffers",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
@@ -44,7 +44,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           "id",
           bufferPoolBean.getName());
 
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.buffer.memory.used.bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
@@ -52,7 +52,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           "id",
           bufferPoolBean.getName());
 
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.buffer.total.capacity.bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
@@ -65,7 +65,7 @@ public class JvmMemoryMetrics implements IMetricSet {
         ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.memory.used.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
@@ -75,7 +75,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           "area",
           area);
 
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.memory.committed.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
@@ -85,7 +85,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           "area",
           area);
 
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           "jvm.memory.max.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,

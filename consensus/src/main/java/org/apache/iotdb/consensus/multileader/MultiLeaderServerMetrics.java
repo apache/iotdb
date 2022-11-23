@@ -37,7 +37,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MULTI_LEADER.toString(),
             MetricLevel.IMPORTANT,
             impl,
@@ -49,7 +49,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "searchIndex");
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MULTI_LEADER.toString(),
             MetricLevel.IMPORTANT,
             impl,
