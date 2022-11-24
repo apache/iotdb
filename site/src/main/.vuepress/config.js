@@ -1882,7 +1882,7 @@ var config = {
 							['Query-Data/Where-Condition','查询过滤条件'],
 							['Query-Data/Group-By','分段分组聚合'],
 							['Query-Data/Having-Condition','聚合结果过滤'],
-							['Query-Data/Order-By','结果集排序'],
+							// ['Query-Data/Order-By','结果集排序'],
 							['Query-Data/Fill','结果集补空值'],
 							['Query-Data/Pagination','结果集分页'],
 							['Query-Data/Select-Into','查询写回'],
