@@ -4,17 +4,16 @@ on:
   push:
     branches:
       - master
-      - deploy_site_using_github
     paths:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
-      - deploy_site_using_github
     paths:
       - 'docs/**'
       - 'site/**'
+      - '**/site-build.yml'
   # allow manually run the action:
   workflow_dispatch:
 
