@@ -124,7 +124,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               subTaskId,
               summary);
       for (String measurement : measurements) {
-        seriesCompactionExecutor.startNewtMeasurement(timeseriesMetadataOffsetMap.get(measurement));
+        seriesCompactionExecutor.setNewMeasurement(timeseriesMetadataOffsetMap.get(measurement));
         seriesCompactionExecutor.execute();
       }
     } else {
