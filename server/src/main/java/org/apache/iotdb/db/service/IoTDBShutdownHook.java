@@ -56,7 +56,9 @@ public class IoTDBShutdownHook extends Thread {
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       // This setting ensures that compaction work is not discarded
       // even if there are frequent restarts
-      DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .parallelStream()
           .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
     }
 
