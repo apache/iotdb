@@ -27,8 +27,6 @@ IoTDB ConfigNode files are under `conf`.
 
 * `iotdb-confignode.properties`：IoTDB ConfigNode system configurations.
 
-* `iotdb-common.properties`：IoTDB common configurations.
-
 ## Environment Configuration File（confignode-env.sh/bat）
 
 The environment configuration file is mainly used to configure the Java environment related parameters when ConfigNode is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the ConfigNode starts.
@@ -63,7 +61,7 @@ The details of each parameter are as follows:
 |Effective|After restarting system|
 
 
-## ConfigNode Configuration File (iotdb-confignode.properties and iotdb-common.properties)
+## ConfigNode Configuration File (iotdb-confignode.properties)
 
 The global configuration of cluster is in ConfigNode.
 
@@ -142,8 +140,26 @@ The global configuration of cluster is in ConfigNode.
 |Default| 1024 |
 |Effective|After restarting system|
 
+* cn\_connection\_timeout\_ms
 
-### Replication and Consensus
+|    Name     | cn\_connection\_timeout\_ms                             |
+|:-----------:|:--------------------------------------------------------|
+| Description | Thrift socket and connection timeout between raft nodes |
+|    Type     | int                                                     |
+|   Default   | 20000                                                   |
+|  Effective  | After restarting system                                 |
+
+* cn\_selector\_thread\_nums\_of\_client\_manager
+
+|    Name     | cn\_selector\_thread\_nums\_of\_client\_manager                                |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | selector thread (TAsyncClientManager) nums for async thread in a clientManager |
+|    Type     | int                                                                            |
+|   Default   | 1                                                                              |
+|  Effective  | After restarting system                                                        |
+
+
+### Consensus
 
 * cn\_consensus\_port
 
@@ -153,67 +169,6 @@ The global configuration of cluster is in ConfigNode.
 |Type| Short Int : [0,65535] |
 |Default| 22278 |
 |Effective|After restarting system|
-
-
-* data\_replication\_factor
-
-|Name| data\_replication\_factor |
-|:---:|:---|
-|Description| Data replication num|
-|Type| Int |
-|Default| 1 |
-|Effective|After restarting system|
-
-* data\_region\_consensus\_protocol\_class
-
-|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|Type| String                                                                                                                                                       |
-|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
-|Effective| Only allowed to be modified in first start up                                                                                                                |
-
-* schema\_replication\_factor
-
-|Name| schema\_replication\_factor |
-|:---:|:---|
-|Description| Schema replication num|
-|Type| Int |
-|Default| 1 |
-|Effective|After restarting system|
-
-
-* schema\_region\_consensus\_protocol\_class
-
-|Name| schema\_region\_consensus\_protocol\_class                                                                                                  |
-|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------|
-|Description| Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
-|Type| String                                                                                                                                      |
-|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                           |
-|Effective| Only allowed to be modified in first start up                                                                                               |
-
-
-* region\_allocate\_strategy
-
-|Name| region\_allocate\_strategy |
-|:---:|:---|
-|Description| Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters  |
-|Type| String |
-|Default| GREEDY |
-|Effective|After restarting system |
-
-### HeartBeat 
-
-* heartbeat\_interval\_in\_ms
-
-|Name| heartbeat\_interval\_in\_ms |
-|:---:|:---|
-|Description| Heartbeat interval in the cluster nodes |
-|Type| Long |
-|Unit| ms |
-|Default| 1000 |
-|Effective|After restarting system|
-
 
 ### Partition Strategy
 
@@ -235,28 +190,6 @@ The global configuration of cluster is in ConfigNode.
 |Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |Effective|Only allowed to be modified in first start up|
 
-### Database
-
-* default\_ttl\_in\_ms
-
-|Name| default\_ttl\_in\_ms |
-|:---:|:---|
-|Description| Default ttl when each database created |
-|Type| Long |
-|Default| Infinity |
-|Effective|After restarting system|
-
-* time\_partition\_interval
-
-|Name| time\_partition\_interval                                     |
-|:---:|:--------------------------------------------------------------|
-|Description| Time partition interval of data when ConfigNode allocate data |
-|Type| Long                                                          |
-|Unit| ms                                                            |
-|Default| 604800000                                                     |
-|Effective| Only allowed to be modified in first start up                 |
-
-
 ### Data Directory
 
 * cn\_system\_dir
@@ -276,15 +209,6 @@ The global configuration of cluster is in ConfigNode.
 |Type| String                                                         |
 |Default| data/confignode/consensus（Windows：data\\confignode\\consensus） |
 |Effective| After restarting system                                        |
-
-* udf\_lib\_dir
-
-|Name| udf\_lib\_dir |
-|:---:|:---|
-|Description| UDF log and jar file dir |
-|Type| String |
-|Default| ext/udf（Windows：ext\\udf） |
-|Effective|After restarting system|
 
 * temporary\_lib\_dir
 
