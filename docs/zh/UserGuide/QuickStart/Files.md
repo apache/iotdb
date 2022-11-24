@@ -110,13 +110,13 @@ IoTDB 涉及到的所有数据目录路径有：data_dirs, multi_dir_strategy, s
 以下我们给出一个用户对五个目录都进行自行配置的例子。
 
 ```
-system_dir = $IOTDB_HOME/data
-data_dirs = /data1/data, /data2/data, /data3/data 
-multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-wal_dir= $IOTDB_HOME/data/wal
+dn_system_dir = $IOTDB_HOME/data/datanode/system
+dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
+dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
+dn_wal_dir= $IOTDB_HOME/data/datanode/wal
 ```
 按照上述配置，系统会：
 
-* 将 TsFile 存储在路径/data1/data、路径/data2/data 和路径 data3/data3 中。且对这三个路径的选择策略是：`优先选择磁盘剩余空间最大的目录`，即在每次数据持久化到磁盘时系统会自动选择磁盘剩余空间最大的一个目录将数据进行写入
-* 将系统文件存储在$IOTDB_HOME/data
-* 将写前日志文件存储在$IOTDB_HOME/data/wal
+* 将 TsFile 存储在路径 /data1/datanode/data、路径 /data2/datanode/data 和路径 /data3/datanode/data 中。且对这三个路径的选择策略是：`优先选择磁盘剩余空间最大的目录`，即在每次数据持久化到磁盘时系统会自动选择磁盘剩余空间最大的一个目录将数据进行写入
+* 将系统文件存储在$IOTDB_HOME/data/datanode/data
+* 将写前日志文件存储在$IOTDB_HOME/data/datanode/wal

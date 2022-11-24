@@ -38,7 +38,7 @@ public class StatementConstructionHandler {
       throws IllegalPathException, WriteProcessRejectException {
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(new PartialPath(insertTabletRequest.getDeviceId()));
+    insertStatement.setDevicePath(new PartialPath(insertTabletRequest.getDevice()));
     insertStatement.setMeasurements(insertTabletRequest.getMeasurements().toArray(new String[0]));
     List<List<Object>> rawData = insertTabletRequest.getValues();
     List<String> rawDataType = insertTabletRequest.getDataTypes();

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router;
+package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LoadScoreGreedyRouterTest {
+public class GreedyPriorityTest {
 
   @Test
   public void testGenLoadScoreGreedyRoutingPolicy() {
@@ -92,8 +92,8 @@ public class LoadScoreGreedyRouterTest {
 
     /* Check result */
     Map<TConsensusGroupId, TRegionReplicaSet> result =
-        new LoadScoreGreedyRouter()
-            .getLatestRegionRouteMap(
+        new GreedyPriorityBalancer()
+            .generateOptimalRoutePriority(
                 Arrays.asList(regionReplicaSet1, regionReplicaSet2), new HashMap<>(), loadScoreMap);
     Assert.assertEquals(2, result.size());
 

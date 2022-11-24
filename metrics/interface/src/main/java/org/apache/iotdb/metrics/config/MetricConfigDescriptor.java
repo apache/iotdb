@@ -19,33 +19,31 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-/** The utils class to load configure. Read from yaml file. */
+/** The utils class to load properties */
 public class MetricConfigDescriptor {
-  private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
-  /** the metric config of metric service */
+  /** The metric config of metric service */
   private final MetricConfig metricConfig;
 
   private MetricConfigDescriptor() {
     metricConfig = new MetricConfig();
   }
 
+  /** Load properties into metric config */
   public void loadProps(Properties properties) {
     MetricConfig loadConfig = generateFromProperties(properties);
     metricConfig.copy(loadConfig);
   }
 
   /**
-   * load property file into metric config, use default values if not find.
+   * Load properties into metric config when reload service.
    *
    * @return reload level of metric service
    */
@@ -53,36 +51,33 @@ public class MetricConfigDescriptor {
     MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (!metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
-        // start service or stop service.
-        reloadLevel =
-            (newMetricConfig.getEnableMetric())
-                ? ReloadLevel.START_METRIC
-                : ReloadLevel.STOP_METRIC;
-      } else if (metricConfig.getEnableMetric()) {
-        // restart reporters or restart service
-        if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig
-                .getAsyncCollectPeriodInSecond()
-                .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
-          reloadLevel = ReloadLevel.RESTART_METRIC;
-        } else {
-          reloadLevel = ReloadLevel.RESTART_REPORTER;
-        }
+      if (!metricConfig
+              .getEnablePerformanceStat()
+              .equals(newMetricConfig.getEnablePerformanceStat())
+          || !metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
+          || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+          || !metricConfig
+              .getAsyncCollectPeriodInSecond()
+              .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
+        // restart metric service
+        reloadLevel = ReloadLevel.RESTART_METRIC;
+      } else if (!metricConfig
+          .getInternalReportType()
+          .equals(newMetricConfig.getInternalReportType())) {
+        // restart internal reporter
+        reloadLevel = ReloadLevel.RESTART_INTERNAL_REPORTER;
+      } else {
+        // restart reporters
+        reloadLevel = ReloadLevel.RESTART_REPORTER;
       }
       metricConfig.copy(newMetricConfig);
     }
     return reloadLevel;
   }
 
-  /** load properties into metric config */
+  /** Load properties into metric config */
   private MetricConfig generateFromProperties(Properties properties) {
     MetricConfig loadConfig = new MetricConfig();
-    loadConfig.setEnableMetric(
-        Boolean.parseBoolean(
-            getProperty(
-                "enable_metric", String.valueOf(loadConfig.getEnableMetric()), properties)));
 
     loadConfig.setEnablePerformanceStat(
         Boolean.parseBoolean(
@@ -157,10 +152,16 @@ public class MetricConfigDescriptor {
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
 
+    loadConfig.setInternalReportType(
+        InternalReporterType.valueOf(
+            properties.getProperty(
+                "dn_metric_internal_reporter_type",
+                loadConfig.getInternalReportType().toString())));
+
     return loadConfig;
   }
 
-  /** Try to get property from confignode or datanode */
+  /** Get property from confignode or datanode */
   private String getProperty(String target, String defaultValue, Properties properties) {
     return properties.getProperty(
         "dn_" + target, properties.getProperty("cn_" + target, defaultValue));

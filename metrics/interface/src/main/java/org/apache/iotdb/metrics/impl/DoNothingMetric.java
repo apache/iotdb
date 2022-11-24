@@ -16,19 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.router.mcf;
 
-public class MCFEdge {
+package org.apache.iotdb.metrics.impl;
 
-  public int destNode;
-  public int capacity;
-  public int cost;
-  public int nextEdge;
-
-  public MCFEdge(int destNode, int capacity, int cost, int nextEdge) {
-    this.destNode = destNode;
-    this.capacity = capacity;
-    this.cost = cost;
-    this.nextEdge = nextEdge;
-  }
-}
+public interface DoNothingMetric {}

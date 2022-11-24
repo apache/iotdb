@@ -41,7 +41,7 @@ Database 节点名只支持中英文字符、数字、下划线的组合，如�
 
 还需注意，如果在 Windows 系统上部署，database 名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-## 查看 database
+## 查看数据库
 
 在 database 创建后，我们可以使用 [SHOW DATABASES](../Reference/SQL-Reference.md) 语句和 [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) 来查看 database，SQL 语句如下所示：
 
@@ -55,7 +55,7 @@ IoTDB> show databases root.**
 
 ```
 +-------------+----+-------------------------+-----------------------+-----------------------+
-|database| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
+|     database| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
 +-------------+----+-------------------------+-----------------------+-----------------------+
 |    root.sgcc|null|                        2|                      2|                 604800|
 |      root.ln|null|                        2|                      2|                 604800|
@@ -75,7 +75,7 @@ IoTDB > DELETE DATABASE root.sgcc
 IoTDB > DELETE DATABASE root.**
 ```
 
-## 统计 database 数量
+## 统计数据库数量
 
 用户可以使用`COUNT DATABASES <PathPattern>`语句统计数据库的数量，允许指定`PathPattern` 用来统计匹配该`PathPattern` 的数据库的数量
 

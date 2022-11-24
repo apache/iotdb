@@ -38,7 +38,7 @@ public class RPCServiceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         MetricLevel.IMPORTANT,
         thriftServiceThread,

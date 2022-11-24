@@ -37,6 +37,33 @@ public class IoTDBMetricsUtils {
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final String STORAGE_GROUP = "root.__system";
 
+  public static String generatePath(String name, String... tags) {
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder
+        .append(STORAGE_GROUP)
+        .append(".")
+        .append(metricConfig.getIoTDBReporterConfig().getLocation())
+        .append(".`")
+        .append(metricConfig.getRpcAddress())
+        .append(":")
+        .append(metricConfig.getRpcPort())
+        .append("`")
+        .append(".")
+        .append("`")
+        .append(name)
+        .append("`");
+    for (int i = 0; i < tags.length; i += 2) {
+      stringBuilder
+          .append(".")
+          .append("`")
+          .append(tags[i])
+          .append("=")
+          .append(tags[i + 1])
+          .append("`");
+    }
+    return stringBuilder.toString();
+  }
+
   public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder

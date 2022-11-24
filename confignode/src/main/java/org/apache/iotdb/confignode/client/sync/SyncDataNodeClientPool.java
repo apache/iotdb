@@ -69,13 +69,8 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (TException | IOException e) {
         lastException = e;
-        LOGGER.warn(
-            "{} failed on DataNode {}, because {}, retrying {}...",
-            requestType,
-            endPoint,
-            e.getMessage(),
-            retry + 1);
         if (retry != DEFAULT_RETRY_NUM - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
@@ -93,13 +88,8 @@ public class SyncDataNodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (TException | IOException e) {
         lastException = e;
-        LOGGER.warn(
-            "{} failed on DataNode {}, because {}, retrying {}...",
-            requestType,
-            endPoint,
-            e.getMessage(),
-            retry + 1);
         if (retry != retryNum - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }

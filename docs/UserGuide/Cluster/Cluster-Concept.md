@@ -35,6 +35,21 @@ DataNode stores the data and schema of cluster, which manages multiple data regi
 
 Client could only connect to the DataNode for operation.
 
+### Concepts
+
+| Concept           | Type                             | Description                                                                                                                                 |
+|:------------------|:---------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
+| ConfigNode        | node role                        | Configuration node, which manages cluster node information and partition information, monitors cluster status, controls load balancing      |
+| DataNode          | node role                        | Data node, which manages data and meta data                                                                                                 |
+| Database          | meta data                        | Database, data are isolated physically from different databases                                                                             |
+| DeviceId          | device id                        | The full path from root to the penultimate level in the metadata tree represents a device id                                                |
+| SeriesSlot        | series partition slot            | Each database has a fixed number of series slots, containing the schemas of series                                                          |
+| SeriesTimeSlot    | a time partition of a SeriesSlot | All series of a time partition in a series slot                                                                                             |
+| DataRegion        | data region                      | A collection of multiple SeriesTimeSlots                                                                                                    |
+| DataRegionGroup   | logical concept                  | The number of DataRegions contained in group is the number of data replication, it manages the same data, and back up each other            |
+| SchemaRegion      | schema region                    | A collection of multiple SeriesSlot                                                                                                         |
+| SchemaRegionGroup | logical concept                  | The number of SchemaRegions contained in group is the number of schema replication, it manages the same schema data, and back up each other |
+
 ## Characteristics of Cluster
 
 * Native Cluster Architecture

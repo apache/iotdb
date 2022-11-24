@@ -221,7 +221,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
           new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(ROLE, TSDataType.TEXT));
 
@@ -229,7 +229,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
@@ -238,7 +238,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_PORT, TSDataType.INT32),
           new ColumnHeader(ROLE, TSDataType.TEXT));
 

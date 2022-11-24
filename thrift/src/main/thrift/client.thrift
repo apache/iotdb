@@ -20,6 +20,7 @@
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
+namespace go rpc
 
 struct TSQueryDataSet{
   // ByteBuffer for time column

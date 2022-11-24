@@ -633,7 +633,8 @@ public class ConfigManager implements IManager {
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    LOGGER.debug(
+    // TODO: set debug
+    LOGGER.info(
         "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
         getOrCreateDataPartitionReq.getPartitionSlotsMap(),
         resp);
@@ -778,6 +779,9 @@ public class ConfigManager implements IManager {
     if (req.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
+    }
+    if (req.getLeastDataRegionGroupNum() != conf.getLeastDataRegionGroupNum()) {
+      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
     }
     return null;
   }

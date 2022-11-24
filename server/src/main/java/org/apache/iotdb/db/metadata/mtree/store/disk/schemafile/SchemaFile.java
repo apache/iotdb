@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -273,22 +274,29 @@ public class SchemaFile implements ISchemaFile {
   }
 
   public String inspect() throws MetadataException, IOException {
-    StringBuilder builder =
-        new StringBuilder(
-            String.format(
-                "=============================\n"
-                    + "== Schema File Sketch Tool ==\n"
-                    + "=============================\n"
-                    + "== Notice: \n"
-                    + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
-                    + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
-                    + "=============================\n"
-                    + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
-                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
-                Long.toHexString(lastSGAddr),
-                lastPageIndex + 1));
+    return inspect(null);
+  }
 
-    return pageManager.inspect(builder).toString();
+  public String inspect(PrintWriter pw) throws MetadataException, IOException {
+    String header =
+        String.format(
+            "=============================\n"
+                + "== Schema File Sketch Tool ==\n"
+                + "=============================\n"
+                + "== Notice: \n"
+                + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+                + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
+                + "=============================\n"
+                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
+            storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+            Long.toHexString(lastSGAddr),
+            lastPageIndex + 1);
+    if (pw == null) {
+      pw = new PrintWriter(System.out);
+    }
+    pw.print(header);
+    pageManager.inspect(pw);
+    return String.format("SchemaFile[%s] had been inspected.", this.filePath);
   }
   // endregion
 

@@ -40,7 +40,7 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.IMPORTANT,
             thriftConnectionNumber,

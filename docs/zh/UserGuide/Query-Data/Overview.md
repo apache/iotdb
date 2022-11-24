@@ -29,17 +29,18 @@
 SELECT [LAST] selectExpr [, selectExpr] ...
     [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
-    [ALIGN BY {TIME | DEVICE}]
     [WHERE whereCondition]
     [GROUP BY {
-        ([startTime, endTime), interval, slidingStep) |
-        LEVEL = levelNum [, levelNum] ...
+        ([startTime, endTime), interval [, slidingStep]) |
+        LEVEL = levelNum [, levelNum] ... |
+        TAGS(tagKey [, tagKey] ... )
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
     [FILL ({PREVIOUS | LINEAR | constant})]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
     [LIMIT rowLimit] [OFFSET rowOffset]
+    [ALIGN BY {TIME | DEVICE}]
 ```
 
 ## 语法说明
@@ -61,12 +62,6 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 
 - `FROM` 子句包含要查询的一个或多个时间序列的路径前缀，支持使用通配符。
 - 在执行查询时，会将 `FROM` 子句中的路径前缀和 `SELECT` 子句中的后缀进行拼接得到完整的查询目标序列。
-
-### `ALIGN BY` 子句
-
-- 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
-- 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。
-- 详细说明及示例见文档 [查询对齐模式](./Align-By.md) 。
 
 ### `WHERE` 子句
 
@@ -112,6 +107,11 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 - `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
 - 关于查询结果分页，详细说明及示例见文档 [结果集分页](./Pagination.md) 。
 
+### `ALIGN BY` 子句
+
+- 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
+- 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。
+- 详细说明及示例见文档 [查询对齐模式](./Align-By.md) 。
 
 ## SQL 示例
 
