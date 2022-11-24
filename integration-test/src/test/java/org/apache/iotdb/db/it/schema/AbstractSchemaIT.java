@@ -46,8 +46,7 @@ public abstract class AbstractSchemaIT {
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
     return Arrays.asList(
-        SchemaTestMode.Memory
-        //        SchemaTestMode.SchemaFileFullMemory,
+        SchemaTestMode.Memory, SchemaTestMode.SchemaFileFullMemory
         //        SchemaTestMode.SchemaFilePartialMemory,
         //        SchemaTestMode.SchemaFileNonMemory);
         );
