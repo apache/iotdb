@@ -23,9 +23,9 @@
 
 ## Introduction
 
-The load external tsfile tool allows users to load tsfiles, delete a tsfile, or move a tsfile to target directory from the running Apache IoTDB instance.
+The load external tsfile tool allows users to load tsfiles, delete a tsfile, or move a tsfile to target directory from the running Apache IoTDB instance. Alternatively, you can use scripts to load tsfiles into IoTDB, for more information.
 
-## Usage
+## Load with SQL
 
 The user sends specified commands to the Apache IoTDB system through the Cli tool or JDBC to use the tool.
 
@@ -73,22 +73,39 @@ Examples:
 
 **NOTICE**:  When `$IOTDB_HOME$/conf/iotdb-datanode.properties` has `enable_auto_create_schema=true`, it will automatically create metadata in TSFILE, otherwise it will not be created automatically. 
 
-### remove a tsfile
+## Load with Script
 
-The command to delete a tsfile is: `remove '<path>'`.
+Run rewrite-tsfile.bat if you are in a Windows environment, or rewrite-tsfile.sh if you are on Linux or Unix.
 
-This command deletes a tsfile by specifying the file path. The specific implementation is to delete the tsfile and its corresponding `.resource` and` .modification` files.
+```bash
+./load-tsfile.bat -f filePath [-h host] [-p port] [-u username] [-pw password] [--sgLevel int] [--verify true/false] [--onSuccess none/delete]
+-f 			File/Directory to be load, required
+-h 			IoTDB Host address, optional field, 127.0.0.1 by default
+-p 			IoTDB port, optional field, 6667 by default
+-u 			IoTDB user name, optional field, root by default
+-pw 		IoTDB password, optional field, root by default
+--sgLevel 	Sg level of loading Tsfile, optional field, default_storage_group_level in 				iotdb-common.properties by default
+--verify 	Verify schema or not, optional field, True by default
+--onSuccess Delete or remain origin TsFile after loading, optional field, none by default
+```
 
-Examples:
+### Example
 
-* `remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'`
+Assuming that an IoTDB instance is running on server 192.168.0.101:6667, you want to load all TsFile files from the locally saved TsFile backup folder D:\IoTDB\data into this IoTDB instance.
 
-### unload a tsfile and move it to a target directory
+First move to the folder `$IOTDB_HOME/tools/`, open the command line, and execute
 
-The command to unload a tsfile and move it to target directory is: `unload '<path>' '<dir>'`.
+```bash
+./load-rewrite.bat -f D:\IoTDB\data -h 192.168.0.101 -p 6667 -u root -pw root
+```
 
-This command unload a tsfile and move it to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
+After waiting for the script execution to complete, you can check that the data in the IoTDB instance has been loaded correctly.
 
-Examples:
+### Q&A
 
-* `unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'`
+- Cannot find or load the main class
+  - It may be because the environment variable $IOTDB_HOME is not set, please set the environment variable and try again
+- -f option must be set!
+  - The input command is missing the -f field (file or folder path to be loaded) or the -u field (user name), please add it and re-execute
+- What if the execution crashes in the middle and you want to reload?
+  - You re-execute the command just now, reloading the data will not affect the correctness after loading
