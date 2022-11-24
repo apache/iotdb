@@ -160,10 +160,10 @@ public class LastQueryOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long sum = 0;
+    long max = 0;
     for (Operator operator : children) {
-      sum += operator.calculateRetainedSizeAfterCallingNext();
+      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
-    return sum;
+    return max;
   }
 }
