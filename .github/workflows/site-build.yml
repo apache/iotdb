@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - master
+      - '*site*'
     paths:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
+      - '*site*'
     paths:
       - 'docs/**'
       - 'site/**'
