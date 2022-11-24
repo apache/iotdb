@@ -249,6 +249,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
+  private String AUDIT_LOGGER_LEVEL =
+      IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage();
+
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;
@@ -520,7 +523,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       // delete related data
-      AuditLogUtils.writeAuditLog(String.format("delete timeseries %s", pathToDelete));
+      if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+        AuditLogUtils.writeAuditLog(String.format("delete timeseries %s", pathToDelete));
+      }
       DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
       for (PartialPath path : pathToDelete) {
         StorageEngine.getInstance()
@@ -1377,10 +1382,14 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(
-        String.format(
-            "delete data from %s in [%s,%s]",
-            deletePlan.getPaths(), deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime()));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "delete data from %s in [%s,%s]",
+              deletePlan.getPaths(),
+              deletePlan.getDeleteStartTime(),
+              deletePlan.getDeleteEndTime()));
+    }
 
     for (PartialPath path : deletePlan.getPaths()) {
       delete(
@@ -2149,8 +2158,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(
-        String.format("delete timeseries %s", deleteTimeSeriesPlan.getPaths()));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+      AuditLogUtils.writeAuditLog(
+          String.format("delete timeseries %s", deleteTimeSeriesPlan.getPaths()));
+    }
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
@@ -2229,8 +2240,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(
-        String.format("set storage group to %s", setStorageGroupPlan.getPaths()));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+      AuditLogUtils.writeAuditLog(
+          String.format("set storage group to %s", setStorageGroupPlan.getPaths()));
+    }
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
@@ -2242,8 +2255,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    AuditLogUtils.writeAuditLog(
-        String.format("set storage group to %s", deleteStorageGroupPlan.getPaths()));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+      AuditLogUtils.writeAuditLog(
+          String.format("set storage group to %s", deleteStorageGroupPlan.getPaths()));
+    }
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {

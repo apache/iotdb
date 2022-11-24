@@ -2533,6 +2533,7 @@ public class SessionPool {
     private ZoneId zoneId = null;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
     private int connectionTimeoutInMs = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private boolean enableAudit = true;
 
     public Builder host(String host) {
       this.host = host;
@@ -2594,6 +2595,11 @@ public class SessionPool {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public SessionPool build() {
       if (nodeUrls == null) {
         return new SessionPool(
@@ -2607,7 +2613,8 @@ public class SessionPool {
             enableCompression,
             zoneId,
             enableCacheLeader,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            enableAudit);
       } else {
         return new SessionPool(
             nodeUrls,
@@ -2619,7 +2626,8 @@ public class SessionPool {
             enableCompression,
             zoneId,
             enableCacheLeader,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            enableAudit);
       }
     }
   }

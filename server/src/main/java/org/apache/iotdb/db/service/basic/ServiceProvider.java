@@ -207,17 +207,22 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage("Login successfully");
 
       SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
-      AuditLogUtils.writeAuditLog(
-          String.format(
-              "%s: Login status: %s. User : %s, opens Session-%s",
-              IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+      if (!AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage())) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "%s: Login status: %s. User : %s, opens Session-%s",
+                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+      }
 
     } else {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
       session.setUsername(username);
-      AuditLogUtils.writeAuditLog(
-          String.format("User %s opens Session failed with an incorrect password", username), true);
+      if (!AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage())) {
+        AuditLogUtils.writeAuditLog(
+            String.format("User %s opens Session failed with an incorrect password", username),
+            true);
+      }
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
     SessionTimeoutManager.getInstance().register(session);
@@ -242,7 +247,9 @@ public abstract class ServiceProvider {
   }
 
   public boolean closeSession(IClientSession session) {
-    AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage())) {
+      AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
+    }
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 
@@ -260,9 +267,12 @@ public abstract class ServiceProvider {
     if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
     }
-    AuditLogUtils.writeAuditLog(
-        String.format(
-            "%s: receive close operation from Session %s", IoTDBConstant.GLOBAL_DB_NAME, session));
+    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage())) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "%s: receive close operation from Session %s",
+              IoTDBConstant.GLOBAL_DB_NAME, session));
+    }
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {
