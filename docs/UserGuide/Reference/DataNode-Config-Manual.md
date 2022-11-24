@@ -268,12 +268,12 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 * dn\_internal\_port
 
-|Name| dn\_internal\_address |
-|:---:|:---|
+|Name| dn\_internal\_port             |
+|:---:|:-------------------------------|
 |Description| DataNode internal service port |
-|Type| int |
-|Default| 9003 |
-|Effective|After restarting system|
+|Type| int                            |
+|Default| 9003                           |
+|Effective| After restarting system        |
 
 * dn\_data\_region\_consensus\_port
 
