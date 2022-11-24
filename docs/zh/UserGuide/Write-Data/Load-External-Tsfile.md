@@ -22,7 +22,7 @@
 # 加载 TsFile
 
 ## 介绍
-加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。
+加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。或者您也可以使用脚本的方式将tsfile加载进IoTDB，[点击此处查看方法](../Maintenance-Tools/Load-TsFile-Tool.md)。
 
 ## 使用方式
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。

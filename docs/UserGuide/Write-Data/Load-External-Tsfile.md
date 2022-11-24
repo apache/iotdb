@@ -23,7 +23,7 @@
 
 ## Introduction
 
-The load external tsfile tool allows users to load tsfiles, delete a tsfile, or move a tsfile to target directory from the running Apache IoTDB instance.
+The load external tsfile tool allows users to load tsfiles, delete a tsfile, or move a tsfile to target directory from the running Apache IoTDB instance. Alternatively, you can use scripts to load tsfiles into IoTDB, for more information, [please check this](../Maintenance-Tools/Load-TsFile-Tool.md).
 
 ## Usage
 
