@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
+import net.jcip.annotations.NotThreadSafe;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -36,6 +37,7 @@ import java.util.Arrays;
  * cleaning. initialize
  */
 @RunWith(Parameterized.class)
+@NotThreadSafe
 @Parameterized.UseParametersRunnerFactory(IoTDBTestRunnerWithParametersFactory.class)
 public abstract class AbstractSchemaIT {
 

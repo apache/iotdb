@@ -33,7 +33,7 @@
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
-        <integrationTest.parallelMode>none</integrationTest.parallelMode>
+        <integrationTest.parallelMode>classes</integrationTest.parallelMode>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.testEnv/>
@@ -162,10 +162,10 @@
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
-<!--                            <parallel>${integrationTest.parallelMode}</parallel>-->
-<!--                            <threadCount>1</threadCount>-->
-<!--                            <forkCount>${integrationTest.forkCount}</forkCount>-->
-<!--                            <reuseForks>false</reuseForks>-->
+                            <parallel>${integrationTest.parallelMode}</parallel>
+                            <threadCount>1</threadCount>
+                            <forkCount>${integrationTest.forkCount}</forkCount>
+                            <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
