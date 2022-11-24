@@ -909,8 +909,8 @@ service IConfigNodeRPCService {
   // Maintenance Tools
   // ======================================================
 
-  /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
-  common.TSStatus merge()
+  /** Execute Compaction schedule task on all DataNodes */
+  common.TSStatus compact()
 
   /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)

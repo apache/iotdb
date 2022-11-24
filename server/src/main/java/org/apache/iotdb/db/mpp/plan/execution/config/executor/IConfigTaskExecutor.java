@@ -85,7 +85,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> merge(boolean onCluster);
+  SettableFuture<ConfigTaskResult> compact(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 

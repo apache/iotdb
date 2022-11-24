@@ -541,7 +541,7 @@ service IDataNodeRPCService {
 
   /* Maintenance Tools */
 
-  common.TSStatus merge()
+  common.TSStatus compact()
 
   common.TSStatus flush(common.TFlushReq req)
 

@@ -830,10 +830,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus merge() throws TException {
+  public TSStatus compact() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.merge();
+        TSStatus status = client.compact();
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

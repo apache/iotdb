@@ -555,8 +555,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus merge() throws TException {
-    return configManager.merge();
+  public TSStatus compact() throws TException {
+    return configManager.compact();
   }
 
   @Override

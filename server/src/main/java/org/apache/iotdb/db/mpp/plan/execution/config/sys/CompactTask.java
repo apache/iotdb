@@ -37,6 +37,6 @@ public class CompactTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.merge(compactStatement.isOnCluster());
+    return configTaskExecutor.compact(compactStatement.isOnCluster());
   }
 }

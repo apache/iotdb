@@ -1068,7 +1068,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus merge() throws TException {
+  public TSStatus compact() throws TException {
     try {
       storageEngine.mergeAll();
     } catch (StorageEngineException e) {

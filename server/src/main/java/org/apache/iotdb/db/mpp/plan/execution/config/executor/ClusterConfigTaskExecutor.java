@@ -632,14 +632,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> merge(boolean onCluster) {
+  public SettableFuture<ConfigTaskResult> compact(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         // Send request to some API server
-        tsStatus = client.merge();
+        tsStatus = client.compact();
       } catch (IOException | TException e) {
         future.setException(e);
       }

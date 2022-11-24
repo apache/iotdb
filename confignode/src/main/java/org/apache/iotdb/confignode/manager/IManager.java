@@ -351,7 +351,7 @@ public interface IManager {
   TGetJarInListResp getTriggerJar(TGetJarInListReq req);
 
   /** Merge on all DataNodes */
-  TSStatus merge();
+  TSStatus compact();
 
   /** Flush on all DataNodes */
   TSStatus flush(TFlushReq req);
