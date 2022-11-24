@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -46,7 +47,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class LastQueryCompactOperatorTest {
+public class LastQueryMergeOperatorTest {
 
   private ExecutorService instanceNotificationExecutor;
 

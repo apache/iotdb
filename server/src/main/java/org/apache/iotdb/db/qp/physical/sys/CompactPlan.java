@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -51,5 +52,7 @@ public class CompactPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    this.setOperatorType(OperatorType.COMPACT);
+  }
 }

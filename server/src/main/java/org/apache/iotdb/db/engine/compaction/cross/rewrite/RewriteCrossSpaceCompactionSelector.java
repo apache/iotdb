@@ -117,6 +117,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    *
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
+   * @throws CompactionException If failed to read info from the tsfile
    */
   private List[] select() throws CompactionException {
     long startTime = System.currentTimeMillis();
