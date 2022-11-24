@@ -591,8 +591,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   private PlanNode planAggregationWithTimeJoin(TimeJoinNode root, DistributionPlanContext context) {
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup;
 
+    // construct newRoot
     MultiChildProcessNode newRoot;
     if (context.isRoot) {
+      // This node is the root of PlanTree,
+      // if the aggregated series have only one region,
+      // upstream will give the final aggregate result,
+      // the step of this series' aggregator will be `STATIC`
       List<SeriesAggregationSourceNode> sources = new ArrayList<>();
       Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
       sourceGroup = splitAggregationSourceByPartition(root, context, sources, regionCountPerSeries);
@@ -624,8 +629,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 seed.getScanOrder());
       }
     } else {
+      // If this node is not the root node of PlanTree,
+      // it declares that there have something to do at downstream,
+      // the step of this AggregationNode should be `INTERMEDIATE`
       sourceGroup = splitAggregationSourceByPartition(root, context);
-      // construct AggregationDescriptor for AggregationNode
       List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
       for (PlanNode child : root.getChildren()) {
         SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
@@ -743,11 +750,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            TimeJoinNode timeJoinNode =
-                new TimeJoinNode(
-                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-            sourceNodes.forEach(timeJoinNode::addChild);
-            parentOfGroup.addChild(timeJoinNode);
+            VerticallyConcatNode verticallyConcatNode =
+                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            sourceNodes.forEach(verticallyConcatNode::addChild);
+            parentOfGroup.addChild(verticallyConcatNode);
           }
           groups.add(parentOfGroup);
         });
@@ -884,11 +890,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            PlanNode timeJoinNode =
-                new TimeJoinNode(
-                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-            sourceNodes.forEach(timeJoinNode::addChild);
-            parentOfGroup.addChild(timeJoinNode);
+            VerticallyConcatNode verticallyConcatNode =
+                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            sourceNodes.forEach(verticallyConcatNode::addChild);
+            parentOfGroup.addChild(verticallyConcatNode);
           }
           newRoot.addChild(parentOfGroup);
         });
@@ -910,11 +915,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              PlanNode timeJoinNode =
-                  new TimeJoinNode(
-                      context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-              sourceNodes.forEach(timeJoinNode::addChild);
-              newRoot.addChild(timeJoinNode);
+              VerticallyConcatNode verticallyConcatNode =
+                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              sourceNodes.forEach(verticallyConcatNode::addChild);
+              newRoot.addChild(verticallyConcatNode);
             }
           }
         });
