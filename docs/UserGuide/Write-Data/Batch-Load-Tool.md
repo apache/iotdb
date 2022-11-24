@@ -25,7 +25,7 @@ In different scenarios, the IoTDB provides a variety of methods for importing da
 
 ## TsFile Batch Load
 
-TsFile is the file format of time series used in IoTDB. You can directly import one or more TsFile files with time series into another running IoTDB instance through tools such as CLI. For details, see [TsFile Load Export Tools](../Maintenance-Tools/TsFile-Load-Export-Tool.md).
+TsFile is the file format of time series used in IoTDB. You can directly import one or more TsFile files with time series into another running IoTDB instance through tools such as CLI. For details, see [TsFile Load Tool](../Maintenance-Tools/Load-TsFile.md) [TsFile Export Tools](../Maintenance-Tools/TsFile-Load-Export-Tool.md).
 
 ## CSV Batch Load
 
