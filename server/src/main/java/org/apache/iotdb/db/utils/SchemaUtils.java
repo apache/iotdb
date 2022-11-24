@@ -83,6 +83,7 @@ public class SchemaUtils {
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
     textSet.add(TSEncoding.DICTIONARY);
+    textSet.add(TSEncoding.HUFFMAN);
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 

@@ -70,6 +70,8 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
+      case HUFFMAN:
+        return new Huffman();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -307,6 +309,22 @@ public abstract class TSEncodingBuilder {
         return new DictionaryEncoder();
       }
       throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Huffman extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new HuffmanEncoder(256);
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }
 
     @Override

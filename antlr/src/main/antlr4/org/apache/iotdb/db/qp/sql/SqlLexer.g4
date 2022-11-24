@@ -665,7 +665,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | HUFFMAN
     ;
 
 DICTIONARY
@@ -694,6 +694,10 @@ RLE
 
 TS_2DIFF
     : T S '_' '2' D I F F
+    ;
+
+HUFFMAN
+    : H U F F M A N
     ;
 
 
