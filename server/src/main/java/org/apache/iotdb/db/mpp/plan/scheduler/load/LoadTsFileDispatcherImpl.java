@@ -61,6 +61,7 @@ import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
+  private static final int DISPATCH_RETRY_NUMBER = 5;
 
   private String uuid;
   private final String localhostIpAddr;
@@ -123,25 +124,29 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TTsFilePieceReq loadTsFileReq =
-          new TTsFilePieceReq(
-              instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
-              uuid,
-              instance.getRegionReplicaSet().getRegionId());
-      TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-      if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
+    TSStatus status = new TSStatus();
+    for (int i = 0; i < DISPATCH_RETRY_NUMBER; i++) {
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        TTsFilePieceReq loadTsFileReq =
+            new TTsFilePieceReq(
+                instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
+                uuid,
+                instance.getRegionReplicaSet().getRegionId());
+        TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+        if (!loadResp.isAccepted()) {
+          logger.error(loadResp.message);
+          throw new FragmentInstanceDispatchException(loadResp.status);
+        }
+        return;
+      } catch (IOException | TException e) {
+        logger.warn("can't connect to node {}, retry {}/{}", endPoint, i, DISPATCH_RETRY_NUMBER, e);
+        status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+        status.setMessage("can't connect to node {}" + endPoint);
       }
-    } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
-      throw new FragmentInstanceDispatchException(status);
     }
+    logger.error("can't connect to node {} after retry {}", endPoint, DISPATCH_RETRY_NUMBER);
+    throw new FragmentInstanceDispatchException(status);
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
@@ -216,20 +221,24 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
+    TSStatus status = new TSStatus();
+    for (int i = 0; i < DISPATCH_RETRY_NUMBER; i++) {
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
+        if (!loadResp.isAccepted()) {
+          logger.error(loadResp.message);
+          throw new FragmentInstanceDispatchException(loadResp.status);
+        }
+        return;
+      } catch (IOException | TException e) {
+        logger.warn("can't connect to node {}, retry {}/{}", endPoint, i, DISPATCH_RETRY_NUMBER, e);
+        status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+        status.setMessage("can't connect to node {}" + endPoint);
       }
-    } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
-      throw new FragmentInstanceDispatchException(status);
     }
+    logger.error("can't connect to node {} after retry {}", endPoint, DISPATCH_RETRY_NUMBER);
+    throw new FragmentInstanceDispatchException(status);
   }
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
