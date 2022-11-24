@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.it.framework;
 
+import org.apache.iotdb.it.env.EnvFactory;
+import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
@@ -42,15 +44,14 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
-    // skip
-    //    Description description = describeChild(method);
-    //    logger.info("Run {}", description.getMethodName());
-    //    long currentTime = System.currentTimeMillis();
-    //    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
-    //    super.runChild(method, notifier);
-    //    double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
-    //    String testName = description.getClassName() + "." + description.getMethodName();
-    //    logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
-    //    listener.addTestStat(new IoTDBTestStat(testName, timeCost));
+    Description description = describeChild(method);
+    logger.info("Run {}", description.getMethodName());
+    long currentTime = System.currentTimeMillis();
+    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+    super.runChild(method, notifier);
+    double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
+    String testName = description.getClassName() + "." + description.getMethodName();
+    logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
+    listener.addTestStat(new IoTDBTestStat(testName, timeCost));
   }
 }
