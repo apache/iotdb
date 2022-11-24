@@ -257,50 +257,50 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ### DataNode Internal Service
 
-* internal\_address
+* dn\_internal\_address
 
-|Name| internal\_address |
+|Name| dn\_internal\_address |
 |:---:|:---|
 |Description| DataNode internal service host/IP |
 |Type| string |
 |Default| 127.0.0.1 |
 |Effective|After restarting system|
 
-* internal\_port
+* dn\_internal\_port
 
-|Name| internal\_address |
+|Name| dn\_internal\_address |
 |:---:|:---|
 |Description| DataNode internal service port |
 |Type| int |
 |Default| 9003 |
 |Effective|After restarting system|
 
-* data\_region\_consensus\_port
+* dn\_data\_region\_consensus\_port
 
-|Name| data\_region\_consensus\_port |
+|Name| dn\_data\_region\_consensus\_port |
 |:---:|:---|
 |Description| DataNode Data replica communication port for consensus |
 |Type| int |
 |Default| 40010 |
 |Effective|After restarting system|
 
-* schema\_region\_consensus\_port
+* dn\_schema\_region\_consensus\_port
 
-|Name| schema\_region\_consensus\_port |
+|Name| dn\_schema\_region\_consensus\_port |
 |:---:|:---|
 |Description| DataNode Schema replica communication port for consensus |
 |Type| int |
 |Default| 50010 |
 |Effective|After restarting system|
 
-* target\_config\_nodes
+* dn\_target\_config\_node\_list
 
-|Name| target\_config\_nodes |
-|:---:|:---|
+|Name| dn\_target\_config\_node\_list                  |
+|:---:|:------------------------------------------------|
 |Description| ConfigNode Address for DataNode to join cluster |
-|Type| String |
-|Default| 127.0.0.1:22277 |
-|Effective|After restarting system|
+|Type| String                                          |
+|Default| 127.0.0.1:22277                                 |
+|Effective| After restarting system                         |
 
 ### File Layer
 
