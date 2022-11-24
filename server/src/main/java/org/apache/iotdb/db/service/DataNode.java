@@ -132,13 +132,8 @@ public class DataNode implements DataNodeMBean {
     new DataNodeServerCommandLine().doMain(args);
   }
 
-  protected void serverCheckAndInit(String mode, boolean isStandAlone)
-      throws ConfigurationException, IOException {
+  protected void serverCheckAndInit(String mode) throws ConfigurationException, IOException {
     config.setClusterMode(true);
-    if (isStandAlone) {
-      config.setInternalAddress("127.0.0.1");
-      config.setRpcAddress("127.0.0.1");
-    }
     IoTDBStartCheck.getInstance().checkConfig();
     if (MODE_START.equals(mode)) {
       // Only checkDirectory when start DataNode

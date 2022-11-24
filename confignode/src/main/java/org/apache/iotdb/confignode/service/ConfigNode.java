@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -82,25 +81,9 @@ public class ConfigNode implements ConfigNodeMBean {
     new ConfigNodeCommandLine().doMain(args);
   }
 
-  public void active(boolean isStandAlone) {
+  public void active() {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
-    if (isStandAlone) {
-      System.out.println("StandAlone!");
-      CONF.setDataReplicationFactor(1);
-      CONF.setSchemaReplicationFactor(1);
-      CONF.setConfigNodeConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-      CONF.setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
-      CONF.setSchemaRegionConsensusProtocolClass(
-          "org.apache.iotdb.consensus.simple.SimpleConsensus");
-      CONF.setInternalAddress("127.0.0.1");
-      try {
-        CONF.setTargetConfigNode(
-            NodeUrlUtils.parseTEndPointUrl("127.0.0.1:" + CONF.getInternalPort()));
-      } catch (Exception ignore) {
-        // Typically there won't be any exception here
-      }
-    }
     try {
       processPid();
       // Set up internal services

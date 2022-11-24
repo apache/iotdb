@@ -25,6 +25,7 @@ source "$(dirname "$0")/iotdb-common.sh"
 foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
+IS_STANDALONE="false"
 
 echo "all parameters are $*"
 while true; do
@@ -70,6 +71,10 @@ while true; do
         -h)
             echo "Usage: $0 [-v] [-f] [-d] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
             exit 0
+        ;;
+        -a)
+            IS_STANDALONE="true"
+            shift
         ;;
         -v)
             SHOW_VERSION="yes"
@@ -147,6 +152,7 @@ launch_service()
 	class="$1"
   iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
+	iotdb_parms="$iotdb_parms -DIS_STANDALONE=${IS_STANDALONE}"
 	iotdb_parms="$iotdb_parms -DIOTDB_DATA_HOME=${IOTDB_DATA_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"

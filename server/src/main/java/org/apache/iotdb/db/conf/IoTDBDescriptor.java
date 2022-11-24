@@ -81,6 +81,9 @@ public class IoTDBDescriptor {
 
   private final IoTDBConfig conf = new IoTDBConfig();
 
+  private final boolean isStandAlone =
+      Boolean.parseBoolean(System.getProperty(IoTDBConstant.IS_STANDALONE, "false"));
+
   protected IoTDBDescriptor() {
     loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
@@ -204,8 +207,12 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
-    conf.setRpcAddress(
-        properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
+    if (!isStandAlone) {
+      conf.setRpcAddress(
+          properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
+    } else {
+      conf.setRpcAddress("127.0.0.1");
+    }
 
     // TODO: Use FQDN  to identify our nodes afterwards
     try {
@@ -1853,7 +1860,17 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+    String configNodeUrls;
+    if (!isStandAlone) {
+      configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+    } else {
+      configNodeUrls =
+          "127.0.0.1:"
+              + properties
+                  .getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST)
+                  .trim()
+                  .split(":")[1];
+    }
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
@@ -1863,8 +1880,12 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
+    if (!isStandAlone) {
+      conf.setInternalAddress(
+          properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
+    } else {
+      conf.setInternalAddress("127.0.0.1");
+    }
 
     conf.setInternalPort(
         Integer.parseInt(

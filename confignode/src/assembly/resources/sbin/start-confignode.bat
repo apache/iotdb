@@ -63,6 +63,7 @@ set CONFIGNODE_LOGS=%CONFIGNODE_HOME%\logs
 
 set CONF_PARAMS=-s
 set enable_printgc=false
+set IS_STANDALONE=false
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set is_conf_path=false
@@ -73,7 +74,7 @@ for %%i in (%*) do (
 		set is_conf_path=false
 		set CONFIGNODE_CONF=%%i
 	) ELSE IF "%%i" == "-a" (
-	    set CONF_PARAMS=%CONF_PARAMS% -a
+	    set IS_STANDALONE=true
 	) ELSE IF "%%i" == "printgc" (
 	    set enable_printgc=true
 	)
@@ -99,7 +100,8 @@ set JAVA_OPTS=-ea^
  -DCONFIGNODE_HOME="%CONFIGNODE_HOME%"^
  -DCONFIGNODE_CONF="%CONFIGNODE_CONF%"^
  -Dsun.jnu.encoding=UTF-8^
- -Dfile.encoding=UTF-8
+ -Dfile.encoding=UTF-8^
+ -DIS_STANDALONE="%IS_STANDALONE%"
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup

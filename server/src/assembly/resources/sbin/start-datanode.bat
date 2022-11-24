@@ -62,8 +62,9 @@ if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
 set CONF_PARAMS=-s
+set IS_STANDALONE=false
 IF "%1" == "-a" (
-  SET CONF_PARAMS=%CONF_PARAMS% -a
+  SET IS_STANDALONE=true
   SHIFT
 )
 
@@ -109,7 +110,8 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"
+ -DIOTDB_CONF="%IOTDB_CONF%"^
+ -DIS_STANDALONE="%IS_STANDALONE%"
 
 @REM ----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****

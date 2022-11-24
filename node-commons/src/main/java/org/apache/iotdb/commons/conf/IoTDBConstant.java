@@ -50,6 +50,7 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String IS_STANDALONE = "IS_STANDALONE";
 
   public static final String DN_RPC_ADDRESS = "dn_rpc_address";
   public static final String DN_RPC_PORT = "dn_rpc_port";

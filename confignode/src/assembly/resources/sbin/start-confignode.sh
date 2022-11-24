@@ -30,6 +30,7 @@ source "$(dirname "$0")/iotdb-common.sh"
 foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
+IS_STANDALONE="false"
 
 echo "all parameters are $*"
 while true; do
@@ -48,6 +49,11 @@ while true; do
         ;;
         -d)
             foreground=""
+            shift
+        ;;
+        -a)
+            # shellcheck disable=SC2034
+            IS_STANDALONE="true"
             shift
         ;;
         -g)
@@ -123,6 +129,7 @@ launch_service() {
     class="$1"
     iotdb_parms="-Dlogback.configurationFile=${CONFIGNODE_LOG_CONFIG}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
+  	iotdb_parms="$iotdb_parms -DIS_STANDALONE=${IS_STANDALONE}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_DATA_HOME=${CONFIGNODE_DATA_HOME}"
   	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${CONFIGNODE_HOME}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
@@ -134,6 +141,7 @@ launch_service() {
          iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"
       fi
 
+    echo "Confignode_conf: $CONFIGNODE_CONF"
     # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
       if [ "x$foreground" == "xyes" ]; then
           iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"

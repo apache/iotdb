@@ -46,6 +46,9 @@ public class ConfigNodeDescriptor {
 
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
+  private final boolean isStandAlone =
+      Boolean.parseBoolean(System.getProperty(ConfigNodeConstant.IS_STANDALONE, "false"));
+
   private ConfigNodeDescriptor() {
     loadProps();
   }
@@ -117,7 +120,7 @@ public class ConfigNodeDescriptor {
     url = getPropsUrl(ConfigNodeConstant.CONF_FILE_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("start reading ConfigNode conf file: {}", url);
+        LOGGER.info("Start reading ConfigNode conf file: {}", url);
         Properties properties = new Properties();
         properties.load(inputStream);
         commonProperties.putAll(properties);
@@ -142,10 +145,14 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
-    conf.setInternalAddress(
-        properties
-            .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
-            .trim());
+    if (!isStandAlone) {
+      conf.setInternalAddress(
+          properties
+              .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
+              .trim());
+    } else {
+      conf.setInternalAddress("127.0.0.1");
+    }
 
     conf.setInternalPort(
         Integer.parseInt(
@@ -161,8 +168,12 @@ public class ConfigNodeDescriptor {
                 .trim()));
 
     // TODO: Enable multiple target_config_node_list
-    String targetConfigNodes =
-        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
+    String targetConfigNodes;
+    if (!isStandAlone) {
+      targetConfigNodes = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
+    } else {
+      targetConfigNodes = "127.0.0.1:" + conf.getInternalPort();
+    }
     if (targetConfigNodes != null) {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
     }
@@ -179,18 +190,28 @@ public class ConfigNodeDescriptor {
             .getProperty("series_partition_executor_class", conf.getSeriesPartitionExecutorClass())
             .trim());
 
-    conf.setConfigNodeConsensusProtocolClass(
-        properties
-            .getProperty(
-                "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass())
-            .trim());
+    if (!isStandAlone) {
+      conf.setConfigNodeConsensusProtocolClass(
+          properties
+              .getProperty(
+                  "config_node_consensus_protocol_class",
+                  conf.getConfigNodeConsensusProtocolClass())
+              .trim());
+    } else {
+      conf.setConfigNodeConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
+    }
 
-    conf.setSchemaRegionConsensusProtocolClass(
-        properties
-            .getProperty(
-                "schema_region_consensus_protocol_class",
-                conf.getSchemaRegionConsensusProtocolClass())
-            .trim());
+    if (!isStandAlone) {
+      conf.setSchemaRegionConsensusProtocolClass(
+          properties
+              .getProperty(
+                  "schema_region_consensus_protocol_class",
+                  conf.getSchemaRegionConsensusProtocolClass())
+              .trim());
+    } else {
+      conf.setSchemaRegionConsensusProtocolClass(
+          "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    }
 
     conf.setSchemaRegionPerDataNode(
         Double.parseDouble(
@@ -200,11 +221,16 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getSchemaRegionPerDataNode()))
                 .trim()));
 
-    conf.setDataRegionConsensusProtocolClass(
-        properties
-            .getProperty(
-                "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass())
-            .trim());
+    if (!isStandAlone) {
+      conf.setDataRegionConsensusProtocolClass(
+          properties
+              .getProperty(
+                  "data_region_consensus_protocol_class",
+                  conf.getDataRegionConsensusProtocolClass())
+              .trim());
+    } else {
+      conf.setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
+    }
 
     conf.setDataRegionPerProcessor(
         Double.parseDouble(
@@ -281,19 +307,28 @@ public class ConfigNodeDescriptor {
                     "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
                 .trim()));
 
-    conf.setSchemaReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
-                .trim()));
+    if (!isStandAlone) {
+      conf.setSchemaReplicationFactor(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "schema_replication_factor",
+                      String.valueOf(conf.getSchemaReplicationFactor()))
+                  .trim()));
+    } else {
+      conf.setSchemaReplicationFactor(1);
+    }
 
-    conf.setDataReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
-                .trim()));
+    if (!isStandAlone) {
+      conf.setDataReplicationFactor(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
+                  .trim()));
+    } else {
+      conf.setDataReplicationFactor(1);
+    }
 
     conf.setHeartbeatIntervalInMs(
         Long.parseLong(
