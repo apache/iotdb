@@ -80,7 +80,6 @@ public class RegionWriteExecutor {
 
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
-
       WritePlanNodeExecutionContext context =
           new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
       WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
