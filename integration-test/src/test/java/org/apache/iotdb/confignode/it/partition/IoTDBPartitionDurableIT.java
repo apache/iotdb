@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
@@ -200,8 +201,24 @@ public class IoTDBPartitionDurableIT {
                       .setPort(dataNodeWrapper.getInternalPort())));
       setDataNodeStatusReq.setStatus(NodeStatus.Removing.getStatus());
       client.setDataNodeStatus(setDataNodeStatusReq);
-      // Sleep 1500ms to wait for heartbeat update
-      TimeUnit.MILLISECONDS.sleep(1500);
+      // Waiting for heartbeat update
+      while (true) {
+        AtomicBoolean containRemoving = new AtomicBoolean(false);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.Removing.getStatus().equals(dataNodeInfo.getStatus())) {
+                    containRemoving.set(true);
+                  }
+                });
+
+        if (containRemoving.get()) {
+          break;
+        }
+        TimeUnit.SECONDS.sleep(1);
+      }
 
       /* Test getOrCreateSchemaPartition, the result should be NO_ENOUGH_DATANODE */
       schemaPartitionReq =
@@ -319,8 +336,24 @@ public class IoTDBPartitionDurableIT {
                       .setPort(dataNodeWrapper.getInternalPort())));
       setDataNodeStatusReq.setStatus(NodeStatus.ReadOnly.getStatus());
       client.setDataNodeStatus(setDataNodeStatusReq);
-      // Sleep 1500ms to wait for heartbeat update
-      TimeUnit.MILLISECONDS.sleep(1500);
+      // Waiting for heartbeat update
+      while (true) {
+        AtomicBoolean containReadOnly = new AtomicBoolean(false);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.ReadOnly.getStatus().equals(dataNodeInfo.getStatus())) {
+                    containReadOnly.set(true);
+                  }
+                });
+
+        if (containReadOnly.get()) {
+          break;
+        }
+        TimeUnit.SECONDS.sleep(1);
+      }
 
       /* Test getOrCreateDataPartition, the result should be NO_ENOUGH_DATANODE */
       partitionSlotsMap =
@@ -467,18 +500,21 @@ public class IoTDBPartitionDurableIT {
       // Wait for shutdown check
       TShowClusterResp showClusterResp;
       while (true) {
-        boolean containUnknown = false;
-        showClusterResp = client.showCluster();
-        for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
-          if (NodeStatus.Unknown.getStatus()
-              .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
-            containUnknown = true;
-            break;
-          }
-        }
-        if (containUnknown) {
+        AtomicBoolean containUnknown = new AtomicBoolean(false);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
+                    containUnknown.set(true);
+                  }
+                });
+
+        if (containUnknown.get()) {
           break;
         }
+        TimeUnit.SECONDS.sleep(1);
       }
       runningCnt = 0;
       unknownCnt = 0;
@@ -578,10 +614,10 @@ public class IoTDBPartitionDurableIT {
             break;
           }
         }
+
         if (allRunning) {
           break;
         }
-
         TimeUnit.SECONDS.sleep(1);
       }
       Assert.assertTrue(allRunning);
