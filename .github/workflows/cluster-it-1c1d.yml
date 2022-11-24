@@ -74,7 +74,7 @@ jobs:
         run: |
           mvn clean verify \
           -DskipUTs \
-          -DintegrationTest.forkCount=1 \
+          -DintegrationTest.forkCount=2 \
           -pl integration-test \
           -am
       - name: Upload Artifact
