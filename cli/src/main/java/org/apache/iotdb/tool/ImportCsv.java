@@ -21,6 +21,7 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -834,8 +835,8 @@ public class ImportCsv extends AbstractCsvTool {
       SessionDataSet sessionDataSet = null;
       try {
         sessionDataSet = session.executeQueryStatement(sql);
-        int tsIndex = sessionDataSet.getColumnNames().indexOf("Timeseries");
-        int dtIndex = sessionDataSet.getColumnNames().indexOf("DataType");
+        int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
+        int dtIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
         while (sessionDataSet.hasNext()) {
           hasResult = true;
           RowRecord record = sessionDataSet.next();
