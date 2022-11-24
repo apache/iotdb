@@ -1860,7 +1860,7 @@ var config = {
 							['Write-Data/Session','原生接口写入'],
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
-							['Write-Data/Load-External-Tsfile','加载 TsFile'],
+							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
@@ -1948,6 +1948,7 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
+							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
