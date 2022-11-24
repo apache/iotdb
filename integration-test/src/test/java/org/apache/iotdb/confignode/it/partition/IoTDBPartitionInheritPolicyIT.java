@@ -53,10 +53,9 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBPartitionInheritPolicyTest {
+public class IoTDBPartitionInheritPolicyIT {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBPartitionInheritPolicyTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionInheritPolicyIT.class);
 
   private static boolean originalEnableDataPartitionInheritPolicy;
   private static final boolean testEnableDataPartitionInheritPolicy = true;

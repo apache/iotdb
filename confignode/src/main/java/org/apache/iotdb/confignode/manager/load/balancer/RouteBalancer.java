@@ -293,7 +293,7 @@ public class RouteBalancer {
         new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
     leaderDistribution.forEach(
         (regionGroupId, newLeaderId) -> {
-          if (newLeaderId != regionRouteMap.getLeader(regionGroupId)) {
+          if (newLeaderId != -1 && newLeaderId != regionRouteMap.getLeader(regionGroupId)) {
             String consensusProtocolClass;
             switch (regionGroupId.getType()) {
               case SchemaRegion:

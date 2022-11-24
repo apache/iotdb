@@ -339,11 +339,12 @@ public class ClusterSchemaManager {
                     // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
                     // (createdStorageGroupNum * schemaReplicationFactor)
                     (int)
-                        (SCHEMA_REGION_PER_DATA_NODE
-                            * dataNodeNum
-                            / (double)
-                                (storageGroupNum
-                                    * storageGroupSchema.getSchemaReplicationFactor())),
+                        Math.ceil(
+                            SCHEMA_REGION_PER_DATA_NODE
+                                * dataNodeNum
+                                / (double)
+                                    (storageGroupNum
+                                        * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
 
         // Adjust maxDataRegionGroupNum for each StorageGroup.
@@ -362,10 +363,12 @@ public class ClusterSchemaManager {
                     // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
                     // (createdStorageGroupNum * dataReplicationFactor)
                     (int)
-                        (DATA_REGION_PER_PROCESSOR
-                            * totalCpuCoreNum
-                            / (double)
-                                (storageGroupNum * storageGroupSchema.getDataReplicationFactor())),
+                        Math.ceil(
+                            DATA_REGION_PER_PROCESSOR
+                                * totalCpuCoreNum
+                                / (double)
+                                    (storageGroupNum
+                                        * storageGroupSchema.getDataReplicationFactor())),
                     allocatedDataRegionGroupCount));
 
         adjustMaxRegionGroupNumPlan.putEntry(
