@@ -204,8 +204,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       return;
     }
 
-    metricService.remove(MetricType.GAUGE, "jvm.gc.max.data.size.bytes");
-    metricService.remove(MetricType.GAUGE, "jvm.gc.live.data.size.bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.gc.max.data.size.bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.gc.live.data.size.bytes");
     metricService.remove(MetricType.COUNTER, "jvm.gc.memory.allocated.bytes");
 
     if (oldGenPoolName != null) {

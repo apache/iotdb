@@ -17,17 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.reporter;
+package org.apache.iotdb.metrics.reporter.iotdb;
 
 import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class InternalReporter extends IoTDBReporter {
-  protected final Map<String, AutoGauge> autoGauges = new ConcurrentHashMap<>();
+public abstract class InternalIoTDBReporter extends IoTDBReporter {
+  protected final Map<MetricInfo, IMetric> autoGauges = new ConcurrentHashMap<>();
 
   /**
    * Add autoGauge into internal reporter
@@ -37,8 +39,8 @@ public abstract class InternalReporter extends IoTDBReporter {
    * @param tags the tags of autoGauge
    */
   public void addAutoGauge(AutoGauge autoGauge, String name, String... tags) {
-    String prefix = IoTDBMetricsUtils.generatePath(name, tags);
-    autoGauges.put(prefix, autoGauge);
+    MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
+    autoGauges.put(metricInfo, autoGauge);
   }
 
   /**
@@ -46,12 +48,12 @@ public abstract class InternalReporter extends IoTDBReporter {
    *
    * @param gauges the map of autoGauge
    */
-  public void addAutoGauge(Map<String, AutoGauge> gauges) {
+  public void addAutoGauge(Map<MetricInfo, IMetric> gauges) {
     autoGauges.putAll(gauges);
   }
 
   /** Get all autoGauges */
-  public Map<String, AutoGauge> getAllAutoGauge() {
+  public Map<MetricInfo, IMetric> getAllAutoGauge() {
     return autoGauges;
   }
 

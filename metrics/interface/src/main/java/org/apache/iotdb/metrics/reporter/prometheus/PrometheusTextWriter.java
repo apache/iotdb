@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.reporter.prometheus;
+
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.io.FilterWriter;
 import java.io.IOException;
@@ -38,15 +40,15 @@ class PrometheusTextWriter extends FilterWriter {
     write('\n');
   }
 
-  public void writeType(String name, DropwizardMetricType type) throws IOException {
+  public void writeType(String name, MetricType type) throws IOException {
     write("# TYPE ");
     write(name);
     write(' ');
-    write(type.getText());
+    write(type.toString().toLowerCase());
     write('\n');
   }
 
-  public void writeSample(String name, Map<String, String> labels, double value)
+  public void writeSample(String name, Map<String, String> labels, Object value)
       throws IOException {
     write(name);
     if (labels.size() > 0) {
@@ -60,20 +62,7 @@ class PrometheusTextWriter extends FilterWriter {
       write('}');
     }
     write(' ');
-    write(doubleToGoString(value));
+    write(value.toString());
     write('\n');
-  }
-
-  private static String doubleToGoString(double d) {
-    if (d == Double.POSITIVE_INFINITY) {
-      return "+Inf";
-    }
-    if (d == Double.NEGATIVE_INFINITY) {
-      return "-Inf";
-    }
-    if (Double.isNaN(d)) {
-      return "NaN";
-    }
-    return Double.toString(d);
   }
 }

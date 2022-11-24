@@ -49,7 +49,7 @@ public class ChunkCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
   }
 
   @Override

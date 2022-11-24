@@ -22,14 +22,14 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.impl.DoNothingMetric;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.CompositeReporter;
-import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.SessionIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.SessionIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -37,7 +37,7 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -47,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -65,7 +64,7 @@ public abstract class AbstractMetricService {
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** The internal reporter of metric service */
-  protected InternalReporter internalReporter = new MemoryInternalReporter();
+  protected InternalIoTDBReporter internalReporter = new MemoryInternalIoTDBReporter();
 
   /** The list of metric sets */
   protected List<IMetricSet> metricSets = new ArrayList<>();
@@ -128,7 +127,7 @@ public abstract class AbstractMetricService {
     if (size == 0 || metricManager == null) {
       metricManager = new DoNothingMetricManager();
     } else if (size > 1) {
-      logger.warn(
+      logger.info(
           "Detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
   }
@@ -137,21 +136,38 @@ public abstract class AbstractMetricService {
   protected void loadReporter() {
     logger.info("Load metric reporters, type: {}", metricConfig.getMetricReporterList());
     compositeReporter.clearReporter();
-    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
-    for (Reporter reporter : reporters) {
-      if (metricConfig.getMetricReporterList() != null
-          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
-          && reporter
-              .getClass()
-              .getName()
-              .toLowerCase()
-              .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
-        reporter.setMetricManager(metricManager);
-        compositeReporter.addReporter(reporter);
-      }
+    if (metricConfig.getMetricReporterList() == null) {
+      return;
     }
-    if (metricConfig.getMetricReporterList().contains(ReporterType.IOTDB)) {
-      Reporter reporter = new SessionIoTDBReporter(metricManager);
+    for (ReporterType reporterType : metricConfig.getMetricReporterList()) {
+      Reporter reporter = null;
+      switch (reporterType) {
+        case JMX:
+          ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
+          for (JmxReporter jmxReporter : reporters) {
+            if (jmxReporter
+                .getClass()
+                .getName()
+                .toLowerCase()
+                .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
+              jmxReporter.setMetricManager(metricManager);
+              reporter = jmxReporter;
+            }
+          }
+          break;
+        case PROMETHEUS:
+          reporter = new PrometheusReporter(metricManager);
+          break;
+        case IOTDB:
+          reporter = new SessionIoTDBReporter(metricManager);
+          break;
+        default:
+          continue;
+      }
+      if (reporter == null) {
+        logger.error("Failed to load reporter which type is {}", reporterType);
+        continue;
+      }
       compositeReporter.addReporter(reporter);
     }
   }
@@ -161,7 +177,7 @@ public abstract class AbstractMetricService {
    *
    * @param internalReporter the new internal reporter
    */
-  public abstract void reloadInternalReporter(InternalReporter internalReporter);
+  public abstract void reloadInternalReporter(InternalIoTDBReporter internalReporter);
 
   /**
    * Reload metric service
@@ -250,7 +266,7 @@ public abstract class AbstractMetricService {
   public Counter getOrCreateCounterWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Counter counter = metricManager.getOrCreateCounter(metric, metricLevel, tags);
-    report(counter, metric, tags);
+    internalReporter.writeMetricToIoTDB(counter, metric, tags);
     return counter;
   }
 
@@ -258,7 +274,7 @@ public abstract class AbstractMetricService {
   public <T> AutoGauge createAutoGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     AutoGauge gauge = metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
-    report(gauge, metric, tags);
+    internalReporter.addAutoGauge(gauge, metric, tags);
     return gauge;
   }
 
@@ -266,7 +282,7 @@ public abstract class AbstractMetricService {
   public Gauge getOrCreateGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Gauge gauge = metricManager.getOrCreateGauge(metric, metricLevel, tags);
-    report(gauge, metric, tags);
+    internalReporter.writeMetricToIoTDB(gauge, metric, tags);
     return gauge;
   }
 
@@ -274,7 +290,7 @@ public abstract class AbstractMetricService {
   public Rate getOrCreateRateWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Rate rate = metricManager.getOrCreateRate(metric, metricLevel, tags);
-    report(rate, metric, tags);
+    internalReporter.writeMetricToIoTDB(rate, metric, tags);
     return rate;
   }
 
@@ -282,7 +298,7 @@ public abstract class AbstractMetricService {
   public Histogram getOrCreateHistogramWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Histogram histogram = metricManager.getOrCreateHistogram(metric, metricLevel, tags);
-    report(histogram, metric, tags);
+    internalReporter.writeMetricToIoTDB(histogram, metric, tags);
     return histogram;
   }
 
@@ -290,86 +306,55 @@ public abstract class AbstractMetricService {
   public Timer getOrCreateTimerWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Timer timer = metricManager.getOrCreateTimer(metric, metricLevel, tags);
-    report(timer, metric, tags);
+    internalReporter.writeMetricToIoTDB(timer, metric, tags);
     return timer;
   }
 
   /** Count with internal report */
   public void countWithInternalReport(
       long delta, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.count(delta, metric, metricLevel, tags), metric, tags);
+    internalReporter.writeMetricToIoTDB(
+        metricManager.count(delta, metric, metricLevel, tags), metric, tags);
   }
 
   /** Gauge value with internal report */
   public void gaugeWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
+    internalReporter.writeMetricToIoTDB(
+        metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Rate with internal report */
   public void rateWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.rate(value, metric, metricLevel, tags), metric, tags);
+    internalReporter.writeMetricToIoTDB(
+        metricManager.rate(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Histogram with internal report */
   public void histogramWithInternalReport(
       long value, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
+    internalReporter.writeMetricToIoTDB(
+        metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Timer with internal report */
   public void timerWithInternalReport(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    report(metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
-  }
-
-  /**
-   * Reporter metric internally
-   *
-   * @param metric the metric that need to report
-   * @param name the name of metric
-   * @param tags the tags of metric
-   */
-  protected void report(IMetric metric, String name, String... tags) {
-    if (metric instanceof DoNothingMetric) {
-      return;
-    }
-    Map<Pair<String, String>, Object> values = new HashMap<>();
-    IoTDBMetricsUtils.exportMetricToIoTDBFormat(metric, values, name, tags);
-    internalReporter.writeToIoTDB(values, System.currentTimeMillis());
+    internalReporter.writeMetricToIoTDB(
+        metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
   }
 
   public List<Pair<String, String[]>> getAllMetricKeys() {
     return metricManager.getAllMetricKeys();
   }
 
-  public Map<Pair<String, String[]>, IMetric> getAllMetrics() {
+  public Map<MetricInfo, IMetric> getAllMetrics() {
     return metricManager.getAllMetrics();
   }
 
-  public Map<Pair<String, String[]>, Counter> getAllCounters() {
-    return metricManager.getAllCounters();
-  }
-
-  public Map<Pair<String, String[]>, Gauge> getAllGauges() {
-    return metricManager.getAllGauges();
-  }
-
-  public Map<Pair<String, String[]>, AutoGauge> getAllAutoGauges() {
-    return metricManager.getAllAutoGauges();
-  }
-
-  public Map<Pair<String, String[]>, Rate> getAllRates() {
-    return metricManager.getAllRates();
-  }
-
-  public Map<Pair<String, String[]>, Histogram> getAllHistograms() {
-    return metricManager.getAllHistograms();
-  }
-
-  public Map<Pair<String, String[]>, Timer> getAllTimers() {
-    return metricManager.getAllTimers();
+  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
+    return metricManager.getMetricsByType(metricType);
   }
 
   public void remove(MetricType type, String metric, String... tags) {

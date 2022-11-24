@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.io.OutputStream;
+import java.util.Map;
 
 /** Used by timer and histogram. */
-public interface HistogramSnapshot {
+public interface HistogramSnapshot extends IMetric {
 
   /** Get value by quantile */
   double getValue(double quantile);
@@ -45,6 +45,15 @@ public interface HistogramSnapshot {
   /** Get max value in values */
   long getMax();
 
-  /** Writes the values of the snapshot to the given stream */
-  void dump(OutputStream output);
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("min", getMin());
+    result.put("p50", getMedian());
+    result.put("p75", getValue(0.75));
+    result.put("p90", getValue(0.90));
+    result.put("p95", getValue(0.95));
+    result.put("p99", getValue(0.99));
+    result.put("max", getMax());
+    result.put("mean", getMean());
+  }
 }

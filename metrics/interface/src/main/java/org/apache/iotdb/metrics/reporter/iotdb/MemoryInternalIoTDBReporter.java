@@ -17,28 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.reporter;
+package org.apache.iotdb.metrics.reporter.iotdb;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.ReporterType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
-public class MemoryInternalReporter extends InternalReporter {
+public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
   @Override
   public InternalReporterType getType() {
     return InternalReporterType.MEMORY;
   }
 
   @Override
-  public void writeToIoTDB(String devicePath, String sensor, Object value, long time) {
+  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
     // do nothing
   }
 
   @Override
-  public void writeToIoTDB(Map<Pair<String, String>, Object> values, long time) {
+  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
     // do nothing
   }
 
@@ -54,11 +52,6 @@ public class MemoryInternalReporter extends InternalReporter {
 
   @Override
   public ReporterType getReporterType() {
-    return null;
-  }
-
-  @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
-    // do nothing
+    return ReporterType.IOTDB;
   }
 }

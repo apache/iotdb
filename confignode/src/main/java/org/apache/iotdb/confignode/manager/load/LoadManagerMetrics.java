@@ -134,7 +134,7 @@ public class LoadManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.CONFIG_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,
@@ -142,7 +142,7 @@ public class LoadManagerMetrics implements IMetricSet {
         METRIC_STATUS_ONLINE);
 
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.DATA_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,
@@ -150,7 +150,7 @@ public class LoadManagerMetrics implements IMetricSet {
         METRIC_STATUS_ONLINE);
 
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.CONFIG_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,
@@ -158,7 +158,7 @@ public class LoadManagerMetrics implements IMetricSet {
         METRIC_STATUS_UNKNOWN);
 
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.DATA_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,
@@ -174,7 +174,7 @@ public class LoadManagerMetrics implements IMetricSet {
                   NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
                   Tag.NAME.toString(),
                   name);

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.reporter.prometheus;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import com.codahale.metrics.MetricRegistry;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
@@ -37,47 +38,60 @@ import reactor.netty.http.server.HttpServer;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
-public class DropwizardPrometheusReporter implements Reporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardPrometheusReporter.class);
+public class PrometheusReporter implements Reporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private AbstractMetricManager metricManager;
+  private DisposableServer httpServer;
 
-  private AbstractMetricManager dropwizardMetricManager = null;
-  private DisposableServer httpServer = null;
+  public PrometheusReporter(AbstractMetricManager metricManager) {
+    this.metricManager = metricManager;
+  }
 
   @Override
   public boolean start() {
     if (httpServer != null) {
       return false;
     }
-    int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusReporterPort();
     httpServer =
         HttpServer.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
             .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
-            .port(port)
+            .port(metricConfig.getPrometheusReporterPort())
             .route(
                 routes ->
                     routes.get(
                         "/metrics",
                         (request, response) -> response.sendString(Mono.just(scrape()))))
             .bindNow();
-
-    LOGGER.info("http server for metrics started, listen on {}", port);
+    LOGGER.info(
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusReporterPort());
     return true;
   }
 
   private String scrape() {
-    MetricRegistry metricRegistry =
-        ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry();
-    Writer writer = new StringWriter();
-    PrometheusTextWriter prometheusTextWriter = new PrometheusTextWriter(writer);
-    DropwizardMetricsExporter dropwizardMetricsExporter =
-        new DropwizardMetricsExporter(metricRegistry, prometheusTextWriter);
-    String result = "";
+    PrometheusTextWriter writer = new PrometheusTextWriter(new StringWriter());
+
+    String result;
     try {
-      dropwizardMetricsExporter.scrape();
+      for (Map.Entry<MetricInfo, IMetric> metricEntry : metricManager.getAllMetrics().entrySet()) {
+        MetricInfo metricInfo = metricEntry.getKey();
+        IMetric metric = metricEntry.getValue();
+
+        String name = metricInfo.getName();
+        writer.writeHelp(name, getHelpMessage(name, metric));
+        writer.writeType(name, metricInfo.getMetaInfo().getType());
+        Map<String, Object> values = new HashMap<>();
+        metric.constructValueMap(values);
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+          writer.writeSample(metricInfo.getName(), metricInfo.getTags(), entry.getValue());
+        }
+      }
       result = writer.toString();
     } catch (IOException e) {
       // This actually never happens since StringWriter::write() doesn't throw any IOException
@@ -90,6 +104,12 @@ public class DropwizardPrometheusReporter implements Reporter {
       }
     }
     return result;
+  }
+
+  private static String getHelpMessage(String metricName, IMetric metric) {
+    return String.format(
+        "Generated from metric import (metric=%s, type=%s)",
+        metricName, metric.getClass().getName());
   }
 
   @Override
@@ -109,10 +129,5 @@ public class DropwizardPrometheusReporter implements Reporter {
   @Override
   public ReporterType getReporterType() {
     return ReporterType.PROMETHEUS;
-  }
-
-  @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
-    this.dropwizardMetricManager = metricManager;
   }
 }

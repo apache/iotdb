@@ -65,14 +65,14 @@ public class NodeInfoMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.CONFIG_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,
         Tag.STATUS.toString(),
         METRIC_STATUS_REGISTER);
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.DATA_NODE.toString(),
         Tag.NAME.toString(),
         METRIC_TAG_TOTAL,

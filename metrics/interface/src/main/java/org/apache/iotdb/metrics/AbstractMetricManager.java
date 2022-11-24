@@ -103,7 +103,7 @@ public abstract class AbstractMetricManager {
     if (!isValid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingAutoGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
     AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
     nameToMetaInfo.put(name, metricInfo.getMetaInfo());
     metrics.put(metricInfo, gauge);
@@ -120,7 +120,7 @@ public abstract class AbstractMetricManager {
     if (!isValid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingAutoGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
     IMetric metric = metrics.get(metricInfo);
     if (metric == null) {
       return DoNothingMetricManager.doNothingAutoGauge;
@@ -374,102 +374,23 @@ public abstract class AbstractMetricManager {
    *
    * @return [name, [tags...]] -> metric
    */
-  public Map<Pair<String, String[]>, IMetric> getAllMetrics() {
-    Map<Pair<String, String[]>, IMetric> keys = new HashMap<>(metrics.size());
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      keys.put(entry.getKey().toStringArray(), entry.getValue());
-    }
-    return keys;
+  public Map<MetricInfo, IMetric> getAllMetrics() {
+    return metrics;
   }
 
   /**
-   * Get all counters
+   * Get metrics by type
    *
-   * @return [name, [tags...]] -> counter
+   * @return [name, [tags...]] -> metric
    */
-  public Map<Pair<String, String[]>, Counter> getAllCounters() {
-    Map<Pair<String, String[]>, Counter> counterMap = new HashMap<>();
+  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
+    Map<MetricInfo, IMetric> result = new HashMap<>();
     for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Counter) {
-        counterMap.put(entry.getKey().toStringArray(), (Counter) entry.getValue());
+      if (entry.getKey().getMetaInfo().getType() == metricType) {
+        result.put(entry.getKey(), entry.getValue());
       }
     }
-    return counterMap;
-  }
-
-  /**
-   * Get all gauges
-   *
-   * @return [name, [tags...]] -> gauge
-   */
-  public Map<Pair<String, String[]>, Gauge> getAllGauges() {
-    Map<Pair<String, String[]>, Gauge> gaugeMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Gauge) {
-        gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
-      }
-    }
-    return gaugeMap;
-  }
-
-  /**
-   * Get all autoGauges
-   *
-   * @return [name, [tags...]] -> autoGauge
-   */
-  public Map<Pair<String, String[]>, AutoGauge> getAllAutoGauges() {
-    Map<Pair<String, String[]>, AutoGauge> gaugeMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof AutoGauge) {
-        gaugeMap.put(entry.getKey().toStringArray(), (AutoGauge) entry.getValue());
-      }
-    }
-    return gaugeMap;
-  }
-
-  /**
-   * Get all rates
-   *
-   * @return [name, [tags...]] -> rate
-   */
-  public Map<Pair<String, String[]>, Rate> getAllRates() {
-    Map<Pair<String, String[]>, Rate> rateMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Rate) {
-        rateMap.put(entry.getKey().toStringArray(), (Rate) entry.getValue());
-      }
-    }
-    return rateMap;
-  }
-
-  /**
-   * Get all histograms
-   *
-   * @return [name, [tags...]] -> histogram
-   */
-  public Map<Pair<String, String[]>, Histogram> getAllHistograms() {
-    Map<Pair<String, String[]>, Histogram> histogramMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Histogram) {
-        histogramMap.put(entry.getKey().toStringArray(), (Histogram) entry.getValue());
-      }
-    }
-    return histogramMap;
-  }
-
-  /**
-   * Get all timers
-   *
-   * @return [name, [tags...]] -> timer
-   */
-  public Map<Pair<String, String[]>, Timer> getAllTimers() {
-    Map<Pair<String, String[]>, Timer> timerMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Timer) {
-        timerMap.put(entry.getKey().toStringArray(), (Timer) entry.getValue());
-      }
-    }
-    return timerMap;
+    return result;
   }
 
   // endregion
