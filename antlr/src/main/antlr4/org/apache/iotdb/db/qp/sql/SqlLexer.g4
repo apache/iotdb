@@ -121,6 +121,10 @@ CLUSTER
     : C L U S T E R
     ;
 
+COMPACT
+    : C O M P A C T
+    ;
+
 CONCAT
     : C O N C A T
     ;
@@ -348,10 +352,6 @@ LOCAL
 
 LOCK
     : L O C K
-    ;
-
-COMPACT
-    : C O M P A C T
     ;
 
 METADATA

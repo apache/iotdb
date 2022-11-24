@@ -665,7 +665,7 @@ usernameWithRoot
  * 5. Utility Statements
  */
 
-// Merge
+// COMPACT
 compact
     : COMPACT (ON (LOCAL | CLUSTER))?
     ;
