@@ -30,6 +30,8 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -436,10 +438,9 @@ public class ImportCsv extends AbstractCsvTool {
     parseHeaders(headerNames, deviceAndMeasurementNames, headerTypeMap, headerNameMap);
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
-    String devicesStr = StringUtils.join(devices, ",");
     if (headerTypeMap.isEmpty()) {
       try {
-        queryType(devicesStr, headerTypeMap, "Time");
+        queryType(devices, headerTypeMap, "Time");
       } catch (IoTDBConnectionException e) {
         e.printStackTrace();
       }
@@ -601,7 +602,15 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
-                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                      hasResult =
+                          queryType(
+                              new HashSet<String>() {
+                                {
+                                  add(deviceName.get());
+                                }
+                              },
+                              headerTypeMap,
+                              "Device");
                     }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
@@ -817,32 +826,37 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws StatementExecutionException
    */
   private static boolean queryType(
-      String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
+      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
       throws IoTDBConnectionException {
-    String sql = "select * from " + deviceNames + " limit 1";
-    SessionDataSet sessionDataSet = null;
-    try {
-      sessionDataSet = session.executeQueryStatement(sql);
-    } catch (StatementExecutionException e) {
-      System.out.println("Meet error when query the type of timeseries because " + e.getMessage());
-      return false;
-    }
-    List<String> columnNames = sessionDataSet.getColumnNames();
-    List<String> columnTypes = sessionDataSet.getColumnTypes();
-    if (columnNames.size() == 1) {
-      return false;
-    } else {
-      for (int i = 1; i < columnNames.size(); i++) {
-        if (Objects.equals(alignedType, "Time")) {
-          headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
-        } else if (Objects.equals(alignedType, "Device")) {
-          String[] split = columnNames.get(i).split("\\.");
-          String measurement = split[split.length - 1];
-          headerTypeMap.put(measurement, getType(columnTypes.get(i)));
+    boolean hasResult = false;
+    for (String deviceName : deviceNames) {
+      String sql = "show timeseries " + deviceName + ".*";
+      SessionDataSet sessionDataSet = null;
+      try {
+        sessionDataSet = session.executeQueryStatement(sql);
+        int tsIndex = sessionDataSet.getColumnNames().indexOf("Timeseries");
+        int dtIndex = sessionDataSet.getColumnNames().indexOf("DataType");
+        while (sessionDataSet.hasNext()) {
+          hasResult = true;
+          RowRecord record = sessionDataSet.next();
+          List<Field> fields = record.getFields();
+          String timeseries = fields.get(tsIndex).getStringValue();
+          String dataType = fields.get(dtIndex).getStringValue();
+          if (Objects.equals(alignedType, "Time")) {
+            headerTypeMap.put(timeseries, getType(dataType));
+          } else if (Objects.equals(alignedType, "Device")) {
+            String[] split = PathUtils.splitPathToDetachedNodes(timeseries);
+            String measurement = split[split.length - 1];
+            headerTypeMap.put(measurement, getType(dataType));
+          }
         }
+      } catch (StatementExecutionException | IllegalPathException e) {
+        System.out.println(
+            "Meet error when query the type of timeseries because " + e.getMessage());
+        return false;
       }
-      return true;
     }
+    return hasResult;
   }
 
   /**
