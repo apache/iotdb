@@ -101,7 +101,7 @@ public class IoTDBFlushQueryMergeIT {
           cnt++;
         }
       }
-      statement.execute("merge");
+      statement.execute("compact");
     } catch (Exception e) {
       logger.error("selectAllSQLTest failed", e);
       fail(e.getMessage());
