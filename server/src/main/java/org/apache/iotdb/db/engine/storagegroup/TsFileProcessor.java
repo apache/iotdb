@@ -827,10 +827,7 @@ public class TsFileProcessor {
 
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      IMemTable tmpMemTable =
-          workMemTable == null || workMemTable.getTotalPointsNum() == 0
-              ? new NotifyFlushMemTable()
-              : workMemTable;
+      IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
         for (ISyncManager syncManager :
@@ -840,12 +837,8 @@ public class TsFileProcessor {
         }
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
-        if (totalMemTableSize == 0 && tmpMemTable.getTotalPointsNum() == 0) {
-          endEmptyFile();
-        } else {
-          addAMemtableIntoFlushingList(tmpMemTable);
-          logger.info("Memtable {} has been added to flushing list", tmpMemTable);
-        }
+        addAMemtableIntoFlushingList(tmpMemTable);
+        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
       } catch (Exception e) {
         logger.error(
@@ -956,20 +949,12 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(lastTimeForEachDevice);
     }
 
-    updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, System.currentTimeMillis());
-
-    if (!tobeFlushed.isSignalMemTable() && tobeFlushed.getTotalPointsNum() == 0) {
-      logger.warn(
-          "This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
-          storageGroupName,
-          tsFileResource.getTsFile().getName(),
-          tobeFlushed.getMemTableMap());
-      return;
-    }
-
     for (FlushListener flushListener : flushListeners) {
       flushListener.onMemTableFlushStarted(tobeFlushed);
     }
+
+    lastWorkMemtableFlushTime = System.currentTimeMillis();
+    updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, lastWorkMemtableFlushTime);
 
     if (enableMemControl) {
       SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
@@ -988,7 +973,6 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
-    lastWorkMemtableFlushTime = System.currentTimeMillis();
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -1076,65 +1060,72 @@ public class TsFileProcessor {
     IMemTable memTableToFlush = flushingMemTables.getFirst();
 
     // signal memtable only may appear when calling asyncClose()
-    if (!memTableToFlush.isSignalMemTable()) {
-      try {
-        writer.mark();
-        MemTableFlushTask flushTask =
-            new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
-        flushTask.syncFlushMemTable();
-      } catch (Throwable e) {
-        if (writer == null) {
-          logger.info(
-              "{}: {} is closed during flush, abandon flush task",
-              storageGroupName,
-              tsFileResource.getTsFile().getAbsolutePath());
-          synchronized (flushingMemTables) {
-            flushingMemTables.notifyAll();
-          }
-        } else {
-          logger.error(
-              "{}: {} meet error when flushing a memtable, change system mode to error",
-              storageGroupName,
-              tsFileResource.getTsFile().getAbsolutePath(),
-              e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
-          try {
-            logger.error(
-                "{}: {} IOTask meets error, truncate the corrupted data",
+    if (!memTableToFlush.isSignalMemTable() && !memTableToFlush.isEmpty()) {
+      if (memTableToFlush.isEmpty()) {
+        logger.warn(
+            "This normal memtable is empty, skip flush. {}: {}",
+            storageGroupName,
+            tsFileResource.getTsFile().getName());
+      } else {
+        try {
+          writer.mark();
+          MemTableFlushTask flushTask =
+              new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+          flushTask.syncFlushMemTable();
+        } catch (Throwable e) {
+          if (writer == null) {
+            logger.info(
+                "{}: {} is closed during flush, abandon flush task",
                 storageGroupName,
-                tsFileResource.getTsFile().getAbsolutePath(),
-                e);
-            writer.reset();
-          } catch (IOException e1) {
-            logger.error(
-                "{}: {} Truncate corrupted data meets error",
-                storageGroupName,
-                tsFileResource.getTsFile().getAbsolutePath(),
-                e1);
-          }
-          // release resource
-          try {
-            syncReleaseFlushedMemTable(memTableToFlush);
-            // make sure no query will search this file
-            tsFileResource.setTimeIndex(config.getTimeIndexLevel().getTimeIndex());
-            // this callback method will register this empty tsfile into TsFileManager
-            for (CloseFileListener closeFileListener : closeFileListeners) {
-              closeFileListener.onClosed(this);
-            }
-            // close writer
-            writer.close();
-            writer = null;
+                tsFileResource.getTsFile().getAbsolutePath());
             synchronized (flushingMemTables) {
               flushingMemTables.notifyAll();
             }
-          } catch (Exception e1) {
+          } else {
             logger.error(
-                "{}: {} Release resource meets error",
+                "{}: {} meet error when flushing a memtable, change system mode to error",
                 storageGroupName,
                 tsFileResource.getTsFile().getAbsolutePath(),
-                e1);
+                e);
+            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+            try {
+              logger.error(
+                  "{}: {} IOTask meets error, truncate the corrupted data",
+                  storageGroupName,
+                  tsFileResource.getTsFile().getAbsolutePath(),
+                  e);
+              writer.reset();
+            } catch (IOException e1) {
+              logger.error(
+                  "{}: {} Truncate corrupted data meets error",
+                  storageGroupName,
+                  tsFileResource.getTsFile().getAbsolutePath(),
+                  e1);
+            }
+            // release resource
+            try {
+              syncReleaseFlushedMemTable(memTableToFlush);
+              // make sure no query will search this file
+              tsFileResource.setTimeIndex(config.getTimeIndexLevel().getTimeIndex());
+              // this callback method will register this empty tsfile into TsFileManager
+              for (CloseFileListener closeFileListener : closeFileListeners) {
+                closeFileListener.onClosed(this);
+              }
+              // close writer
+              writer.close();
+              writer = null;
+              synchronized (flushingMemTables) {
+                flushingMemTables.notifyAll();
+              }
+            } catch (Exception e1) {
+              logger.error(
+                  "{}: {} Release resource meets error",
+                  storageGroupName,
+                  tsFileResource.getTsFile().getAbsolutePath(),
+                  e1);
+            }
+            return;
           }
-          return;
         }
       }
     }
@@ -1180,20 +1171,23 @@ public class TsFileProcessor {
     for (FlushListener flushListener : flushListeners) {
       flushListener.onMemTableFlushed(memTableToFlush);
     }
-
     // retry to avoid unnecessary read-only mode
     int retryCnt = 0;
     while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
-        writer.mark();
-        updateCompressionRatio();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "{}: {} flushingMemtables is empty and will close the file",
-              storageGroupName,
-              tsFileResource.getTsFile().getAbsolutePath());
+        if (isEmpty()) {
+          endEmptyFile();
+        } else {
+          writer.mark();
+          updateCompressionRatio();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "{}: {} flushingMemtables is empty and will close the file",
+                storageGroupName,
+                tsFileResource.getTsFile().getAbsolutePath());
+          }
+          endFile();
         }
-        endFile();
         if (logger.isDebugEnabled()) {
           logger.debug("{} flushingMemtables is clear", storageGroupName);
         }

@@ -407,7 +407,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public long memSize() {
-    return memSize;
+    return totalPointsNum != 0 ? memSize : 0;
   }
 
   @Override
