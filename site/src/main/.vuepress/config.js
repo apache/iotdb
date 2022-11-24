@@ -1026,7 +1026,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
-							['API/Status-Codes','Status Codes'],
+							['Reference/Status-Codes','Status Codes'],
 							['Reference/Keywords','Keywords'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1992,7 +1992,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
-							['API/Status-Codes','状态码'],
+							['Reference/Status-Codes','状态码'],
 							['Reference/Keywords','关键字'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]
