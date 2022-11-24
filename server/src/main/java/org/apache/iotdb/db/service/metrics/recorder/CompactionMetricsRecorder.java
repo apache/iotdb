@@ -44,13 +44,9 @@ public class CompactionMetricsRecorder {
             Metric.DATA_WRITTEN.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            compactionType.toString(),
+            "compaction_" + compactionType.toString(),
             Tag.TYPE.toString(),
-            aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.TYPE.toString(),
-            processChunkType.toString());
+            (aligned ? "ALIGNED" : "NOT_ALIGNED") + "_" + processChunkType.toString());
     MetricService.getInstance()
         .count(
             byteNum / 1024L,

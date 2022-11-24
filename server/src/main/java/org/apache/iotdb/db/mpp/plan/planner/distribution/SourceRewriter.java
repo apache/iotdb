@@ -431,7 +431,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               rootAggDescriptorList.add(
                   new AggregationDescriptor(
                       descriptor.getAggregationFuncName(),
-                      AggregationStep.FINAL,
+                      context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
                       descriptor.getInputExpressions()));
             });
 

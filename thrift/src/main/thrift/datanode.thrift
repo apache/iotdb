@@ -321,7 +321,7 @@ struct TCountPathsUsingTemplateReq{
 
 struct TCountPathsUsingTemplateResp{
   1: required common.TSStatus status
-  2: optional i32 count
+  2: optional i64 count
 }
 
 struct TCreatePipeOnDataNodeReq{
@@ -415,9 +415,9 @@ service IDataNodeRPCService {
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
-   * Config node will change a region leader to other data node int same consensus group
-   * if the region is not leader on the node, will do nothing
-   * @param change a region leader to which node
+   * Change the leader of specified RegionGroup to another DataNode
+   *
+   * @param The specified RegionGroup and the new leader DataNode
    */
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 

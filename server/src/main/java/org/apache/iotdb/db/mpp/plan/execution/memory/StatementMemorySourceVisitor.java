@@ -187,7 +187,7 @@ public class StatementMemorySourceVisitor
             .map(TSchemaNode::getNodeName)
             .collect(Collectors.toSet());
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
+    tsBlockBuilder.getColumnBuilder(0).writeLong(matchedChildNodes.size());
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
@@ -202,7 +202,7 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(0);
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
@@ -217,7 +217,7 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(0);
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

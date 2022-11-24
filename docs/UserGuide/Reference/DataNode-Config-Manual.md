@@ -21,15 +21,17 @@
 
 # DataNode/Standalone Configuration Parameters
 
-We use the same configuration files for IoTDB DataNode and Standalone version, all under the `datanode/conf`.
+We use the same configuration files for IoTDB DataNode and Standalone version, all under the `conf`.
 
 * `datanode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of DataNode and Standalone.
 
 * `iotdb-datanode.properties`：IoTDB DataNode/Standalone system configurations.
 
+* `iotdb-common.properties`：IoTDB common configurations.
+
 ## Hot Modification Configuration
 
-For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` during the system operation and applying them to the system immediately. 
+For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately. 
 In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
 
 Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
@@ -102,22 +104,22 @@ The user and passwords are in ${IOTDB\_CONF}/conf/jmx.password.
 
 The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
-## DataNode/Standalone Configuration File (iotdb-datanode.properties)
+## DataNode/Standalone Configuration File (iotdb-datanode.properties and iotdb-common.properties)
 
 ### Client RPC Service
 
-* rpc\_address
+* dn\_rpc\_address
 
-|Name| rpc\_address |
-|:---:|:---|
-|Description| The client rpc service listens on the address.|
-|Type|String|
-|Default| 0.0.0.0 |
-|Effective|After restarting system|
+|Name| dn\_rpc\_address                               |
+|:---:|:-----------------------------------------------|
+|Description| The client rpc service listens on the address. |
+|Type| String                                         |
+|Default| 127.0.0.1                                      |
+|Effective| After restarting system                        |
 
-* rpc\_port
+* dn\_rpc\_port
 
-|Name| rpc\_port |
+|Name| dn\_rpc\_port |
 |:---:|:---|
 |Description| The client rpc service listens on the port.|
 |Type|Short Int : [0,65535]|
@@ -141,6 +143,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
+
+* rpc\_selector\_thread\_count
+
+|Name| rpc\_selector\_thread\_count       |
+|:---:|:-----------------------------------|
+|Description| The number of rpc selector thread. |
+|Type| int                                |
+|Default| false                              |
+|Effective| After restarting system            |
+
+* rpc\_min\_concurrent\_client\_num
+
+|Name| rpc\_min\_concurrent\_client\_num  |
+|:---:|:-----------------------------------|
+|Description| Minimum concurrent rpc connections |
+|Type| Short Int : [0,65535]              |
+|Description| 1                                  |
+|Effective| After restarting system            |
 
 * rpc\_max\_concurrent\_client\_num
 
@@ -183,20 +203,20 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 * mpp\_data\_exchange\_core\_pool\_size
 
-|Name| mpp\_data\_exchange\_core\_pool\_size |
-|:---:|:---|
-|Description| Core size of ThreadPool of MPP data exchange|
-|Type| int |
-|Default| 1 |
-|Effective|After restarting system|
+|Name| mpp\_data\_exchange\_core\_pool\_size        |
+|:---:|:---------------------------------------------|
+|Description| Core size of ThreadPool of MPP data exchange |
+|Type| int                                          |
+|Default| 10                                           |
+|Effective| After restarting system                      |
 
 * mpp\_data\_exchange\_max\_pool\_size
 
 |Name| mpp\_data\_exchange\_max\_pool\_size |
-|:---:|:---|
+|:---:|:--|
 |Description| Max size of ThreadPool of MPP data exchange |
 |Type| int |
-|Default| 5 |
+|Default| 10 |
 |Effective|After restarting system|
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
@@ -237,50 +257,50 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ### DataNode Internal Service
 
-* internal\_address
+* dn\_internal\_address
 
-|Name| internal\_address |
+|Name| dn\_internal\_address |
 |:---:|:---|
 |Description| DataNode internal service host/IP |
 |Type| string |
 |Default| 127.0.0.1 |
 |Effective|After restarting system|
 
-* internal\_port
+* dn\_internal\_port
 
-|Name| internal\_address |
-|:---:|:---|
+|Name| dn\_internal\_port             |
+|:---:|:-------------------------------|
 |Description| DataNode internal service port |
-|Type| int |
-|Default| 9003 |
-|Effective|After restarting system|
+|Type| int                            |
+|Default| 9003                           |
+|Effective| After restarting system        |
 
-* data\_region\_consensus\_port
+* dn\_data\_region\_consensus\_port
 
-|Name| data\_region\_consensus\_port |
+|Name| dn\_data\_region\_consensus\_port |
 |:---:|:---|
 |Description| DataNode Data replica communication port for consensus |
 |Type| int |
 |Default| 40010 |
 |Effective|After restarting system|
 
-* schema\_region\_consensus\_port
+* dn\_schema\_region\_consensus\_port
 
-|Name| schema\_region\_consensus\_port |
+|Name| dn\_schema\_region\_consensus\_port |
 |:---:|:---|
 |Description| DataNode Schema replica communication port for consensus |
 |Type| int |
 |Default| 50010 |
 |Effective|After restarting system|
 
-* target\_config\_nodes
+* dn\_target\_config\_node\_list
 
-|Name| target\_config\_nodes |
-|:---:|:---|
+|Name| dn\_target\_config\_node\_list                  |
+|:---:|:------------------------------------------------|
 |Description| ConfigNode Address for DataNode to join cluster |
-|Type| String |
-|Default| 127.0.0.1:22277 |
-|Effective|After restarting system|
+|Type| String                                          |
+|Default| 127.0.0.1:22277                                 |
+|Effective| After restarting system                         |
 
 ### File Layer
 

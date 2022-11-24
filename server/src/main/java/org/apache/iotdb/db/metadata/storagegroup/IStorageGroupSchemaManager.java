@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -169,11 +168,7 @@ public interface IStorageGroupSchemaManager {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException;
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in

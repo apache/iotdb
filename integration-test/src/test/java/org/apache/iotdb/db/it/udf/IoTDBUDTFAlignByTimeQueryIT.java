@@ -157,6 +157,26 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   }
 
   @Test
+  public void queryWithUnquotedAttributes() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.executeQuery("select sum_sec(s1, 'interval'=3) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+      try {
+        statement.executeQuery(
+            "select sum_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+    } catch (Exception throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void queryWithoutValueFilter1() {
     String sqlStr =
         "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle";

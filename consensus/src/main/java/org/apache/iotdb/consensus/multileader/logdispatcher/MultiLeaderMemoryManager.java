@@ -31,16 +31,19 @@ public class MultiLeaderMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(MultiLeaderMemoryManager.class);
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
+  private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
 
   private MultiLeaderMemoryManager() {
     MetricService.getInstance().addMetricSet(new MultiLeaderMemoryManagerMetrics(this));
   }
 
-  public boolean reserve(long size) {
+  public boolean reserve(long size, boolean fromQueue) {
     AtomicBoolean result = new AtomicBoolean(false);
     memorySizeInByte.updateAndGet(
         (memorySize) -> {
-          if (size > maxMemorySizeInByte - memorySize) {
+          long remainSize =
+              (fromQueue ? maxMemorySizeForQueueInByte : maxMemorySizeInByte) - memorySize;
+          if (size > remainSize) {
             logger.debug(
                 "consensus memory limited. required: {}, used: {}, total: {}",
                 size,
@@ -70,8 +73,9 @@ public class MultiLeaderMemoryManager {
         currentUsedMemory);
   }
 
-  public void init(long maxMemorySize) {
+  public void init(long maxMemorySize, long maxMemorySizeForQueue) {
     this.maxMemorySizeInByte = maxMemorySize;
+    this.maxMemorySizeForQueueInByte = maxMemorySizeForQueue;
   }
 
   long getMemorySizeInByte() {

@@ -360,6 +360,9 @@ public class QueryStatement extends Statement {
             throw new SemanticException("Output column is duplicated with the tag key: " + s);
           }
         }
+        if (rowLimit > 0 || rowOffset > 0 || seriesLimit > 0 || seriesOffset > 0) {
+          throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+        }
       }
     } else {
       if (isGroupByTime() || isGroupByLevel()) {

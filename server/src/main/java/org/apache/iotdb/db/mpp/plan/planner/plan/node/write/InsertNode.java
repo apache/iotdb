@@ -218,7 +218,7 @@ public abstract class InsertNode extends WritePlanNode {
    * created before calling this
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
-    for (int i = 0; i < measurementSchemas.length; i++) {
+    for (int i = 0; i < measurements.length; i++) {
       if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
         measurements[i] = measurementSchemas[i].getMeasurementId();
@@ -231,7 +231,7 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
-    for (int i = 0; i < measurementSchemas.length; i++) {
+    for (int i = 0; i < measurements.length; i++) {
       measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
@@ -248,10 +248,9 @@ public abstract class InsertNode extends WritePlanNode {
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes() throws DataTypeMismatchException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (dataTypes[i] != measurementSchemas[i].getType()) {
-        if (checkAndCastDataType(i, measurementSchemas[i].getType())) {
-          continue;
-        }
+      if (measurementSchemas[i] == null
+          || (dataTypes[i] != measurementSchemas[i].getType()
+              && !checkAndCastDataType(i, measurementSchemas[i].getType()))) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw new DataTypeMismatchException(
               devicePath.getFullPath(),

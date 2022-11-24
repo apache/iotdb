@@ -626,7 +626,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurementSchemas.length - getFailedMeasurementNumber());
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
     putDataTypesAndValues(buffer);
     buffer.put((byte) (isAligned ? 1 : 0));

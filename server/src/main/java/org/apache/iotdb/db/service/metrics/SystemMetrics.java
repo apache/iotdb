@@ -66,7 +66,7 @@ public class SystemMetrics implements IMetricSet {
     collectSystemMemInfo(metricService);
 
     // register disk related metrics and start to collect the value of metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture && isDataNode) {
+    if (null == currentServiceFuture && isDataNode) {
       collectSystemDiskInfo(metricService);
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
@@ -96,7 +96,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemCpuInfo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         osMXBean,
@@ -126,28 +126,28 @@ public class SystemMetrics implements IMetricSet {
             Tag.NAME.toString(),
             "system")
         .set(osMXBean.getTotalPhysicalMemorySize());
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreePhysicalMemorySize(),
         Tag.NAME.toString(),
         "system");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getTotalSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreeSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.SYS_COMMITTED_VM_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
@@ -202,14 +202,14 @@ public class SystemMetrics implements IMetricSet {
       }
     }
 
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGaugeWithInternalReport(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
         SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGaugeWithInternalReport(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,

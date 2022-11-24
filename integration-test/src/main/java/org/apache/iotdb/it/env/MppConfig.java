@@ -326,4 +326,11 @@ public class MppConfig implements BaseConfig {
         "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
     return this;
   }
+
+  @Override
+  public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    confignodeProperties.setProperty(
+        "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
+    return this;
+  }
 }

@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -133,7 +132,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
- *   <li>Interfaces for Trigger
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
@@ -850,8 +848,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    int preDeletedNum = 0;
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    long preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       List<IMeasurementMNode> measurementMNodeList = mtree.getMatchedMeasurementMNode(pathPattern);
       try {
@@ -956,7 +954,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
-    deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
+    deleteOneTimeseriesUpdateStatistics(p);
     if (!isRecovering) {
       writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
@@ -966,7 +964,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @param path full path from root to leaf node
    * @return After delete if the schema region is empty, return its path, otherwise return null
    */
-  private PartialPath deleteOneTimeseriesUpdateStatisticsAndDropTrigger(PartialPath path)
+  private PartialPath deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, IMeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -1022,8 +1020,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return node;
   }
 
-  @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
+  private void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
     IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     mtree.unPinMNode(node);
     try {
@@ -1058,20 +1055,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * path. All timeseries start with the matched prefix path will be counted.
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(
@@ -1087,39 +1084,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * counted.
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevicesNum(pathPattern, isPrefixMatch);
   }
 
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
-  }
-
-  /**
-   * To calculate the count of nodes in the given level for given path pattern. If using prefix
-   * match, the path pattern is used to match prefix path. All nodes start with the matched prefix
-   * path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path
-   * @param level the level should match the level of the path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
-  }
-
-  @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -1140,12 +1117,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // region Interfaces for level Node info Query
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
-    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
   }
 
   /**
@@ -1309,9 +1282,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
-                  leaf.getLastCacheContainer().getCachedLast() != null
-                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
-                      : 0,
+                  0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right,
                   deadbandInfo.left,
@@ -1724,7 +1695,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo =
         mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
@@ -1761,28 +1732,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
-    int result = 0;
+    long result = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }
     return result;
   }
-  // endregion
-
-  // region Interfaces for Trigger
-
-  @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    return mtree.getNodeByPath(fullPath);
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    mtree.unPinMNode(node);
-  }
-
   // endregion
 
   private static class RecoverOperationResult {
@@ -1844,8 +1801,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         IDeleteTimeSeriesPlan deleteTimeSeriesPlan, SchemaRegionSchemaFileImpl context) {
       try {
         // since we only has one path for one DeleteTimeSeriesPlan
-        deleteOneTimeseriesUpdateStatisticsAndDropTrigger(
-            deleteTimeSeriesPlan.getDeletePathList().get(0));
+        deleteOneTimeseriesUpdateStatistics(deleteTimeSeriesPlan.getDeletePathList().get(0));
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);

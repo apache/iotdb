@@ -21,7 +21,8 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -61,8 +62,14 @@ public class ConfigNodeConfig {
   /** DataNode data region consensus protocol */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
-  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  /** The maximum number of DataRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
+
+  /** The least number of SchemaRegionGroup for each StorageGroup. */
+  private int leastSchemaRegionGroupNum = 1;
+
+  /** The least number of DataRegionGroup for each StorageGroup. */
+  private int leastDataRegionGroupNum = 5;
 
   /** region allocate strategy. */
   private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
@@ -147,11 +154,11 @@ public class ConfigNodeConfig {
   /** The unknown DataNode detect interval in milliseconds */
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
-  /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.LEADER_POLICY;
+  /** The policy of cluster RegionGroups' leader distribution */
+  private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
 
-  /** The ConfigNode-leader will automatically balance leader distribution if set true */
-  private boolean enableLeaderBalancing = false;
+  /** The route priority policy of cluster read/write requests */
+  private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
   private String readConsistencyLevel = "strong";
 
@@ -168,7 +175,6 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long configNodeRatisSnapshotTriggerThreshold = 400000L;
-  private long configNodeSimpleConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -417,6 +423,22 @@ public class ConfigNodeConfig {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
   }
 
+  public int getLeastSchemaRegionGroupNum() {
+    return leastSchemaRegionGroupNum;
+  }
+
+  public void setLeastSchemaRegionGroupNum(int leastSchemaRegionGroupNum) {
+    this.leastSchemaRegionGroupNum = leastSchemaRegionGroupNum;
+  }
+
+  public int getLeastDataRegionGroupNum() {
+    return leastDataRegionGroupNum;
+  }
+
+  public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    this.leastDataRegionGroupNum = leastDataRegionGroupNum;
+  }
+
   public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
     return regionAllocateStrategy;
   }
@@ -548,20 +570,20 @@ public class ConfigNodeConfig {
     this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
-  public String getRoutingPolicy() {
-    return routingPolicy;
+  public String getLeaderDistributionPolicy() {
+    return leaderDistributionPolicy;
   }
 
-  public void setRoutingPolicy(String routingPolicy) {
-    this.routingPolicy = routingPolicy;
+  public void setLeaderDistributionPolicy(String leaderDistributionPolicy) {
+    this.leaderDistributionPolicy = leaderDistributionPolicy;
   }
 
-  public boolean isEnableLeaderBalancing() {
-    return enableLeaderBalancing;
+  public String getRoutePriorityPolicy() {
+    return routePriorityPolicy;
   }
 
-  public void setEnableLeaderBalancing(boolean enableLeaderBalancing) {
-    this.enableLeaderBalancing = enableLeaderBalancing;
+  public void setRoutePriorityPolicy(String routePriorityPolicy) {
+    this.routePriorityPolicy = routePriorityPolicy;
   }
 
   public String getReadConsistencyLevel() {
@@ -652,16 +674,6 @@ public class ConfigNodeConfig {
   public void setConfigNodeRatisSnapshotTriggerThreshold(
       long configNodeRatisSnapshotTriggerThreshold) {
     this.configNodeRatisSnapshotTriggerThreshold = configNodeRatisSnapshotTriggerThreshold;
-  }
-
-  public long getConfigNodeSimpleConsensusSnapshotTriggerThreshold() {
-    return configNodeSimpleConsensusSnapshotTriggerThreshold;
-  }
-
-  public void setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-      long configNodeSimpleConsensusSnapshotTriggerThreshold) {
-    this.configNodeSimpleConsensusSnapshotTriggerThreshold =
-        configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
   public boolean isConfigNodeRatisLogUnsafeFlushEnable() {

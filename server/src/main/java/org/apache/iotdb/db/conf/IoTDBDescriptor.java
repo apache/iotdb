@@ -41,12 +41,16 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.reporter.InternalReporter;
+import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -186,6 +190,7 @@ public class IoTDBDescriptor {
         // update all data seriesPath
         conf.updatePath();
         commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
@@ -1535,8 +1540,20 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
-    MetricService.getInstance().reloadProperties(reloadLevel);
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
+    logger.info("Reload metric service in level {}", reloadLevel);
+    if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
+      InternalReporter internalReporter;
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
+          == InternalReporterType.IOTDB) {
+        internalReporter = new IoTDBInternalReporter();
+      } else {
+        internalReporter = new MemoryInternalReporter();
+      }
+      MetricService.getInstance().reloadInternalReporter(internalReporter);
+    } else {
+      MetricService.getInstance().reloadService(reloadLevel);
+    }
   }
 
   private void initMemoryAllocate(Properties properties) {

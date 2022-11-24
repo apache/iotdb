@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -239,11 +238,7 @@ public interface IMTreeBelowSG {
 
   /** Get all paths from root to the given level */
   List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException;
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get the count of timeseries matching the given path.
@@ -251,7 +246,7 @@ public interface IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
   /**
@@ -261,7 +256,7 @@ public interface IMTreeBelowSG {
    * @param templateMap <TemplateId, Template>
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -270,14 +265,14 @@ public interface IMTreeBelowSG {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
+  long getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get the count of timeseries matching the given path by tag.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException;
 
@@ -288,27 +283,27 @@ public interface IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
 
   /**
    * Get the count of devices matching the given path.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  int getDevicesNum(PartialPath pathPattern) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get the count of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path. All timeseries start with the matched prefix path
    * will be counted.
    */
-  int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  long getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -341,5 +336,5 @@ public interface IMTreeBelowSG {
   List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException;
 
-  int countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
+  long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

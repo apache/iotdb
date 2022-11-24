@@ -42,7 +42,7 @@ public class NodeInfoMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CONFIG_NODE.toString(),
         MetricLevel.CORE,
         this,
@@ -51,7 +51,7 @@ public class NodeInfoMetrics implements IMetricSet {
         METRIC_TAG_TOTAL,
         Tag.STATUS.toString(),
         METRIC_STATUS_REGISTER);
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.DATA_NODE.toString(),
         MetricLevel.CORE,
         this,
