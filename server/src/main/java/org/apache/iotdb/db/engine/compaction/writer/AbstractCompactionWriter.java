@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -92,9 +91,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // if point num of unsealed page is lower then this, then deserialize next page no matter it is
   // overlapped or not
   protected long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
-
-  private final boolean enableMetrics =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   protected boolean isAlign;
 
@@ -298,15 +294,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, iChunkWriter, subTaskId);
         lastCheckIndex = 0;
-        if (enableMetrics) {
-          CompactionMetricsRecorder.recordWriteInfo(
-              isCrossSpace
-                  ? CompactionType.CROSS_COMPACTION
-                  : CompactionType.INNER_UNSEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              isAlign,
-              iChunkWriter.estimateMaxSeriesMemSize());
-        }
+        CompactionMetricsRecorder.recordWriteInfo(
+            isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            isAlign,
+            iChunkWriter.estimateMaxSeriesMemSize());
       }
     }
   }

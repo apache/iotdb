@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -73,9 +72,6 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
   private final long chunkPointNumLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-
-  private final boolean enableMetrics =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   public SingleSeriesCompactionExecutor(
       PartialPath series,
@@ -309,13 +305,11 @@ public class SingleSeriesCompactionExecutor {
     if (chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
-    if (enableMetrics) {
-      CompactionMetricsRecorder.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
-          false,
-          getChunkSize(chunk));
-    }
+    CompactionMetricsRecorder.recordWriteInfo(
+        CompactionType.INNER_SEQ_COMPACTION,
+        isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
+        false,
+        getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
@@ -324,13 +318,11 @@ public class SingleSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      if (enableMetrics) {
-        CompactionMetricsRecorder.recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            false,
-            chunkWriter.estimateMaxSeriesMemSize());
-      }
+      CompactionMetricsRecorder.recordWriteInfo(
+          CompactionType.INNER_SEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          false,
+          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
     }
@@ -348,13 +340,11 @@ public class SingleSeriesCompactionExecutor {
   private void flushChunkWriter() throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-    if (enableMetrics) {
-      CompactionMetricsRecorder.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          false,
-          chunkWriter.estimateMaxSeriesMemSize());
-    }
+    CompactionMetricsRecorder.recordWriteInfo(
+        CompactionType.INNER_SEQ_COMPACTION,
+        ProcessChunkType.DESERIALIZE_CHUNK,
+        false,
+        chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }
