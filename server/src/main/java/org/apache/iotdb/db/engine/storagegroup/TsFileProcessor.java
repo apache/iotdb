@@ -1062,7 +1062,7 @@ public class TsFileProcessor {
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
       if (memTableToFlush.isEmpty()) {
-        logger.warn(
+        logger.info(
             "This normal memtable is empty, skip flush. {}: {}",
             storageGroupName,
             tsFileResource.getTsFile().getName());
