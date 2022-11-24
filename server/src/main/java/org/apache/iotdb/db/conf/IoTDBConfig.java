@@ -568,7 +568,7 @@ public class IoTDBConfig {
   private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
-  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
+  private final String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;

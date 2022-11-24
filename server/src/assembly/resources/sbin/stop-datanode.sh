@@ -45,7 +45,3 @@ else
   echo "No DataNode to stop"
   exit 1
 fi
-
-
-
-

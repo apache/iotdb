@@ -65,7 +65,9 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       mode = args[0];
     }
 
+    boolean isStandAlone = args.length >= 2 && args[1].equals("-a");
     LOGGER.info("Running mode {}", mode);
+
     if (MODE_START.equals(mode)) {
       try {
         // Startup environment check
@@ -77,7 +79,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
-      ConfigNode.getInstance().active();
+      ConfigNode.getInstance().active(isStandAlone);
     } else if (MODE_REMOVE.equals(mode)) {
       // remove ConfigNode
       try {

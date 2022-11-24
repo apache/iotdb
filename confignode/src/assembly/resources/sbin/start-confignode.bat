@@ -61,6 +61,9 @@ popd
 set CONFIGNODE_CONF=%CONFIGNODE_HOME%\conf
 set CONFIGNODE_LOGS=%CONFIGNODE_HOME%\logs
 
+set CONF_PARAMS=-s
+set enable_printgc=false
+
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set is_conf_path=false
 for %%i in (%*) do (
@@ -69,16 +72,23 @@ for %%i in (%*) do (
 	) ELSE IF "!is_conf_path!" == "true" (
 		set is_conf_path=false
 		set CONFIGNODE_CONF=%%i
+	) ELSE IF "%%i" == "-a" (
+	    set CONF_PARAMS=%CONF_PARAMS% -a
+	) ELSE IF "%%i" == "printgc" (
+	    set enable_printgc=true
 	)
 )
 
 IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
-    CALL "%CONFIGNODE_CONF%\confignode-env.bat" %1
+    IF  "%enable_printgc%" == "true" (
+      CALL "%CONFIGNODE_CONF%\confignode-env.bat" printgc
     ) ELSE (
-    echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
+      CALL "%CONFIGNODE_CONF%\confignode-env.bat"
     )
+) ELSE (
+   echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
+)
 
-set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err
 

@@ -17,29 +17,6 @@
 @REM under the License.
 @REM
 
-@echo off
-
-set current_dir=%~dp0
-set superior_dir=%current_dir%\..\
-
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
-%superior_dir%\conf\iotdb-confignode.properties') do (
-  set cn_internal_port=%%i
-)
-
-echo "check whether the rpc_port is used..., port is" $rpc_port
-
-IF "%1" equ "-a" (
-    set cn_internal_address=127.0.0.1
-) ELSE (
-    for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
-    %superior_dir%\conf\iotdb-confignode.properties') do (
-    set cn_internal_address=%%i
-    )
-)
-
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port%') do (
-  taskkill /f /pid %%a
-    echo "close ConfigNode, PID:" %%a
-)
-rem ps ax | grep -i 'confignode.ConfigNode' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM
+start cmd /c start-confignode.bat -a
+TIMEOUT /T 5 /NOBREAK
+start cmd /c start-datanode.bat -a

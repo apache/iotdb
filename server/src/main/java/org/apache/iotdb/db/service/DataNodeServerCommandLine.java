@@ -76,9 +76,11 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     String mode = args[0];
     LOGGER.info("Running mode {}", mode);
 
+    boolean isStandAlone = args.length >= 2 && args[1].equals("-a");
+
     // Check config of IoTDB, and set some configs in cluster mode
     try {
-      dataNode.serverCheckAndInit(mode);
+      dataNode.serverCheckAndInit(mode, isStandAlone);
     } catch (ConfigurationException | IOException e) {
       LOGGER.error("Meet error when doing start checking", e);
       return -1;

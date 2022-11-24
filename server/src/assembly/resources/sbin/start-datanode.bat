@@ -61,6 +61,12 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
+set CONF_PARAMS=-s
+IF "%1" == "-a" (
+  SET CONF_PARAMS=%CONF_PARAMS% -a
+  SHIFT
+)
+
 SET enable_printgc=false
 IF "%1" == "printgc" (
   SET enable_printgc=true
@@ -93,7 +99,6 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
 )
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
-set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.DataNode
 if NOT DEFINED JAVA_HOME goto :err
 

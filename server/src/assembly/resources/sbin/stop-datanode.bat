@@ -29,9 +29,13 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^dn_rpc_port"
 
 echo "check whether the rpc_port is used..., port is " %dn_rpc_port%
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "dn_rpc_address"
-%superior_dir%\conf\iotdb-datanode.properties') do (
-  set dn_rpc_address=%%i
+IF "%1" equ "-a" (
+    set dn_rpc_address=127.0.0.1
+) ELSE (
+    for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "dn_rpc_address"
+    %superior_dir%\conf\iotdb-datanode.properties') do (
+    set dn_rpc_address=%%i
+    )
 )
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %dn_rpc_address%:%dn_rpc_port%') do (
