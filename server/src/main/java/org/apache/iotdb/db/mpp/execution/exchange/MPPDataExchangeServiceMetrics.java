@@ -37,7 +37,7 @@ public class MPPDataExchangeServiceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         MetricLevel.IMPORTANT,
         thriftServiceThread,

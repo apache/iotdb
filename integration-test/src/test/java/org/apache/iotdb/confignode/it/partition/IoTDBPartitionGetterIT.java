@@ -39,12 +39,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -60,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +75,8 @@ public class IoTDBPartitionGetterIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionGetterIT.class);
 
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
+
   private static String originalConfigNodeConsensusProtocolClass;
   private static String originalSchemaRegionConsensusProtocolClass;
   private static String originalDataRegionConsensusProtocolClass;
@@ -83,6 +88,9 @@ public class IoTDBPartitionGetterIT {
 
   private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
+
+  protected static int originalLeastDataRegionGroupNum;
+  private static final int testLeastDataRegionGroupNum = 10;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
@@ -99,17 +107,20 @@ public class IoTDBPartitionGetterIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+    CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
+    originalDataReplicationFactor = CONF.getDataReplicationFactor();
+    CONF.setSchemaReplicationFactor(testReplicationFactor);
+    CONF.setDataReplicationFactor(testReplicationFactor);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    originalTimePartitionInterval = CONF.getTimePartitionInterval();
+    CONF.setTimePartitionInterval(testTimePartitionInterval);
+
+    originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
+    CONF.setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -210,17 +221,13 @@ public class IoTDBPartitionGetterIT {
   public static void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
 
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
 
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    CONF.setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
@@ -341,6 +348,14 @@ public class IoTDBPartitionGetterIT {
                 dataPartitionTableResp.getDataPartitionTable());
           }
         }
+
+        // Check the number of DataRegionGroup.
+        // And this number should be greater than or equal to testLeastDataRegionGroupNum
+        TShowStorageGroupResp showStorageGroupResp =
+            client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
+        Assert.assertTrue(
+            showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
+                >= testLeastDataRegionGroupNum);
       }
     }
   }
@@ -384,7 +399,7 @@ public class IoTDBPartitionGetterIT {
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-      Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
+      Assert.assertEquals(10, getRegionIdResp.getDataRegionIdListSize());
 
       final String d00 = sg0 + ".d0.s";
       final String d01 = sg0 + ".d1.s";

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -84,7 +83,6 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -855,7 +853,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             tsRow[3] = measurementSchema.getEncodingType().toString();
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
-            tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            tsRow[6] = null;
             tsRow[7] = deadbandInfo.left;
             tsRow[8] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
@@ -962,8 +960,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   /** Get all paths from root to the given level */
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
           @Override
@@ -974,7 +971,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
     collector.setPrefixMatch(isPrefixMatch);
-    collector.setStorageGroupFilter(filter);
     collector.traverse();
     return collector.getResult();
   }
@@ -987,7 +983,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
@@ -996,7 +992,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
@@ -1012,12 +1008,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+  public long getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException {
     CounterTraverser counter =
@@ -1035,7 +1031,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
@@ -1049,7 +1045,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
+  public long getDevicesNum(PartialPath pathPattern) throws MetadataException {
     return getDevicesNum(pathPattern, false);
   }
 
@@ -1059,7 +1055,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * will be counted.
    */
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+  public long getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     MNodeLevelCounter counter = new MNodeLevelCounter(storageGroupMNode, pathPattern, store, level);
     counter.setPrefixMatch(isPrefixMatch);
@@ -1068,7 +1064,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MeasurementGroupByLevelCounter counter =
         new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
@@ -1078,7 +1074,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -1364,7 +1360,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public int countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+  public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     CounterTraverser counterTraverser =
         new CounterTraverser(storageGroupMNode, pathPattern, store) {

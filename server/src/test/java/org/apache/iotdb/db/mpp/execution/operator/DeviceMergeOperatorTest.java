@@ -180,6 +180,9 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
         assertEquals(20, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -338,6 +341,9 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
         assertEquals(20, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -501,6 +507,9 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
         assertEquals(20, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {

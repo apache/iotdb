@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -268,9 +268,9 @@ public class ConfigPlanExecutor {
           return status;
         }
         return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
-      case AdjustMaxRegionGroupCount:
+      case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
-            (AdjustMaxRegionGroupCountPlan) physicalPlan);
+            (AdjustMaxRegionGroupNumPlan) physicalPlan);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);

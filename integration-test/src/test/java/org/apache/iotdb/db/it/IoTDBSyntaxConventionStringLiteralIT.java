@@ -382,7 +382,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:21 extraneous input 'k' expecting {',', ')'}";
+            + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // UDF attribute should be STRING_LITERAL

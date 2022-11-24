@@ -293,7 +293,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitConstructSchemaBlackList(
       ConstructSchemaBlackListNode node, ISchemaRegion schemaRegion) {
     try {
-      int preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
+      long preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);
@@ -328,7 +328,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitPreDeactivateTemplate(
       PreDeactivateTemplateNode node, ISchemaRegion schemaRegion) {
     try {
-      int preDeactivateNum = schemaRegion.constructSchemaBlackListWithTemplate(node);
+      long preDeactivateNum = schemaRegion.constructSchemaBlackListWithTemplate(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateNum));
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);

@@ -24,14 +24,15 @@ import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.Test;
 
@@ -54,17 +55,14 @@ public class MetricServiceTest {
 
   @Test
   public void testMetricService() {
-    for (MonitorType type : MonitorType.values()) {
+    for (MetricFrameType type : MetricFrameType.values()) {
       // init metric service
-      metricConfig.setEnableMetric(true);
-      metricConfig.setMonitorType(type);
+      metricConfig.setMetricFrameType(type);
       metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
       metricService = new DoNothingMetricService();
       metricService.startService();
 
       // test metric service
-      assertTrue(metricService.isEnable());
-      assertTrue(metricService.getMetricManager().isEnableMetric());
       assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
       assertTrue(
           metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
@@ -139,8 +137,8 @@ public class MetricServiceTest {
 
     // test auto gauge
     List<Integer> list = new ArrayList<>();
-    Gauge autoGauge =
-        metricService.getOrCreateAutoGauge(
+    AutoGauge autoGauge =
+        metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
     assertEquals(0L, autoGauge.value());
     list.add(1);
@@ -152,7 +150,8 @@ public class MetricServiceTest {
     list = null;
     System.gc();
     assertEquals(0L, autoGauge.value());
-    assertEquals(5, metricService.getAllGauges().size());
+    assertEquals(4, metricService.getAllGauges().size());
+    assertEquals(1, metricService.getAllAutoGauges().size());
     metricService.remove(MetricType.GAUGE, "autoGauge", "tag", "value");
     assertEquals(4, metricService.getAllGauges().size());
     assertEquals(8, metricService.getAllMetricKeys().size());

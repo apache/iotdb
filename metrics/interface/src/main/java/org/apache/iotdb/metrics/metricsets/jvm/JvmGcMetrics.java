@@ -85,11 +85,11 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             .orElse(0.0);
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         "jvm.gc.max.data.size.bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         "jvm.gc.live.data.size.bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
 
     Counter allocatedBytes =

@@ -37,7 +37,7 @@ public class FlushManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
         flushManager,
@@ -46,7 +46,7 @@ public class FlushManagerMetrics implements IMetricSet {
         "flush",
         Tag.STATUS.toString(),
         "waiting");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
         flushManager,

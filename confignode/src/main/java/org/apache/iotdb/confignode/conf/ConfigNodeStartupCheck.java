@@ -21,7 +21,8 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
@@ -92,17 +93,29 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
-    // The routing policy is limited
-    if (!CONF.getRoutingPolicy().equals(RouteBalancer.LEADER_POLICY)
-        && !CONF.getRoutingPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
+    // The leader distribution policy is limited
+    if (!ILeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
+        && !ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "routing_policy", CONF.getRoutingPolicy(), "leader or greedy");
+          "leader_distribution_policy", CONF.getRoutePriorityPolicy(), "GREEDY or MIN_COST_FLOW");
+    }
+
+    // The route priority policy is limited
+    if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
+        && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
+      throw new ConfigurationException(
+          "route_priority_policy", CONF.getRoutePriorityPolicy(), "LEADER or GREEDY");
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0
     if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
       throw new ConfigurationException(
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
+    }
+
+    // The least DataRegionGroup number should be positive
+    if (CONF.getLeastDataRegionGroupNum() <= 0) {
+      throw new ConfigurationException("The least_data_region_group_num should be positive");
     }
   }
 

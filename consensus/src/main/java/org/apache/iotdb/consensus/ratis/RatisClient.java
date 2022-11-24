@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class RatisClient {
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
@@ -75,15 +77,18 @@ public class RatisClient {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
+    private final Supplier<RatisConfig.RatisConsensus> config;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         ClientFactoryProperty clientPoolProperty,
         RaftProperties raftProperties,
-        RaftClientRpc clientRpc) {
+        RaftClientRpc clientRpc,
+        Supplier<RatisConfig.RatisConsensus> config) {
       super(clientManager, clientPoolProperty);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
+      this.config = config;
     }
 
     @Override
@@ -99,7 +104,7 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisRetryPolicy())
+                  .setRetryPolicy(new RatisRetryPolicy(config.get()))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -126,12 +131,16 @@ public class RatisClient {
     private static final int maxAttempts = 10;
     RetryPolicy defaultPolicy;
 
-    public RatisRetryPolicy() {
+    public RatisRetryPolicy(RatisConfig.RatisConsensus config) {
       defaultPolicy =
           ExponentialBackoffRetry.newBuilder()
-              .setBaseSleepTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
-              .setMaxSleepTime(TimeDuration.valueOf(10, TimeUnit.SECONDS))
-              .setMaxAttempts(maxAttempts)
+              .setBaseSleepTime(
+                  TimeDuration.valueOf(
+                      config.getClientRetryInitialSleepTimeMs(), TimeUnit.MILLISECONDS))
+              .setMaxSleepTime(
+                  TimeDuration.valueOf(
+                      config.getClientRetryMaxSleepTimeMs(), TimeUnit.MILLISECONDS))
+              .setMaxAttempts(config.getClientMaxRetryAttempt())
               .build();
     }
 

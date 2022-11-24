@@ -314,12 +314,21 @@ public class DataNodeRemoveHandler {
 
     TSStatus status;
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
+
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                originalDataNode.getInternalEndPoint(),
-                maintainPeerReq,
-                DataNodeRequestType.DELETE_OLD_REGION_PEER);
+        configManager.getNodeManager().getNodeStatusByNodeId(originalDataNode.getDataNodeId())
+                == NodeStatus.Unknown
+            ? SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    maintainPeerReq,
+                    DataNodeRequestType.DELETE_OLD_REGION_PEER,
+                    1)
+            : SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    maintainPeerReq,
+                    DataNodeRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REMOVE_DATANODE_PROCESS,
@@ -402,7 +411,6 @@ public class DataNodeRemoveHandler {
         "{}, Begin to stop DataNode and kill the DataNode process {}",
         REMOVE_DATANODE_PROCESS,
         dataNode);
-
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithGivenRetry(
@@ -505,7 +513,14 @@ public class DataNodeRemoveHandler {
       }
     }
 
-    int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
+    int removedDataNodeSize =
+        (int)
+            removeDataNodePlan.getDataNodeLocations().stream()
+                .filter(
+                    x ->
+                        configManager.getNodeManager().getNodeStatusByNodeId(x.getDataNodeId())
+                            != NodeStatus.Unknown)
+                .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       status.setMessage(

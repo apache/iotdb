@@ -320,7 +320,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
-          resp.setMetadataInJson(IoTDB.schemaProcessor.getMetadataInString());
+          resp.setMetadataInJson("{}");
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -1375,7 +1375,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return SyncService.getInstance().handshake(info);
+    return SyncService.getInstance().handshake(info, null, null);
   }
 
   @Override
