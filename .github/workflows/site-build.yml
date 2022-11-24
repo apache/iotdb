@@ -15,8 +15,6 @@ on:
       - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
-    branches:
-      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,7 +41,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && branch == master || github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v3

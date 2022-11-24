@@ -19,7 +19,7 @@
 
 -->
 
-# Quick Start 
+# Quick Start
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../IoTDB-Introduction/What-is-IoTDB.md).
 
