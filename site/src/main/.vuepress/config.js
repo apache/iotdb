@@ -908,7 +908,7 @@ var config = {
 							['Write-Data/Session','Native API Write'],
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
-							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
@@ -965,6 +965,7 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
