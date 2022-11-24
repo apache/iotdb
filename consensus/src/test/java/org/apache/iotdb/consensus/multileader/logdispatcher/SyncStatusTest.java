@@ -31,7 +31,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -66,7 +65,9 @@ public class SyncStatusTest {
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       TLogBatch logBatch = new TLogBatch();
       logBatch.setSearchIndex(i);
-      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
+      PendingBatch batch = new PendingBatch(MultiLeaderConfig.newBuilder().build());
+      batch.addTLogBatch(logBatch);
+      batch.buildIndex();
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -95,7 +96,9 @@ public class SyncStatusTest {
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       TLogBatch logBatch = new TLogBatch();
       logBatch.setSearchIndex(i);
-      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
+      PendingBatch batch = new PendingBatch(MultiLeaderConfig.newBuilder().build());
+      batch.addTLogBatch(logBatch);
+      batch.buildIndex();
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -130,7 +133,9 @@ public class SyncStatusTest {
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       TLogBatch logBatch = new TLogBatch();
       logBatch.setSearchIndex(i);
-      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
+      PendingBatch batch = new PendingBatch(MultiLeaderConfig.newBuilder().build());
+      batch.addTLogBatch(logBatch);
+      batch.buildIndex();
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -176,7 +181,9 @@ public class SyncStatusTest {
     for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       TLogBatch logBatch = new TLogBatch();
       logBatch.setSearchIndex(i);
-      PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
+      PendingBatch batch = new PendingBatch(MultiLeaderConfig.newBuilder().build());
+      batch.addTLogBatch(logBatch);
+      batch.buildIndex();
       batchList.add(batch);
       status.addNextBatch(batch);
     }
@@ -195,7 +202,9 @@ public class SyncStatusTest {
             () -> {
               TLogBatch logBatch = new TLogBatch();
               logBatch.setSearchIndex(config.getReplication().getMaxPendingBatch());
-              PendingBatch batch = new PendingBatch(Collections.singletonList(logBatch));
+              PendingBatch batch = new PendingBatch(MultiLeaderConfig.newBuilder().build());
+              batch.addTLogBatch(logBatch);
+              batch.buildIndex();
               batchList.add(batch);
               try {
                 status.addNextBatch(batch);

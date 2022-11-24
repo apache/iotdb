@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -712,8 +713,8 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testAlignByDevice2Device2Region() throws IllegalPathException {
-    QueryId queryId = new QueryId("test_align_by_device_2_device_2_region");
+  public void testAlignByDevice2Device3Region() {
+    QueryId queryId = new QueryId("test_align_by_device_2_device_3_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     String sql = "select count(s1), count(s2) from root.sg.d1,root.sg.d22 align by device";
@@ -729,11 +730,34 @@ public class AggregationDistributionTest {
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f3Root =
         plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertTrue(f1Root instanceof DeviceMergeNode);
+    assertTrue(f2Root instanceof TimeJoinNode);
+    assertTrue(f3Root instanceof DeviceViewNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof AggregationNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertEquals(3, f1Root.getChildren().get(0).getChildren().get(0).getChildren().size());
+  }
+
+  @Test
+  public void testAlignByDevice2Device2Region() {
+    QueryId queryId = new QueryId("test_align_by_device_2_device_2_region");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    String sql = "select count(s1), count(s2) from root.sg.d333,root.sg.d4444 align by device";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+    PlanNode f1Root =
+        plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
+    PlanNode f2Root =
+        plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     assertTrue(f1Root instanceof DeviceViewNode);
     assertTrue(f2Root instanceof TimeJoinNode);
-    assertTrue(f3Root instanceof AggregationNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
+    assertEquals(2, f1Root.getChildren().size());
   }
 
   private void verifyGroupByLevelDescriptor(

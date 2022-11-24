@@ -164,8 +164,8 @@ Besides, `LEVEL` could be defined to show count the number of timeseries of each
 For example, if there are several timeseries (use `show timeseries` to show all timeseries):
 
 ```
-+-------------------------------+--------+--------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
-|                     timeseries|   alias|database|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|     database|dataType|encoding|compression|                                       tags|                                              attributes|
 +-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
 |root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
 |     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|

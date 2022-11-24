@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -53,6 +54,8 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
+@Ignore
+@Deprecated
 public class PlannerTest {
 
   private CompressionType compressionType =

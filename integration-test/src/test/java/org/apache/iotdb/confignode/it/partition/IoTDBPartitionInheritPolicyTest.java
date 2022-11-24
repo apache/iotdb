@@ -94,7 +94,8 @@ public class IoTDBPartitionInheritPolicyTest {
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
-    EnvFactory.getEnv().initBeforeClass();
+    // Init 1C3D environment
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
     // Set StorageGroups
     try (SyncConfigNodeIServiceClient client =
