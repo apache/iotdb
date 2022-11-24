@@ -932,6 +932,18 @@ public class NodeManager {
   }
 
   /**
+   * Get the free disk space of the specified DataNode
+   *
+   * @param dataNodeId The index of the specified DataNode
+   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
+   */
+  public long getFreeDiskSpace(int dataNodeId) {
+    DataNodeHeartbeatCache dataNodeHeartbeatCache =
+        (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
+    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
+  }
+
+  /**
    * Get the DataNodeLocation of the DataNode which has the lowest loadScore
    *
    * @return TDataNodeLocation with the lowest loadScore

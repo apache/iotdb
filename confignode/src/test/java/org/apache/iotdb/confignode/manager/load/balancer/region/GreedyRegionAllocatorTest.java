@@ -22,71 +22,119 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GreedyRegionAllocatorTest {
 
+  private static final GreedyRegionGroupAllocator ALLOCATOR = new GreedyRegionGroupAllocator();
+  private static final int TEST_REPLICATION_FACTOR = 3;
+
   @Test
-  public void testAllocateRegion() {
-    GreedyRegionAllocator greedyRegionAllocator = new GreedyRegionAllocator();
-    List<TDataNodeConfiguration> registeredDataNodes =
-        Lists.newArrayList(
-            new TDataNodeConfiguration(
-                new TDataNodeLocation(1, null, null, null, null, null), new TNodeResource()),
-            new TDataNodeConfiguration(
-                new TDataNodeLocation(2, null, null, null, null, null), new TNodeResource()),
-            new TDataNodeConfiguration(
-                new TDataNodeLocation(3, null, null, null, null, null), new TNodeResource()));
-    List<TRegionReplicaSet> allocatedRegions = new ArrayList<>();
-    List<TConsensusGroupId> tConsensusGroupIds =
-        Lists.newArrayList(
-            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0),
-            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1),
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3),
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 4),
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 5));
-    for (TConsensusGroupId tConsensusGroupId : tConsensusGroupIds) {
-      TRegionReplicaSet newRegion =
-          greedyRegionAllocator.allocateRegion(
-              registeredDataNodes, allocatedRegions, 1, tConsensusGroupId);
-      allocatedRegions.add(newRegion);
+  public void testEvenDistribution() {
+    /* Construct input data */
+    Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
+    Map<Integer, Long> freeSpaceMap = new ConcurrentHashMap<>();
+    Random random = new Random();
+    // Set 6 DataNodes
+    for (int i = 0; i < 6; i++) {
+      availableDataNodeMap.put(
+          i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
+      freeSpaceMap.put(i, random.nextLong());
     }
 
-    Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      countMap.put(dataNodeInfo.getLocation(), 0);
+    /* Allocate 6 RegionGroups */
+    List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+    for (int index = 0; index < 6; index++) {
+      TRegionReplicaSet newRegionGroup =
+          ALLOCATOR.generateOptimalRegionReplicasDistribution(
+              availableDataNodeMap,
+              freeSpaceMap,
+              allocatedRegionGroups,
+              TEST_REPLICATION_FACTOR,
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      allocatedRegionGroups.add(newRegionGroup);
     }
 
-    for (TRegionReplicaSet regionReplicaSet : allocatedRegions) {
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        countMap.computeIfPresent(dataNodeLocation, (dataNode, count) -> (count + 1));
-      }
-    }
+    /* Check result */
+    Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
+    allocatedRegionGroups.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        regionCounter
+                            .computeIfAbsent(
+                                dataNodeLocation.getDataNodeId(), empty -> new AtomicInteger(0))
+                            .getAndIncrement()));
+    // Each DataNode should have exactly 3 Regions since the all 18 Regions are distributed to 6
+    // DataNodes evenly
+    Assert.assertEquals(6, regionCounter.size());
+    regionCounter.forEach((dataNodeId, regionCount) -> Assert.assertEquals(3, regionCount.get()));
+  }
 
-    Assert.assertTrue(countMap.values().stream().mapToInt(e -> e).max().getAsInt() <= 2);
-    Assert.assertTrue(
-        Collections.disjoint(
-            allocatedRegions.get(0).getDataNodeLocations(),
-            allocatedRegions.get(1).getDataNodeLocations()));
-    Assert.assertTrue(
-        Collections.disjoint(
-            allocatedRegions.get(2).getDataNodeLocations(),
-            allocatedRegions.get(3).getDataNodeLocations()));
-    Assert.assertTrue(
-        Collections.disjoint(
-            allocatedRegions.get(4).getDataNodeLocations(),
-            allocatedRegions.get(5).getDataNodeLocations()));
+  @Test
+  public void testUnevenDistribution() {
+    /* Construct input data */
+    Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
+    // Set 4 DataNodes
+    for (int i = 0; i < 4; i++) {
+      availableDataNodeMap.put(
+          i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
+    }
+    Map<Integer, Long> freeSpaceMap = new ConcurrentHashMap<>();
+    freeSpaceMap.put(0, 20000331L);
+    freeSpaceMap.put(1, 20000522L);
+    freeSpaceMap.put(2, 666L);
+    freeSpaceMap.put(3, 999L);
+
+    /* Allocate the first RegionGroup */
+    List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+    TRegionReplicaSet newRegionGroup =
+        ALLOCATOR.generateOptimalRegionReplicasDistribution(
+            availableDataNodeMap,
+            freeSpaceMap,
+            allocatedRegionGroups,
+            TEST_REPLICATION_FACTOR,
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    allocatedRegionGroups.add(newRegionGroup);
+    Set<Integer> dataNodeIdSet = new HashSet<>();
+    newRegionGroup
+        .getDataNodeLocations()
+        .forEach(dataNodeLocation -> dataNodeIdSet.add(dataNodeLocation.getDataNodeId()));
+    // The result should be the 3 DataNodes who have the maximum free disk space
+    Assert.assertTrue(dataNodeIdSet.contains(0));
+    Assert.assertTrue(dataNodeIdSet.contains(1));
+    Assert.assertTrue(dataNodeIdSet.contains(3));
+    dataNodeIdSet.clear();
+
+    /* Allocate the second RegionGroup */
+    newRegionGroup =
+        ALLOCATOR.generateOptimalRegionReplicasDistribution(
+            availableDataNodeMap,
+            freeSpaceMap,
+            allocatedRegionGroups,
+            TEST_REPLICATION_FACTOR,
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
+    newRegionGroup
+        .getDataNodeLocations()
+        .forEach(dataNodeLocation -> dataNodeIdSet.add(dataNodeLocation.getDataNodeId()));
+    // The result should contain the DataNode-2 and
+    // other 2 DataNodes who have the maximum free disk space
+    Assert.assertTrue(dataNodeIdSet.contains(0));
+    Assert.assertTrue(dataNodeIdSet.contains(1));
+    Assert.assertTrue(dataNodeIdSet.contains(2));
   }
 }

@@ -36,7 +36,7 @@ import java.util.Set;
  * Allocate Region by CopySet algorithm. Reference: <a
  * href="https://www.usenix.org/conference/atc13/technical-sessions/presentation/cidon">...</a>
  */
-public class CopySetRegionAllocator implements IRegionAllocator {
+public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
   private static final int maximumRandomNum = 10;
 
@@ -44,26 +44,27 @@ public class CopySetRegionAllocator implements IRegionAllocator {
   private int intersectionSize = 0;
   private final List<TDataNodeLocation> weightList;
 
-  public CopySetRegionAllocator() {
+  public CopySetRegionGroupAllocator() {
     this.weightList = new ArrayList<>();
   }
 
   @Override
-  public TRegionReplicaSet allocateRegion(
-      List<TDataNodeConfiguration> targetDataNodes,
-      List<TRegionReplicaSet> allocatedRegions,
+  public TRegionReplicaSet generateOptimalRegionReplicasDistribution(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Long> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet result = null;
 
     // Build weightList for weighted random
-    buildWeightList(targetDataNodes, allocatedRegions);
+    buildWeightList(new ArrayList<>(availableDataNodeMap.values()), allocatedRegionGroups);
 
     boolean accepted = false;
     while (true) {
       for (int retry = 0; retry < maximumRandomNum; retry++) {
         result = genWeightedRandomRegion(replicationFactor);
-        if (intersectionCheck(allocatedRegions, result)) {
+        if (intersectionCheck(allocatedRegionGroups, result)) {
           accepted = true;
           break;
         }

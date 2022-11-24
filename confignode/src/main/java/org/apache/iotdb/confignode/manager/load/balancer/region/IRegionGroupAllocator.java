@@ -23,26 +23,24 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.List;
+import java.util.Map;
 
-/**
- * The IRegionAllocator is a functional interface, which means a new functional class who implements
- * the IRegionAllocator must be created for each Region allocation.
- */
-public interface IRegionAllocator {
+public interface IRegionGroupAllocator {
 
   /**
-   * Calculating the next optimal TRegionReplicaSet based on the current online DataNodes and
-   * allocated Regions
+   * Generate an optimal RegionReplicas' distribution for a new RegionGroup
    *
-   * @param targetDataNodes DataNodes that can be used for allocation
-   * @param allocatedRegions Allocated Regions
+   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param freeDiskSpaceMap The free disk space of the DataNodes
+   * @param allocatedRegionGroups Allocated RegionGroups
    * @param replicationFactor Replication factor of TRegionReplicaSet
    * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
-   * @return The optimal TRegionReplicaSet derived by the specific algorithm
+   * @return The optimal TRegionReplicaSet derived by the specified algorithm
    */
-  TRegionReplicaSet allocateRegion(
-      List<TDataNodeConfiguration> targetDataNodes,
-      List<TRegionReplicaSet> allocatedRegions,
+  TRegionReplicaSet generateOptimalRegionReplicasDistribution(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Long> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);
 }
