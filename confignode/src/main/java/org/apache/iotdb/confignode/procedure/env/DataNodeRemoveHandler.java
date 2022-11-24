@@ -178,8 +178,17 @@ public class DataNodeRemoveHandler {
       return status;
     }
 
-    List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionReplicaNodes);
-    currentPeerNodes.add(destDataNode);
+    List<TDataNodeLocation> currentPeerNodes;
+    if (TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      // parameter of createPeer for MultiLeader should be all peers
+      currentPeerNodes = new ArrayList<>(regionReplicaNodes);
+      currentPeerNodes.add(destDataNode);
+    } else {
+      // parameter of createPeer for Ratis can be empty
+      currentPeerNodes = Collections.emptyList();
+    }
+
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
     // TODO replace with real ttl
@@ -278,7 +287,7 @@ public class DataNodeRemoveHandler {
     // Here we pick the DataNode who contains one of the RegionReplica of the specified
     // ConsensusGroup except the origin one
     // in order to notify the new ConsensusGroup that the origin peer should secede now
-    // if the selectedDataNode equals null, we choose the destDataNode to execute the method
+    // If the selectedDataNode equals null, we choose the destDataNode to execute the method
     Optional<TDataNodeLocation> selectedDataNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
     rpcClientDataNode = selectedDataNode.orElse(destDataNode);

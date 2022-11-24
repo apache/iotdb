@@ -201,6 +201,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
@@ -1261,7 +1262,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit addRegionPeer task for region: {} on DataNode: {}",
+          "Successfully submit addRegionPeer task for region: {}, target DataNode: {}",
           regionId,
           selectedDataNodeIP);
       return status;
@@ -1279,7 +1280,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit removeRegionPeer task for region: {} on DataNode: {}",
+          "Successfully submit removeRegionPeer task for region: {}, DataNode to be removed: {}",
           regionId,
           selectedDataNodeIP);
       return status;
@@ -1297,7 +1298,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit deleteOldRegionPeer task for region: {} on DataNode: {}",
+          "Successfully submit deleteOldRegionPeer task for region: {}, DataNode to be removed: {}",
           regionId,
           selectedDataNodeIP);
       return status;
@@ -1455,7 +1456,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus createNewRegionPeer(ConsensusGroupId regionId, List<Peer> peers) {
-    LOGGER.info("Start to createNewRegionPeer {} to region {}", peers, regionId);
+    LOGGER.info(
+        "{}, Start to createNewRegionPeer {} to region {}",
+        REGION_MIGRATE_PROCESS,
+        peers,
+        regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
@@ -1465,7 +1470,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     if (!resp.isSuccess()) {
       LOGGER.error(
-          "CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
+          "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
+          REGION_MIGRATE_PROCESS,
           peers,
           regionId,
           resp.getException());
@@ -1473,7 +1479,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage(resp.getException().getMessage());
       return status;
     }
-    LOGGER.info("Succeed to createNewRegionPeer {} for region {}", peers, regionId);
+    LOGGER.info(
+        "{}, Succeed to createNewRegionPeer {} for region {}",
+        REGION_MIGRATE_PROCESS,
+        peers,
+        regionId);
     status.setMessage("createNewRegionPeer succeed, regionId: " + regionId);
     return status;
   }
