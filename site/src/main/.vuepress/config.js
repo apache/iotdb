@@ -885,7 +885,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB Protocol'],
-							['API/Status-Codes','Status Codes'],
 							['API/Interface-Comparison', 'Interface Comparison']
 						]
 					},
@@ -1027,6 +1026,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
+							['Reference/Status-Codes','Status Codes'],
 							['Reference/Keywords','Keywords'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1837,7 +1837,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器'],
-							['API/Status-Codes','状态码'],
 							['API/Interface-Comparison', '原生接口对比']
 						]
 					},
@@ -1883,7 +1882,7 @@ var config = {
 							['Query-Data/Where-Condition','查询过滤条件'],
 							['Query-Data/Group-By','分段分组聚合'],
 							['Query-Data/Having-Condition','聚合结果过滤'],
-							['Query-Data/Order-By','结果集排序'],
+							// ['Query-Data/Order-By','结果集排序'],
 							['Query-Data/Fill','结果集补空值'],
 							['Query-Data/Pagination','结果集分页'],
 							['Query-Data/Select-Into','查询写回'],
@@ -1993,6 +1992,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
+							['Reference/Status-Codes','状态码'],
 							['Reference/Keywords','关键字'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]

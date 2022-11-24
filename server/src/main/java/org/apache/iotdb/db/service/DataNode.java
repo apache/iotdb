@@ -210,6 +210,7 @@ public class DataNode implements DataNodeMBean {
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
+        logger.info(dataNodeRegisterResp.getStatus().getMessage());
         // store config node lists from resp
         List<TEndPoint> configNodeList = new ArrayList<>();
         for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
@@ -232,7 +233,6 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
             IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
