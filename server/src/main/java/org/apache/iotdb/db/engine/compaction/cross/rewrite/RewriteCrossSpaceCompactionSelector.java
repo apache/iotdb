@@ -137,7 +137,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       try {
         compactionEstimator.clear();
       } catch (IOException e) {
-        throw new CompactionException(e);
+        LOGGER.error("Meets exception when clearing compaction estimator", e);
       }
     }
     LOGGER.info(
