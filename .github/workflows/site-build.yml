@@ -41,7 +41,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && branch == master || github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'master' || github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v3
@@ -52,4 +52,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile and deploy website
-        run: mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site
