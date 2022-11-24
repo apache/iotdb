@@ -22,8 +22,8 @@ package org.apache.iotdb.db.sync.transport.server;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -150,11 +151,12 @@ public class ReceiverManager {
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
   public TSStatus handshake(
-      TSyncIdentityInfo identityInfo,
+      TSyncIdentityInfo tIdentityInfo,
       String remoteAddress,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    logger.info("Invoke handshake method from client ip = {}", identityInfo.address);
+    SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
+    logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.getRemoteAddress())) {
       return RpcUtils.getStatus(
@@ -176,10 +178,12 @@ public class ReceiverManager {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
     createConnection(identityInfo);
-    if (!registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR,
-          String.format("Auto register database %s error.", identityInfo.getDatabase()));
+    if (!StringUtils.isEmpty(identityInfo.getDatabase())) {
+      if (!registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.PIPESERVER_ERROR,
+            String.format("Auto register database %s error.", identityInfo.getDatabase()));
+      }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
