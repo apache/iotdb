@@ -4,14 +4,14 @@ on:
   push:
     branches:
       - master
-      - '*site*'
+      - deploy_site_using_github
     paths:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
-      - '*site*'
+      - deploy_site_using_github
     paths:
       - 'docs/**'
       - 'site/**'
