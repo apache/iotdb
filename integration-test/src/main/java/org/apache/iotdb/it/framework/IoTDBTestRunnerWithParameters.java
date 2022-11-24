@@ -45,7 +45,7 @@ public class IoTDBTestRunnerWithParameters extends BlockJUnit4ClassRunnerWithPar
   }
 
   @Override
-  protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
+  protected synchronized void runChild(final FrameworkMethod method, RunNotifier notifier) {
     Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
     long currentTime = System.currentTimeMillis();
