@@ -57,6 +57,6 @@ public class CompactStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitMerge(this, context);
+    return visitor.visitCompact(this, context);
   }
 }

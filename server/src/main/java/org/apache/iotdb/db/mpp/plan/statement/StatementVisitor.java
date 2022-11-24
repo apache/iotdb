@@ -296,7 +296,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(deleteDataStatement, context);
   }
 
-  public R visitMerge(CompactStatement compactStatement, C context) {
+  public R visitCompact(CompactStatement compactStatement, C context) {
     return visitStatement(compactStatement, context);
   }
 

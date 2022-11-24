@@ -183,7 +183,7 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitMerge(CompactStatement compactStatement, TaskContext context) {
+  public IConfigTask visitCompact(CompactStatement compactStatement, TaskContext context) {
     return new CompactTask(compactStatement);
   }
 
