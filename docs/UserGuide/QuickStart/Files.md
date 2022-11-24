@@ -115,13 +115,14 @@ The data directory path included in storage directory setting are: base_dir, dat
 An example of the configuration items are as follows:
 
 ```
-base_dir = $IOTDB_HOME/data
-data_dirs = /data1/data, /data2/data, /data3/data 
-multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-wal_dir= $IOTDB_HOME/data/wal
+dn_system_dir = $IOTDB_HOME/data/datanode/system
+dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
+dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
+dn_wal_dir= $IOTDB_HOME/data/datanode/wal
 ```
 After setting the configuration, the system will:
 
-* Save all system files in $IOTDB_HOME/data
-* Save TsFile in /data1/data, /data2/data, /data3/data. And the choosing strategy is `MaxDiskUsableSpaceFirstStrategy`, when data writes to the disk, the system will automatically select a directory with the largest remaining disk space to write data.
-* Save WAL data in $IOTDB_HOME/data/wal
+* Save all system files in $IOTDB_HOME/data/datanode/system
+* Save TsFile in /data1/datanode/data, /data2/datanode/data, /data3/datanode/data. And the choosing strategy is `MaxDiskUsableSpaceFirstStrategy`, when data writes to the disk, the system will automatically select a directory with the largest remaining disk space to write data.
+* Save WAL data in $IOTDB_HOME/data/datanode/wal
+* 
