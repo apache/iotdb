@@ -969,7 +969,7 @@ public class TsFileProcessor {
           flushingMemTables.size());
     }
 
-    if (!tobeFlushed.isSignalMemTable()) {
+    if (!(tobeFlushed.isSignalMemTable() || tobeFlushed.isEmpty())) {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
@@ -1060,7 +1060,7 @@ public class TsFileProcessor {
     IMemTable memTableToFlush = flushingMemTables.getFirst();
 
     // signal memtable only may appear when calling asyncClose()
-    if (!memTableToFlush.isSignalMemTable() && !memTableToFlush.isEmpty()) {
+    if (!memTableToFlush.isSignalMemTable()) {
       if (memTableToFlush.isEmpty()) {
         logger.warn(
             "This normal memtable is empty, skip flush. {}: {}",
