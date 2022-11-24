@@ -94,7 +94,7 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i])) {
+      if (!tsBlocksEmpty[i] && (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i]))) {
         targetTsBlockIndex.add(i);
       }
     }

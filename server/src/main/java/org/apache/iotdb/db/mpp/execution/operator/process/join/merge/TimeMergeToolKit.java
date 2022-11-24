@@ -93,7 +93,7 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && greater(minEndKey, startKey[i]) || minEndKey == startKey[i]) {
+      if (!tsBlocksEmpty[i] && (greater(minEndKey, startKey[i]) || minEndKey == startKey[i])) {
         targetTsBlockIndex.add(i);
       }
     }
