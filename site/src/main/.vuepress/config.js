@@ -908,7 +908,6 @@ var config = {
 							['Write-Data/Session','Native API Write'],
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
@@ -1861,7 +1860,6 @@ var config = {
 							['Write-Data/Session','原生接口写入'],
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
