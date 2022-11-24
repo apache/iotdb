@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -37,6 +38,8 @@ import static org.junit.Assert.fail;
 
 /** test ast node parsing on authorization */
 @RunWith(Parameterized.class)
+@Ignore
+@Deprecated
 public class TSPlanContextAuthorTest {
 
   private static Path[] emptyPaths = new Path[] {};

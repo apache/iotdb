@@ -25,9 +25,9 @@ import java.util.Map;
 /**
  * When update this class, remember to update the following files
  *
- * <p>docs/UserGuide/API/Status-Codes.md
+ * <p>docs/UserGuide/Reference/Status-Codes.md
  *
- * <p>docs/zh/UserGuide/API/Status-Codes.md
+ * <p>docs/zh/UserGuide/Reference/Status-Codes.md
  */
 public enum TSStatusCode {
   SUCCESS_STATUS(200),
