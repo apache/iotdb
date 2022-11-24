@@ -165,8 +165,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagClauseContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByTagStatementContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
@@ -192,7 +190,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
@@ -209,10 +206,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
 
-  /** For create-cq clause and select-into clause, used to match "{x}", where x is an integer. */
-  private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
-
-  // TODO: add comment
   private ZoneId zoneId;
 
   public void setZoneId(ZoneId zoneId) {
@@ -566,8 +559,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.tagWhereClause() != null) {
       parseTagWhereClause(ctx.tagWhereClause(), showTimeSeriesStatement);
     }
-    if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), showTimeSeriesStatement);
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showTimeSeriesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showTimeSeriesStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
     }
     return showTimeSeriesStatement;
   }
@@ -624,8 +623,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement =
           new ShowDevicesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
     }
-    if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), showDevicesStatement);
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showDevicesStatement.setOffset(parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
     }
     // show devices with database
     if (ctx.WITH() != null) {
@@ -907,39 +911,108 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Data Manipulation Language (DML) */
 
   // Select Statement ========================================================================
-
-  private QueryStatement queryStatement;
-
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
-    // initialize query statement
-    queryStatement = new QueryStatement();
+    QueryStatement queryStatement = new QueryStatement();
 
-    // parse select, from
-    parseSelectClause(ctx.selectClause());
-    parseFromClause(ctx.fromClause());
+    // parse SELECT & FROM
+    queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause()));
+    queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
 
-    // parse into clause
+    // parse INTO
     if (ctx.intoClause() != null) {
-      parseIntoClause(ctx.intoClause());
+      queryStatement.setIntoComponent(parseIntoClause(ctx.intoClause()));
     }
 
-    // parse where clause
+    // parse WHERE
     if (ctx.whereClause() != null) {
-      WhereCondition whereCondition = parseWhereClause(ctx.whereClause());
-      queryStatement.setWhereCondition(whereCondition);
+      queryStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
     }
 
-    // parser special clause
-    if (ctx.specialClause() != null) {
-      queryStatement = (QueryStatement) visit(ctx.specialClause());
+    // parse GROUP BY
+    if (ctx.groupByClause() != null) {
+      Set<String> groupByKeys = new HashSet<>();
+      List<IoTDBSqlParser.GroupByAttributeClauseContext> groupByAttributes =
+          ctx.groupByClause().groupByAttributeClause();
+      for (IoTDBSqlParser.GroupByAttributeClauseContext groupByAttribute : groupByAttributes) {
+        if (groupByAttribute.TIME() != null || groupByAttribute.interval != null) {
+          if (groupByKeys.contains("TIME")) {
+            throw new SemanticException("duplicated group by key: TIME");
+          }
+
+          groupByKeys.add("TIME");
+          queryStatement.setGroupByTimeComponent(parseGroupByTimeClause(groupByAttribute));
+        } else if (groupByAttribute.LEVEL() != null) {
+          if (groupByKeys.contains("LEVEL")) {
+            throw new SemanticException("duplicated group by key: LEVEL");
+          }
+
+          groupByKeys.add("LEVEL");
+          queryStatement.setGroupByLevelComponent(parseGroupByLevelClause(groupByAttribute));
+        } else if (groupByAttribute.TAGS() != null) {
+          if (groupByKeys.contains("TAGS")) {
+            throw new SemanticException("duplicated group by key: TAGS");
+          }
+
+          groupByKeys.add("TAGS");
+          queryStatement.setGroupByTagComponent(parseGroupByTagClause(groupByAttribute));
+        } else {
+          throw new SQLParserException("Unknown GROUP BY type.");
+        }
+      }
     }
+
+    // parse HAVING
+    if (ctx.havingClause() != null) {
+      queryStatement.setHavingCondition(parseHavingClause(ctx.havingClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      queryStatement.setOrderByComponent(parseOrderByClause(ctx.orderByClause()));
+    }
+
+    // parse FILL
+    if (ctx.fillClause() != null) {
+      queryStatement.setFillComponent(parseFillClause(ctx.fillClause()));
+    }
+
+    if (ctx.paginationClause() != null) {
+      // parse SLIMIT & SOFFSET
+      if (ctx.paginationClause().seriesPaginationClause() != null) {
+        if (ctx.paginationClause().seriesPaginationClause().slimitClause() != null) {
+          queryStatement.setSeriesLimit(
+              parseSLimitClause(ctx.paginationClause().seriesPaginationClause().slimitClause()));
+        }
+        if (ctx.paginationClause().seriesPaginationClause().soffsetClause() != null) {
+          queryStatement.setSeriesOffset(
+              parseSOffsetClause(ctx.paginationClause().seriesPaginationClause().soffsetClause()));
+        }
+      }
+
+      // parse LIMIT & OFFSET
+      if (ctx.paginationClause().rowPaginationClause() != null) {
+        if (ctx.paginationClause().rowPaginationClause().limitClause() != null) {
+          queryStatement.setRowLimit(
+              parseLimitClause(ctx.paginationClause().rowPaginationClause().limitClause()));
+        }
+        if (ctx.paginationClause().rowPaginationClause().offsetClause() != null) {
+          queryStatement.setRowOffset(
+              parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
+        }
+      }
+    }
+
+    // parse ALIGN BY
+    if (ctx.alignByClause() != null) {
+      queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
+    }
+
     return queryStatement;
   }
 
-  // Select Clause
-
-  public void parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
+  // ---- Select Clause
+  private SelectComponent parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
     SelectComponent selectComponent = new SelectComponent(zoneId);
 
     // parse LAST
@@ -962,8 +1035,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     selectComponent.setAliasToColumnMap(aliasToColumnMap);
 
-    // set selectComponent
-    queryStatement.setSelectComponent(selectComponent);
+    return selectComponent;
   }
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
@@ -980,74 +1052,60 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ResultColumn(expression, alias, columnType);
   }
 
-  // From Clause
-
-  public void parseFromClause(IoTDBSqlParser.FromClauseContext ctx) {
+  // ---- From Clause
+  private FromComponent parseFromClause(IoTDBSqlParser.FromClauseContext ctx) {
     FromComponent fromComponent = new FromComponent();
     List<IoTDBSqlParser.PrefixPathContext> prefixFromPaths = ctx.prefixPath();
     for (IoTDBSqlParser.PrefixPathContext prefixFromPath : prefixFromPaths) {
       PartialPath path = parsePrefixPath(prefixFromPath);
       fromComponent.addPrefixPath(path);
     }
-    queryStatement.setFromComponent(fromComponent);
+    return fromComponent;
   }
 
-  // Where Clause
+  // ---- Into Clause
+  private IntoComponent parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
+    List<IntoItem> intoItems = new ArrayList<>();
+    for (IoTDBSqlParser.IntoItemContext intoItemContext : ctx.intoItem()) {
+      intoItems.add(parseIntoItem(intoItemContext));
+    }
+    return new IntoComponent(intoItems);
+  }
 
-  public WhereCondition parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
+  private IntoItem parseIntoItem(IoTDBSqlParser.IntoItemContext intoItemContext) {
+    boolean isAligned = intoItemContext.ALIGNED() != null;
+    PartialPath intoDevice = parseIntoPath(intoItemContext.intoPath());
+    List<String> intoMeasurements =
+        intoItemContext.nodeNameInIntoPath().stream()
+            .map(this::parseNodeNameInIntoPath)
+            .collect(Collectors.toList());
+    return new IntoItem(intoDevice, intoMeasurements, isAligned);
+  }
+
+  private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
+    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
+      return parseFullPathInIntoPath((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
+    } else {
+      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames =
+          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
+      String[] path = new String[nodeNames.size()];
+      for (int i = 0; i < nodeNames.size(); i++) {
+        path[i] = parseNodeNameInIntoPath(nodeNames.get(i));
+      }
+      return new PartialPath(path);
+    }
+  }
+
+  // ---- Where Clause
+  private WhereCondition parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
     Expression predicate =
         parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
     return new WhereCondition(predicate);
   }
 
-  // Group By Time Clause
-
-  @Override
-  public Statement visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
-    // parse group by time clause
-    parseGroupByTimeClause(ctx.groupByTimeClause());
-
-    // parse order by time
-    if (ctx.orderByClause() != null) {
-      parseOrderByClause(ctx.orderByClause());
-    }
-
-    // parse Having
-    if (ctx.havingClause() != null) {
-      parseHavingClause(ctx.havingClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-
-    return queryStatement;
-  }
-
-  @Override
-  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
-    // parse group by time clause & fill clause
-    parseGroupByTimeClause(ctx.groupByFillClause());
-
-    // parse order by time
-    if (ctx.orderByClause() != null) {
-      parseOrderByClause(ctx.orderByClause());
-    }
-
-    // parse Having
-    if (ctx.havingClause() != null) {
-      parseHavingClause(ctx.havingClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-    return queryStatement;
-  }
-
-  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
+  // ---- Group By Clause
+  private GroupByTimeComponent parseGroupByTimeClause(
+      IoTDBSqlParser.GroupByAttributeClauseContext ctx) {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
     // parse time range
@@ -1073,70 +1131,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
     }
 
-    // parse GroupByLevel clause
-    if (ctx.LEVEL() != null && ctx.INTEGER_LITERAL() != null) {
-      GroupByLevelComponent groupByLevelComponent = new GroupByLevelComponent();
-      int[] levels = new int[ctx.INTEGER_LITERAL().size()];
-      for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
-        levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
-      }
-      groupByLevelComponent.setLevels(levels);
-      queryStatement.setGroupByLevelComponent(groupByLevelComponent);
-    }
-
-    if (ctx.TAGS() != null) {
-      List<String> tagKeys = new ArrayList<>();
-      for (IdentifierContext identifierContext : ctx.identifier()) {
-        tagKeys.add(identifierContext.getText());
-      }
-      queryStatement.setGroupByTagComponent(new GroupByTagComponent(tagKeys));
-    }
-
-    // parse fill clause
-    if (ctx.fillClause() != null) {
-      parseFillClause(ctx.fillClause());
-    }
-
-    // set groupByTimeComponent
-    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+    return groupByTimeComponent;
   }
 
-  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
-    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
-
-    // parse time range
-    if (ctx.timeRange() != null) {
-      parseTimeRange(ctx.timeRange(), groupByTimeComponent);
-      groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
-    }
-
-    // parse time interval
-    groupByTimeComponent.setInterval(
-        parseTimeIntervalOrSlidingStep(ctx.interval.getText(), true, groupByTimeComponent));
-    if (groupByTimeComponent.getInterval() <= 0) {
-      throw new SemanticException(
-          "The second parameter time interval should be a positive integer.");
-    }
-
-    // parse sliding step
-    if (ctx.step != null) {
-      groupByTimeComponent.setSlidingStep(
-          parseTimeIntervalOrSlidingStep(ctx.step.getText(), false, groupByTimeComponent));
-    } else {
-      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
-      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
-    }
-
-    // parse fill clause
-    if (ctx.fillClause() != null) {
-      parseFillClause(ctx.fillClause());
-    }
-
-    // set groupByTimeComponent
-    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
-  }
-
-  /** parse time range (startTime and endTime) in group by query. */
+  /** parse time range (startTime and endTime) in group by time. */
   private void parseTimeRange(
       IoTDBSqlParser.TimeRangeContext timeRange, GroupByTimeComponent groupByClauseComponent) {
     long currentTime = DateTimeUtils.currentTime();
@@ -1167,71 +1165,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return DateTimeUtils.convertDurationStrToLong(duration);
   }
 
-  // Group By Level Clause
-  @Override
-  public Statement visitGroupByLevelStatement(IoTDBSqlParser.GroupByLevelStatementContext ctx) {
-    // parse GroupByLevel clause
-    parseGroupByLevelClause(ctx.groupByLevelClause());
-
-    // parse order by time
-    if (ctx.orderByClause() != null) {
-      parseOrderByClause(ctx.orderByClause());
-    }
-
-    // parse Having
-    if (ctx.havingClause() != null) {
-      parseHavingClause(ctx.havingClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-    return queryStatement;
-  }
-
-  public void parseGroupByLevelClause(IoTDBSqlParser.GroupByLevelClauseContext ctx) {
+  private GroupByLevelComponent parseGroupByLevelClause(
+      IoTDBSqlParser.GroupByAttributeClauseContext ctx) {
     GroupByLevelComponent groupByLevelComponent = new GroupByLevelComponent();
     int[] levels = new int[ctx.INTEGER_LITERAL().size()];
     for (int i = 0; i < ctx.INTEGER_LITERAL().size(); i++) {
       levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
     }
     groupByLevelComponent.setLevels(levels);
-
-    // parse fill clause
-    if (ctx.fillClause() != null) {
-      parseFillClause(ctx.fillClause());
-    }
-
-    queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+    return groupByLevelComponent;
   }
 
-  // HAVING Clause
-  public void parseHavingClause(IoTDBSqlParser.HavingClauseContext ctx) {
-    Expression predicate =
-        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
-    queryStatement.setHavingCondition(new HavingCondition(predicate));
-  }
-
-  @Override
-  public Statement visitGroupByTagStatement(GroupByTagStatementContext ctx) {
-    // parse group by tag clause
-    parseGroupByTagClause(ctx.groupByTagClause());
-
-    // parse order by time
-    if (ctx.orderByClause() != null) {
-      parseOrderByClause(ctx.orderByClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-
-    return queryStatement;
-  }
-
-  public void parseGroupByTagClause(GroupByTagClauseContext ctx) {
+  private GroupByTagComponent parseGroupByTagClause(
+      IoTDBSqlParser.GroupByAttributeClauseContext ctx) {
     Set<String> tagKeys = new LinkedHashSet<>();
     for (IdentifierContext identifierContext : ctx.identifier()) {
       String key = parseIdentifier(identifierContext.getText());
@@ -1240,53 +1186,56 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       tagKeys.add(key);
     }
-    queryStatement.setGroupByTagComponent(new GroupByTagComponent(new ArrayList<>(tagKeys)));
+    return new GroupByTagComponent(new ArrayList<>(tagKeys));
   }
 
-  // Fill Clause
-  @Override
-  public Statement visitFillStatement(IoTDBSqlParser.FillStatementContext ctx) {
-    // parse fill
-    parseFillClause(ctx.fillClause());
-
-    // parse order by time
-    if (ctx.orderByClause() != null) {
-      parseOrderByClause(ctx.orderByClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-    return queryStatement;
+  // ---- Having Clause
+  private HavingCondition parseHavingClause(IoTDBSqlParser.HavingClauseContext ctx) {
+    Expression predicate =
+        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
+    return new HavingCondition(predicate);
   }
 
-  public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
-    FillComponent fillComponent = new FillComponent();
-    if (ctx.linearClause() != null) {
-      if (ctx.linearClause().DURATION_LITERAL().size() > 0) {
-        throw new SemanticException("The specified fill time range is not supported.");
-      }
-      fillComponent.setFillPolicy(FillPolicy.LINEAR);
-    } else if (ctx.previousClause() != null) {
-      if (ctx.previousClause().DURATION_LITERAL() != null) {
-        throw new SemanticException("The specified fill time range is not supported.");
-      }
-      fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
-    } else if (ctx.specificValueClause() != null) {
-      fillComponent.setFillPolicy(FillPolicy.VALUE);
-      if (ctx.specificValueClause().constant() != null) {
-        Literal fillValue = parseLiteral(ctx.specificValueClause().constant());
-        fillComponent.setFillValue(fillValue);
+  // ---- Order By Clause
+  private OrderByComponent parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
+    OrderByComponent orderByComponent = new OrderByComponent();
+    Set<SortKey> sortKeySet = new HashSet<>();
+    for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
+        ctx.orderByAttributeClause()) {
+      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
+
+      SortKey sortKey = sortItem.getSortKey();
+      if (sortKeySet.contains(sortKey)) {
+        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
       } else {
-        throw new SemanticException("fill value cannot be null");
+        sortKeySet.add(sortKey);
+        orderByComponent.addSortItem(sortItem);
       }
-    } else if (ctx.previousUntilLastClause() != null) {
-      throw new SemanticException("PREVIOUSUNTILLAST fill is not supported yet.");
-    } else if (ctx.oldTypeClause() != null) {
-      throw new SemanticException("The specified fill datatype is not supported.");
     }
-    queryStatement.setFillComponent(fillComponent);
+    return orderByComponent;
+  }
+
+  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
+    return new SortItem(
+        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
+        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
+  }
+
+  // ---- Fill Clause
+  public FillComponent parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
+    FillComponent fillComponent = new FillComponent();
+    if (ctx.LINEAR() != null) {
+      fillComponent.setFillPolicy(FillPolicy.LINEAR);
+    } else if (ctx.PREVIOUS() != null) {
+      fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+    } else if (ctx.constant() != null) {
+      fillComponent.setFillPolicy(FillPolicy.VALUE);
+      Literal fillValue = parseLiteral(ctx.constant());
+      fillComponent.setFillValue(fillValue);
+    } else {
+      throw new SemanticException("Unknown FILL type.");
+    }
+    return fillComponent;
   }
 
   private Literal parseLiteral(ConstantContext constantContext) {
@@ -1306,36 +1255,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // Other Clauses
-  @Override
-  public Statement visitSpecialLimitStatement(IoTDBSqlParser.SpecialLimitStatementContext ctx) {
-    return visit(ctx.specialLimit());
-  }
-
-  @Override
-  public Statement visitLimitStatement(IoTDBSqlParser.LimitStatementContext ctx) {
-    if ((ctx.limitClause() != null || ctx.slimitClause() != null)
-        && queryStatement.isGroupByTag()) {
-      // TODO: I will support limit and slimit in later PRs
-      throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
-    }
-    // parse LIMIT
-    parseLimitClause(ctx.limitClause(), queryStatement);
-
-    // parse SLIMIT
-    if (ctx.slimitClause() != null) {
-      parseSlimitClause(ctx.slimitClause());
-    }
-
-    // parse ALIGN BY DEVICE or DISABLE ALIGN
-    if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
-    }
-    return queryStatement;
-  }
-
   // parse LIMIT & OFFSET
-  private void parseLimitClause(IoTDBSqlParser.LimitClauseContext ctx, Statement statement) {
+  private int parseLimitClause(IoTDBSqlParser.LimitClauseContext ctx) {
     int limit;
     try {
       limit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
@@ -1345,22 +1266,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (limit <= 0) {
       throw new SemanticException("LIMIT <N>: N should be greater than 0.");
     }
-    if (statement instanceof ShowTimeSeriesStatement) {
-      ((ShowTimeSeriesStatement) statement).setLimit(limit);
-    } else if (statement instanceof ShowDevicesStatement) {
-      ((ShowDevicesStatement) statement).setLimit(limit);
-    } else {
-      queryStatement.setRowLimit(limit);
-    }
-
-    // parse OFFSET
-    if (ctx.offsetClause() != null) {
-      parseOffsetClause(ctx.offsetClause(), statement);
-    }
+    return limit;
   }
 
-  // parse OFFSET
-  private void parseOffsetClause(IoTDBSqlParser.OffsetClauseContext ctx, Statement statement) {
+  private int parseOffsetClause(IoTDBSqlParser.OffsetClauseContext ctx) {
     int offset;
     try {
       offset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
@@ -1371,34 +1280,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (offset < 0) {
       throw new SemanticException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
     }
-    if (statement instanceof ShowTimeSeriesStatement) {
-      ((ShowTimeSeriesStatement) statement).setOffset(offset);
-    } else if (statement instanceof ShowDevicesStatement) {
-      ((ShowDevicesStatement) statement).setOffset(offset);
-    } else {
-      queryStatement.setRowOffset(offset);
-    }
-  }
-
-  @Override
-  public Statement visitSlimitStatement(IoTDBSqlParser.SlimitStatementContext ctx) {
-    // parse SLIMIT
-    parseSlimitClause(ctx.slimitClause());
-
-    // parse LIMIT
-    if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), queryStatement);
-    }
-
-    // parse ALIGN BY DEVICE or DISABLE ALIGN
-    if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
-    }
-    return queryStatement;
+    return offset;
   }
 
   // parse SLIMIT & SOFFSET
-  private void parseSlimitClause(IoTDBSqlParser.SlimitClauseContext ctx) {
+  private int parseSLimitClause(IoTDBSqlParser.SlimitClauseContext ctx) {
     int slimit;
     try {
       slimit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
@@ -1408,16 +1294,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (slimit <= 0) {
       throw new SemanticException("SLIMIT <SN>: SN should be greater than 0.");
     }
-    queryStatement.setSeriesLimit(slimit);
-
-    // parse SOFFSET
-    if (ctx.soffsetClause() != null) {
-      parseSoffsetClause(ctx.soffsetClause());
-    }
+    return slimit;
   }
 
   // parse SOFFSET
-  public void parseSoffsetClause(IoTDBSqlParser.SoffsetClauseContext ctx) {
+  public int parseSOffsetClause(IoTDBSqlParser.SoffsetClauseContext ctx) {
     int soffset;
     try {
       soffset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
@@ -1428,130 +1309,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (soffset < 0) {
       throw new SemanticException("SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
     }
-    queryStatement.setSeriesOffset(soffset);
+    return soffset;
   }
 
-  // WITHOUT NULL Clause
-
-  @Override
-  public Statement visitWithoutNullStatement(IoTDBSqlParser.WithoutNullStatementContext ctx) {
-    // parse WITHOUT NULL
-    parseWithoutNullClause(ctx.withoutNullClause());
-
-    // parse LIMIT & OFFSET
-    if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), queryStatement);
-    }
-
-    // parse SLIMIT & SOFFSET
-    if (ctx.slimitClause() != null) {
-      parseSlimitClause(ctx.slimitClause());
-    }
-
-    // parse ALIGN BY DEVICE or DISABLE ALIGN
-    if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
-    }
-    return queryStatement;
-  }
-
-  // parse WITHOUT NULL
-  private void parseWithoutNullClause(IoTDBSqlParser.WithoutNullClauseContext ctx) {
-    throw new SemanticException("WITHOUT NULL clause is not supported yet.");
-  }
-
-  // ORDER BY TIME Clause
-
-  @Override
-  public Statement visitOrderByTimeStatement(IoTDBSqlParser.OrderByTimeStatementContext ctx) {
-    // parse ORDER BY TIME
-    parseOrderByClause(ctx.orderByClause());
-
-    // parse others
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-    return queryStatement;
-  }
-
-  // parse ORDER BY TIME
-  private void parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
-    OrderByComponent orderByComponent = new OrderByComponent();
-    Set<SortKey> sortKeySet = new HashSet<>();
-    for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
-        ctx.orderByAttributeClause()) {
-      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
-
-      SortKey sortKey = sortItem.getSortKey();
-      if (sortKeySet.contains(sortKey)) {
-        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
-      } else {
-        sortKeySet.add(sortKey);
-        orderByComponent.addSortItem(sortItem);
-      }
-    }
-    queryStatement.setOrderByComponent(orderByComponent);
-  }
-
-  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
-    return new SortItem(
-        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
-        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
-  }
-
-  // ResultSetFormat Clause
-
-  @Override
-  public Statement visitAlignByDeviceClauseOrDisableAlignStatement(
-      IoTDBSqlParser.AlignByDeviceClauseOrDisableAlignStatementContext ctx) {
-    parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
-    return queryStatement;
-  }
-
-  private void parseAlignByDeviceClauseOrDisableAlign(
-      IoTDBSqlParser.AlignByDeviceClauseOrDisableAlignContext ctx) {
-    if (ctx.alignByDeviceClause() != null) {
-      queryStatement.setResultSetFormat(ResultSetFormat.ALIGN_BY_DEVICE);
+  // ---- Align By Clause
+  private ResultSetFormat parseAlignBy(IoTDBSqlParser.AlignByClauseContext ctx) {
+    if (ctx.DEVICE() != null) {
+      return ResultSetFormat.ALIGN_BY_DEVICE;
     } else {
-      queryStatement.setResultSetFormat(ResultSetFormat.DISABLE_ALIGN);
-    }
-  }
-
-  // parse INTO clause
-
-  private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
-    if (ctx.intoItem().size() > 0) {
-      List<IntoItem> intoItems = new ArrayList<>();
-      for (IoTDBSqlParser.IntoItemContext intoItemContext : ctx.intoItem()) {
-        intoItems.add(parseIntoItem(intoItemContext));
-      }
-      queryStatement.setIntoComponent(new IntoComponent(intoItems));
-    } else {
-      throw new SemanticException("The syntax of SELECT INTO statement has changed from v0.14");
-    }
-  }
-
-  private IntoItem parseIntoItem(IoTDBSqlParser.IntoItemContext intoItemContext) {
-    boolean isAligned = intoItemContext.ALIGNED() != null;
-    PartialPath intoDevice = parseIntoPath(intoItemContext.intoPath());
-    List<String> intoMeasurements =
-        intoItemContext.nodeNameInIntoPath().stream()
-            .map(this::parseNodeNameInIntoPath)
-            .collect(Collectors.toList());
-    return new IntoItem(intoDevice, intoMeasurements, isAligned);
-  }
-
-  private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
-    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
-      return parseFullPathInIntoPath((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
-    } else {
-      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames =
-          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
-      String[] path = new String[nodeNames.size()];
-      for (int i = 0; i < nodeNames.size(); i++) {
-        path[i] = parseNodeNameInIntoPath(nodeNames.get(i));
-      }
-      return new PartialPath(path);
+      return ResultSetFormat.ALIGN_BY_TIME;
     }
   }
 
@@ -3070,7 +2836,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement)
       throws SQLParserException {
-    if (ctx.intoClause() != null || ctx.specialClause() != null) {
+    if (ctx.intoClause() != null
+        || ctx.groupByClause() != null
+        || ctx.havingClause() != null
+        || ctx.fillClause() != null
+        || ctx.paginationClause() != null
+        || ctx.alignByClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 

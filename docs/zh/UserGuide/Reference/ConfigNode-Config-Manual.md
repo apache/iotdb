@@ -21,11 +21,13 @@
 
 # ConfigNode 配置参数
 
-IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`confignode/conf`文件夹下。
+IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下。
 
 * `confignode-env.sh/bat`：环境配置项的配置文件，可以配置 ConfigNode 的内存大小。
 
 * `iotdb-confignode.properties`：IoTDB ConfigNode 的配置文件。
+
+* `iotdb-common.properties`：IoTDB 的通用配置文件。
 
 ## 环境配置项（confignode-env.sh/bat）
 
@@ -59,90 +61,99 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`confignode/conf`文
 |改后生效方式|重启服务生效|
 
 
-## 系统配置项（iotdb-confignode.properties）
+## 系统配置项（iotdb-confignode.properties 和 iotdb-common.properties）
 
 IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 ### Internal RPC Service 配置
 
-* internal\_address
+* cn\_internal\_address
 
-|名字| internal\_address |
-|:---:|:---|
-|描述| ConfigNode 集群内部地址 |
-|类型| String |
-|默认值| 0.0.0.0|
-|改后生效方式|重启服务生效|
+|   名字   | cn\_internal\_address |
+|:------:|:----------------------|
+|   描述   | ConfigNode 集群内部地址     |
+|   类型   | String                |
+|  默认值   | 127.0.0.1             |
+| 改后生效方式 | 重启服务生效                |
 
-* internal\_port
+* cn\_internal\_port
 
-|名字| internal\_port |
-|:---:|:---|
-|描述| ConfigNode 集群服务监听端口|
-|类型| Short Int : [0,65535] |
-|默认值| 6667 |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_internal\_port    |
+|:------:|:----------------------|
+|   描述   | ConfigNode 集群服务监听端口   |
+|   类型   | Short Int : [0,65535] |
+|  默认值   | 6667                  |
+| 改后生效方式 | 重启服务生效                |
 
-* target\_config\_nodes
+* cn\_consensus\_port
 
-|名字| target\_config\_nodes |
-|:---:|:---|
-|描述| 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
-|类型| String |
-|默认值| 127.0.0.1:22277 |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_consensus\_port   |
+|:------:|:----------------------|
+|   描述   | ConfigNode 的共识协议通信端口  |
+|   类型   | Short Int : [0,65535] |
+|  默认值   | 22278                 |
+| 改后生效方式 | 重启服务生效                |
 
-* rpc\_thrift\_compression\_enable
+* cn\_target\_config\_node\_list
 
-|名字| rpc\_thrift\_compression\_enable |
-|:---:|:---|
-|描述| 是否启用 thrift 的压缩机制。|
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_target\_config\_node\_list        |
+|:------:|:--------------------------------------|
+|   描述   | 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
+|   类型   | String                                |
+|  默认值   | 127.0.0.1:22277                       |
+| 改后生效方式 | 重启服务生效                                |
 
-* rpc\_advanced\_compression\_enable
+* cn\_rpc\_thrift\_compression\_enable
 
-|名字| rpc\_advanced\_compression\_enable |
-|:---:|:---|
-|描述| 是否启用 thrift 的自定制压缩机制。|
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_rpc\_thrift\_compression\_enable |
+|:------:|:-------------------------------------|
+|   描述   | 是否启用 thrift 的压缩机制。                   |
+|   类型   | Boolean                              |
+|  默认值   | false                                |
+| 改后生效方式 | 重启服务生效                               |
 
-* rpc\_max\_concurrent\_client\_num
+* cn\_rpc\_advanced\_compression\_enable
 
-|名字| rpc\_max\_concurrent\_client\_num |
-|:---:|:---|
-|描述| 最大连接数。|
-|类型| Short Int : [0,65535] |
-|默认值| 65535 |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_rpc\_advanced\_compression\_enable |
+|:------:|:---------------------------------------|
+|   描述   | 是否启用 thrift 的自定制压缩机制。                  |
+|   类型   | Boolean                                |
+|  默认值   | false                                  |
+| 改后生效方式 | 重启服务生效                                 |
 
-* thrift\_max\_frame\_size
+* cn\_rpc\_max\_concurrent\_client\_num
 
-|名字| thrift\_max\_frame\_size |
-|:---:|:---|
-|描述| RPC 请求/响应的最大字节数|
-|类型| long |
-|默认值| 536870912 （默认值512MB，应大于等于 512 * 1024 * 1024) |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_rpc\_max\_concurrent\_client\_num |
+|:------:|:--------------------------------------|
+|   描述   | 最大连接数。                                |
+|   类型   | Short Int : [0,65535]                 |
+|  默认值   | 65535                                 |
+| 改后生效方式 | 重启服务生效                                |
 
-* thrift\_init\_buffer\_size
+* cn\_thrift\_max\_frame\_size
 
-|名字| thrift\_init\_buffer\_size |
-|:---:|:---|
-|描述| 字节数 |
-|类型| Long |
-|默认值| 1024 |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_thrift\_max\_frame\_size                 |
+|:------:|:---------------------------------------------|
+|   描述   | RPC 请求/响应的最大字节数                              |
+|   类型   | long                                         |
+|  默认值   | 536870912 （默认值512MB，应大于等于 512 * 1024 * 1024) |
+| 改后生效方式 | 重启服务生效                                       |
+
+* cn\_thrift\_init\_buffer\_size
+
+|   名字   | cn\_thrift\_init\_buffer\_size |
+|:------:|:-------------------------------|
+|   描述   | 字节数                            |
+|   类型   | Long                           |
+|  默认值   | 1024                           |
+| 改后生效方式 | 重启服务生效                         |
 
 
 ### 副本及共识协议
 
-* consensus\_port
+* cn\_consensus\_port
 
-|名字| consensus\_port |
+|名字| cn\_consensus\_port |
 |:---:|:---|
 |描述| ConfigNode 的共识协议通信端口 |
 |类型| Short Int : [0,65535] |
@@ -197,9 +208,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 ### 心跳配置
 
-* heartbeat\_interval
+* heartbeat\_interval\_in\_ms
 
-|名字| heartbeat\_interval |
+|名字| heartbeat\_interval\_in\_ms |
 |:---:|:---|
 |描述| 集群节点间的心跳间隔 |
 |类型| Long |
@@ -230,14 +241,14 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 ### Database 配置
 
-* default\_ttl
+* default\_ttl\_in\_ms
 
-|名字| default\_ttl |
-|:---:|:---|
-|描述| 默认数据保留时间 |
-|类型| Long |
-|默认值| 无限 |
-|改后生效方式|重启服务生效|
+|名字| default\_ttl\_in\_ms |
+|:---:|:---------------------|
+|描述| 默认数据保留时间             |
+|类型| Long                 |
+|默认值| 无限                   |
+|改后生效方式| 重启服务生效               |
 
 * time\_partition\_interval
 
@@ -251,23 +262,23 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 ### 数据目录
 
-* system\_dir
+* cn\_system\_dir
 
-|名字| system\_dir |
-|:---:|:---|
-|描述| ConfigNode 系统数据存储路径 |
-|类型| String |
-|默认值| data/system（Windows：data\\system） |
-|改后生效方式|重启服务生效|
+|名字| cn\_system\_dir                                          |
+|:---:|:---------------------------------------------------------|
+|描述| ConfigNode 系统数据存储路径                                      |
+|类型| String                                                   |
+|默认值| data/confignode/system（Windows：data\\configndoe\\system） |
+|改后生效方式| 重启服务生效                                                   |
 
-* consensus\_dir
+* cn\_consensus\_dir
 
-|名字| consensus\_dir |
-|:---:|:---|
-|描述| ConfigNode 共识协议数据存储路径 |
-|类型| String |
-|默认值| data/consensus（Windows：data\\consensus） |
-|改后生效方式|重启服务生效|
+|名字| cn\_consensus\_dir                                 |
+|:---:|:---------------------------------------------------|
+|描述| ConfigNode 共识协议数据存储路径                              |
+|类型| String                                             |
+|默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
+|改后生效方式| 重启服务生效                                             |
 
 * udf\_lib\_dir
 

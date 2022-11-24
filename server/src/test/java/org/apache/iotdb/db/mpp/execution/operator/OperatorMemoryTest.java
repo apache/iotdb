@@ -342,12 +342,12 @@ public class OperatorMemoryTest {
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 2 * 1024 * 1024L,
         lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, lastQueryOperator.calculateMaxReturnSize());
-    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
 
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(4 * 1024 * 1024L);
     assertEquals(4 * 1024 * 1024L + 2 * 1024 * 1024L, lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(4 * 1024 * 1024L, lastQueryOperator.calculateMaxReturnSize());
-    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
