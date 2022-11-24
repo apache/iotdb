@@ -75,7 +75,7 @@ public class SyncDataNodeClientPool {
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint);
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
@@ -94,7 +94,7 @@ public class SyncDataNodeClientPool {
         }
       }
     }
-    LOGGER.error("{} failed on DataNode {}", requestType, endPoint);
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
