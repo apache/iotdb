@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -28,9 +29,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,22 +43,22 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
-@Ignore
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
+public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
 
   private Statement statement;
   private Connection connection;
 
-  public IoTDBDeleteTimeseriesIT(SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
-  }
+  //  public IoTDBDeleteTimeseriesIT(SchemaTestMode schemaTestMode) {
+  //    super(schemaTestMode);
+  //  }
 
   @Before
   public void setUp() throws Exception {
-    super.setUp();
+    //    super.setUp();
     memtableSizeThreshold = ConfigFactory.getConfig().getMemtableSizeThreshold();
     ConfigFactory.getConfig().setMemtableSizeThreshold(2);
 
@@ -73,7 +74,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
     connection.close();
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    super.tearDown();
+    //    super.tearDown();
   }
 
   @Test
