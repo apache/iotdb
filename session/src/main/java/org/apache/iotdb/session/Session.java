@@ -393,6 +393,30 @@ public class Session {
       int thriftMaxFrameSize,
       boolean enableCacheLeader,
       Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableCacheLeader,
+        version,
+        true);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader,
+      Version version,
+      boolean enableAudit) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -402,6 +426,7 @@ public class Session {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
     this.version = version;
+    this.enableAudit = enableAudit;
   }
 
   public void setFetchSize(int fetchSize) {
@@ -3180,6 +3205,8 @@ public class Session {
 
     private List<String> nodeUrls = null;
 
+    private boolean enableAudit = true;
+
     public Builder host(String host) {
       this.host = host;
       return this;
@@ -3235,6 +3262,11 @@ public class Session {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
@@ -3253,7 +3285,8 @@ public class Session {
                 thriftDefaultBufferSize,
                 thriftMaxFrameSize,
                 enableCacheLeader,
-                version);
+                version,
+                enableAudit);
         newSession.setEnableQueryRedirection(true);
         return newSession;
       }
@@ -3268,6 +3301,7 @@ public class Session {
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
           enableCacheLeader,
+          enableAudit,
           version);
     }
   }
