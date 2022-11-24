@@ -44,7 +44,22 @@ class PrometheusTextWriter extends FilterWriter {
     write("# TYPE ");
     write(name);
     write(' ');
-    write(type.toString().toLowerCase());
+    switch (type) {
+      case GAUGE:
+      case AUTO_GAUGE:
+      case COUNTER:
+        write("gauge");
+        break;
+      case RATE:
+        write("counter");
+        break;
+      case TIMER:
+      case HISTOGRAM:
+        write("summary");
+        break;
+      default:
+        break;
+    }
     write('\n');
   }
 

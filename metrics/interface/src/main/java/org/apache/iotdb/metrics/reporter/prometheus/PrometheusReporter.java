@@ -23,8 +23,16 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.netty.channel.ChannelOption;
@@ -40,6 +48,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -85,17 +94,58 @@ public class PrometheusReporter implements Reporter {
         MetricInfo metricInfo = metricEntry.getKey();
         IMetric metric = metricEntry.getValue();
 
-        String name = metricInfo.getName();
-        prometheusTextWriter.writeHelp(name, getHelpMessage(name, metric));
-        prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
-        Map<String, Object> values = new HashMap<>();
-        metric.constructValueMap(values);
-        for (Map.Entry<String, Object> entry : values.entrySet()) {
-          String metricName = name;
-          if (!entry.getKey().equals("value")) {
-            metricName += "_" + entry.getKey();
-          }
-          prometheusTextWriter.writeSample(metricName, metricInfo.getTags(), entry.getValue());
+        String name = metricInfo.getName().replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
+        MetricType metricType = metricInfo.getMetaInfo().getType();
+        if (metric instanceof Counter) {
+          name += "_total";
+          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
+          Counter counter = (Counter) metric;
+          prometheusTextWriter.writeSample(name, metricInfo.getTags(), counter.count());
+        } else if (metric instanceof Gauge) {
+          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
+          Gauge gauge = (Gauge) metric;
+          prometheusTextWriter.writeSample(name, metricInfo.getTags(), gauge.value());
+        } else if (metric instanceof AutoGauge) {
+          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
+          AutoGauge gauge = (AutoGauge) metric;
+          prometheusTextWriter.writeSample(name, metricInfo.getTags(), gauge.value());
+        } else if (metric instanceof Histogram) {
+          Histogram histogram = (Histogram) metric;
+          HistogramSnapshot snapshot = histogram.takeSnapshot();
+          writeSnapshotAndCount(
+              name,
+              metricInfo.getTags(),
+              metricType,
+              snapshot,
+              histogram.count(),
+              prometheusTextWriter);
+        } else if (metric instanceof Rate) {
+          name += "_total";
+          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
+          Rate rate = (Rate) metric;
+          prometheusTextWriter.writeSample(name, metricInfo.getTags(), rate.getCount());
+          prometheusTextWriter.writeSample(
+              name, addTags(metricInfo.getTags(), "rate", "m1"), rate.getOneMinuteRate());
+          prometheusTextWriter.writeSample(
+              name, addTags(metricInfo.getTags(), "rate", "m5"), rate.getFiveMinuteRate());
+          prometheusTextWriter.writeSample(
+              name, addTags(metricInfo.getTags(), "rate", "m15"), rate.getFifteenMinuteRate());
+          prometheusTextWriter.writeSample(
+              name, addTags(metricInfo.getTags(), "rate", "mean"), rate.getMeanRate());
+        } else if (metric instanceof Timer) {
+          Timer timer = (Timer) metric;
+          HistogramSnapshot snapshot = timer.takeSnapshot();
+          writeSnapshotAndCount(
+              name,
+              metricInfo.getTags(),
+              metricType,
+              snapshot,
+              timer.getImmutableRate().getCount(),
+              prometheusTextWriter);
         }
       }
       result = writer.toString();
@@ -112,10 +162,41 @@ public class PrometheusReporter implements Reporter {
     return result;
   }
 
-  private static String getHelpMessage(String metricName, IMetric metric) {
+  private void writeSnapshotAndCount(
+      String name,
+      Map<String, String> tags,
+      MetricType type,
+      HistogramSnapshot snapshot,
+      long count,
+      PrometheusTextWriter prometheusTextWriter)
+      throws IOException {
+    name += "_seconds";
+    prometheusTextWriter.writeHelp(name, getHelpMessage(name, type));
+    prometheusTextWriter.writeType(name, type);
+    prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getMax());
+    prometheusTextWriter.writeSample(
+        name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
+    prometheusTextWriter.writeSample(name + "_count", tags, count);
+    prometheusTextWriter.writeSample(name, addTags(tags, "quantile", "0.5"), snapshot.getMedian());
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.75"), snapshot.getValue(0.75));
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.90"), snapshot.getValue(0.90));
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.95"), snapshot.getValue(0.95));
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.99"), snapshot.getValue(0.99));
+  }
+
+  private Map<String, String> addTags(Map<String, String> tags, String key, String value) {
+    HashMap<String, String> result = new HashMap<>(tags);
+    result.put(key, value);
+    return result;
+  }
+
+  private static String getHelpMessage(String metric, MetricType type) {
     return String.format(
-        "Generated from metric import (metric=%s, type=%s)",
-        metricName, metric.getClass().getName());
+        "Generated from metric import (metric=%s, type=%s)", metric, type.toString());
   }
 
   @Override
