@@ -85,7 +85,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         statement.execute("FLUSH");
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =
@@ -176,7 +176,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         statement.execute("FLUSH");
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =
@@ -271,7 +271,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         statement.execute("FLUSH");
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =
@@ -349,7 +349,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         statement.execute("FLUSH");
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =
@@ -433,7 +433,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         statement.execute("FLUSH");
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =
@@ -528,7 +528,7 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
         valueMap.get("d2s1").put(deleteTime, 0L);
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
 
       Thread.sleep(500);
       ResultSet resultSet =

@@ -96,7 +96,7 @@ public class IoTDBFlushQueryMergeIT {
           cnt++;
         }
       }
-      statement.execute("merge");
+      statement.execute("compact");
     } catch (Exception e) {
       fail(e.getMessage());
     }

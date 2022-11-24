@@ -391,7 +391,7 @@ public class IoTDBRecoverIT {
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      statement.execute("merge");
+      statement.execute("compact");
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {

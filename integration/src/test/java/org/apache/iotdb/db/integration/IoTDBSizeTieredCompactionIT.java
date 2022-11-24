@@ -1042,7 +1042,7 @@ public class IoTDBSizeTieredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      statement.execute("MERGE");
+      statement.execute("compact");
       int totalWaitingTime = 0;
       while (CompactionTaskManager.getInstance().getFinishedTaskNum() - originCompactionNum < 2) {
         try {
@@ -1059,7 +1059,7 @@ public class IoTDBSizeTieredCompactionIT {
           break;
         }
       }
-      statement.execute("Merge");
+      statement.execute("compact");
       while (CompactionTaskManager.getInstance().getFinishedTaskNum() - originCompactionNum < 3) {
         try {
           Thread.sleep(100);
@@ -1198,7 +1198,7 @@ public class IoTDBSizeTieredCompactionIT {
         statement.execute("FLUSH");
       }
       long totalWaitingTime = 0;
-      statement.execute("MERGE");
+      statement.execute("compact");
       while (CompactionTaskManager.getInstance().getFinishedTaskNum() - originFinishCount < 1) {
         try {
           Thread.sleep(100);

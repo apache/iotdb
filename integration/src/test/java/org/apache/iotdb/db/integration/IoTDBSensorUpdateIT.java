@@ -68,7 +68,7 @@ public class IoTDBSensorUpdateIT {
         }
         assertEquals(1, cnt);
       }
-      statement.execute("merge");
+      statement.execute("compact");
       Thread.sleep(1000);
       // before merge completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.**")) {

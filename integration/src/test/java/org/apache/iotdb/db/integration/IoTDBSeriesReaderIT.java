@@ -169,7 +169,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("merge");
+      statement.execute("compact");
 
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {

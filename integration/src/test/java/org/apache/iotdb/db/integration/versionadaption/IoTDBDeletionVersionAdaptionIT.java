@@ -122,7 +122,7 @@ public class IoTDBDeletionVersionAdaptionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      statement.execute("merge");
+      statement.execute("compact");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
       // before merge completes
@@ -257,13 +257,13 @@ public class IoTDBDeletionVersionAdaptionIT {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.execute("merge");
+      statement.execute("compact");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.execute("merge");
+      statement.execute("compact");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(

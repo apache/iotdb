@@ -220,7 +220,7 @@ public class IoTDBCompactionIT {
       statement.executeBatch();
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       try {
         Thread.sleep(2000);
       } catch (InterruptedException e) {
@@ -290,7 +290,7 @@ public class IoTDBCompactionIT {
         }
       }
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

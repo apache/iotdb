@@ -61,7 +61,7 @@ public class IoTDBVersionIT {
             String.format(
                 "INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i * 100, i));
         statement.execute("FLUSH");
-        statement.execute("MERGE");
+        statement.execute("compact");
       }
     }
   }

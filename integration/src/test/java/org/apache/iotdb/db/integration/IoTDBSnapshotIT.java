@@ -259,7 +259,7 @@ public class IoTDBSnapshotIT {
         snapshotDir.mkdirs();
       }
       IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
-      statement.execute("merge");
+      statement.execute("compact");
       DataRegion region =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + ".d0.s"));
       new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);

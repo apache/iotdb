@@ -119,7 +119,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -175,7 +175,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -230,7 +230,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -291,7 +291,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -347,7 +347,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -408,7 +408,7 @@ public class IoTDBNewTsFileCompactionIT {
 
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -465,7 +465,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -529,7 +529,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -586,7 +586,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -645,7 +645,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -709,7 +709,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -773,7 +773,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -835,7 +835,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -900,7 +900,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -965,7 +965,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
@@ -1033,7 +1033,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(8, 8)");
       statement.execute("FLUSH");
 
-      statement.execute("MERGE");
+      statement.execute("compact");
       assertTrue(waitForMergeFinish());
 
       int cnt;
