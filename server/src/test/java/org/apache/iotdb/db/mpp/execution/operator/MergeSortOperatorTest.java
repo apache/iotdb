@@ -1225,6 +1225,7 @@ public class MergeSortOperatorTest {
     int count = 0;
     while (mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -1276,6 +1277,7 @@ public class MergeSortOperatorTest {
     int count = 0;
     while (mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -1327,6 +1329,7 @@ public class MergeSortOperatorTest {
     int count = 0;
     while (mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -1378,6 +1381,7 @@ public class MergeSortOperatorTest {
     int count = 0;
     while (mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
