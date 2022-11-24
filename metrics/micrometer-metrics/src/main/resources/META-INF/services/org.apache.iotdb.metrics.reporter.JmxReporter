@@ -15,5 +15,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-org.apache.iotdb.metrics.dropwizard.reporter.DropwizardJmxReporter
-org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter
+org.apache.iotdb.metrics.micrometer.reporter.MicrometerJmxReporter

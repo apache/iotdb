@@ -38,6 +38,7 @@ import reactor.netty.http.server.HttpServer;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,7 +76,8 @@ public class PrometheusReporter implements Reporter {
   }
 
   private String scrape() {
-    PrometheusTextWriter writer = new PrometheusTextWriter(new StringWriter());
+    Writer writer = new StringWriter();
+    PrometheusTextWriter prometheusTextWriter = new PrometheusTextWriter(writer);
 
     String result;
     try {
@@ -84,12 +86,16 @@ public class PrometheusReporter implements Reporter {
         IMetric metric = metricEntry.getValue();
 
         String name = metricInfo.getName();
-        writer.writeHelp(name, getHelpMessage(name, metric));
-        writer.writeType(name, metricInfo.getMetaInfo().getType());
+        prometheusTextWriter.writeHelp(name, getHelpMessage(name, metric));
+        prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
         Map<String, Object> values = new HashMap<>();
         metric.constructValueMap(values);
         for (Map.Entry<String, Object> entry : values.entrySet()) {
-          writer.writeSample(metricInfo.getName(), metricInfo.getTags(), entry.getValue());
+          String metricName = name;
+          if (!entry.getKey().equals("value")) {
+            metricName += "_" + entry.getKey();
+          }
+          prometheusTextWriter.writeSample(metricName, metricInfo.getTags(), entry.getValue());
         }
       }
       result = writer.toString();
