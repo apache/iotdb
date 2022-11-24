@@ -71,7 +71,7 @@ public class MicrometerPrometheusReporter implements Reporter {
         HttpServer.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
             .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
-            .port(metricConfig.getPrometheusExporterPort())
+            .port(metricConfig.getPrometheusReporterPort())
             .route(
                 routes ->
                     routes.get(
@@ -80,7 +80,7 @@ public class MicrometerPrometheusReporter implements Reporter {
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
     LOGGER.info(
-        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusReporterPort());
     return true;
   }
 

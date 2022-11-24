@@ -79,7 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
@@ -248,13 +248,13 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void AdjustMaxRegionGroupCountPlanTest() throws IOException {
-    AdjustMaxRegionGroupCountPlan req0 = new AdjustMaxRegionGroupCountPlan();
+    AdjustMaxRegionGroupNumPlan req0 = new AdjustMaxRegionGroupNumPlan();
     for (int i = 0; i < 3; i++) {
       req0.putEntry("root.sg" + i, new Pair<>(i, i));
     }
 
-    AdjustMaxRegionGroupCountPlan req1 =
-        (AdjustMaxRegionGroupCountPlan)
+    AdjustMaxRegionGroupNumPlan req1 =
+        (AdjustMaxRegionGroupNumPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }

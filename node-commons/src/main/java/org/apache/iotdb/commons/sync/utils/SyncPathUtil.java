@@ -47,7 +47,7 @@ public class SyncPathUtil {
 
   /** sender */
   public static String getSenderDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.SENDER_DIR_NAME;
   }
@@ -96,7 +96,7 @@ public class SyncPathUtil {
 
   /** receiver */
   public static String getReceiverDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.RECEIVER_DIR_NAME;
   }
@@ -130,7 +130,7 @@ public class SyncPathUtil {
 
   /** common */
   public static String getSysDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.SYNC_SYS_DIR;
   }

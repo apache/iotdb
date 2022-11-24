@@ -38,6 +38,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
@@ -107,8 +109,12 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Transport Layer
 
-  public TSStatus handshake(TSyncIdentityInfo identityInfo, String remoteAddress) {
-    return receiverManager.handshake(identityInfo, remoteAddress);
+  public TSStatus handshake(
+      TSyncIdentityInfo identityInfo,
+      String remoteAddress,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    return receiverManager.handshake(identityInfo, remoteAddress, partitionFetcher, schemaFetcher);
   }
 
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)

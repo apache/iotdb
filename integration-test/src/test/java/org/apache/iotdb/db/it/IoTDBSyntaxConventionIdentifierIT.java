@@ -988,7 +988,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(createTemplateSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
         while (resultSet.next()) {
           Assert.assertTrue(expectedResult.contains(resultSet.getString("TemplateName")));

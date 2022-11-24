@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.idtable;
 // import org.apache.iotdb.commons.exception.MetadataException;
 // import org.apache.iotdb.commons.path.PartialPath;
 // import org.apache.iotdb.db.conf.IoTDBDescriptor;
-// import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 // import org.apache.iotdb.db.exception.StorageEngineException;
 // import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 // import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -31,13 +30,10 @@ package org.apache.iotdb.db.metadata.idtable;
 // import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 // import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 // import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-// import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 // import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 // import org.apache.iotdb.db.qp.Planner;
 // import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 // import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-// import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-// import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 // import org.apache.iotdb.db.service.IoTDB;
 // import org.apache.iotdb.db.utils.EnvironmentUtils;
 // import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -539,86 +535,6 @@ package org.apache.iotdb.db.metadata.idtable;
 //  }
 //
 //  @Test
-//  public void testTriggerAndInsert() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-//    try {
-//      long time = 1L;
-//
-//      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s1"),
-//          TSDataType.valueOf("INT32"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s2"),
-//          TSDataType.valueOf("INT64"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//
-//      Planner processor = new Planner();
-//
-//      String sql =
-//          "CREATE TRIGGER trigger1 BEFORE INSERT ON root.laptop.d1.non_aligned_device.s1 AS
-// 'org.apache.iotdb.db.metadata.idtable.trigger_example.Counter'";
-//
-//      CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
-//
-//      TriggerRegistrationService.getInstance().register(plan);
-//
-//      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
-//      String[] columns = new String[2];
-//      columns[0] = "1";
-//      columns[1] = "2";
-//
-//      InsertRowPlan insertRowPlan =
-//          new InsertRowPlan(
-//              new PartialPath("root.laptop.d1.non_aligned_device"),
-//              time,
-//              new String[] {"s1", "s2"},
-//              dataTypes,
-//              columns,
-//              false);
-//      insertRowPlan.setMeasurementMNodes(
-//          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-//
-//      // call getSeriesSchemasAndReadLockDevice
-//      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
-//
-//      idTable.getSeriesSchemas(insertRowPlan);
-//
-//      // check SchemaProcessor
-//      IMeasurementMNode s1Node =
-//          schemaProcessor.getMeasurementMNode(
-//              new PartialPath("root.laptop.d1.non_aligned_device.s1"));
-//      assertEquals("s1", s1Node.getName());
-//      assertEquals(TSDataType.INT32, s1Node.getSchema().getType());
-//      assertNotNull(s1Node.getTriggerExecutor());
-//
-//      IMeasurementMNode s2Node =
-//          schemaProcessor.getMeasurementMNode(
-//              new PartialPath("root.laptop.d1.non_aligned_device.s2"));
-//      assertEquals("s2", s2Node.getName());
-//      assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
-//      assertNull(s2Node.getTriggerExecutor());
-//
-//      // drop trigger
-//      String sql2 = "Drop trigger trigger1";
-//
-//      DropTriggerPlan plan2 = (DropTriggerPlan) processor.parseSQLToPhysicalPlan(sql2);
-//      TriggerRegistrationService.getInstance().deregister(plan2);
-//
-//      idTable.getSeriesSchemas(insertRowPlan);
-//      assertNull(s1Node.getTriggerExecutor());
-//    } catch (MetadataException | StorageEngineException | QueryProcessException e) {
-//      e.printStackTrace();
-//      fail("throw exception");
-//    }
-//  }
-//
-//  @Test
 //  public void testGetDiskSchemaEntries() {
 //    try {
 //      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
@@ -693,71 +609,6 @@ package org.apache.iotdb.db.metadata.idtable;
 //      assertNull(idTable.getDeviceEntry("root.laptop.d0").getMeasurementMap().get("s0"));
 //      assertNull(idTable.getDeviceEntry("root.laptop.d8").getMeasurementMap().get("s1"));
 //    } catch (Exception e) {
-//      e.printStackTrace();
-//      fail("throw exception");
-//    }
-//  }
-//
-//  @Test
-//  public void testFlushTimeAndLastCache() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-//    try {
-//      long time = 1L;
-//
-//      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s1"),
-//          TSDataType.valueOf("INT32"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//      schemaProcessor.createTimeseries(
-//          new PartialPath("root.laptop.d1.non_aligned_device.s2"),
-//          TSDataType.valueOf("INT64"),
-//          TSEncoding.valueOf("RLE"),
-//          compressionType,
-//          Collections.emptyMap());
-//
-//      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
-//      String[] columns = new String[2];
-//      columns[0] = "1";
-//      columns[1] = "2";
-//
-//      InsertRowPlan insertRowPlan =
-//          new InsertRowPlan(
-//              new PartialPath("root.laptop.d1.non_aligned_device"),
-//              time,
-//              new String[] {"s1", "s2"},
-//              dataTypes,
-//              columns,
-//              false);
-//      insertRowPlan.setMeasurementMNodes(
-//          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
-//
-//      // call getSeriesSchemasAndReadLockDevice
-//      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
-//
-//      idTable.getSeriesSchemas(insertRowPlan);
-//
-//      IMeasurementMNode s2Node = insertRowPlan.getMeasurementMNodes()[1];
-//      ILastCacheContainer cacheContainer = s2Node.getLastCacheContainer();
-//      // last cache
-//      cacheContainer.updateCachedLast(
-//          new TimeValuePair(100L, new TsPrimitiveType.TsLong(1L)), false, 0L);
-//      assertEquals(new TsPrimitiveType.TsLong(1L), cacheContainer.getCachedLast().getValue());
-//      assertEquals(100L, cacheContainer.getCachedLast().getTimestamp());
-//
-//      cacheContainer.updateCachedLast(
-//          new TimeValuePair(90L, new TsPrimitiveType.TsLong(2L)), false, 0L);
-//      assertEquals(new TsPrimitiveType.TsLong(1L), cacheContainer.getCachedLast().getValue());
-//      assertEquals(100L, cacheContainer.getCachedLast().getTimestamp());
-//
-//      cacheContainer.updateCachedLast(
-//          new TimeValuePair(110L, new TsPrimitiveType.TsLong(2L)), false, 0L);
-//      assertEquals(new TsPrimitiveType.TsLong(2L), cacheContainer.getCachedLast().getValue());
-//      assertEquals(110L, cacheContainer.getCachedLast().getTimestamp());
-//
-//    } catch (MetadataException e) {
 //      e.printStackTrace();
 //      fail("throw exception");
 //    }

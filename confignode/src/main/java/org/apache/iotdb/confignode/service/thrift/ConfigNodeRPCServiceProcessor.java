@@ -256,8 +256,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
-    storageGroupSchema.setMaxSchemaRegionGroupCount(0);
-    storageGroupSchema.setMaxDataRegionGroupCount(0);
+    storageGroupSchema.setMaxSchemaRegionGroupNum(0);
+    storageGroupSchema.setMaxDataRegionGroupNum(0);
 
     SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);
@@ -453,14 +453,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
     return StatusUtils.OK;
-  }
-
-  @Override
-  public TSStatus isConsensusInitialized() throws TException {
-    if (configManager.getConsensusManager() != null) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */

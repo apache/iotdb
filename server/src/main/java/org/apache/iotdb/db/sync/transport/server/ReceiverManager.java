@@ -23,10 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -54,9 +61,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * only be accessed by the {@linkplain org.apache.iotdb.db.sync.SyncService}
  */
 public class ReceiverManager {
-  private static Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId;
@@ -64,6 +71,7 @@ public class ReceiverManager {
   private final Map<Long, SyncIdentityInfo> connectionIdToIdentityInfoMap;
   // Record the remote message for every rpc connection
   private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord;
+  private final Map<String, String> registeredDatabase;
 
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator;
@@ -72,6 +80,7 @@ public class ReceiverManager {
     currentConnectionId = new ThreadLocal<>();
     connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
     connectionIdToStartIndexRecord = new ConcurrentHashMap<>();
+    registeredDatabase = new ConcurrentHashMap<>();
     connectionIdGenerator = new AtomicLong();
   }
 
@@ -140,9 +149,12 @@ public class ReceiverManager {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to connect; {@link
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
-  public TSStatus handshake(TSyncIdentityInfo tIdentityInfo, String remoteAddress) {
-    SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
-    logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
+  public TSStatus handshake(
+      TSyncIdentityInfo identityInfo,
+      String remoteAddress,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    logger.info("Invoke handshake method from client ip = {}", identityInfo.address);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.getRemoteAddress())) {
       return RpcUtils.getStatus(
@@ -164,6 +176,11 @@ public class ReceiverManager {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
     createConnection(identityInfo);
+    if (!registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR,
+          String.format("Auto register database %s error.", identityInfo.getDatabase()));
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
@@ -393,6 +410,40 @@ public class ReceiverManager {
     long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
+  }
+
+  private boolean registerDatabase(
+      String database, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    if (registeredDatabase.containsKey(database)) {
+      return true;
+    }
+    try {
+      SetStorageGroupStatement statement = new SetStorageGroupStatement();
+      statement.setStorageGroupPath(new PartialPath(database));
+      long queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .execute(
+                  statement,
+                  queryId,
+                  null,
+                  "",
+                  partitionFetcher,
+                  schemaFetcher,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        logger.error(String.format("Create Database error, statement: %s.", statement));
+        logger.error(String.format("Create database result status : %s.", result.status));
+        return false;
+      }
+    } catch (IllegalPathException e) {
+      logger.error(String.format("Parse database PartialPath %s error", database), e);
+      return false;
+    }
+
+    registeredDatabase.put(database, "");
+    return true;
   }
 
   /**

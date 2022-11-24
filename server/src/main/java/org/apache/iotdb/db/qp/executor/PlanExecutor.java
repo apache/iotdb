@@ -39,7 +39,6 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -90,8 +89,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,7 +102,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
@@ -269,8 +265,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowQueryProcesslist();
       case FUNCTIONS:
         return processShowFunctions();
-      case TRIGGERS:
-        return processShowTriggers();
       case CONTINUOUS_QUERY:
         throw new UnsupportedOperationException();
       case SCHEMA_TEMPLATE:
@@ -294,24 +288,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
-    Map<PartialPath, Integer> countResults = getTimeseriesCountGroupByLevel(countPlan);
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    for (PartialPath columnPath : countResults.keySet()) {
-      RowRecord record = new RowRecord(0);
-      Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.INT32);
-      // get the count of every group
-      field1.setIntV(countResults.get(columnPath));
-      record.addField(field);
-      record.addField(field1);
-      listDataSet.putRecord(record);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Arrays.asList(new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
   }
 
   private QueryDataSet processCountDevices(CountPlan countPlan) throws MetadataException {
@@ -377,17 +356,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
     return IoTDB.schemaProcessor.getMeasurementPaths(path);
-  }
-
-  protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
-      throws MetadataException {
-    return IoTDB.schemaProcessor.getNodesListInGivenLevel(schemaPattern, level);
-  }
-
-  private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
-      throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementCountGroupByLevel(
-        countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
@@ -637,86 +605,34 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowSchemaTemplates() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_SCHEMA_TEMPLATE, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    Set<String> allTemplates = IoTDB.schemaProcessor.getAllTemplates();
-    for (String templateName : allTemplates) {
-      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-      rowRecord.addField(Binary.valueOf(templateName), TSDataType.TEXT);
-      listDataSet.putRecord(rowRecord);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Collections.singletonList(new PartialPath(COLUMN_SCHEMA_TEMPLATE, false)),
+        Collections.singletonList(TSDataType.TEXT));
   }
 
   private QueryDataSet processShowNodesInSchemaTemplate(ShowNodesInTemplatePlan showPlan)
       throws QueryProcessException {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_CHILD_NODES, false),
-                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
-                new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
-                new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
-    try {
-      List<Pair<String, IMeasurementSchema>> measurements =
-          IoTDB.schemaProcessor.getSchemasInTemplate(showPlan.getTemplateName(), "");
-      for (Pair<String, IMeasurementSchema> measurement : measurements) {
-        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-        rowRecord.addField(Binary.valueOf(measurement.left), TSDataType.TEXT);
-
-        IMeasurementSchema measurementSchema = measurement.right;
-        rowRecord.addField(Binary.valueOf(measurementSchema.getType().toString()), TSDataType.TEXT);
-        rowRecord.addField(
-            Binary.valueOf(measurementSchema.getEncodingType().toString()), TSDataType.TEXT);
-        rowRecord.addField(
-            Binary.valueOf(measurementSchema.getCompressor().toString()), TSDataType.TEXT);
-        listDataSet.putRecord(rowRecord);
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Arrays.asList(
+            new PartialPath(COLUMN_CHILD_NODES, false),
+            new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+            new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+            new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
   }
 
   private QueryDataSet processShowPathsUsingSchemaTemplate(ShowPathsUsingTemplatePlan showPlan)
       throws QueryProcessException {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    try {
-      Set<String> paths = IoTDB.schemaProcessor.getPathsUsingTemplate(showPlan.getTemplateName());
-      for (String path : paths) {
-        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-        rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
-        listDataSet.putRecord(rowRecord);
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
+        Collections.singletonList(TSDataType.TEXT));
   }
 
   private QueryDataSet processShowPathsSetSchemaTemplate(ShowPathsSetTemplatePlan showPlan)
       throws QueryProcessException {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    try {
-      Set<String> paths = IoTDB.schemaProcessor.getPathsSetTemplate(showPlan.getTemplateName());
-      for (String path : paths) {
-        RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-        rowRecord.addField(Binary.valueOf(path), TSDataType.TEXT);
-        listDataSet.putRecord(rowRecord);
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
+        Collections.singletonList(TSDataType.TEXT));
   }
 
   private void appendNativeFunctions(ListDataSet listDataSet) {
@@ -729,10 +645,6 @@ public class PlanExecutor implements IPlanExecutor {
       rowRecord.addField(className, TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
-  }
-
-  private QueryDataSet processShowTriggers() {
-    return TriggerRegistrationService.getInstance().show();
   }
 
   private void addRowRecordForShowQuery(

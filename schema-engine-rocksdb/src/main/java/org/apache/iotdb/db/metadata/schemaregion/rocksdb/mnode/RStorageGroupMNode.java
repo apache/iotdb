@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -30,8 +29,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
-
-import java.io.IOException;
 
 public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupMNode {
 
@@ -90,11 +87,6 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return MNodeType.STORAGE_GROUP;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
   }
 
   @Override

@@ -213,7 +213,8 @@ public class UDFManagementService {
         | InvocationTargetException
         | NoSuchMethodException
         | IllegalAccessException
-        | ClassNotFoundException e) {
+        | ClassNotFoundException
+        | ClassCastException e) {
       String errorMessage =
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",

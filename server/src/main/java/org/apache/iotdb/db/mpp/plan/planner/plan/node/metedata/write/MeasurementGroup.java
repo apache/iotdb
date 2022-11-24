@@ -254,7 +254,7 @@ public class MeasurementGroup {
 
     // compressors
     for (CompressionType compressor : compressors) {
-      byteBuffer.put((byte) compressor.ordinal());
+      byteBuffer.put(compressor.serialize());
     }
 
     // alias
@@ -313,7 +313,7 @@ public class MeasurementGroup {
 
     // compressors
     for (CompressionType compressor : compressors) {
-      stream.write((byte) compressor.ordinal());
+      stream.write(compressor.serialize());
     }
 
     // alias
@@ -372,7 +372,7 @@ public class MeasurementGroup {
 
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[byteBuffer.get()]);
+      compressors.add(CompressionType.deserialize(byteBuffer.get()));
     }
 
     byte label = byteBuffer.get();
