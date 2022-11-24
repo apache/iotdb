@@ -21,8 +21,6 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -58,7 +56,6 @@ public abstract class AbstractSchemaIT {
     this.schemaTestMode = schemaTestMode;
   }
 
-  @Before
   public void setUp() throws Exception {
     defaultSchemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
     defaultCachedMNodeSizeInSchemaFileMode =
@@ -81,7 +78,6 @@ public abstract class AbstractSchemaIT {
     }
   }
 
-  @After
   public void tearDown() throws Exception {
     ConfigFactory.getConfig().setSchemaEngineMode(defaultSchemaEngineMode);
     ConfigFactory.getConfig()
