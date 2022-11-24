@@ -108,6 +108,7 @@ public class RegionWriteExecutor {
     } else {
       boolean hasFailedTriggerBeforeInsertion =
           result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
+      LOGGER.warn("hasFailedTriggerBeforeInsertion: {}", hasFailedTriggerBeforeInsertion);
 
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
 
