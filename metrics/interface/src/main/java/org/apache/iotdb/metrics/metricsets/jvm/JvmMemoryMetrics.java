@@ -102,13 +102,13 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.count.buffers", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm.buffer.count.buffers", "id", bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.memory.used.bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm.buffer.memory.used.bytes", "id", bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.total.capacity.bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm.buffer.total.capacity.bytes", "id", bufferPoolBean.getName());
     }
 
     for (MemoryPoolMXBean memoryPoolBean :
@@ -116,10 +116,15 @@ public class JvmMemoryMetrics implements IMetricSet {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.memory.used.bytes", "id", memoryPoolBean.getName(), "area", area);
+          MetricType.AUTO_GAUGE,
+          "jvm.memory.used.bytes",
+          "id",
+          memoryPoolBean.getName(),
+          "area",
+          area);
 
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           "jvm.memory.committed.bytes",
           "id",
           memoryPoolBean.getName(),
@@ -127,7 +132,12 @@ public class JvmMemoryMetrics implements IMetricSet {
           area);
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.memory.max.bytes", "id", memoryPoolBean.getName(), "area", area);
+          MetricType.AUTO_GAUGE,
+          "jvm.memory.max.bytes",
+          "id",
+          memoryPoolBean.getName(),
+          "area",
+          area);
     }
   }
 }

@@ -85,7 +85,7 @@ IoTDB 支持设置 Session 连接超时和查询超时时间，并支持手动�
 
 Session 超时控制何时关闭空闲 Session。空闲 Session 指在一段时间内没有发起任何操作的 Session。
 
-Session 超时默认未开启。可以在配置文件中通过 `session_timeout_threshold` 参数进行配置。
+Session 超时默认未开启。可以在配置文件中通过 `dn_session_timeout_threshold` 参数进行配置。
 
 ### 查询超时
 

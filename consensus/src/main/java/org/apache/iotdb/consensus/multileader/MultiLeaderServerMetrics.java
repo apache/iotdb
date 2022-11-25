@@ -66,7 +66,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
             "multiLeaderServerImpl",
@@ -76,7 +76,7 @@ public class MultiLeaderServerMetrics implements IMetricSet {
             "searchIndex");
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
             "multiLeaderServerImpl",

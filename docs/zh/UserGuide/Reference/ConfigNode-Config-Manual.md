@@ -27,8 +27,6 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 
 * `iotdb-confignode.properties`：IoTDB ConfigNode 的配置文件。
 
-* `iotdb-common.properties`：IoTDB 的通用配置文件。
-
 ## 环境配置项（confignode-env.sh/bat）
 
 环境配置项主要用于对 ConfigNode 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。ConfigNode 启动时，此部分配置会被传给 JVM，详细配置项说明如下：
@@ -61,11 +59,11 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 |改后生效方式|重启服务生效|
 
 
-## 系统配置项（iotdb-confignode.properties 和 iotdb-common.properties）
+## 系统配置项（iotdb-confignode.properties）
 
 IoTDB 集群的全局配置通过 ConfigNode 配置。
 
-### Internal RPC Service 配置
+### Config Node RPC 配置
 
 * cn\_internal\_address
 
@@ -85,6 +83,8 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 6667                  |
 | 改后生效方式 | 重启服务生效                |
 
+### 共识协议
+
 * cn\_consensus\_port
 
 |   名字   | cn\_consensus\_port   |
@@ -94,6 +94,8 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 22278                 |
 | 改后生效方式 | 重启服务生效                |
 
+### 目标 Config Node 配置
+
 * cn\_target\_config\_node\_list
 
 |   名字   | cn\_target\_config\_node\_list        |
@@ -102,6 +104,29 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |   类型   | String                                |
 |  默认值   | 127.0.0.1:22277                       |
 | 改后生效方式 | 重启服务生效                                |
+
+
+### 数据目录
+
+* cn\_system\_dir
+
+|名字| cn\_system\_dir                                          |
+|:---:|:---------------------------------------------------------|
+|描述| ConfigNode 系统数据存储路径                                      |
+|类型| String                                                   |
+|默认值| data/confignode/system（Windows：data\\configndoe\\system） |
+|改后生效方式| 重启服务生效                                                   |
+
+* cn\_consensus\_dir
+
+|名字| cn\_consensus\_dir                                 |
+|:---:|:---------------------------------------------------|
+|描述| ConfigNode 共识协议数据存储路径                              |
+|类型| String                                             |
+|默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
+|改后生效方式| 重启服务生效                                             |
+
+### Thrift RPC 配置
 
 * cn\_rpc\_thrift\_compression\_enable
 
@@ -148,152 +173,22 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 1024                           |
 | 改后生效方式 | 重启服务生效                         |
 
+* cn\_connection\_timeout\_ms
 
-### 副本及共识协议
+|   名字   | cn\_connection\_timeout\_ms |
+|:------:|:----------------------------|
+|   描述   | 节点连接超时时间                    |
+|   类型   | int                         |
+|  默认值   | 20000                       |
+| 改后生效方式 | 重启服务生效                      |
 
-* cn\_consensus\_port
+* cn\_selector\_thread\_nums\_of\_client\_manager
 
-|名字| cn\_consensus\_port |
-|:---:|:---|
-|描述| ConfigNode 的共识协议通信端口 |
-|类型| Short Int : [0,65535] |
-|默认值| 22278 |
-|改后生效方式|重启服务生效|
+|   名字   | cn\_selector\_thread\_nums\_of\_client\_manager |
+|:------:|:------------------------------------------------|
+|   描述   | 客户端异步线程管理的选择器线程数量                               |
+|   类型   | int                                             |
+|  默认值   | 1                                               |
+| 改后生效方式 | 重启服务生效                                          |
 
-
-* data\_replication\_factor
-
-|名字| data\_replication\_factor |
-|:---:|:---|
-|描述| Database 的默认数据副本数|
-|类型| Int |
-|默认值| 1 |
-|改后生效方式|重启服务生效|
-
-* data\_region\_consensus\_protocol\_class
-
-|名字| data\_region\_consensus\_protocol\_class                                              |
-|:---:|:--------------------------------------------------------------------------------------|
-|描述| 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
-|类型| String                                                                                |
-|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus                                     |
-|改后生效方式| 仅允许在第一次启动服务前修改                                                                        |
-
-* schema\_replication\_factor
-
-|名字| schema\_replication\_factor |
-|:---:|:---|
-|描述| Database 的默认元数据副本数 |
-|类型| Int |
-|默认值| 1 |
-|改后生效方式|重启服务生效|
-
-* schema\_region\_consensus\_protocol\_class
-
-|名字| schema\_region\_consensus\_protocol\_class |
-|:---:|:---|
-|描述| 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
-|类型| String |
-|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* region\_allocate\_strategy
-
-|名字| region\_allocate\_strategy |
-|:---:|:---|
-|描述| 元数据和数据的节点分配策略，COPY_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳|
-|类型| String |
-|默认值| GREEDY |
-|改后生效方式|重启服务生效|
-
-### 心跳配置
-
-* heartbeat\_interval\_in\_ms
-
-|名字| heartbeat\_interval\_in\_ms |
-|:---:|:---|
-|描述| 集群节点间的心跳间隔 |
-|类型| Long |
-|单位| ms |
-|默认值| 1000 |
-|改后生效方式|重启服务生效|
-
-
-### 分区配置
-
-* series\_partition\_slot\_num
-
-|名字| series\_partition\_slot\_num |
-|:---:|:---|
-|描述| 序列分区槽数 |
-|类型| Int |
-|默认值| 10000 |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* series\_partition\_executor\_class
-
-|名字| series\_partition\_executor\_class |
-|:---:|:---|
-|描述| 序列分区槽数 |
-|类型| String |
-|默认值| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-### Database 配置
-
-* default\_ttl\_in\_ms
-
-|名字| default\_ttl\_in\_ms |
-|:---:|:---------------------|
-|描述| 默认数据保留时间             |
-|类型| Long                 |
-|默认值| 无限                   |
-|改后生效方式| 重启服务生效               |
-
-* time\_partition\_interval
-
-|名字| time\_partition\_interval |
-|:--:|:----------------------------------------|
-|描述| Database 默认的数据时间分区间隔                          |
-|类型| Long                                    |
-|单位| 毫秒                                      |
-|默认值| 604800000                                |
-|改后生效方式| 仅允许在第一次启动服务前修改                          |
-
-### 数据目录
-
-* cn\_system\_dir
-
-|名字| cn\_system\_dir                                          |
-|:---:|:---------------------------------------------------------|
-|描述| ConfigNode 系统数据存储路径                                      |
-|类型| String                                                   |
-|默认值| data/confignode/system（Windows：data\\configndoe\\system） |
-|改后生效方式| 重启服务生效                                                   |
-
-* cn\_consensus\_dir
-
-|名字| cn\_consensus\_dir                                 |
-|:---:|:---------------------------------------------------|
-|描述| ConfigNode 共识协议数据存储路径                              |
-|类型| String                                             |
-|默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
-|改后生效方式| 重启服务生效                                             |
-
-* udf\_lib\_dir
-
-|名字| udf\_lib\_dir |
-|:---:|:---|
-|描述| UDF 日志及jar文件存储路径 |
-|类型| String |
-|默认值| ext/udf（Windows：ext\\udf） |
-|改后生效方式|重启服务生效|
-
-* temporary\_lib\_dir
-
-|名字| temporary\_lib\_dir |
-|:---:|:---|
-|描述| UDF jar文件临时存储路径 |
-|类型| String |
-|默认值| ext/temporary（Windows：ext\\temporary） |
-|改后生效方式|重启服务生效|
+### Metric 监控配置
