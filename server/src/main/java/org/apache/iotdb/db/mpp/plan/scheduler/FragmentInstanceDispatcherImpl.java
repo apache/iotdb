@@ -171,9 +171,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
             logger.error(
-                "dispatch write failed. status: {}, message: {}",
+                "dispatch write failed. status: {}, message: {}, node {}",
                 sendPlanNodeResp.status,
-                sendPlanNodeResp.message);
+                sendPlanNodeResp.message,
+                endPoint);
             if (sendPlanNodeResp.getStatus() == null) {
               throw new FragmentInstanceDispatchException(
                   RpcUtils.getStatus(
