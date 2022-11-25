@@ -38,7 +38,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
         .createAutoGauge(
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
             LogDispatcher.LogDispatcherThread::getCurrentSyncIndex,
@@ -50,7 +50,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             "currentSyncIndex");
     MetricService.getInstance()
         .createAutoGauge(
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
             x -> x.getPendingRequestSize() + x.getBufferRequestSize(),
@@ -67,7 +67,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
@@ -77,7 +77,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),

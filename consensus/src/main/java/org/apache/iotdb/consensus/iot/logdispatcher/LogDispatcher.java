@@ -311,7 +311,7 @@ public class LogDispatcher {
                   Metric.STAGE.toString(),
                   MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
-                  Metric.MULTI_LEADER.toString(),
+                  Metric.IOT_CONSENSUS.toString(),
                   Tag.TYPE.toString(),
                   "constructBatch",
                   Tag.REGION.toString(),
