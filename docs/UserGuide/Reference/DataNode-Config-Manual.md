@@ -104,7 +104,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## DataNode/Standalone Configuration File (iotdb-datanode.properties)
 
-### Client RPC Service
+### Data Node RPC Configuration
 
 * dn\_rpc\_address
 
@@ -123,6 +123,73 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type|Short Int : [0,65535]|
 |Default| 6667 |
 |Effective|After restarting system|
+
+* dn\_internal\_address
+
+|Name| dn\_internal\_address |
+|:---:|:---|
+|Description| DataNode internal service host/IP |
+|Type| string |
+|Default| 127.0.0.1 |
+|Effective|After restarting system|
+
+* dn\_internal\_port
+
+|Name| dn\_internal\_port             |
+|:---:|:-------------------------------|
+|Description| DataNode internal service port |
+|Type| int                            |
+|Default| 9003                           |
+|Effective| After restarting system        |
+
+* dn\_mpp\_data\_exchange\_port
+
+|Name| mpp\_data\_exchange\_port |
+|:---:|:---|
+|Description| MPP data exchange port |
+|Type| int |
+|Default| 8777 |
+|Effective|After restarting system|
+
+* dn\_schema\_region\_consensus\_port
+
+|Name| dn\_schema\_region\_consensus\_port |
+|:---:|:---|
+|Description| DataNode Schema replica communication port for consensus |
+|Type| int |
+|Default| 50010 |
+|Effective|After restarting system|
+
+* dn\_data\_region\_consensus\_port
+
+|Name| dn\_data\_region\_consensus\_port |
+|:---:|:---|
+|Description| DataNode Data replica communication port for consensus |
+|Type| int |
+|Default| 40010 |
+|Effective|After restarting system|
+
+* dn\_join\_cluster\_retry\_interval\_ms
+
+|Name| dn\_join\_cluster\_retry\_interval\_ms                                    |
+|:---:|:--------------------------------------------------------------------------|
+|Description| The time of data node waiting for the next retry to join into the cluster |
+|Type| long                                                                      |
+|Default| 5000                                                                      |
+|Effective| After restarting system                                                   |
+
+### Target Config Nodes
+
+* dn\_target\_config\_node\_list
+
+|Name| dn\_target\_config\_node\_list                  |
+|:---:|:------------------------------------------------|
+|Description| ConfigNode Address for DataNode to join cluster |
+|Type| String                                          |
+|Default| 127.0.0.1:22277                                 |
+|Effective| After restarting system                         |
+
+### Connection Configuration
 
 * dn\_rpc\_thrift\_compression\_enable
 
@@ -188,64 +255,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1024 |
 |Effective|After restarting system|
 
-### MPP Query Engine
-
-* dn\_mpp\_data\_exchange\_port
-
-|Name| mpp\_data\_exchange\_port |
-|:---:|:---|
-|Description| MPP data exchange port |
-|Type| int |
-|Default| 8777 |
-|Effective|After restarting system|
-
-### DataNode Internal Service
-
-* dn\_internal\_address
-
-|Name| dn\_internal\_address |
-|:---:|:---|
-|Description| DataNode internal service host/IP |
-|Type| string |
-|Default| 127.0.0.1 |
-|Effective|After restarting system|
-
-* dn\_internal\_port
-
-|Name| dn\_internal\_port             |
-|:---:|:-------------------------------|
-|Description| DataNode internal service port |
-|Type| int                            |
-|Default| 9003                           |
-|Effective| After restarting system        |
-
-* dn\_data\_region\_consensus\_port
-
-|Name| dn\_data\_region\_consensus\_port |
-|:---:|:---|
-|Description| DataNode Data replica communication port for consensus |
-|Type| int |
-|Default| 40010 |
-|Effective|After restarting system|
-
-* dn\_schema\_region\_consensus\_port
-
-|Name| dn\_schema\_region\_consensus\_port |
-|:---:|:---|
-|Description| DataNode Schema replica communication port for consensus |
-|Type| int |
-|Default| 50010 |
-|Effective|After restarting system|
-
-* dn\_target\_config\_node\_list
-
-|Name| dn\_target\_config\_node\_list                  |
-|:---:|:------------------------------------------------|
-|Description| ConfigNode Address for DataNode to join cluster |
-|Type| String                                          |
-|Default| 127.0.0.1:22277                                 |
-|Effective| After restarting system                         |
-
 ### Dictionary Configuration
 
 * dn\_system\_dir
@@ -310,6 +319,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |    Type     | String                                                                    |
 |   Default   | data/datanode/sync                                                        |
 |  Effective  | After restarting system                                                   |
+
+### Metric Configuration
 
 ## Enable GC log
 

@@ -87,7 +87,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 系统配置项是 IoTDB DataNode/Standalone 运行的核心配置，它主要用于设置 DataNode/Standalone 数据库引擎的参数。
 
-### 客户端 RPC 服务配置
+### Data Node RPC 服务配置
 
 * dn\_rpc\_address
 
