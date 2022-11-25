@@ -1050,12 +1050,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * stateful\_trigger\_retry\_num\_when\_not\_found
 
-|    Name     | stateful\_trigger\_retry\_num\_when\_not\_found                                                                    |
-| :---------: |:-------------------------------------------------------------------------------------------------------------------|
-| Description | How many times will we retry to found an instance of stateful trigger on DataNodes                                                                                                                   |
-|    Type     | Int32                                                                                                              |
-|   Default   | 3                                                                                                                  |
-|  Effective  | After restarting system                                                                                            |
+|    Name     | stateful\_trigger\_retry\_num\_when\_not\_found                                    |
+| :---------: |:-----------------------------------------------------------------------------------|
+| Description | How many times we will retry to found an instance of stateful trigger on DataNodes |
+|    Type     | Int32                                                                              |
+|   Default   | 3                                                                                  |
+|  Effective  | After restarting system                                                            |
 
 
 ### SELECT-INTO
