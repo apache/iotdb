@@ -216,7 +216,7 @@ public class LoadManagerMetrics implements IMetricSet {
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               name)
-          .set(idToCountMap.get(dataNodeId));
+          .set(idToCountMap.getOrDefault(dataNodeId, 0));
     }
     return dataNodeConfigurations.size();
   }
