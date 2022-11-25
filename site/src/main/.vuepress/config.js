@@ -966,6 +966,7 @@ var config = {
 							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool']
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool']
+							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool']
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
