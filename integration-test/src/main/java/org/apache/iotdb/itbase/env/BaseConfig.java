@@ -339,12 +339,20 @@ public interface BaseConfig {
     return 10000;
   }
 
-  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  default BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
     return this;
   }
 
-  default boolean isEnableLeaderBalancing() {
+  default boolean isEnableRatisLeaderBalance() {
     return false;
+  }
+
+  default BaseConfig setEnableMultiLeaderLeaderBalance(boolean enableMultiLeaderLeaderBalance) {
+    return this;
+  }
+
+  default boolean isEnableMultiLeaderLeaderBalance() {
+    return true;
   }
 
   default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
