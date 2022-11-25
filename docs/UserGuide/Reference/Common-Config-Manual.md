@@ -1098,6 +1098,24 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### PIPE Configuration
 
+* ip\_white\_list
+
+|     Name     | ip\_white\_list                                                                                                    |
+| :----------: | :----------------------------------------------------------------------------------------------------------------- |
+|     Description     | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
+|     Type     | String                                                                                                             |
+|    Default    | 127.0.0.1/32                                                                                                          |
+| Effective | Trigger                                                                                                      |
+
+* max\_number\_of\_sync\_file\_retry
+
+|     Name     | max\_number\_of\_sync\_file\_retry |
+| :----------: | :---------------------------- |
+|     Description     | The maximum number of retries when the sender fails to synchronize files to the receiver.          |
+|     Type     | int32                           |
+|    Default    | 5                             |
+| Effective | Trigger                  |
+
 ### RatisConsensus Configuration
 
 ### Procedure Configuration
