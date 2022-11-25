@@ -872,23 +872,24 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Trigger Configuration
 
-- concurrent_window_evaluation_thread
 
-|    Name     | concurrent_window_evaluation_thread                                                          |
-| :---------: | :------------------------------------------------------------------------------------------- |
-| Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
-|    Type     | Int32                                                                                        |
-|   Default   | The number of CPU cores                                                                      |
-|  Effective  | After restarting system                                                                      |
+* trigger\_lib\_dir
 
-- max_pending_window_evaluation_tasks
+|    Name     | trigger\_lib\_dir       |
+| :---------: |:------------------------|
+| Description | Trigger JAR file dir    |
+|    Type     | String                  |
+|   Default   | ext/trigger             |
+|  Effective  | After restarting system |
 
-|    Name     | max_pending_window_evaluation_tasks                                                                                 |
-| :---------: | :------------------------------------------------------------------------------------------------------------------ |
-| Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
-|    Type     | Int32                                                                                                               |
-|   Default   | 64                                                                                                                  |
-|  Effective  | After restarting system                                                                                             |
+* stateful\_trigger\_retry\_num\_when\_not\_found
+
+|    Name     | stateful\_trigger\_retry\_num\_when\_not\_found                                                                    |
+| :---------: |:-------------------------------------------------------------------------------------------------------------------|
+| Description | How many times will we retry to found an instance of stateful trigger on DataNodes                                                                                                                   |
+|    Type     | Int32                                                                                                              |
+|   Default   | 3                                                                                                                  |
+|  Effective  | After restarting system                                                                                            |
 
 ### SELECT-INTO
 

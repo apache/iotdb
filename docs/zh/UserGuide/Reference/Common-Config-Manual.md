@@ -1115,23 +1115,23 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 触发器配置
 
-* concurrent_window_evaluation_thread
+* trigger\_lib\_dir
 
-|     名字     | concurrent_window_evaluation_thread |
-| :----------: | :---------------------------------- |
-|     描述     | 窗口计算线程池的默认线程数          |
-|     类型     | Int32                               |
-|    默认值    | CPU核数                             |
-| 改后生效方式 | 重启服务生效                        |
+|     名字     | trigger\_lib\_dir |
+| :----------: |:------------------|
+|     描述     | 触发器 JAR 包存放的目录    |
+|     类型     | String            |
+|    默认值    | ext/trigger                  |
+| 改后生效方式 | 重启服务生效            |
 
-* max_pending_window_evaluation_tasks
+* stateful\_trigger\_retry\_num\_when\_not\_found
 
-|     名字     | max_pending_window_evaluation_tasks |
-| :----------: | :---------------------------------- |
-|     描述     | 最多允许堆积的窗口计算任务          |
-|     类型     | Int32                               |
-|    默认值    | 64                                  |
-| 改后生效方式 | 重启服务生效                        |
+|     名字     | stateful\_trigger\_retry\_num\_when\_not\_found |
+| :----------: |:------------------------------------------------|
+|     描述     | 有状态触发器触发无法找到触发器实例时的重试次数                         |
+|     类型     | Int32                                           |
+|    默认值    | 3                                               |
+| 改后生效方式 | 重启服务生效                                          |
 
 ### SELECT-INTO配置
 
