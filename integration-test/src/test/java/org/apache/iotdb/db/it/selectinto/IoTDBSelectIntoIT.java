@@ -109,7 +109,7 @@ public class IoTDBSelectIntoIT {
   @BeforeClass
   public static void setUp() throws Exception {
     queryThreadCount = ConfigFactory.getConfig().getQueryThreadCount();
-    ConfigFactory.getConfig().setQueryThreadCount(2);
+    ConfigFactory.getConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }

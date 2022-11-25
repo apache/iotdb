@@ -44,7 +44,7 @@ public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
     queryThreadCount = ConfigFactory.getConfig().getQueryThreadCount();
     ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(8);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(5);
-    ConfigFactory.getConfig().setQueryThreadCount(2);
+    ConfigFactory.getConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
