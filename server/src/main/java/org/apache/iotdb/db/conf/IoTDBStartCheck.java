@@ -190,6 +190,7 @@ public class IoTDBStartCheck {
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     systemProperties.put(SCHEMA_ENGINE_MODE, schemaEngineMode);
+    systemProperties.put(INTERNAL_ADDRESS, internalAddress);
     systemProperties.put(INTERNAL_PORT, internalPort);
     systemProperties.put(RPC_ADDRESS, rpcAddress);
     systemProperties.put(RPC_PORT, rpcPort);
