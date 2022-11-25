@@ -38,6 +38,11 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,18 +50,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
+
   protected final OperatorContext operatorContext;
   protected final Operator child;
+
+  protected TsBlock cachedTsBlock;
 
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
   private DataNodeInternalClient client;
+
+  private ListenableFuture<?> isBlocked = NOT_BLOCKED;
+
+  private final ListeningExecutorService writeOperationExecutor =
+      MoreExecutors.listeningDecorator(Executors.newCachedThreadPool());
+  private ListenableFuture<TSStatus> writeOperationFuture;
 
   public AbstractIntoOperator(
       OperatorContext operatorContext,
@@ -87,10 +106,21 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return insertTabletStatementGenerators;
   }
 
-  protected void insertMultiTabletsInternally(boolean needCheck) {
+  protected boolean insertMultiTabletsInternally(boolean needCheck) {
+    InsertMultiTabletsStatement insertMultiTabletsStatement =
+        constructInsertMultiTabletsStatement(needCheck);
+    if (insertMultiTabletsStatement == null) {
+      return false;
+    }
+
+    executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
+    return true;
+  }
+
+  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
     if (insertTabletStatementGenerators == null
         || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
-      return;
+      return null;
     }
 
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
@@ -100,28 +130,64 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       }
     }
     if (insertTabletStatementList.isEmpty()) {
-      return;
+      return null;
     }
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return insertMultiTabletsStatement;
+  }
 
+  protected void executeInsertMultiTabletsStatement(
+      InsertMultiTabletsStatement insertMultiTabletsStatement) {
     if (client == null) {
       client = new DataNodeInternalClient(operatorContext.getSessionInfo());
     }
-    TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
-    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      String message =
-          String.format(
-              "Error occurred while inserting tablets in SELECT INTO: %s",
-              executionStatus.getMessage());
-      throw new IntoProcessException(message);
-    }
 
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      generator.reset();
+    isBlocked = SettableFuture.create();
+    writeOperationFuture =
+        writeOperationExecutor.submit(
+            () -> {
+              LOGGER.info("");
+              return client.insertTablets(insertMultiTabletsStatement);
+            });
+
+    writeOperationFuture.addListener(
+        () -> {
+          LOGGER.info("");
+          ((SettableFuture<Void>) isBlocked).set(null);
+        },
+        writeOperationExecutor);
+  }
+
+  protected boolean handleFuture() {
+    if (writeOperationFuture != null) {
+      if (writeOperationFuture.isDone()) {
+        try {
+          TSStatus executionStatus = writeOperationFuture.get();
+          if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            String message =
+                String.format(
+                    "Error occurred while inserting tablets in SELECT INTO: %s",
+                    executionStatus.getMessage());
+            throw new IntoProcessException(message);
+          }
+
+          for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+            generator.reset();
+          }
+
+          writeOperationFuture = null;
+          return true;
+        } catch (ExecutionException | InterruptedException e) {
+          throw new IntoProcessException(e.getMessage());
+        }
+      } else {
+        return false;
+      }
     }
+    return true;
   }
 
   private boolean existFullStatement(
@@ -164,12 +230,14 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
+    return successfulAsList(Arrays.asList(isBlocked, child.isBlocked()));
   }
 
   @Override
   public boolean hasNext() {
-    return existNonEmptyStatement(insertTabletStatementGenerators) || child.hasNext();
+    return cachedTsBlock != null
+        || existNonEmptyStatement(insertTabletStatementGenerators)
+        || child.hasNext();
   }
 
   @Override
@@ -177,6 +245,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (client != null) {
       client.close();
     }
+    writeOperationExecutor.shutdown();
     child.close();
   }
 
