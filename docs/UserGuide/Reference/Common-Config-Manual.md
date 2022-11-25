@@ -251,6 +251,50 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Query Configurations
 
+* read\_consistency\_level
+
+|    Name     | mpp\_data\_exchange\_core\_pool\_size        |
+|:-----------:|:---------------------------------------------|
+| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+|    Type     | string                                          |
+|   Default   | strong                                           |
+|  Effective  | After restarting system                      |
+
+* meta\_data\_cache\_enable
+
+|Name| meta\_data\_cache\_enable |
+|:---:|:---|
+|Description| Whether to cache meta data(BloomFilter, ChunkMetadata and TimeSeriesMetadata) or not.|
+|Type|Boolean|
+|Default| true |
+|Effective| After restarting system|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|Name| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others. |
+|Default| 1 : 100 : 200 : 300 : 400   |
+|Effective| After restarting system |
+
+* enable\_last\_cache
+
+|Name| enable\_last\_cache |
+|:---:|:---|
+|Description| Whether to enable LAST cache. |
+|Type| Boolean |
+|Default| true |
+|Effective|After restarting system|
+
+* max\_deduplicated\_path\_num
+
+|Name| max\_deduplicated\_path\_num |
+|:---:|:---|
+|Description| allowed max numbers of deduplicated path in one query. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
@@ -305,23 +349,50 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 1000 |
 |Effective|After restarting system|
 
-* default\_fill\_interval
+* slow\_query\_threshold
 
-|    Name     | default\_fill\_interval                         |
-| :---------: | :---------------------------------------------- |
-| Description | Default interval of `group by fill` query in ms |
-|    Type     | Int32                                           |
-|   Default   | -1                                              |
-|  Effective  | After restarting system                         |
+|Name| slow\_query\_threshold |
+|:---:|:---|
+|Description| Time cost(ms) threshold for slow query. |
+|Type| Int32 |
+|Default| 5000 |
+|Effective|Trigger|
 
-* group_by_fill_cache_size_in_mb
+* query\_timeout\_threshold
 
-|    Name     | group_by_fill_cache_size_in_mb      |
-| :---------: | :---------------------------------- |
-| Description | Cache size of `group by fill` query |
-|    Type     | Float                               |
-|   Default   | 1.0                                 |
-|  Effective  | After restarting system             |
+|Name| query\_timeout\_threshold |
+|:---:|:---|
+|Description| The max executing time of query. unit: ms |
+|Type| Int32 |
+|Default| 60000 |
+|Effective| After restarting system|
+
+* max\_allowed\_concurrent\_queries
+
+|Name| max\_allowed\_concurrent\_queries |
+|:---:|:---|
+|Description| The maximum allowed concurrently executing queries. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| How many threads can concurrently execute query statement. When <= 0, use CPU core number. |
+|Type| Int32                                                               |
+|Default | CPU core number                                                    |
+|Effective| After restarting system |
+
+* batch\_size
+
+|Name| batch\_size |
+|:---:|:---|
+|Description| The amount of data iterate each time in server (the number of data strips, that is, the number of different timestamps.) |
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restarting system|
 
 ### Storage Engine Configuration
 
@@ -423,24 +494,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| Int32 |
 |Default| 0 |
 |Effective|After restarting system|
-
-* query\_thread\_count
-
-|Name| query\_thread\_count                                                                                            |
-|:---:|:---------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|Type| Int32                                                                                                                |
-|Default| 16                                                                                                                   |
-|Effective| After restarting system                                                                                              |
-
-* sub\_rawQuery\_thread\_count
-
-|Name| sub\_rawQuery\_thread\_count                                                                                        |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|Type| Int32                                                                                                                    |
-|Default| 8                                                                                                                        |
-|Effective| After restarting system                                                                                                  |
 
 * enable\_partial\_insert
 
@@ -744,8 +797,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type|Int32|
 |Default| 1024 |
 |Effective|Trigger|
-
-### Watermark Configuration
 
 ### Authorization Configuration
 
