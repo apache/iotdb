@@ -84,188 +84,196 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 ### 4.1.1. 集群运行状态
 
-| Metric      | Tags                                            | Description                            |
-| ----------- | ----------------------------------------------- | -------------------------------------- |
-| config_node | name="total",status="Registered/Online/Unknown" | 已注册/在线/离线 confignode 的节点数量 |
-| data_node   | name="total",status="Registered/Online/Unknown" | 已注册/在线/离线 datanode 的节点数量   |
+| Metric      | Tags                                            | Type      | Description                            |
+| ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
+| config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
+| data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
 
 ### 4.1.2. IoTDB 进程运行状态
-| Metric            | Tags          | Description                         |
-| ----------------- | ------------- | ----------------------------------- |
-| process_cpu_load  | name="cpu"    | IoTDB 进程的 CPU 占用率，单位为%    |
-| process_cpu_time  | name="cpu"    | IoTDB 进程占用的 CPU 时间，单位为ns |
-| process_max_mem   | name="memory" | IoTDB 进程最大可用内存              |
-| process_total_mem | name="memory" | IoTDB 进程当前已申请内存            |
-| process_free_mem  | name="memory" | IoTDB 进程当前剩余可用内存          |
+| Metric            | Tags          | Type      | Description                         |
+| ----------------- | ------------- | --------- | ----------------------------------- |
+| process_cpu_load  | name="cpu"    | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
+| process_cpu_time  | name="cpu"    | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
+| process_max_mem   | name="memory" | AutoGauge | IoTDB 进程最大可用内存              |
+| process_total_mem | name="memory" | AutoGauge | IoTDB 进程当前已申请内存            |
+| process_free_mem  | name="memory" | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
 ### 4.1.3. 系统运行状态
-| Metric                         | Tags          | Description                              |
-| ------------------------------ | ------------- | ---------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | 系统的 CPU 占用率，单位为%               |
-| sys_cpu_cores                  | name="cpu"    | 系统的可用处理器数                       |
-| sys_total_physical_memory_size | name="memory" | 系统的最大物理内存                       |
-| sys_free_physical_memory_size  | name="memory" | 系统的剩余可用内存                       |
-| sys_total_swap_space_size      | name="memory" | 系统的交换区最大空间                     |
-| sys_free_swap_space_size       | name="memory" | 系统的交换区剩余可用空间                 |
-| sys_committed_vm_size          | name="memory" | 系统保证可用于正在运行的进程的虚拟内存量 |
-| sys_disk_total_space           | name="disk"   | 系统磁盘总大小                           |
-| sys_disk_free_space            | name="disk"   | 系统磁盘可用大小                         |
+| Metric                         | Tags          | Type      | Description                              |
+| ------------------------------ | ------------- | --------- | ---------------------------------------- |
+| sys_cpu_load                   | name="cpu"    | AutoGauge | 系统的 CPU 占用率，单位为%               |
+| sys_cpu_cores                  | name="cpu"    | Gauge     | 系统的可用处理器数                       |
+| sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存                       |
+| sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存                       |
+| sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间                     |
+| sys_free_swap_space_size       | name="memory" | AutoGauge | 系统的交换区剩余可用空间                 |
+| sys_committed_vm_size          | name="memory" | AutoGauge | 系统保证可用于正在运行的进程的虚拟内存量 |
+| sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小                           |
+| sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小                         |
 
 ## 4.2. Important 级别监控指标
 
 目前 Important 级别的监控指标如下所述：
 
 ### 4.2.1. 集群运行状态
-| Metric                    | Tags                                              | Description                    |
-| ------------------------- | ------------------------------------------------- | ------------------------------ |
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | 节点上共识组Leader的数量       |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | 节点的状态，0=Unkonwn 1=online |
+| Metric                    | Tags                                              | Type  | Description                    |
+| ------------------------- | ------------------------------------------------- | ----- | ------------------------------ |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | 节点上共识组Leader的数量       |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 ### 4.2.2. 节点统计
-| Metric   | Tags                                       | Description                        |
-| -------- | ------------------------------------------ | ---------------------------------- |
-| quantity | name="database"                            | 系统数据库数量                     |
-| quantity | name="timeSeries"                          | 系统时间序列数量                   |
-| quantity | name="pointsIn"                            | 系统累计写入点数                   |
-| region   | name="total",type="SchemaRegion"           | 分区表中SchemaRegion总数量         |
-| region   | name="total",type="DataRegion"             | 分区表中DataRegion总数量           |
-| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | 分区表中对应节点上DataRegion总数量 |
-| region   | name="{{ip}}:{{port}}",type="DataRegion"   | 分区表中对应节点上DataRegion总数量 |
+| Metric   | Tags                                       | Type      | Description                        |
+| -------- | ------------------------------------------ | --------- | ---------------------------------- |
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                     |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                   |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                   |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中SchemaRegion总数量         |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中DataRegion总数量           |
+| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上DataRegion总数量 |
+| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上DataRegion总数量 |
 
 ### 4.2.3. 弱一致性共识协议统计
-| Metric       | Tags                                                                                         | Description                      |
-| ------------ | -------------------------------------------------------------------------------------------- | -------------------------------- |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | 副本组同步线程的当前同步进度     |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | 副本组同步线程缓存队列请求总大小 |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex"                        | 副本组主流程写入进度             |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="safeIndex"                          | 副本组同步进度                   |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | 主流程获取状态机锁耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | 主流程写入状态机检查耗时         |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | 主流程写入状态机耗时             |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | 主流程尝试添加队列耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | 主流程全写入耗时                 |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | 同步线程构造 Batch 耗时          |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | 异步回调流程同步日志耗时         |
+| Metric       | Tags                                                                                         | Type      | Description                      |
+| ------------ | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | 副本组主流程写入进度             |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | 副本组同步进度                   |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | 主流程获取状态机锁耗时           |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | 主流程写入状态机检查耗时         |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | 主流程写入状态机耗时             |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | 主流程尝试添加队列耗时           |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | 主流程全写入耗时                 |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | 同步线程构造 Batch 耗时          |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | 异步回调流程同步日志耗时         |
 
 ### 4.2.4. 缓存统计
-| Metric    | Tags                               | Description                                             |
-| --------- | ---------------------------------- | ------------------------------------------------------- |
-| cache_hit | name="chunk"                       | ChunkCache的命中率，单位为%                             |
-| cache_hit | name="schema"                      | SchemaCache的命中率，单位为%                            |
-| cache_hit | name="timeSeriesMeta"              | TimeseriesMetadataCache的命中率，单位为%                |
-| cache_hit | name="bloomFilter"                 | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="StorageGroup", type="hit"    | StorageGroup Cache 的命中次数                           |
-| cache     | name="StorageGroup", type="all"    | StorageGroup Cache 的访问次数                           |
-| cache     | name="SchemaPartition", type="hit" | SchemaPartition Cache 的命中次数                        |
-| cache     | name="SchemaPartition", type="all" | SchemaPartition Cache 的访问次数                        |
-| cache     | name="DataPartition", type="hit"   | DataPartition Cache 的命中次数                          |
-| cache     | name="DataPartition", type="all"   | DataPartition Cache 的访问次数                          |
+| Metric    | Tags                               | Type      | Description                                             |
+| --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
+| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
+| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
+| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
+| cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
+| cache     | name="StorageGroup", type="hit"    | Counter   | StorageGroup Cache 的命中次数                           |
+| cache     | name="StorageGroup", type="all"    | Counter   | StorageGroup Cache 的访问次数                           |
+| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
+| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
+| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
+| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
 
 ### 4.2.5. 接口层统计
-| Metric                | Tags                               | Description                         |
-| --------------------- | ---------------------------------- | ----------------------------------- |
-| operation             | name = "{{name}}"                  | 客户端执行的操作的耗时情况          |
-| entry                 | name="{{interface}}"               | Client 建立的 Thrift 的耗时情况     |
-| thrift_connections    | name="ConfigNodeRPC"               | ConfigNode 的内部 Thrift 连接数     |
-| thrift_connections    | name="Internal"                    | DataNode 的内部 Thrift 连接数       |
-| thrift_connections    | name="MPPDataExchange"             | MPP 框架的内部 Thrift 连接数        |
-| thrift_connections    | name="RPC"                         | Client 建立的 Thrift 连接数         |
-| thrift_active_threads | name="ConfigNodeRPC-Service"       | ConfigNode 的内部活跃 Thrift 连接数 |
-| thrift_active_threads | name="DataNodeInternalRPC-Service" | DataNode 的内部活跃 Thrift 连接数   |
-| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | MPP 框架的内部活跃 Thrift 连接数    |
-| thrift_active_threads | name="ClientRPC-Service"           | Client 建立的活跃 Thrift 连接数     |
+| Metric                | Tags                               | Type      | Description                         |
+| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
+| operation             | name = "{{name}}"                  | Histogram | 客户端执行的操作的耗时情况          |
+| entry                 | name="{{interface}}"               | Timer     | Client 建立的 Thrift 的耗时情况     |
+| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
+| thrift_connections    | name="Internal"                    | AutoGauge | DataNode 的内部 Thrift 连接数       |
+| thrift_connections    | name="MPPDataExchange"             | AutoGauge | MPP 框架的内部 Thrift 连接数        |
+| thrift_connections    | name="RPC"                         | AutoGauge | Client 建立的 Thrift 连接数         |
+| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
+| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
+| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
 
 ### 4.2.6. 内存统计
-| Metric | Tags                          | Description                                       |
-| ------ | ----------------------------- | ------------------------------------------------- |
-| mem    | name="database_{{name}}"      | DataNode内对应DataRegion的内存占用，单位为byte    |
-| mem    | name="chunkMetaData_{{name}}" | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="MultiLeaderConsensus"   | 弱一致性共识协议的内存占用，单位为byte            |
+| Metric | Tags                          | Type      | Description                                       |
+| ------ | ----------------------------- | --------- | ------------------------------------------------- |
+| mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="MultiLeaderConsensus"   | AutoGauge | 弱一致性共识协议的内存占用，单位为byte            |
 
 ### 4.2.7. 任务统计
-| Metric    | Tags                                              | Description        |
-| --------- | ------------------------------------------------- | ------------------ |
-| queue     | name="compaction_inner", status="running/waiting" | 空间内合并任务数   |
-| queue     | name="compaction_cross", status="running/waiting" | 跨空间合并任务数   |
-| queue     | name="flush",status="running/waiting"             | 刷盘任务数         |
-| queue     | name="Sub_RawQuery",status="running/waiting"      | Sub_RawQuery任务数 |
-| cost_task | name="inner_compaction/cross_compaction/flush"    | 任务耗时情况       |
+| Metric    | Tags                                              | Type      | Description        |
+| --------- | ------------------------------------------------- | --------- | ------------------ |
+| queue     | name="compaction_inner", status="running/waiting" | Gauge     | 空间内合并任务数   |
+| queue     | name="compaction_cross", status="running/waiting" | Gauge     | 跨空间合并任务数   |
+| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况       |
+| queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
+| queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
+
 
 ### 4.2.8. 合并统计
-| Metric                | Tags                                                | Description        |
-| --------------------- | --------------------------------------------------- | ------------------ |
-| data_written          | name="compaction", type="aligned/not-aligned/total" | 合并时写入量       |
-| data_read             | name="compaction"                                   | 合并时的读取量     |
-| compaction_task_count | name = "inner_compaction", type="sequence"          | 顺序空间内合并次数 |
-| compaction_task_count | name = "inner_compaction", type="unsequence"        | 乱序空间内合并次数 |
-| compaction_task_count | name = "cross_compaction", type="cross"             | 跨空间合并次数     |
+| Metric                | Tags                                                | Type    | Description        |
+| --------------------- | --------------------------------------------------- | ------- | ------------------ |
+| data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | 合并时写入量       |
+| data_read             | name="compaction"                                   | Counter | 合并时的读取量     |
+| compaction_task_count | name = "inner_compaction", type="sequence"          | Counter | 顺序空间内合并次数 |
+| compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
+| compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
 ### 4.2.9. 文件统计信息
-| Metric     | Tags         | Description                  |
-| ---------- | ------------ | ---------------------------- |
-| file_size  | name="wal"   | 写前日志总大小，单位为byte   |
-| file_size  | name="seq"   | 顺序TsFile总大小，单位为byte |
-| file_size  | name="unseq" | 乱序TsFile总大小，单位为byte |
-| file_count | name="wal"   | 写前日志文件个数             |
-| file_count | name="seq"   | 顺序TsFile文件个数           |
-| file_count | name="unseq" | 乱序TsFile文件个数           |
+| Metric     | Tags         | Type      | Description                  |
+| ---------- | ------------ | --------- | ---------------------------- |
+| file_size  | name="wal"   | AutoGauge | 写前日志总大小，单位为byte   |
+| file_size  | name="seq"   | AutoGauge | 顺序TsFile总大小，单位为byte |
+| file_size  | name="unseq" | AutoGauge | 乱序TsFile总大小，单位为byte |
+| file_count | name="wal"   | AutoGauge | 写前日志文件个数             |
+| file_count | name="seq"   | AutoGauge | 顺序TsFile文件个数           |
+| file_count | name="unseq" | AutoGauge | 乱序TsFile文件个数           |
 
 ### 4.2.10. IoTDB 进程统计
-| Metric                | Tags           | Description                          |
-| --------------------- | -------------- | ------------------------------------ |
-| process_used_mem      | name="memory"  | IoTDB 进程当前使用内存               |
-| process_mem_ratio     | name="memory"  | IoTDB 进程的内存占用比例             |
-| process_threads_count | name="process" | IoTDB 进程当前线程数                 |
-| process_status        | name="process" | IoTDB 进程存活状态，1为存活，0为终止 |
+| Metric                | Tags           | Type      | Description                          |
+| --------------------- | -------------- | --------- | ------------------------------------ |
+| process_used_mem      | name="memory"  | AutoGauge | IoTDB 进程当前使用内存               |
+| process_mem_ratio     | name="memory"  | AutoGauge | IoTDB 进程的内存占用比例             |
+| process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
+| process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
 ### 4.2.11. IoTDB 日志统计
-| Metric               | Tags                                | Description        |
-| -------------------- | ----------------------------------- | ------------------ |
-| logback_events_total | level="trace/debug/info/warn/error" | 不同类型的日志个数 |
+| Metric         | Tags                                | Type    | Description        |
+| -------------- | ----------------------------------- | ------- | ------------------ |
+| logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
 
 
 ### 4.2.12. JVM 线程统计
 
-| Metric             | Tags                                                          | Description              |
-| ------------------ | ------------------------------------------------------------- | ------------------------ |
-| jvm_threads_live   |                                                               | 当前线程数               |
-| jvm_threads_daemon |                                                               | 当前 Daemon 线程数       |
-| jvm_threads_peak   |                                                               | 峰值线程数               |
-| jvm_threads_states | state="runnable/blocked/waiting/timed-waiting/new/terminated" | 当前处于各种状态的线程数 |
+| Metric                     | Tags                                                          | Type      | Description              |
+| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
+| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数               |
+| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数       |
+| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
 
 ### 4.2.13. JVM GC 统计
-| Metric                        | Tags                                                  | Description                            |
-| ----------------------------- | ----------------------------------------------------- | -------------------------------------- |
-| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | 不同原因的Young GC/Full GC的次数与耗时 |
-| jvm_gc_max_data_size_bytes    |                                                       | 老年代内存的历史最大值                 |
-| jvm_gc_live_data_size_bytes   |                                                       | 老年代内存的使用值                     |
-| jvm_gc_memory_promoted_bytes  |                                                       | 老年代内存正向增长累计值               |
-| jvm_gc_memory_allocated_bytes |                                                       | GC分配内存正向增长累计值               |
+| Metric                        | Tags                                                  | Type      | Description                            |
+| ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
+| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | 老年代内存的历史最大值                 |
+| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                     |
+| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
+| jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
 
 ### 4.2.14. JVM 内存统计
-| Metric                     | Tags                            | Description          |
-| -------------------------- | ------------------------------- | -------------------- |
-| jvm_buffer_memory_used     | id="direct/mapped"              | 已经使用的缓冲区大小 |
-| jvm_buffer_total_capacity  | id="direct/mapped"              | 最大缓冲区大小       |
-| jvm_buffer_count_buffers   | id="direct/mapped"              | 当前缓冲区数量       |
-| jvm_memory_committed_bytes | {area="heap/nonheap",id="xxx",} | 当前申请的内存大小   |
-| jvm_memory_max_bytes       | {area="heap/nonheap",id="xxx",} | 最大内存             |
-| jvm_memory_used_bytes      | {area="heap/nonheap",id="xxx",} | 已使用内存大小       |
+| Metric                          | Tags                            | Type      | Description          |
+| ------------------------------- | ------------------------------- | --------- | -------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小       |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量       |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
 
 ### 4.2.15. JVM 类加载统计
-| Metric                       | Tags                                          | Description         |
-| ---------------------------- | --------------------------------------------- | ------------------- |
-| jvm_classes_unloaded_classes |                                               | 累计卸载的class数量 |
-| jvm_classes_loaded_classes   |                                               | 累计加载的class数量 |
-| jvm_compilation_time_ms      | {compiler="HotSpot 64-Bit Tiered Compilers",} | 耗费在编译上的时间  |
+| Metric                       | Tags | Type      | Description         |
+| ---------------------------- | ---- | --------- | ------------------- |
+| jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
+| jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
+
+###  4.2.16. JVM 编译时间统计
+| Metric                  | Tags                                          | Type      | Description        |
+| ----------------------- | --------------------------------------------- | --------- | ------------------ |
+| jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
 ## 4.3. Normal 级别监控指标
 
 ### 4.3.1. 集群运行状态
-| Metric | Tags                                                               | Description                                    |
-| ------ | ------------------------------------------------------------------ | ---------------------------------------------- |
-| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | 节点上对应 database 的 DataRegion/Schema个数   |
-| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | 节点上对应 database 的 schemaSlot/dataSlot个数 |
+| Metric | Tags                                                               | Type      | Description                                    |
+| ------ | ------------------------------------------------------------------ | --------- | ---------------------------------------------- |
+| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 节点上对应 database 的 DataRegion/Schema个数   |
+| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 节点上对应 database 的 schemaSlot/dataSlot个数 |
 
 ## 4.4. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
