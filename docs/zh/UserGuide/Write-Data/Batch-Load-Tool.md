@@ -25,7 +25,7 @@
 
 ## TsFile批量导入
 
-TsFile 是在 IoTDB 中使用的时间序列的文件格式，您可以通过CLI等工具直接将存有时间序列的一个或多个 TsFile 文件导入到另外一个正在运行的IoTDB实例中。具体操作方式请参考 [TsFile 导入导出工具](../Maintenance-Tools/TsFile-Load-Export-Tool.md)。
+TsFile 是在 IoTDB 中使用的时间序列的文件格式，您可以通过CLI等工具直接将存有时间序列的一个或多个 TsFile 文件导入到另外一个正在运行的IoTDB实例中。具体操作方式请参考[TsFile 导入工具](../Maintenance-Tools/Load-TsFile.md)，[TsFile 导出工具](../Maintenance-Tools/TsFile-Load-Export-Tool.md)。
 
 ## CSV批量导入
 
