@@ -79,10 +79,19 @@ public class RegionWriteExecutor {
   private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
 
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
-    WritePlanNodeExecutionContext context =
-        new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
-    WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
-    return planNode.accept(executionVisitor, context);
+    try {
+      WritePlanNodeExecutionContext context =
+          new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
+      WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
+      return planNode.accept(executionVisitor, context);
+    } catch (Throwable e) {
+      LOGGER.error(e.getMessage(), e);
+      RegionExecutionResult result = new RegionExecutionResult();
+      result.setAccepted(false);
+      result.setMessage(e.getMessage());
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+      return result;
+    }
   }
 
   public static ConsensusWriteResponse fireTriggerAndInsert(
@@ -99,6 +108,7 @@ public class RegionWriteExecutor {
     } else {
       boolean hasFailedTriggerBeforeInsertion =
           result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
+      LOGGER.warn("hasFailedTriggerBeforeInsertion: {}", hasFailedTriggerBeforeInsertion);
 
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
 
