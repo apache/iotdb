@@ -69,8 +69,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   private static final String testSchemaRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testDataRegionConsensusProtocolClass =
-      ConsensusFactory.MULTI_LEADER_CONSENSUS;
+  private static final String testDataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;

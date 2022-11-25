@@ -62,9 +62,7 @@ public class WALManager implements IService {
 
   private WALManager() {
     if (config.isClusterMode()
-        && config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -74,9 +72,7 @@ public class WALManager implements IService {
   }
 
   public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
-    return config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)
+    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         ? storageGroupName
         : storageGroupName
             + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -97,9 +93,7 @@ public class WALManager implements IService {
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()
-        || !config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }
 
@@ -111,9 +105,7 @@ public class WALManager implements IService {
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()
-        || !config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }
 
