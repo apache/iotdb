@@ -60,6 +60,7 @@ class TSEncoding(Enum):
     REGULAR = 7
     GORILLA = 8
     HUFFMAN = 9
+    MTF = 10
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545
