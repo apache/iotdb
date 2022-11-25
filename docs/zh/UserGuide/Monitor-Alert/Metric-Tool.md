@@ -79,7 +79,9 @@
 
 ## 1.4. 监控指标有哪些？
 
-目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。IoTDB 的监控指标被划分为 Core, Important, Normal, All 四个级别，如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
+目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。
+
+IoTDB 的监控指标被划分为 Core, Important, Normal, All 四个级别，如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
 
 ### 1.4.1. Core 级别监控指标
 
@@ -93,23 +95,84 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_node   | name="total",status="Registered/Online/Unknown" | 已注册/在线/离线 datanode 的节点数量   | data_node{name="total",status="Registered",} 3.0 |
 
 #### 1.4.1.2. IoTDB 进程运行状态
-| Metric           | Tags       | Description                 | Example                                      |
-| ---------------- | ---------- | --------------------------- | -------------------------------------------- |
-| process_cpu_load | name="cpu" | process当前CPU占用率（%）   | process_cpu_load{name="process",} 5.0        |
-| process_cpu_time | name="cpu" | process累计占用CPU时间（ns) | process_cpu_time{name="process",} 3.265625E9 |
+| Metric            | Tags          | Description                         | Example                                         |
+| ----------------- | ------------- | ----------------------------------- | ----------------------------------------------- |
+| process_cpu_load  | name="cpu"    | IoTDB 进程的 CPU 占用率，单位为%    | process_cpu_load{name="process",} 5.0           |
+| process_cpu_time  | name="cpu"    | IoTDB 进程占用的 CPU 时间，单位为ns | process_cpu_time{name="process",} 3.265625E9    |
+| process_max_mem   | name="memory" | IoTDB 进程最大可用内存              | process_max_mem{name="process",} 3.545759744E9  |
+| process_total_mem | name="memory" | IoTDB 进程当前已申请内存            | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem  | name="memory" | IoTDB 进程当前剩余可用内存          | process_free_mem{name="process",} 1.94035584E8  |
 
-#### 1.4.1.3. Interface
+#### 1.4.1.3. 系统运行状态
+| Metric                         | Tags          | Description                              | Example                                                        |
+| ------------------------------ | ------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| sys_cpu_load                   | name="cpu"    | 系统的 CPU 占用率，单位为%               | sys_cpu_load{name="system",} 15.0                              |
+| sys_cpu_cores                  | name="cpu"    | 系统的可用处理器数                       | sys_cpu_cores{name="system",} 16.0                             |
+| sys_total_physical_memory_size | name="memory" | 系统的最大物理内存                       | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
+| sys_free_physical_memory_size  | name="memory" | 系统的剩余可用内存                       | sys_free_physical_memory_size{name="system",} 4.532396032E9    |
+| sys_total_swap_space_size      | name="memory" | 系统的交换区最大空间                     | sys_total_swap_space_size{name="system",} 2.1051273216E10      |
+| sys_free_swap_space_size       | name="memory" | 系统的交换区剩余可用空间                 | sys_free_swap_space_size{name="system",} 2.931576832E9         |
+| sys_committed_vm_size          | name="memory" | 系统保证可用于正在运行的进程的虚拟内存量 | sys_committed_vm_size{name="system",} 5.04344576E8             |
+| sys_disk_total_space           | name="disk"   | 系统磁盘总大小                           | sys_disk_total_space{name="system",} 5.10770798592E11          |
+| sys_disk_free_space            | name="disk"   | 系统磁盘可用大小                         | sys_disk_free_space{name="system",} 3.63467845632E11           |
+
+### 1.4.2. Important 级别监控指标
+
+目前 Important 级别的监控指标如下所述：
+
+#### 1.4.2.1. 集群运行状态
+| Metric                    | Tags                                              | Description                    | Example                                                          |
+| ------------------------- | ------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | 节点上共识组Leader的数量       | cluster_node_leader_count{name="127.0.0.1",} 2.0                 |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | 节点的状态，0=Unkonwn 1=online | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0 |
+
+#### 1.4.2.2. 节点统计信息
+| Metric   | Tags                                       | Description                        | Example                                               |
+| -------- | ------------------------------------------ | ---------------------------------- | ----------------------------------------------------- |
+| quantity | name="database"                            | 系统数据库数量                     | quantity{name="timeSeries",} 1.0                      |
+| quantity | name="timeSeries"                          | 系统时间序列数量                   | quantity{name="timeSeries",} 1.0                      |
+| quantity | name="pointsIn"                            | 系统累计写入点数                   | quantity_total{name="pointsIn",} 1.0                  |
+| region   | name="total",type="SchemaRegion"           | 分区表中SchemaRegion总数量         | region{name="127.0.0.1:6671",type="DataRegion",} 10.0 |
+| region   | name="total",type="DataRegion"             | 分区表中DataRegion总数量           | region{name="127.0.0.1:6671",type="DataRegion",} 10.0 |
+| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | 分区表中对应节点上DataRegion总数量 | region{name="127.0.0.1:6671",type="DataRegion",} 10.0 |
+| region   | name="{{ip}}:{{port}}",type="DataRegion"   | 分区表中对应节点上DataRegion总数量 | region{name="127.0.0.1:6671",type="DataRegion",} 10.0 |
+
+#### 1.4.2.3. 缓存统计信息
+| Metric    | Tags                               | Description                                             | Example                                             |
+| --------- | ---------------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
+| cache_hit | name="chunk"                       | ChunkCache的命中率，单位为%                             | cache_hit{name="chunk",} 80                         |
+| cache_hit | name="schema"                      | SchemaCache的命中率，单位为%                            | cache_hit{name="chunk",} 80                         |
+| cache_hit | name="timeSeriesMeta"              | TimeseriesMetadataCache的命中率，单位为%                | cache_hit{name="chunk",} 80                         |
+| cache_hit | name="bloomFilter"                 | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% | cache_hit{name="chunk",} 80                         |
+| cache     | name="StorageGroup", type="hit"    | StorageGroup Cache 的命中次数                           | cache_total{name="DataPartition",type="all",} 801.0 |
+| cache     | name="StorageGroup", type="all"    | StorageGroup Cache 的访问次数                           | cache_total{name="DataPartition",type="all",} 801.0 |
+| cache     | name="SchemaPartition", type="hit" | SchemaPartition Cache 的命中次数                        | cache_total{name="DataPartition",type="all",} 801.0 |
+| cache     | name="SchemaPartition", type="all" | SchemaPartition Cache 的访问次数                        | cache_total{name="DataPartition",type="all",} 801.0 |
+| cache     | name="DataPartition", type="hit"   | DataPartition Cache 的命中次数                          | cache_total{name="DataPartition",type="all",} 801.0 |
+| cache     | name="DataPartition", type="all"   | DataPartition Cache 的访问次数                          | cache_total{name="DataPartition",type="all",} 801.0 |
+
+### 1.4.3. Normal 级别监控指标
+
+#### 1.4.3.1. 集群运行状态
+| Metric | Tags                                                               | Description                                    | Example                                                   |
+| ------ | ------------------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------------------- |
+| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | 节点上对应 database 的 DataRegion/Schema个数   | region{name="root.schema.sg1",type="DataRegion",} 14.0    |
+| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | 节点上对应 database 的 schemaSlot/dataSlot个数 | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0 |
+
+### 1.4.4. All 级别监控指标
+目前还没有All级别的监控指标，后续会持续添加。
+
+#### 1.4.4.1. Interface
 
 | Metric                | Tag                      | level     | 说明                | 示例                                         |
 | --------------------- | ------------------------ | --------- | ------------------- | -------------------------------------------- |
 | entry_seconds_count   | name="{{interface}}"     | important | 接口累计访问次数    | entry_seconds_count{name="openSession",} 1.0 |
 | entry_seconds_sum     | name="{{interface}}"     | important | 接口累计耗时(s)     | entry_seconds_sum{name="openSession",} 0.024 |
 | entry_seconds_max     | name="{{interface}}"     | important | 接口最大耗时(s)     | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total        | name="pointsIn"          | important | 系统累计写入点数    | quantity_total{name="pointsIn",} 1.0         |
 | thrift_connections    | name="{{thriftService}}" | important | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
 | thrift_active_threads | name="{{thriftThread}}"  | important | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
 
-#### 1.4.1.4. Task
+#### 1.4.4.2. Task
 
 | Metric                      | Tag                                                                          | level     | 说明                            | 示例                                                                                               |
 | --------------------------- | ---------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -121,41 +184,23 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_read_total             | name="compaction"                                                            | important | 合并文件时的读取量              | data_read_total{name="compaction",} 10240                                                          |
 | compaction_task_count_total | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross" | important | 合并任务个数                    | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                            |
 
-#### 1.4.1.5. 内存占用
+#### 1.4.4.3. 内存占用
 
 | Metric | Tag                                                          | level     | 说明                       | 示例                              |
 | ------ | ------------------------------------------------------------ | --------- | -------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree/MultiLeaderConsensus" | important | 对应部分占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
-#### 1.4.1.6. 缓存
+#### 1.4.4.5. 集群
 
-| Metric      | Tag                                                               | level     | 说明                                                         | 示例                                                |
-| ----------- | ----------------------------------------------------------------- | --------- | ------------------------------------------------------------ | --------------------------------------------------- |
-| cache_hit   | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache"               | important | chunk/timeSeriesMeta/SchemaCache缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80                         |
-| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | StorageGroup/SchemaPartition/DataPartition 的命中/总次数     | cache_total{name="DataPartition",type="all",} 801.0 |
+##### 1.4.4.5.1. 集群状态
 
-#### 1.4.1.7. 业务数据
+| Metric          | Tag           | level | 说明                    | 示例                                |
+| --------------- | ------------- | ----- | ----------------------- | ----------------------------------- |
+| partition_table | name="number" | core  | partition table表的个数 | partition_table{name="number",} 2.0 |
 
-| Metric   | Tag                                   | level     | 说明                                         | 示例                             |
-| -------- | ------------------------------------- | --------- | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
-#### 1.4.1.8. 集群
 
-##### 1.4.1.8.1. 集群状态
-
-| Metric                    | Tag                                                                | level     | 说明                                                          | 示例                                                                         |
-| ------------------------- | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | 节点状态，0=Unkonwn 1=online                                  | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0             |
-| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
-| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | database 的 DataRegion/Schema个数                             | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | database 的 schemaSlot/dataSlot个数                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
-
-##### 1.4.1.8.2. 弱一致性
+##### 1.4.4.5.2. 弱一致性
 | Metric       | Tag                                                                                          | level     | 说明                                                 | 示例                                                                                                             |
 | ------------ | -------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core      | 弱一致性对应region的写入index和同步index             | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
@@ -170,11 +215,11 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | important | 弱一致性对应同步线程完成一个请求同步的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
 
 
-### 1.4.2. IoTDB 预定义指标集
+### 1.4.5. IoTDB 预定义指标集
 
-#### 1.4.2.1. JVM
+#### 1.4.5.1. JVM
 
-##### 1.4.2.1.1. 线程
+##### 1.4.5.1.1. 线程
 
 | Metric                     | Tag                                                           | level     | 说明                     | 示例                                               |
 | -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ | -------------------------------------------------- |
@@ -183,7 +228,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_threads_peak_threads   | 无                                                            | important | 峰值线程数               | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | important | 当前处于各种状态的线程数 | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-##### 1.4.2.1.2. 垃圾回收
+##### 1.4.5.1.2. 垃圾回收
 
 | Metric                              | Tag                                                    | level     | 说明                                         | 示例                                                                                    |
 | ----------------------------------- | ------------------------------------------------------ | --------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -195,7 +240,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_gc_live_data_size_bytes         | 无                                                     | important | GC后老年代内存的大小                         | jvm_gc_live_data_size_bytes 8450088.0                                                   |
 | jvm_gc_memory_allocated_bytes_total | 无                                                     | important | 在一个GC之后到下一个GC之前年轻代增加的内存   | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
 
-##### 1.4.2.1.3. 内存
+##### 1.4.5.1.3. 内存
 
 | Metric                          | Tag                             | level     | 说明                    | 示例                                                                                                                                                          |
 | ------------------------------- | ------------------------------- | --------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -206,7 +251,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | important | JVM最大内存             | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | important | JVM已使用内存大小       | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
 
-##### 1.4.2.1.4. Classes
+##### 1.4.5.1.4. Classes
 
 | Metric                       | Tag                                           | level     | 说明                   | 示例                                                                          |
 | ---------------------------- | --------------------------------------------- | --------- | ---------------------- | ----------------------------------------------------------------------------- |
@@ -214,43 +259,27 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_classes_loaded_classes   | 无                                            | important | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                             |
 | jvm_compilation_time_ms      | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
-#### 1.4.2.2. 文件（File）
+#### 1.4.5.2. 文件（File）
 
 | Metric     | Tag                  | level     | 说明                                | 示例                        |
 | ---------- | -------------------- | --------- | ----------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
 
-#### 1.4.2.3. 日志(logback)
+#### 1.4.5.3. 日志(logback)
 
 | Metric               | Tag                                    | level     | 说明                                    | 示例                                    |
 | -------------------- | -------------------------------------- | --------- | --------------------------------------- | --------------------------------------- |
 | logback_events_total | {level="trace/debug/info/warn/error",} | important | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
 
-#### 1.4.2.4. 进程（Process）
-| Metric                | Tag            | level     | 说明                               | 示例                                            |
-| --------------------- | -------------- | --------- | ---------------------------------- | ----------------------------------------------- |
-| process_max_mem       | name="memory"  | core      | JVM最大可用内存                    | process_max_mem{name="process",} 3.545759744E9  |
+#### 1.4.5.4. 进程（Process）
+| Metric | Tag | level | 说明 | 示例 |
+| ------ | --- | ----- | ---- | ---- |
+
 | process_used_mem      | name="memory"  | important | JVM当前使用内存                    | process_used_mem{name="process",} 4.6065456E7   |
-| process_total_mem     | name="memory"  | core      | JVM当前已申请内存                  | process_total_mem{name="process",} 2.39599616E8 |
-| process_free_mem      | name="memory"  | core      | JVM当前剩余可用内存                | process_free_mem{name="process",} 1.94035584E8  |
 | process_mem_ratio     | name="memory"  | important | 进程的内存占用比例                 | process_mem_ratio{name="process",} 0.0          |
 | process_threads_count | name="process" | important | 当前线程数                         | process_threads_count{name="process",} 11.0     |
 | process_status        | name="process" | important | 进程存活状态，1.0为存活，0.0为终止 | process_status{name="process",} 1.0             |
-
-#### 1.4.2.5. 系统（System）
-| Metric                         | Tag           | level     | 说明                                       | 示例                                                           |
-| ------------------------------ | ------------- | --------- | ------------------------------------------ | -------------------------------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | core      | system当前CPU占用率（%）                   | sys_cpu_load{name="system",} 15.0                              |
-| sys_cpu_cores                  | name="cpu"    | core      | jvm可用处理器数                            | sys_cpu_cores{name="system",} 16.0                             |
-| sys_total_physical_memory_size | name="memory" | core      | system最大物理内存                         | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
-| sys_free_physical_memory_size  | name="memory" | core      | system当前剩余可用内存                     | sys_free_physical_memory_size{name="system",} 4.532396032E9    |
-| sys_total_swap_space_size      | name="memory" | core      | system交换区最大空间                       | sys_total_swap_space_size{name="system",} 2.1051273216E10      |
-| sys_free_swap_space_size       | name="memory" | core      | system交换区剩余可用空间                   | sys_free_swap_space_size{name="system",} 2.931576832E9         |
-| sys_committed_vm_size          | name="memory" | important | system保证可用于正在运行的进程的虚拟内存量 | sys_committed_vm_size{name="system",} 5.04344576E8             |
-| sys_disk_total_space           | name="disk"   | core      | 磁盘总大小                                 | sys_disk_total_space{name="system",} 5.10770798592E11          |
-| sys_disk_free_space            | name="disk"   | core      | 磁盘可用大小                               | sys_disk_free_space{name="system",} 3.63467845632E11           |
-
 
 ## 1.5. 怎样获取这些系统监控指标？
 
