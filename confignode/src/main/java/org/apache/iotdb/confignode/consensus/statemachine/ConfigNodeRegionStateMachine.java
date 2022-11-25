@@ -69,7 +69,7 @@ public class ConfigNodeRegionStateMachine
   private int endIndex;
 
   private static final String currentFileDir =
-      CONF.getConsensusDir() + File.separator + "standalone" + File.separator + "current";
+      CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
   private static final String progressFilePath =
       currentFileDir + File.separator + "log_inprogress_";
   private static final String filePath = currentFileDir + File.separator + "log_";
