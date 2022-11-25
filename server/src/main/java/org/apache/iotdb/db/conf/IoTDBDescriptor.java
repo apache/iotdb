@@ -1146,7 +1146,7 @@ public class IoTDBDescriptor {
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_throttle_threshold_in_byte",
+                "iot_consensus_throttle_threshold_in_byte",
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
@@ -1155,7 +1155,7 @@ public class IoTDBDescriptor {
     long cacheWindowInMs =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_cache_window_time_in_ms",
+                "iot_consensus_cache_window_time_in_ms",
                 Long.toString(conf.getCacheWindowTimeInMs())));
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);

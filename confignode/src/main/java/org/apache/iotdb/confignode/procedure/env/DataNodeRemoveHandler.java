@@ -579,7 +579,7 @@ public class DataNodeRemoveHandler {
             .changeLeaderForIoTConsensus(regionId, newLeaderNode.get().getDataNodeId());
 
         LOGGER.info(
-            "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+            "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
             REMOVE_DATANODE_PROCESS,
             regionId,
             newLeaderNode);
