@@ -67,23 +67,23 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 分区（负载均衡）配置
 
-* series\_partition\_slot_num
+* series\_partition\_slot\_num
 
-|   名字   | series\_partition\_slot\_num |
-|:------:|:-----------------------------|
-|   描述   |                              |
-|   类型   |                              |
-|  默认值   |                              |
-| 改后生效方式 |                              |
+|名字| series\_partition\_slot\_num |
+|:---:|:---|
+|描述| 序列分区槽数 |
+|类型| Int |
+|默认值| 10000 |
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * series\_partition\_executor\_class
 
-|名字| series\_partition\_executor\_class                 |
-|:---:|:---------------------------------------------------|
-|描述| 元数据和数据的节点分配策略，COPY_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳 |
-|类型| String                                             |
-|默认值| GREEDY                                             |
-|改后生效方式| 重启服务生效                                             |
+|名字| series\_partition\_executor\_class |
+|:---:|:---|
+|描述| 序列分区槽数 |
+|类型| String |
+|默认值| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * data\_region\_per\_processor
 

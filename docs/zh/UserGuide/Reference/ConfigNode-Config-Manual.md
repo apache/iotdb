@@ -63,7 +63,7 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 
 IoTDB 集群的全局配置通过 ConfigNode 配置。
 
-### Internal RPC Service 配置
+### Config Node RPC 配置
 
 * cn\_internal\_address
 
@@ -83,6 +83,8 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 6667                  |
 | 改后生效方式 | 重启服务生效                |
 
+### 共识协议
+
 * cn\_consensus\_port
 
 |   名字   | cn\_consensus\_port   |
@@ -92,6 +94,8 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 22278                 |
 | 改后生效方式 | 重启服务生效                |
 
+### 目标 Config Node 配置
+
 * cn\_target\_config\_node\_list
 
 |   名字   | cn\_target\_config\_node\_list        |
@@ -100,6 +104,29 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |   类型   | String                                |
 |  默认值   | 127.0.0.1:22277                       |
 | 改后生效方式 | 重启服务生效                                |
+
+
+### 数据目录
+
+* cn\_system\_dir
+
+|名字| cn\_system\_dir                                          |
+|:---:|:---------------------------------------------------------|
+|描述| ConfigNode 系统数据存储路径                                      |
+|类型| String                                                   |
+|默认值| data/confignode/system（Windows：data\\configndoe\\system） |
+|改后生效方式| 重启服务生效                                                   |
+
+* cn\_consensus\_dir
+
+|名字| cn\_consensus\_dir                                 |
+|:---:|:---------------------------------------------------|
+|描述| ConfigNode 共识协议数据存储路径                              |
+|类型| String                                             |
+|默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
+|改后生效方式| 重启服务生效                                             |
+
+### Thrift RPC 配置
 
 * cn\_rpc\_thrift\_compression\_enable
 
@@ -159,69 +186,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 |   名字   | cn\_selector\_thread\_nums\_of\_client\_manager |
 |:------:|:------------------------------------------------|
-|   描述   | 异步线程的选择器线程数量                                    |
+|   描述   | 客户端异步线程管理的选择器线程数量                               |
 |   类型   | int                                             |
 |  默认值   | 1                                               |
 | 改后生效方式 | 重启服务生效                                          |
 
-### 共识协议
-
-* cn\_consensus\_port
-
-|名字| cn\_consensus\_port |
-|:---:|:---|
-|描述| ConfigNode 的共识协议通信端口 |
-|类型| Short Int : [0,65535] |
-|默认值| 22278 |
-|改后生效方式|重启服务生效|
-
-### 分区配置
-
-* series\_partition\_slot\_num
-
-|名字| series\_partition\_slot\_num |
-|:---:|:---|
-|描述| 序列分区槽数 |
-|类型| Int |
-|默认值| 10000 |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* series\_partition\_executor\_class
-
-|名字| series\_partition\_executor\_class |
-|:---:|:---|
-|描述| 序列分区槽数 |
-|类型| String |
-|默认值| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-### 数据目录
-
-* cn\_system\_dir
-
-|名字| cn\_system\_dir                                          |
-|:---:|:---------------------------------------------------------|
-|描述| ConfigNode 系统数据存储路径                                      |
-|类型| String                                                   |
-|默认值| data/confignode/system（Windows：data\\configndoe\\system） |
-|改后生效方式| 重启服务生效                                                   |
-
-* cn\_consensus\_dir
-
-|名字| cn\_consensus\_dir                                 |
-|:---:|:---------------------------------------------------|
-|描述| ConfigNode 共识协议数据存储路径                              |
-|类型| String                                             |
-|默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
-|改后生效方式| 重启服务生效                                             |
-
-
-
-* temporary\_lib\_dir
-
-|名字| temporary\_lib\_dir |
-|:---:|:---|
-|描述| UDF jar文件临时存储路径 |
-|类型| String |
-|默认值| ext/temporary（Windows：ext\\temporary） |
-|改后生效方式|重启服务生效|
+### Metric 监控配置
