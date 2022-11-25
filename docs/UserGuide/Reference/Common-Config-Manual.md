@@ -25,6 +25,14 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * `iotdb-common.properties`：IoTDB common configurations.
 
+
+## Hot Modification Configuration
+
+For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately.
+In the parameters described below, these parameters whose way of `Effective` is `hot-load` support hot modification.
+
+Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
+
 ## Configuration File
 
 ### Replication Configuration
@@ -269,7 +277,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| If true, we will estimate each query's possible memory footprint before executing it and deny it if its estimated memory exceeds current free memory |
 |Type| bool                              |
 |Default| true                              |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * partition\_cache\_size
 
@@ -521,7 +529,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| whether to enable timed flush sequence memtable |
 |Type|Boolean|
 |Default| false |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
@@ -530,7 +538,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
 |Type|int32|
 |Default| 3600000 |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -539,7 +547,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| the interval to check whether sequence memtables need flushing |
 |Type|int32|
 |Default| 600000 |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * enable\_timed\_flush\_unseq\_memtable
 
@@ -548,7 +556,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| whether to enable timed flush unsequence memtable |
 |Type|Boolean|
 |Default| false |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
@@ -557,7 +565,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
 |Type|int32|
 |Default| 3600000 |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -566,7 +574,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| the interval to check whether unsequence memtables need flushing |
 |Type|int32|
 |Default| 600000 |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * avg\_series\_point\_number\_threshold
 
@@ -860,7 +868,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The data size written to the disk per time|
 |Type|int32|
 |Default| 134217728 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * page\_size\_in\_byte
 
@@ -869,7 +877,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|int32|
 |Default| 65536 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * max\_number\_of\_points\_in\_page
 
@@ -878,7 +886,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The maximum number of data points (timestamps - valued groups) contained in a page|
 |Type|int32|
 |Default| 1048576 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * max\_degree\_of\_index\_node
 
@@ -896,7 +904,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The maximum length of a single string (number of character)|
 |Type|int32|
 |Default| 128 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * time\_encoder
 
@@ -905,7 +913,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Encoding type of time column          |
 |    Type     | Enum String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |   Default   | TS_2DIFF                              |
-|  Effective  | Trigger                               |
+|  Effective  | hot-load                               |
 
 * value\_encoder
 
@@ -914,7 +922,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Encoding type of value column         |
 |    Type     | Enum String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |   Default   | PLAIN                                 |
-|  Effective  | Trigger                               |
+|  Effective  | hot-load                               |
 
 * float\_precision
 
@@ -923,7 +931,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| The precision of the floating point number.(The number of digits after the decimal point) |
 |Type|int32|
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * compressor
 
@@ -932,7 +940,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Data compression method                       |
 |    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
 |   Default   | SNAPPY                                        |
-|  Effective  | Trigger                                       |
+|  Effective  | hot-load                                       |
 
 * bloomFilterErrorRate
 
@@ -950,7 +958,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
 |    Type     | Double                                          |
 |   Default   | 40.0                                            |
-|  Effective  | Trigger                                         |
+|  Effective  | hot-load                                         |
 
 * freq\_block\_size
 
@@ -959,7 +967,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
 |Type|int32|
 |Default| 1024 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 ### Watermark Configuration
 
@@ -1116,7 +1124,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
 |    Type     | int32                                                        |
 |   Default   | 10000                                                        |
-|  Effective  | Trigger                                                      |
+|  Effective  | hot-load                                                      |
 
 ### Continuous Query
 
@@ -1147,7 +1155,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |     Description     | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
 |     Type     | String                                                                                                             |
 |    Default    | 127.0.0.1/32                                                                                                          |
-| Effective | Trigger                                                                                                      |
+| Effective | hot-load                                                                                                      |
 
 * max\_number\_of\_sync\_file\_retry
 
@@ -1156,7 +1164,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |     Description     | The maximum number of retries when the sender fails to synchronize files to the receiver.          |
 |     Type     | int32                           |
 |    Default    | 5                             |
-| Effective | Trigger                  |
+| Effective | hot-load                  |
 
 ### RatisConsensus Configuration
 
@@ -1200,7 +1208,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Whether to enable the MQTT service  |
 |    Type     | Boolean                             |
 |   Default   | False                               |
-|  Effective  | Trigger                             |
+|  Effective  | hot-load                             |
 
 * mqtt\_host
 
@@ -1209,7 +1217,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The host to which the MQTT service is bound  |
 |    Type     | String                                       |
 |   Default   | 0.0.0.0                                      |
-|   Effective    | Trigger                                      |
+|   Effective    | hot-load                                      |
 
 * mqtt\_port
 
@@ -1218,7 +1226,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The port to which the MQTT service is bound |
 |    Type     | int32                                       |
 |   Default   | 1883                                        |
-|   Effective    | Trigger                                     |
+|   Effective    | hot-load                                     |
 
 * mqtt\_handler\_pool\_size
 
@@ -1227,7 +1235,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| The size of the handler pool used to process MQTT messages  |
 |Type| int32                                                       |
 |Default| 1                                                           |
-|Effective| Trigger                                                     |
+|Effective| hot-load                                                     |
 
 * mqtt\_payload\_formatter
 
@@ -1236,7 +1244,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | MQTT message payload formatter |
 |    Type     | String                         |
 |   Default   | JSON                           |
-|   Effective    | Trigger                        |
+|   Effective    | hot-load                        |
 
 * mqtt\_max\_message\_size
 
@@ -1245,7 +1253,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Description   | Maximum length of MQTT message in bytes  |
 |   Type   | int32                                    |
 |  Default   | 1048576                                  |
-| Effective | Trigger                                  |
+| Effective | hot-load                                  |
 
 ### REST Service Configuration
 
