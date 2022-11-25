@@ -120,7 +120,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                           && 0 == req.getStartSequenceId()
                           && numOfMockTsBlock == req.getEndSequenceId()));
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .onAcknowledgeDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -158,7 +158,8 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onFinished(sourceHandle);
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
+        .onFinished(sourceHandle);
   }
 
   @Test
@@ -230,14 +231,14 @@ public class SourceHandleTest {
     try {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
           .reserve(queryId, mockTsBlockSize);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .getDataBlock(
               Mockito.argThat(
                   req ->
                       remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                           && 0 == req.getStartSequenceId()
                           && 5 == req.getEndSequenceId()));
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .onAcknowledgeDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -255,7 +256,8 @@ public class SourceHandleTest {
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      Mockito.verify(spyMemoryPool, Mockito.times(i)).free(queryId, mockTsBlockSize);
+      Mockito.verify(spyMemoryPool, Mockito.timeout(10_0000).times(i))
+          .free(queryId, mockTsBlockSize);
       sourceHandle.receive();
       try {
         if (i < 5) {
@@ -301,7 +303,8 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onFinished(sourceHandle);
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
+        .onFinished(sourceHandle);
   }
 
   @Test
@@ -372,7 +375,7 @@ public class SourceHandleTest {
     try {
       Mockito.verify(mockClient, Mockito.timeout(10_000).times(0))
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-      Mockito.verify(mockClient, Mockito.times(0))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(0))
           .onAcknowledgeDataBlockEvent(Mockito.any(TAcknowledgeDataBlockEvent.class));
     } catch (TException e) {
       e.printStackTrace();
@@ -396,7 +399,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                           && 0 == req.getStartSequenceId()
                           && numOfMockTsBlock * 2 == req.getEndSequenceId()));
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .onAcknowledgeDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -442,7 +445,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                           && numOfMockTsBlock * 2 == req.getStartSequenceId()
                           && numOfMockTsBlock * 3 == req.getEndSequenceId()));
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .onAcknowledgeDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -480,7 +483,8 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onFinished(sourceHandle);
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
+        .onFinished(sourceHandle);
   }
 
   @Test
@@ -550,7 +554,7 @@ public class SourceHandleTest {
       Assert.fail();
     }
 
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1))
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
         .onFailure(sourceHandle, mockException);
     Assert.assertFalse(blocked.isDone());
 
@@ -559,7 +563,8 @@ public class SourceHandleTest {
     Assert.assertTrue(sourceHandle.isAborted());
     Assert.assertTrue(blocked.isDone());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onAborted(sourceHandle);
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
+        .onAborted(sourceHandle);
   }
 
   @Test
@@ -628,6 +633,7 @@ public class SourceHandleTest {
     Assert.assertTrue(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onAborted(sourceHandle);
+    Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
+        .onAborted(sourceHandle);
   }
 }
