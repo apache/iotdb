@@ -48,7 +48,7 @@ public class JvmCompileMetrics implements IMetricSet {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricService.remove(
-          MetricType.GAUGE, "jvm.compilation.time.ms", "compiler", compilationBean.getName());
+          MetricType.AUTO_GAUGE, "jvm.compilation.time.ms", "compiler", compilationBean.getName());
     }
   }
 }

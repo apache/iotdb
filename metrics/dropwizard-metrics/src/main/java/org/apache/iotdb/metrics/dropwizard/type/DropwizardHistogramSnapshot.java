@@ -21,8 +21,6 @@ package org.apache.iotdb.metrics.dropwizard.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import java.io.OutputStream;
-
 public class DropwizardHistogramSnapshot implements HistogramSnapshot {
 
   com.codahale.metrics.Snapshot snapshot;
@@ -64,10 +62,5 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
   @Override
   public long getMin() {
     return snapshot.getMin();
-  }
-
-  @Override
-  public void dump(OutputStream output) {
-    snapshot.dump(output);
   }
 }

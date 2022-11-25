@@ -1044,7 +1044,6 @@ public class ConfigManager implements IManager {
   @Override
   public void addMetrics() {
     partitionManager.addMetrics();
-    nodeManager.addMetrics();
   }
 
   @Override
