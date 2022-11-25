@@ -21,11 +21,13 @@
 
 # ConfigNode Configuration
 
-IoTDB ConfigNode files are under `confignode/conf`.
+IoTDB ConfigNode files are under `conf`.
 
 * `confignode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of ConfigNode.
 
 * `iotdb-confignode.properties`：IoTDB ConfigNode system configurations.
+
+* `iotdb-common.properties`：IoTDB common configurations.
 
 ## Environment Configuration File（confignode-env.sh/bat）
 
@@ -61,69 +63,69 @@ The details of each parameter are as follows:
 |Effective|After restarting system|
 
 
-## ConfigNode Configuration File（iotdb-confignode.properties）
+## ConfigNode Configuration File (iotdb-confignode.properties and iotdb-common.properties)
 
 The global configuration of cluster is in ConfigNode.
 
 ### Internal RPC Service Configurations
 
-* internal\_address
+* cn\_internal\_address
 
-|Name| internal\_address |
-|:---:|:---|
-|Description| ConfigNode internal service address |
-|Type| String |
-|Default| 0.0.0.0|
-|Effective|After restarting system|
+|    Name     | cn\_internal\_address               |
+|:-----------:|:------------------------------------|
+| Description | ConfigNode internal service address |
+|    Type     | String                              |
+|   Default   | 127.0.0.1                           |
+|  Effective  | After restarting system             |
 
-* internal\_port
+* cn\_internal\_port
 
-|Name| internal\_port |
+|Name| cn\_internal\_port |
 |:---:|:---|
 |Description| ConfigNode internal service port|
 |Type| Short Int : [0,65535] |
 |Default| 22277 |
 |Effective|After restarting system|
 
-* target\_config\_nodes
+* cn\_target\_config\_node\_list
 
-|Name| target\_config\_nodes |
-|:---:|:---|
+|Name| cn\_target\_config\_node\_list                                        |
+|:---:|:----------------------------------------------------------------------|
 |Description| Target ConfigNode address, for current ConfigNode to join the cluster |
-|Type| String |
-|Default| 127.0.0.1:22277 |
-|Effective|After restarting system|
+|Type| String                                                                |
+|Default| 127.0.0.1:22277                                                       |
+|Effective| After restarting system                                               |
 
-* rpc\_thrift\_compression\_enable
+* cn\_rpc\_thrift\_compression\_enable
 
-|Name| rpc\_thrift\_compression\_enable |
+|Name| cn\_rpc\_thrift\_compression\_enable |
 |:---:|:---|
 |Description| Whether enable thrift's compression (using GZIP).|
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
 
-* rpc\_advanced\_compression\_enable
+* cn\_rpc\_advanced\_compression\_enable
 
-|Name| rpc\_advanced\_compression\_enable |
+|Name| cn\_rpc\_advanced\_compression\_enable |
 |:---:|:---|
 |Description| Whether enable thrift's advanced compression.|
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
 
-* rpc\_max\_concurrent\_client\_num
+* cn\_rpc\_max\_concurrent\_client\_num
 
-|Name| rpc\_max\_concurrent\_client\_num |
+|Name| cn\_rpc\_max\_concurrent\_client\_num |
 |:---:|:---|
 |Description| Max concurrent rpc connections|
 |Type| Short Int : [0,65535] |
 |Description| 65535 |
 |Effective|After restarting system|
 
-* thrift\_max\_frame\_size
+* cn\_thrift\_max\_frame\_size
 
-|Name| thrift\_max\_frame\_size |
+|Name| cn\_thrift\_max\_frame\_size |
 |:---:|:---|
 |Description| Max size of bytes of each thrift RPC request/response|
 |Type| Long |
@@ -131,9 +133,9 @@ The global configuration of cluster is in ConfigNode.
 |Default| 536870912 |
 |Effective|After restarting system|
 
-* thrift\_init\_buffer\_size
+* cn\_thrift\_init\_buffer\_size
 
-|Name| thrift\_init\_buffer\_size |
+|Name| cn\_thrift\_init\_buffer\_size |
 |:---:|:---|
 |Description| Initial size of bytes of buffer that thrift used |
 |Type| long |
@@ -143,9 +145,9 @@ The global configuration of cluster is in ConfigNode.
 
 ### Replication and Consensus
 
-* consensus\_port
+* cn\_consensus\_port
 
-|Name| consensus\_port |
+|Name| cn\_consensus\_port |
 |:---:|:---|
 |Description| ConfigNode data Consensus Port  |
 |Type| Short Int : [0,65535] |
@@ -202,9 +204,9 @@ The global configuration of cluster is in ConfigNode.
 
 ### HeartBeat 
 
-* heartbeat\_interval
+* heartbeat\_interval\_in\_ms
 
-|Name| heartbeat\_interval |
+|Name| heartbeat\_interval\_in\_ms |
 |:---:|:---|
 |Description| Heartbeat interval in the cluster nodes |
 |Type| Long |
@@ -235,9 +237,9 @@ The global configuration of cluster is in ConfigNode.
 
 ### Database
 
-* default\_ttl
+* default\_ttl\_in\_ms
 
-|Name| default\_ttl |
+|Name| default\_ttl\_in\_ms |
 |:---:|:---|
 |Description| Default ttl when each database created |
 |Type| Long |
@@ -257,23 +259,23 @@ The global configuration of cluster is in ConfigNode.
 
 ### Data Directory
 
-* system\_dir
+* cn\_system\_dir
 
-|Name| system\_dir |
+|Name| cn\_system\_dir |
 |:---:|:---|
 |Description| ConfigNode system data dir |
 |Type| String |
 |Default| data/system（Windows：data\\system） |
 |Effective|After restarting system|
 
-* consensus\_dir
+* cn\_consensus\_dir
 
-|Name| consensus\_dir |
-|:---:|:---|
-|Description| ConfigNode Consensus protocol data dir |
-|Type| String |
-|Default| data/consensus（Windows：data\\consensus） |
-|Effective|After restarting system|
+|Name| cn\_consensus\_dir                                             |
+|:---:|:---------------------------------------------------------------|
+|Description| ConfigNode Consensus protocol data dir                         |
+|Type| String                                                         |
+|Default| data/confignode/consensus（Windows：data\\confignode\\consensus） |
+|Effective| After restarting system                                        |
 
 * udf\_lib\_dir
 

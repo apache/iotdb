@@ -26,18 +26,21 @@
 In IoTDB, `SELECT` statement is used to retrieve data from one or more selected time series. Here is the syntax definition of `SELECT` statement:
 
 ```sql
-SELECT [LAST] resultColumn [, resultColumn] ...
+SELECT [LAST] selectExpr [, selectExpr] ...
     [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
     [WHERE whereCondition]
-    [GROUP BY ([startTime, endTime), interval, slidingStep)]
-    [GROUP BY LEVEL = levelNum [, levelNum] ...]
-    [FILL ({PREVIOUS | LINEAR | constant})]
+    [GROUP BY {
+        ([startTime, endTime), interval [, slidingStep]) |
+        LEVEL = levelNum [, levelNum] ... |
+        TAGS(tagKey [, tagKey] ... )
+    }]
     [HAVING havingCondition]
-    [ORDER BY TIME {ASC | DESC}]
-    [LIMIT rowLimit] [OFFSET rowOffset]
+    [ORDER BY sortKey {ASC | DESC}]
+    [FILL ({PREVIOUS | LINEAR | constant})]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
-    [ALIGN BY DEVICE]
+    [LIMIT rowLimit] [OFFSET rowOffset]
+    [ALIGN BY {TIME | DEVICE}]
 ```
 
 The most commonly used clauses of `SELECT` statements are these:

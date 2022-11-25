@@ -19,28 +19,50 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 
+import java.nio.Buffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PendingBatch {
 
-  private final long startIndex;
-  private final long endIndex;
-  private final List<TLogBatch> batches;
+  private final MultiLeaderConfig config;
+
+  private long startIndex;
+  private long endIndex;
+
+  private final List<TLogBatch> batches = new ArrayList<>();
+
+  private long serializedSize;
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
 
-  public PendingBatch(List<TLogBatch> batches) {
+  public PendingBatch(MultiLeaderConfig config) {
+    this.config = config;
+  }
+
+  /*
+  Note: this method must be called once after all the `addTLogBatch` functions have been called
+   */
+  public void buildIndex() {
     if (!batches.isEmpty()) {
       this.startIndex = batches.get(0).getSearchIndex();
       this.endIndex = batches.get(batches.size() - 1).getSearchIndex();
-    } else {
-      this.startIndex = 0;
-      this.endIndex = 0;
     }
-    this.batches = batches;
-    this.synced = false;
+  }
+
+  public void addTLogBatch(TLogBatch batch) {
+    batches.add(batch);
+    // TODO Maybe we need to add in additional fields for more accurate calculations
+    serializedSize +=
+        batch.getData() == null ? 0 : batch.getData().stream().mapToInt(Buffer::capacity).sum();
+  }
+
+  public boolean canAccumulate() {
+    return batches.size() < config.getReplication().getMaxRequestNumPerBatch()
+        && serializedSize < config.getReplication().getMaxSizePerBatch();
   }
 
   public long getStartIndex() {
@@ -67,6 +89,10 @@ public class PendingBatch {
     return batches.isEmpty();
   }
 
+  public long getSerializedSize() {
+    return serializedSize;
+  }
+
   @Override
   public String toString() {
     return "PendingBatch{"
@@ -76,6 +102,8 @@ public class PendingBatch {
         + endIndex
         + ", size="
         + batches.size()
+        + ", serializedSize="
+        + serializedSize
         + '}';
   }
 }

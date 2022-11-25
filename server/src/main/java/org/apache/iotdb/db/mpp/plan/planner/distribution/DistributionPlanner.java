@@ -55,7 +55,7 @@ public class DistributionPlanner {
   }
 
   public PlanNode addExchangeNode(PlanNode root) {
-    ExchangeNodeAdder adder = new ExchangeNodeAdder();
+    ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     return adder.visit(root, new NodeGroupContext(context));
   }
 

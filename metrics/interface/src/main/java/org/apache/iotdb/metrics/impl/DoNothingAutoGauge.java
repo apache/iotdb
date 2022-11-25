@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,14 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.impl;
 
-public enum OutPutFormat {
-  PROMETHEUS,
-  JSON;
+import org.apache.iotdb.metrics.type.AutoGauge;
 
+public class DoNothingAutoGauge implements AutoGauge {
   @Override
-  public String toString() {
-    return name();
+  public long value() {
+    return 0;
   }
 }

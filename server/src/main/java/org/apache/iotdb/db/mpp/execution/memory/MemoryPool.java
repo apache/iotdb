@@ -25,17 +25,23 @@ import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryPool.class);
 
   public static class MemoryReservationFuture<V> extends AbstractFuture<V> {
     private final String queryId;
@@ -180,41 +186,61 @@ public class MemoryPool {
     return ((MemoryReservationFuture<Void>) future).getBytes();
   }
 
-  public synchronized void free(String queryId, long bytes) {
-    Validate.notNull(queryId);
-    Validate.isTrue(bytes > 0L);
+  public void free(String queryId, long bytes) {
+    List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
+    synchronized (this) {
+      Validate.notNull(queryId);
+      Validate.isTrue(bytes > 0L);
 
-    Long queryReservedBytes = queryMemoryReservations.get(queryId);
-    Validate.notNull(queryReservedBytes);
-    Validate.isTrue(bytes <= queryReservedBytes);
+      Long queryReservedBytes = queryMemoryReservations.get(queryId);
+      Validate.notNull(queryReservedBytes);
+      Validate.isTrue(bytes <= queryReservedBytes);
 
-    queryReservedBytes -= bytes;
-    if (queryReservedBytes == 0) {
-      queryMemoryReservations.remove(queryId);
-    } else {
-      queryMemoryReservations.put(queryId, queryReservedBytes);
-    }
-    reservedBytes -= bytes;
-
-    if (memoryReservationFutures.isEmpty()) {
-      return;
-    }
-    Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
-    while (iterator.hasNext()) {
-      MemoryReservationFuture<Void> future = iterator.next();
-      if (future.isCancelled() || future.isDone()) {
-        continue;
+      queryReservedBytes -= bytes;
+      if (queryReservedBytes == 0) {
+        queryMemoryReservations.remove(queryId);
+      } else {
+        queryMemoryReservations.put(queryId, queryReservedBytes);
       }
-      long bytesToReserve = future.getBytes();
-      if (maxBytes - reservedBytes < bytesToReserve) {
+      reservedBytes -= bytes;
+
+      if (memoryReservationFutures.isEmpty()) {
         return;
       }
-      if (maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
-          >= bytesToReserve) {
-        reservedBytes += bytesToReserve;
-        queryMemoryReservations.merge(future.getQueryId(), bytesToReserve, Long::sum);
+      Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
+      while (iterator.hasNext()) {
+        MemoryReservationFuture<Void> future = iterator.next();
+        if (future.isCancelled() || future.isDone()) {
+          continue;
+        }
+        long bytesToReserve = future.getBytes();
+        if (maxBytes - reservedBytes < bytesToReserve) {
+          return;
+        }
+        if (maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
+            >= bytesToReserve) {
+          reservedBytes += bytesToReserve;
+          queryMemoryReservations.merge(future.getQueryId(), bytesToReserve, Long::sum);
+          futureList.add(future);
+          iterator.remove();
+        }
+      }
+    }
+
+    // why we need to put this outside MemoryPool's lock?
+    // If we put this block inside the MemoryPool's lock, we will get deadlock case like the
+    // following:
+    // Assuming that thread-A: LocalSourceHandle.receive() -> A-SharedTsBlockQueue.remove() ->
+    // MemoryPool.free() (hold MemoryPool's lock) -> future.set(null) -> try to get
+    // B-SharedTsBlockQueue's lock
+    // thread-B: LocalSourceHandle.receive() -> B-SharedTsBlockQueue.remove() (hold
+    // B-SharedTsBlockQueue's lock) -> try to get MemoryPool's lock
+    for (MemoryReservationFuture<Void> future : futureList) {
+      try {
         future.set(null);
-        iterator.remove();
+      } catch (Throwable t) {
+        // ignore it, because we still need to notify other future
+        LOGGER.error("error happened while trying to free memory: ", t);
       }
     }
   }

@@ -34,11 +34,14 @@ import org.apache.iotdb.db.service.IoTDB;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 
+@Ignore
+@Deprecated
 public class LogicalPlanSmallTest {
 
   @Test

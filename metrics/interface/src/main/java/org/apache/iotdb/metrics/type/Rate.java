@@ -21,24 +21,24 @@ package org.apache.iotdb.metrics.type;
 
 public interface Rate extends IMetric {
 
-  /** get the value of rate */
+  /** Get the value of rate */
   long getCount();
 
-  /** get one minute rate */
+  /** Get one minute rate */
   double getOneMinuteRate();
 
-  /** get mean rate */
+  /** Get mean rate */
   double getMeanRate();
 
-  /** get five minute rate */
+  /** Get five minute rate */
   double getFiveMinuteRate();
 
-  /** get fifteen minute rate */
+  /** Get fifteen minute rate */
   double getFifteenMinuteRate();
 
-  /** mark in rate */
+  /** Mark in rate */
   void mark();
 
-  /** mark n in rate */
+  /** Mark n in rate */
   void mark(long n);
 }
