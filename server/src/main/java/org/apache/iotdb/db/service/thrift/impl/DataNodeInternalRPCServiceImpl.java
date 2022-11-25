@@ -1234,7 +1234,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createNewRegionPeer(TCreatePeerReq req) throws TException {
+  public TSStatus createNewRegionPeer(TCreatePeerReq req) {
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =

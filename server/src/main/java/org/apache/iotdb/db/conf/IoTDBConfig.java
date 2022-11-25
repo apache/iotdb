@@ -293,6 +293,13 @@ public class IoTDBConfig {
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
+  private String ratisDataRegionSnapshotDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
+
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
@@ -665,37 +672,16 @@ public class IoTDBConfig {
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /*
-   * Maximum number of continuous query tasks that can be pending for execution. When <= 0, the value is
-   * 64 by default.
-   */
-  private int maxPendingContinuousQueryTasks = 64;
-
-  /*
    * Minimum every interval to perform continuous query.
    * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
   /**
-   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
-   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
-   * by CQManager. Unit: byte
-   */
-  private int cqlogBufferSize = 1024 * 1024;
-
-  /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
-
-  /**
-   * When the insert plan column count reaches the specified threshold, which means that the plan is
-   * relatively large. At this time, may be enabled multithreading. If the tablet is small, the time
-   * of each insertion is short. If we enable multithreading, we also need to consider the switching
-   * loss between threads, so we need to judge the size of the tablet.
-   */
-  private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
@@ -1148,6 +1134,7 @@ public class IoTDBConfig {
     tracingDir = addDataHomeDir(tracingDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
@@ -1348,6 +1335,10 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public String getRatisDataRegionSnapshotDir() {
+    return ratisDataRegionSnapshotDir;
   }
 
   public String getConsensusDir() {
@@ -1804,6 +1795,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -1816,6 +1808,10 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
@@ -1828,6 +1824,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+
+    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
+    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
+    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
   public long getAllocateMemoryForFree() {
@@ -1877,14 +1881,6 @@ public class IoTDBConfig {
     this.continuousQueryThreadNum = continuousQueryThreadNum;
   }
 
-  public int getMaxPendingContinuousQueryTasks() {
-    return maxPendingContinuousQueryTasks;
-  }
-
-  public void setMaxPendingContinuousQueryTasks(int maxPendingContinuousQueryTasks) {
-    this.maxPendingContinuousQueryTasks = maxPendingContinuousQueryTasks;
-  }
-
   public long getContinuousQueryMinimumEveryInterval() {
     return continuousQueryMinimumEveryInterval;
   }
@@ -1893,30 +1889,12 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
-  public int getCqlogBufferSize() {
-    return cqlogBufferSize;
-  }
-
-  public void setCqlogBufferSize(int cqlogBufferSize) {
-    this.cqlogBufferSize = cqlogBufferSize;
-  }
-
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
-  }
-
-  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
-    return insertMultiTabletEnableMultithreadingColumnThreshold;
-  }
-
-  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
-      int insertMultiTabletEnableMultithreadingColumnThreshold) {
-    this.insertMultiTabletEnableMultithreadingColumnThreshold =
-        insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {

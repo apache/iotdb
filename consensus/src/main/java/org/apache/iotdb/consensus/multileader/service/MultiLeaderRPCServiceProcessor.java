@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
@@ -56,9 +55,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.stream.Collectors;
 
 public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIService.AsyncIface {
 
@@ -104,30 +102,16 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       BatchIndexedConsensusRequest requestsInThisBatch =
           new BatchIndexedConsensusRequest(req.peerId);
       // We use synchronized to ensure atomicity of executing multiple logs
-      if (!req.getBatches().isEmpty()) {
-        List<IConsensusRequest> consensusRequests = new ArrayList<>();
-        long currentSearchIndex = req.getBatches().get(0).getSearchIndex();
-        for (TLogBatch batch : req.getBatches()) {
-          IConsensusRequest request =
-              batch.isFromWAL()
-                  ? new MultiLeaderConsensusRequest(batch.data)
-                  : new ByteBufferConsensusRequest(batch.data);
-          // merge TLogBatch with same search index into one request
-          if (batch.getSearchIndex() != currentSearchIndex) {
-            requestsInThisBatch.add(
-                impl.buildIndexedConsensusRequestForRemoteRequest(
-                    currentSearchIndex, consensusRequests));
-            consensusRequests = new ArrayList<>();
-            currentSearchIndex = batch.getSearchIndex();
-          }
-          consensusRequests.add(request);
-        }
-        // write last request
-        if (!consensusRequests.isEmpty()) {
-          requestsInThisBatch.add(
-              impl.buildIndexedConsensusRequestForRemoteRequest(
-                  currentSearchIndex, consensusRequests));
-        }
+      for (TLogBatch batch : req.getBatches()) {
+        requestsInThisBatch.add(
+            impl.buildIndexedConsensusRequestForRemoteRequest(
+                batch.getSearchIndex(),
+                batch.getData().stream()
+                    .map(
+                        batch.isFromWAL()
+                            ? MultiLeaderConsensusRequest::new
+                            : ByteBufferConsensusRequest::new)
+                    .collect(Collectors.toList())));
       }
       TSStatus writeStatus = impl.getStateMachine().write(requestsInThisBatch);
       logger.debug(

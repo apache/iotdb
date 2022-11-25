@@ -99,7 +99,7 @@ public class MultiLeaderServerImpl {
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
   private final ConsensusReqReader reader;
-  private boolean active;
+  private volatile boolean active;
   private String latestSnapshotId;
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
   private final MultiLeaderServerMetrics metrics;

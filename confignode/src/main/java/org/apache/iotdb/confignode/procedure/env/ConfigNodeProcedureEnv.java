@@ -197,12 +197,18 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica() {
+  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
     return configManager
-            .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
-            .size()
-        > NodeInfo.getMinimumDataNode();
+                .getNodeManager()
+                .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+                .size()
+            - Boolean.compare(
+                configManager
+                        .getNodeManager()
+                        .getNodeStatusByNodeId(removedDatanode.getDataNodeId())
+                    != NodeStatus.Unknown,
+                false)
+        >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -361,11 +367,21 @@ public class ConfigNodeProcedureEnv {
    */
   public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
     // Send request to update NodeStatus on the DataNode to be removed
-    SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            dataNodeLocation.getInternalEndPoint(),
-            NodeStatus.Removing.getStatus(),
-            DataNodeRequestType.SET_SYSTEM_STATUS);
+    if (configManager.getNodeManager().getNodeStatusByNodeId(dataNodeLocation.getDataNodeId())
+        == NodeStatus.Unknown) {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithGivenRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              DataNodeRequestType.SET_SYSTEM_STATUS,
+              1);
+    } else {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              DataNodeRequestType.SET_SYSTEM_STATUS);
+    }
 
     // Force updating NodeStatus
     long currentTime = System.currentTimeMillis();

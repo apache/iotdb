@@ -505,16 +505,6 @@ public class WALNode implements IWALNode {
         }
       }
 
-      // find file contains search index
-      while (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
-          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
-        currentFileIndex++;
-        if (currentFileIndex >= filesToSearch.length - 1) {
-          needUpdatingFilesToSearch = true;
-          return false;
-        }
-      }
-
       // find all nodes of current wal file
       List<IConsensusRequest> tmpNodes = new ArrayList<>();
       long targetIndex = nextSearchIndex;
