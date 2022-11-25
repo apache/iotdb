@@ -145,6 +145,42 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| true |
 |Effective|After restarting system|
 
+* storage\_query_schema_consensus_free_memory_proportion
+
+|Name| storage\_query\_schema\_consensus\_free\_memory\_proportion                                                  |
+|:---:|:-------------------------------------------------------------------------------------------------------------|
+|Description| Memory Allocation Ratio: StorageEngine, QueryEngine, SchemaEngine, Consensus and Free Memory                 |
+|Type| Ratio                                                                                                        |
+|Default| 3:3:1:1:2                                                                                                    |
+|Effective| After restarting system                                                                                      |
+
+* schema\_memory\_allocate\_proportion
+
+|Name| schema\_memory\_allocate\_proportion                                                    |
+|:---:|:----------------------------------------------------------------------------------------|
+|Description| Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, PartitionCache and LastCache |
+|Type| Ratio                                                                                   |
+|Default| 5:3:1:1                                                                                 |
+|Effective| After restarting system                                                                 |
+
+* storage\_engine\_memory\_proportion
+
+|Name| storage\_engine\_memory\_proportion |
+|:---:|:------------------------------------|
+|Description| Memory allocation ratio in StorageEngine: Write, Compaction                       |
+|Type| Ratio                               |
+|Default| 8:2                                 |
+|Effective| After restarting system                              |
+
+* write\_memory\_proportion
+
+|Name| write\_memory\_proportion                            |
+|:---:|:----------------------------------------------------------------|
+|Description| Memory allocation ratio in writing: Memtable, TimePartitionInfo |
+|Type| Ratio                                                           |
+|Default| 19:1                                                       |
+|Effective| After restarting system                                                          |
+
 * concurrent\_writing\_time\_partition
 
 |Name| concurrent\_writing\_time\_partition |
@@ -153,6 +189,89 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type|Int32|
 |Default| 1 |
 |Effective|After restarting system|
+
+
+* primitive\_array\_size
+
+|Name| primitive\_array\_size |
+|:---:|:---|
+|Description| primitive array size (length of each array) in array pool|
+|Type| Int32 |
+|Default| 32 |
+|Effective|After restart system|
+
+* chunk\_metadata\_size\_proportion
+
+|Name| chunk\_metadata\_size\_proportion   |
+|:---:|:------------------------------------|
+|Description| size proportion for chunk metadata maintains in memory when writing tsfile |
+|Type| Double                              |
+|Default| 0.1                                 |
+|Effective|After restart system|
+
+* flush\_proportion
+
+|    Name     | flush\_proportion                                                                                                                                                          |
+|:-----------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | Ratio of write memory for invoking flush disk, 0.4 by default If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2 |
+|    Type     | Double                                                                                                                                                                     |
+|   Default   | 0.4                                                                                                                                                                        |
+|  Effective  | After restart system                                                                                                                                                       |
+
+* buffered\_arrays\_memory\_proportion
+
+|Name| buffered\_arrays\_memory\_proportion |
+|:---:|:---|
+|Description| Ratio of write memory allocated for buffered arrays |
+|Type| Double |
+|Default| 0.6 |
+|Effective|After restart system|
+
+* reject\_proportion
+
+|Name| reject\_proportion |
+|:---:|:---|
+|Description| Ratio of write memory for rejecting insertion |
+|Type| Double |
+|Default| 0.8 |
+|Effective|After restart system|
+
+* write\_memory\_variation\_report\_proportion
+
+|    Name     | write\_memory\_variation\_report\_proportion                 |
+| :---------: | :----------------------------------------------------------- |
+| Description | if memory cost of data region increased more than proportion of allocated memory for write, report to system |
+|    Type     | Double                                                       |
+|   Default   | 0.001                                                        |
+|  Effective  | After restarting system                                      |
+
+
+* check\_period\_when\_insert\_blocked
+
+|Name| check\_period\_when\_insert\_blocked                                        |
+|:---:|:----------------------------------------------------------------------------|
+|Description| when an inserting is rejected, waiting period (in ms) to check system again |
+|Type| Int32                                                                       |
+|Default| 50                                                                          |
+|Effective| After restart system                                                        |
+
+* io\_task\_queue\_size\_for\_flushing
+
+|Name| io\_task\_queue\_size\_for\_flushing          |
+|:---:|:----------------------------------------------|
+|Description| size of ioTaskQueue. The default value is 10  |
+|Type| Int32                                         |
+|Default| 10                                            |
+|Effective| After restart system                          |
+
+* enable\_query\_memory\_estimation
+
+|Name| enable\_query\_memory\_estimation |
+|:---:|:----------------------------------|
+|Description| If true, we will estimate each query's possible memory footprint before executing it and deny it if its estimated memory exceeds current free memory |
+|Type| bool                              |
+|Default| true                              |
+|Effective|Trigger|
 
 ### Schema Engine Configuration
 
@@ -343,14 +462,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 1073741824 |
 |Effective| when enable\_mem\_control is false & After restarting system |
 
-* write\_memory\_variation\_report\_proportion
-
-|    Name     | write\_memory\_variation\_report\_proportion                 |
-| :---------: | :----------------------------------------------------------- |
-| Description | if memory cost of data region increased more than proportion of allocated memory for write, report to system |
-|    Type     | Double                                                       |
-|   Default   | 0.001                                                        |
-|  Effective  | After restarting system                                      |
 
 * enable\_timed\_flush\_seq\_memtable
 
@@ -451,14 +562,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| true |
 |Effective|After restarting system|
 
-* insert_multi_tablet_enable_multithreading_column_threshold
-
-|    Name     | insert_multi_tablet_enable_multithreading_column_threshold   |
-| :---------: | :----------------------------------------------------------- |
-| Description | When the insert plan column count reaches the specified threshold, multi-threading is enabled. |
-|    Type     | Int32                                                        |
-|   Default   | 10                                                           |
-|  Effective  | After restarting system                                      |
 
 ### Compaction Configurations
 

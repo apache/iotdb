@@ -900,12 +900,6 @@ public class IoTDBDescriptor {
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
-    conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "insert_multi_tablet_enable_multithreading_column_threshold",
-                String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()

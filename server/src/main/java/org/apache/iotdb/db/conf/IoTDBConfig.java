@@ -1934,15 +1934,6 @@ public class IoTDBConfig {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
-    return insertMultiTabletEnableMultithreadingColumnThreshold;
-  }
-
-  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
-      int insertMultiTabletEnableMultithreadingColumnThreshold) {
-    this.insertMultiTabletEnableMultithreadingColumnThreshold =
-        insertMultiTabletEnableMultithreadingColumnThreshold;
-  }
 
   public int getCompactionWriteThroughputMbPerSec() {
     return compactionWriteThroughputMbPerSec;
