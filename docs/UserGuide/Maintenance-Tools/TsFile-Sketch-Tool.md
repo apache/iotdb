@@ -37,7 +37,7 @@ TsFile sketch tool is used to print the content of a TsFile in sketch mode. The 
 ./print-tsfile-sketch.sh <TsFile path> (<storage path of the output sketch file>) 
 ```
 
-Note: if the storage path of the output sketch file is not set, the default local path "TsFile_sketch_view.txt" will be used.
+Note: if the storage path of the output sketch file is not set, the default relative path "TsFile_sketch_view.txt" will be used.
 
 ## Example
 

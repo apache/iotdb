@@ -37,7 +37,7 @@ TsFile概览工具用于以概要模式打印出一个TsFile的内容，工具�
 ./print-tsfile-sketch.sh <TsFile文件路径> (<输出结果的存储路径>) 
 ```
 
-注意：如果没有设置输出文件的存储路径, 将使用 "TsFile_sketch_view.txt" 做为默认值。
+注意：如果没有设置输出结果的存储路径, 将使用相对路径"TsFile_sketch_view.txt"作为默认值。
 
 ## 示例
 

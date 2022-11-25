@@ -964,6 +964,7 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
+							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool']
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool']
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
 							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
