@@ -247,8 +247,8 @@ public class RouteBalancer {
                 leaderBalancingExecutor,
                 this::balancingRegionLeader,
                 0,
-                // Execute route balancing service in every 5 loops of heartbeat service
-                NodeManager.HEARTBEAT_INTERVAL * 5,
+                // Execute route balancing service in every 20 loops of heartbeat service
+                NodeManager.HEARTBEAT_INTERVAL * 20,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("Route-Balancing service is started successfully.");
       }
@@ -318,7 +318,8 @@ public class RouteBalancer {
         });
 
     if (requestId.get() > 0) {
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      // Don't retry ChangeLeader request
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler, 1);
     }
   }
 
