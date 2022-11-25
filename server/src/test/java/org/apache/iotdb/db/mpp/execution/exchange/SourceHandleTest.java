@@ -113,8 +113,7 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .getDataBlock(
               Mockito.argThat(
                   req ->
@@ -128,7 +127,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && 0 == e.getStartSequenceId()
                           && numOfMockTsBlock == e.getEndSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -229,8 +228,8 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(spyMemoryPool, Mockito.times(6)).reserve(queryId, mockTsBlockSize);
+      Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
+          .reserve(queryId, mockTsBlockSize);
       Mockito.verify(mockClient, Mockito.times(1))
           .getDataBlock(
               Mockito.argThat(
@@ -245,7 +244,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && 0 == e.getStartSequenceId()
                           && 5 == e.getEndSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -259,20 +258,19 @@ public class SourceHandleTest {
       Mockito.verify(spyMemoryPool, Mockito.times(i)).free(queryId, mockTsBlockSize);
       sourceHandle.receive();
       try {
-        Thread.sleep(100L);
         if (i < 5) {
           Assert.assertEquals(
               i == 4 ? 5 * mockTsBlockSize : 6 * mockTsBlockSize,
               sourceHandle.getBufferRetainedSizeInBytes());
           final int startSequenceId = 5 + i;
-          Mockito.verify(mockClient, Mockito.times(1))
+          Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
               .getDataBlock(
                   Mockito.argThat(
                       req ->
                           remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                               && startSequenceId == req.getStartSequenceId()
                               && startSequenceId + 1 == req.getEndSequenceId()));
-          Mockito.verify(mockClient, Mockito.times(1))
+          Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
               .onAcknowledgeDataBlockEvent(
                   Mockito.argThat(
                       e ->
@@ -284,7 +282,7 @@ public class SourceHandleTest {
               (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
               sourceHandle.getBufferRetainedSizeInBytes());
         }
-      } catch (InterruptedException | TException e) {
+      } catch (TException e) {
         e.printStackTrace();
         Assert.fail();
       }
@@ -372,12 +370,11 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(0))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(0))
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
       Mockito.verify(mockClient, Mockito.times(0))
           .onAcknowledgeDataBlockEvent(Mockito.any(TAcknowledgeDataBlockEvent.class));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -392,8 +389,7 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .getDataBlock(
               Mockito.argThat(
                   req ->
@@ -407,7 +403,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && 0 == e.getStartSequenceId()
                           && numOfMockTsBlock * 2 == e.getEndSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -439,8 +435,7 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .getDataBlock(
               Mockito.argThat(
                   req ->
@@ -454,7 +449,7 @@ public class SourceHandleTest {
                       remoteFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && numOfMockTsBlock * 2 == e.getStartSequenceId()
                           && numOfMockTsBlock * 3 == e.getEndSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -548,10 +543,9 @@ public class SourceHandleTest {
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(SourceHandle.MAX_ATTEMPT_TIMES))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(SourceHandle.MAX_ATTEMPT_TIMES))
           .getDataBlock(Mockito.any());
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
