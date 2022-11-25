@@ -29,8 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -53,11 +51,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
                 .getDeclaredConstructor()
                 .newInstance();
     initSyncedServiceImpl(null);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      processor = new ProcessorWithMetrics(impl);
-    } else {
-      processor = new Processor<>(impl);
-    }
+    processor = new ProcessorWithMetrics(impl);
   }
 
   @Override

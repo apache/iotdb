@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -212,6 +213,11 @@ public class ConfigNodeDescriptor {
                     "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
                 .trim()));
 
+    conf.setLeastDataRegionGroupNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "least_data_region_group_num", String.valueOf(conf.getLeastDataRegionGroupNum()))));
+
     try {
       conf.setRegionAllocateStrategy(
           RegionBalancer.RegionAllocateStrategy.valueOf(
@@ -296,20 +302,31 @@ public class ConfigNodeDescriptor {
                     "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))
                 .trim()));
 
-    String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy()).trim();
-    if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
-        || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {
-      conf.setRoutingPolicy(routingPolicy);
+    String leaderDistributionPolicy =
+        properties
+            .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
+            .trim();
+    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+      conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown routing_policy: %s, please set to \"leader\" or \"greedy\"", routingPolicy));
+              "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              leaderDistributionPolicy));
     }
 
-    conf.setEnableLeaderBalancing(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_leader_balancing", String.valueOf(conf.isEnableLeaderBalancing()))));
+    String routePriorityPolicy =
+        properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
+    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
+        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
+      conf.setRoutePriorityPolicy(routePriorityPolicy);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
+              routePriorityPolicy));
+    }
 
     String readConsistencyLevel =
         properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel()).trim();

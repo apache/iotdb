@@ -71,7 +71,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (env.doubleCheckReplica()) {
+          if (env.doubleCheckReplica(removedDataNode)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(

@@ -125,7 +125,7 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
@@ -160,22 +160,22 @@ public interface ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
 
-  int getAllTimeseriesCount(
+  long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 
   // The measurements will be grouped by the node in given level and then counted for each group.
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
-  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -189,7 +189,7 @@ public interface ISchemaRegion {
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
    */
-  int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
+  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query
@@ -379,7 +379,7 @@ public interface ISchemaRegion {
   List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException;
 
-  int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException;
 
   void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
@@ -387,7 +387,8 @@ public interface ISchemaRegion {
 
   void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException;
 
-  int countPathsUsingTemplate(int templateId, PathPatternTree patternTree) throws MetadataException;
+  long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException;
 
   // endregion
 }

@@ -87,6 +87,15 @@ public abstract class AbstractEnv implements BaseEnv {
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
 
+    // Check if the Seed-ConfigNode started successfully
+    try (SyncConfigNodeIServiceClient ignored =
+        (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+      // Do nothing
+      logger.info("The Seed-ConfigNode started successfully!");
+    } catch (Exception e) {
+      logger.error("Failed to get connection to the Seed-ConfigNode", e);
+    }
+
     List<String> configNodeEndpoints = new ArrayList<>();
     RequestDelegate<Void> configNodesDelegate = new SerialRequestDelegate<>(configNodeEndpoints);
     for (int i = 1; i < configNodesNum; i++) {

@@ -105,7 +105,7 @@ If compiling successful, you can see that the `distribution/target` directory co
 * Modify Grafana configuration file: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
 
   ```ini
-  allow_loading_unsigned_plugins = iotdb
+  allow_loading_unsigned_plugins = apache-iotdb-datasource
   ```
 * Modify the location of Grafana's plugin directory: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
   

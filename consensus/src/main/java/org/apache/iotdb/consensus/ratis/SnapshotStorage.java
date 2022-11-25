@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SnapshotStorage implements StateMachineStorage {
@@ -63,7 +64,7 @@ public class SnapshotStorage implements StateMachineStorage {
 
   private Path[] getSortedSnapshotDirPaths() {
     ArrayList<Path> snapshotPaths = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(getStateMachineDir().toPath())) {
       for (Path path : stream) {
         if (path.toFile().isDirectory() && !path.toFile().getName().startsWith(TMP_PREFIX)) {
           snapshotPaths.add(path);
@@ -111,7 +112,13 @@ public class SnapshotStorage implements StateMachineStorage {
       if (file.endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = new FileInfo(file, null);
+      FileInfo fileInfo = null;
+      try {
+        fileInfo = new FileInfo(file.toRealPath(), null);
+      } catch (IOException e) {
+        logger.warn("{} cannot resolve real path of {} due to {}", this, file, e);
+        return null;
+      }
       fileInfos.add(fileInfo);
     }
 
@@ -161,15 +168,29 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getStateMachineDir() {
-    return stateMachineDir;
+    return Optional.ofNullable(getSnapshotDir()).orElse(stateMachineDir);
   }
 
   public File getSnapshotDir(String snapshotMetadata) {
-    return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
+    return new File(getStateMachineDir().getAbsolutePath() + File.separator + snapshotMetadata);
   }
 
   public File getSnapshotTmpDir(String snapshotMetadata) {
     return new File(
-        stateMachineDir.getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
+        getStateMachineDir().getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
+  }
+
+  public String getSnapshotTmpId(String snapshotMetadata) {
+    return TMP_PREFIX + snapshotMetadata;
+  }
+
+  @Override
+  public File getSnapshotDir() {
+    return applicationStateMachine.getSnapshotRoot();
+  }
+
+  @Override
+  public File getTmpDir() {
+    return getSnapshotDir() == null ? null : new File(getSnapshotDir(), TMP_PREFIX);
   }
 }

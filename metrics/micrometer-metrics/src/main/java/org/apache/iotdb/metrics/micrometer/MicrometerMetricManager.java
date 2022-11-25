@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -60,7 +61,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
     return new MicrometerAutoGauge<T>(
         meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }

@@ -37,7 +37,7 @@ public class ChunkCacheMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         chunkCache,

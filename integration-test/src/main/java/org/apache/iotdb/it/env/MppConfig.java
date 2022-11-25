@@ -100,14 +100,14 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
+        "dn_rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
+        "dn_rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
@@ -324,6 +324,13 @@ public class MppConfig implements BaseConfig {
   public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
     confignodeProperties.setProperty(
         "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    confignodeProperties.setProperty(
+        "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
     return this;
   }
 }

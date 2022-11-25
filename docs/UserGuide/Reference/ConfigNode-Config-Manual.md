@@ -21,7 +21,7 @@
 
 # ConfigNode Configuration
 
-IoTDB ConfigNode files are under `confignode/conf`.
+IoTDB ConfigNode files are under `conf`.
 
 * `confignode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of ConfigNode.
 
@@ -61,69 +61,113 @@ The details of each parameter are as follows:
 |Effective|After restarting system|
 
 
-## ConfigNode Configuration File（iotdb-confignode.properties）
+## ConfigNode Configuration File (iotdb-confignode.properties)
 
 The global configuration of cluster is in ConfigNode.
 
-### Internal RPC Service Configurations
+### Config Node RPC Configuration
 
-* internal\_address
+* cn\_internal\_address
 
-|Name| internal\_address |
-|:---:|:---|
-|Description| ConfigNode internal service address |
-|Type| String |
-|Default| 0.0.0.0|
-|Effective|After restarting system|
+|    Name     | cn\_internal\_address               |
+|:-----------:|:------------------------------------|
+| Description | ConfigNode internal service address |
+|    Type     | String                              |
+|   Default   | 127.0.0.1                           |
+|  Effective  | After restarting system             |
 
-* internal\_port
+* cn\_internal\_port
 
-|Name| internal\_port |
+|Name| cn\_internal\_port |
 |:---:|:---|
 |Description| ConfigNode internal service port|
 |Type| Short Int : [0,65535] |
 |Default| 22277 |
 |Effective|After restarting system|
 
-* target\_config\_nodes
+### Consensus
 
-|Name| target\_config\_nodes |
+* cn\_consensus\_port
+
+|Name| cn\_consensus\_port |
 |:---:|:---|
-|Description| Target ConfigNode address, for current ConfigNode to join the cluster |
-|Type| String |
-|Default| 127.0.0.1:22277 |
+|Description| ConfigNode data Consensus Port  |
+|Type| Short Int : [0,65535] |
+|Default| 22278 |
 |Effective|After restarting system|
 
-* rpc\_thrift\_compression\_enable
+### Target Config Nodes
 
-|Name| rpc\_thrift\_compression\_enable |
+* cn\_target\_config\_node\_list
+
+|Name| cn\_target\_config\_node\_list                                        |
+|:---:|:----------------------------------------------------------------------|
+|Description| Target ConfigNode address, for current ConfigNode to join the cluster |
+|Type| String                                                                |
+|Default| 127.0.0.1:22277                                                       |
+|Effective| After restarting system                                               |
+
+### Directory configuration
+
+* cn\_system\_dir
+
+|Name| cn\_system\_dir |
+|:---:|:---|
+|Description| ConfigNode system data dir |
+|Type| String |
+|Default| data/system（Windows：data\\system） |
+|Effective|After restarting system|
+
+* cn\_consensus\_dir
+
+|Name| cn\_consensus\_dir                                             |
+|:---:|:---------------------------------------------------------------|
+|Description| ConfigNode Consensus protocol data dir                         |
+|Type| String                                                         |
+|Default| data/confignode/consensus（Windows：data\\confignode\\consensus） |
+|Effective| After restarting system                                        |
+
+### Thrift RPC configuration
+
+* cn\_rpc\_thrift\_compression\_enable
+
+|Name| cn\_rpc\_thrift\_compression\_enable |
 |:---:|:---|
 |Description| Whether enable thrift's compression (using GZIP).|
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
 
-* rpc\_advanced\_compression\_enable
+* cn\_rpc\_thrift\_compression\_enable
 
-|Name| rpc\_advanced\_compression\_enable |
+|Name| cn\_rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default| false |
+|Effective|After restarting system|
+
+* cn\_rpc\_advanced\_compression\_enable
+
+|Name| cn\_rpc\_advanced\_compression\_enable |
 |:---:|:---|
 |Description| Whether enable thrift's advanced compression.|
 |Type|Boolean|
 |Default| false |
 |Effective|After restarting system|
 
-* rpc\_max\_concurrent\_client\_num
+* cn\_rpc\_max\_concurrent\_client\_num
 
-|Name| rpc\_max\_concurrent\_client\_num |
+|Name| cn\_rpc\_max\_concurrent\_client\_num |
 |:---:|:---|
 |Description| Max concurrent rpc connections|
 |Type| Short Int : [0,65535] |
 |Description| 65535 |
 |Effective|After restarting system|
 
-* thrift\_max\_frame\_size
+* cn\_thrift\_max\_frame\_size
 
-|Name| thrift\_max\_frame\_size |
+|Name| cn\_thrift\_max\_frame\_size |
 |:---:|:---|
 |Description| Max size of bytes of each thrift RPC request/response|
 |Type| Long |
@@ -131,164 +175,31 @@ The global configuration of cluster is in ConfigNode.
 |Default| 536870912 |
 |Effective|After restarting system|
 
-* thrift\_init\_buffer\_size
+* cn\_thrift\_init\_buffer\_size
 
-|Name| thrift\_init\_buffer\_size |
+|Name| cn\_thrift\_init\_buffer\_size |
 |:---:|:---|
 |Description| Initial size of bytes of buffer that thrift used |
 |Type| long |
 |Default| 1024 |
 |Effective|After restarting system|
 
+* cn\_connection\_timeout\_ms
 
-### Replication and Consensus
+|    Name     | cn\_connection\_timeout\_ms                             |
+|:-----------:|:--------------------------------------------------------|
+| Description | Thrift socket and connection timeout between raft nodes |
+|    Type     | int                                                     |
+|   Default   | 20000                                                   |
+|  Effective  | After restarting system                                 |
 
-* consensus\_port
+* cn\_selector\_thread\_nums\_of\_client\_manager
 
-|Name| consensus\_port |
-|:---:|:---|
-|Description| ConfigNode data Consensus Port  |
-|Type| Short Int : [0,65535] |
-|Default| 22278 |
-|Effective|After restarting system|
+|    Name     | cn\_selector\_thread\_nums\_of\_client\_manager                                |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | selector thread (TAsyncClientManager) nums for async thread in a clientManager |
+|    Type     | int                                                                            |
+|   Default   | 1                                                                              |
+|  Effective  | After restarting system                                                        |
 
-
-* data\_replication\_factor
-
-|Name| data\_replication\_factor |
-|:---:|:---|
-|Description| Data replication num|
-|Type| Int |
-|Default| 1 |
-|Effective|After restarting system|
-
-* data\_region\_consensus\_protocol\_class
-
-|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|Type| String                                                                                                                                                       |
-|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
-|Effective| Only allowed to be modified in first start up                                                                                                                |
-
-* schema\_replication\_factor
-
-|Name| schema\_replication\_factor |
-|:---:|:---|
-|Description| Schema replication num|
-|Type| Int |
-|Default| 1 |
-|Effective|After restarting system|
-
-
-* schema\_region\_consensus\_protocol\_class
-
-|Name| schema\_region\_consensus\_protocol\_class                                                                                                  |
-|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------|
-|Description| Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus | |
-|Type| String                                                                                                                                      |
-|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                           |
-|Effective| Only allowed to be modified in first start up                                                                                               |
-
-
-* region\_allocate\_strategy
-
-|Name| region\_allocate\_strategy |
-|:---:|:---|
-|Description| Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters  |
-|Type| String |
-|Default| GREEDY |
-|Effective|After restarting system |
-
-### HeartBeat 
-
-* heartbeat\_interval
-
-|Name| heartbeat\_interval |
-|:---:|:---|
-|Description| Heartbeat interval in the cluster nodes |
-|Type| Long |
-|Unit| ms |
-|Default| 1000 |
-|Effective|After restarting system|
-
-
-### Partition Strategy
-
-* series\_partition\_slot\_num
-
-|Name| series\_partition\_slot\_num |
-|:---:|:---|
-|Description| Slot num of series partition |
-|Type| Int |
-|Default| 10000 |
-|Effective|Only allowed to be modified in first start up|
-
-* series\_partition\_executor\_class
-
-|Name| series\_partition\_executor\_class |
-|:---:|:---|
-|Description| Series partition hash function |
-|Type| String |
-|Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
-|Effective|Only allowed to be modified in first start up|
-
-### Database
-
-* default\_ttl
-
-|Name| default\_ttl |
-|:---:|:---|
-|Description| Default ttl when each database created |
-|Type| Long |
-|Default| Infinity |
-|Effective|After restarting system|
-
-* time\_partition\_interval
-
-|Name| time\_partition\_interval                                     |
-|:---:|:--------------------------------------------------------------|
-|Description| Time partition interval of data when ConfigNode allocate data |
-|Type| Long                                                          |
-|Unit| ms                                                            |
-|Default| 604800000                                                     |
-|Effective| Only allowed to be modified in first start up                 |
-
-
-### Data Directory
-
-* system\_dir
-
-|Name| system\_dir |
-|:---:|:---|
-|Description| ConfigNode system data dir |
-|Type| String |
-|Default| data/system（Windows：data\\system） |
-|Effective|After restarting system|
-
-* consensus\_dir
-
-|Name| consensus\_dir |
-|:---:|:---|
-|Description| ConfigNode Consensus protocol data dir |
-|Type| String |
-|Default| data/consensus（Windows：data\\consensus） |
-|Effective|After restarting system|
-
-* udf\_lib\_dir
-
-|Name| udf\_lib\_dir |
-|:---:|:---|
-|Description| UDF log and jar file dir |
-|Type| String |
-|Default| ext/udf（Windows：ext\\udf） |
-|Effective|After restarting system|
-
-* temporary\_lib\_dir
-
-|Name| temporary\_lib\_dir |
-|:---:|:---|
-|Description| UDF jar file temporary dir |
-|Type| String |
-|Default| ext/temporary（Windows：ext\\temporary） |
-|Effective|After restarting system|
+### Metric Configuration
