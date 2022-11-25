@@ -115,6 +115,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -1112,20 +1113,64 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
       }
     }
-    DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
     analysis.setDataPartitionInfo(dataPartition);
   }
 
-  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, ISchemaTree schemaTree) {
+  private DataPartition fetchDataPartitionByDevices(
+      Set<String> deviceSet, ISchemaTree schemaTree, Filter globalTimeFilter) {
+    List<TTimePartitionSlot> timePartitionSlotList = getTimePartitionSlotList(globalTimeFilter);
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
     for (String devicePath : deviceSet) {
-      DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-      queryParam.setDevicePath(devicePath);
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(devicePath, timePartitionSlotList);
       sgNameToQueryParamsMap
           .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  public static List<TTimePartitionSlot> getTimePartitionSlotList(Filter timeFilter) {
+    if (timeFilter == null) {
+      return Collections.emptyList();
+    }
+    List<TimeRange> timeRangeList = timeFilter.getTimeRanges();
+    if (timeRangeList.get(0).getMin() == Long.MIN_VALUE
+        || timeRangeList.get(timeRangeList.size() - 1).getMax() == Long.MAX_VALUE) {
+      return Collections.emptyList();
+    }
+
+    List<TTimePartitionSlot> result = new ArrayList<>();
+    long startTime =
+        (timeRangeList.get(0).getMin() / TimePartitionUtils.timePartitionInterval)
+            * TimePartitionUtils.timePartitionInterval; // included
+    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMin());
+    int index = 0, size = timeRangeList.size();
+    while (index < size) {
+      long curLeft = timeRangeList.get(index).getMin();
+      long curRight = timeRangeList.get(index).getMax();
+      if (curLeft >= endTime) {
+        result.add(timePartitionSlot);
+        // next init
+        endTime =
+            (curLeft / TimePartitionUtils.timePartitionInterval + 1)
+                * TimePartitionUtils.timePartitionInterval;
+        timePartitionSlot = TimePartitionUtils.getTimePartition(curLeft);
+      } else if (curRight >= endTime) {
+        result.add(timePartitionSlot);
+        // next init
+        timePartitionSlot = new TTimePartitionSlot(endTime);
+        endTime = endTime + TimePartitionUtils.timePartitionInterval;
+      } else {
+        index++;
+      }
+    }
+    result.add(timePartitionSlot);
+    return result;
   }
 
   private void analyzeInto(
