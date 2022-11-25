@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.utils;
 
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,16 +76,15 @@ public class MetricInfo {
     return metaInfo;
   }
 
-  /** Convert the metric name to string array. */
-  public String[] toStringArray() {
+  /** Convert the metric name and tag into pair */
+  public Pair<String, String[]> toStringArray() {
     List<String> allNames = new ArrayList<>();
-    allNames.add(name);
     tags.forEach(
         (k, v) -> {
           allNames.add(k);
           allNames.add(v);
         });
-    return allNames.toArray(new String[0]);
+    return new Pair<>(name, allNames.toArray(new String[0]));
   }
 
   @Override

@@ -66,7 +66,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
             formatName(),
@@ -76,7 +76,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             "currentSyncIndex");
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.MULTI_LEADER.toString(),
             Tag.NAME.toString(),
             formatName(),

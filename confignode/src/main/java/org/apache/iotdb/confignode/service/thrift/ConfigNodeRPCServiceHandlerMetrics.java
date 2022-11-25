@@ -48,7 +48,7 @@ public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.THRIFT_CONNECTIONS.toString(),
         Tag.NAME.toString(),
         "ConfigNodeRPC");

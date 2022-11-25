@@ -86,7 +86,7 @@ IoTDB supports setting session connection timeouts and query timeouts, and also 
 
 Session timeout controls when idle sessions are closed. An idle session is one that had not initiated any query or non-query operations for a period of time.
 
-Session timeout is disabled by default and can be set using the `session_timeout_threshold` parameter in IoTDB configuration file.
+Session timeout is disabled by default and can be set using the `dn_session_timeout_threshold` parameter in IoTDB configuration file.
 
 ### Query timeout
 
