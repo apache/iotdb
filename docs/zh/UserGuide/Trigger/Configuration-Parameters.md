@@ -20,8 +20,10 @@
 -->
 
 
-# M4
 
-## M4
+# 配置参数
 
-The documentation of M4 has been moved to [Query Data->Select Expression->Time Series Generating Functions](../Query-Data/Select-Expression.md).
+| 配置项                                            | 含义                                           |
+| ------------------------------------------------- | ---------------------------------------------- |
+| *trigger_lib_dir*                                 | 保存触发器 jar 包的目录位置                    |
+| *stateful\_trigger\_retry\_num\_when\_not\_found* | 有状态触发器触发无法找到触发器实例时的重试次数 |

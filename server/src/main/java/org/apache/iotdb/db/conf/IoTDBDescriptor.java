@@ -1827,24 +1827,10 @@ public class IoTDBDescriptor {
       conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
     }
 
-    conf.setMaxPendingContinuousQueryTasks(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_pending_continuous_query_tasks",
-                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
-    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
-      conf.setMaxPendingContinuousQueryTasks(64);
-    }
-
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
-
-    conf.setCqlogBufferSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   public void loadClusterProps(Properties properties) {

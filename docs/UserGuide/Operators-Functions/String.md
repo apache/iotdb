@@ -21,6 +21,72 @@
 
 # String Processing
 
+## STRING_CONTAINS
+
+### Function introduction
+
+This function checks whether the substring `s` exists in the string
+
+**Function name:** STRING_CONTAINS
+
+**Input sequence:** Only a single input sequence is supported, the type is TEXT.
+
+**parameter:**
++ `s`: The string to search for.
+
+**Output Sequence:** Output a single sequence, the type is BOOLEAN.
+
+### Usage example
+
+```   sql
+select s1, string_contains(s1, 's'='warn') from root.sg1.d4;
+```
+
+``` 
++-----------------------------+--------------+-------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_contains(root.sg1.d4.s1, "s"="warn")|
++-----------------------------+--------------+-------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                       true|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                      false|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                       true|
++-----------------------------+--------------+-------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
+
+## STRING_MATCHES
+
+### Function introduction
+
+This function judges whether a string can be matched by the regular expression `regex`.
+
+**Function name:** STRING_MATCHES
+
+**Input sequence:** Only a single input sequence is supported, the type is TEXT.
+
+**parameter:**
++ `regex`: Java standard library-style regular expressions.
+
+**Output Sequence:** Output a single sequence, the type is BOOLEAN.
+
+### Usage example
+
+```sql
+select s1, string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
+```
+
+```
++-----------------------------+--------------+------------------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_matches(root.sg1.d4.s1, "regex"="[^\\s]+37229")|
++-----------------------------+--------------+------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                                 false|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                                  true|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                                 false|
++-----------------------------+--------------+------------------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
+
 ## Length
 
 ### Usage
