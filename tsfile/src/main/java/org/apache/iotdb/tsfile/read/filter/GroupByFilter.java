@@ -157,6 +157,8 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public List<TimeRange> getTimeRanges() {
-    return Collections.singletonList(new TimeRange(startTime, endTime - 1));
+    return startTime >= endTime
+        ? Collections.emptyList()
+        : Collections.singletonList(new TimeRange(startTime, endTime - 1));
   }
 }
