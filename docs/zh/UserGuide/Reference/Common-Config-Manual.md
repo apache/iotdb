@@ -147,16 +147,52 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | true                     |
 | 改后生效方式 | 重启服务生效             |
 
+* storage\_query_schema_consensus_free_memory_proportion
+
+|名字| storage\_query\_schema\_consensus\_free\_memory\_proportion           |
+|:---:|:----------------------------------------------------------------------|
+|描述| 存储，查询，元数据，共识层，空闲内存比例                                                  |
+|类型| Ratio                                                                 |
+|默认值| 3:3:1:1:2                                                             |
+|改后生效方式| 重启服务生效                                                                |
+
+* schema\_memory\_allocate\_proportion
+
+|名字| schema\_memory\_allocate\_proportion                        |
+|:---:|:------------------------------------------------------------|
+|描述| SchemaRegion， SchemaCache，PartitionCache，LastCache 占元数据内存比例 |
+|类型| Ratio                                                       |
+|默认值| 5:3:1:1                                                     |
+|改后生效方式| 重启服务生效                                                      |
+
+* storage\_engine\_memory\_proportion
+
+|名字| storage\_engine\_memory\_proportion |
+|:---:|:------------------------------------|
+|描述| 写入和合并占存储内存比例                        |
+|类型| Ratio                               |
+|默认值| 8:2                                 |
+|改后生效方式| 重启服务生效                              |
+
+* write\_memory\_proportion
+
+|名字| write\_memory\_proportion            |
+|:---:|:-------------------------------------|
+|描述| Memtable 和 TimePartitionInfo 占写入内存比例 |
+|类型| Ratio                                |
+|默认值| 19:1                                 |
+|改后生效方式| 重启服务生效                               |
+
 * concurrent\_writing\_time\_partition
 
-|     名字     | concurrent\_writing\_time\_partition        |
-| :----------: | :------------------------------------------ |
-|     描述     | 最大可同时写入的时间分区个数，默认500个分区 |
-|     类型     | Int64                                       |
-|    默认值    | 500                                         |
-| 改后生效方式 | 重启服务生效                                |
+|名字| concurrent\_writing\_time\_partition                  |
+|:---:|:------------------------------------------------------|
+|描述| 最大可同时写入的时间分区个数，默认1个分区, enable\_mem\_control=false 时有效 |
+|类型| Int64                                                 |
+|默认值| 1                                                     |
+|改后生效方式| 重启服务生效                                                |
 
-* primary\_array\_size
+* primitive\_array\_size
 
 |名字| primary\_array\_size |
 |:---:|:---|
@@ -219,6 +255,25 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
+* enable\_query\_memory\_estimation
+
+|名字| enable\_query\_memory\_estimation |
+|:---:|:----------------------------------|
+|描述| 开启后会预估每次查询的内存使用量，如果超过可用内存，会拒绝本次查询 |
+|类型| bool                              |
+|默认值| true                              |
+|改后生效方式| 触发生效                              |
+
+* partition\_cache\_size
+
+|名字| partition\_cache\_size |
+|:---:|:---|
+|描述| 分区信息缓存的最大缓存条目数。|
+|类型| Int32 |
+|默认值| 1000 |
+|改后生效方式|重启服务生效|
+
+
 ### 元数据引擎配置
 
 * mlog\_buffer\_size
@@ -256,6 +311,24 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| int32                           |
 |默认值| 1000                            |
 |改后生效方式| 仅允许在第一次启动服务前修改                  |
+
+* schema\_region\_device\_node\_cache\_size
+
+|名字| schema\_region\_device\_node\_cache\_size |
+|:---:|:--------------------------------|
+|描述| schemaRegion中用于加速device节点访问所设置的device节点缓存的大小       |
+|类型| Int32                           |
+|默认值| 10000                          |
+|改后生效方式| 重启服务生效         |
+
+* max\_measurement\_num\_of\_internal\_request
+
+|名字| max\_measurement\_num\_of\_internal\_request |
+|:---:|:--------------------------------|
+|描述| 一次注册序列请求中若物理量过多，在系统内部执行时将被拆分为若干个轻量级的子请求，每个子请求中的物理量数目不超过此参数设置的最大值。    |
+|类型| Int32                           |
+|默认值| 10000                          |
+|改后生效方式| 重启服务生效         |
 
 ### 数据类型自动推断
 
@@ -511,6 +584,24 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 单个时间序列的最大同时块读取数。若同时chunk读取的数量大于external_sort_threshold，则使用外部排序。当external_sort_threshold增加时，内存中同时排序的chunk数量可能会增加，这会占用更多的内存；external_sort_threshold 减小时，触发外部排序会增加耗时。|
 |类型| int32 |
 |默认值| 1000 |
+|改后生效方式|重启服务生效|
+
+* coordinator\_read\_executor\_size
+
+|名字| coordinator\_read\_executor\_size |
+|:---:|:---|
+|描述| coordinator中用于执行查询操作的线程数 |
+|类型| Int32 |
+|默认值| 50 |
+|改后生效方式|重启服务生效|
+
+* coordinator\_write\_executor\_size
+
+|名字| coordinator\_write\_executor\_size |
+|:---:|:---|
+|描述| coordinator中用于执行写入操作的线程数 |
+|类型| Int32 |
+|默认值| 50 |
 |改后生效方式|重启服务生效|
 
 ### 存储引擎配置
