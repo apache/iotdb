@@ -61,7 +61,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     properties.setProperty("dn_join_cluster_retry_interval_ms", "1000");
     properties.setProperty("mqtt_host", super.getIp());
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
-    properties.setProperty("connection_timeout_ms", "30000");
+    properties.setProperty("dn_connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
       properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, this.targetConfigNode);
     }

@@ -43,11 +43,6 @@
             <artifactId>metrics-jmx</artifactId>
             <version>${dropwizard.metrics.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty-http</artifactId>
-            <version>${reactor-netty-http.version}</version>
-        </dependency>
     </dependencies>
     <properties>
         <jersey-core.version>1.9</jersey-core.version>

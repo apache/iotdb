@@ -293,6 +293,13 @@ public class IoTDBConfig {
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
+  private String ratisDataRegionSnapshotDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
+
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
@@ -1148,6 +1155,7 @@ public class IoTDBConfig {
     tracingDir = addDataHomeDir(tracingDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
@@ -1348,6 +1356,10 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public String getRatisDataRegionSnapshotDir() {
+    return ratisDataRegionSnapshotDir;
   }
 
   public String getConsensusDir() {
@@ -1804,6 +1816,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -1816,6 +1829,10 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
@@ -1828,6 +1845,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+
+    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
+    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
+    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
   public long getAllocateMemoryForFree() {
