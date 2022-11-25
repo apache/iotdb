@@ -43,7 +43,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| schema\_replication\_factor |
 |:---:|:---|
 |Description| Schema replication num|
-|Type| Int |
+|Type| int32 |
 |Default| 1 |
 |Effective|After restarting system|
 
@@ -61,7 +61,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| data\_replication\_factor |
 |:---:|:---|
 |Description| Data replication num|
-|Type| Int |
+|Type| int32 |
 |Default| 1 |
 |Effective|After restarting system|
 
@@ -81,7 +81,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| series\_partition\_slot\_num |
 |:---:|:---|
 |Description| Slot num of series partition |
-|Type| Int |
+|Type| int32 |
 |Default| 10000 |
 |Effective|Only allowed to be modified in first start up|
 
@@ -141,7 +141,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| enable\_mem\_control |
 |:---:|:---|
 |Description| enable memory control to avoid OOM|
-|Type|Bool|
+|Type|Boolean|
 |Default| true |
 |Effective|After restarting system|
 
@@ -150,7 +150,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
 |Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
-|Type|Int32|
+|Type|int32|
 |Default| 1 |
 |Effective|After restarting system|
 
@@ -161,7 +161,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| mlog\_buffer\_size |
 |:---:|:---|
 |Description| size of log buffer in each metadata operation plan(in byte) |
-|Type|Int32|
+|Type|int32|
 |Default| 1048576 |
 |Effective|After restart system|
 
@@ -179,7 +179,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
 |:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
-|Type| Int32                                                                                                                                                                                                                                          |
+|Type| int32                                                                                                                                                                                                                                          |
 |Default| 1000                                                                                                                                                                                                                                           |
 |Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
 
@@ -189,7 +189,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| tag\_attribute\_total\_size |
 |:---:|:---|
 |Description| The maximum persistence size of tags and attributes of each time series.|
-|Type| Int32 |
+|Type| int32 |
 |Default| 700 |
 |Effective|Only allowed to be modified in first start up|
 
@@ -310,7 +310,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | default\_fill\_interval                         |
 | :---------: | :---------------------------------------------- |
 | Description | Default interval of `group by fill` query in ms |
-|    Type     | Int32                                           |
+|    Type     | int32                                           |
 |   Default   | -1                                              |
 |  Effective  | After restarting system                         |
 
@@ -357,7 +357,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| enable\_timed\_flush\_seq\_memtable |
 |:---:|:---|
 |Description| whether to enable timed flush sequence memtable |
-|Type|Bool|
+|Type|Boolean|
 |Default| false |
 |Effective| Trigger |
 
@@ -366,7 +366,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| seq\_memtable\_flush\_interval\_in\_ms |
 |:---:|:---|
 |Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|Int32|
+|Type|int32|
 |Default| 3600000 |
 |Effective| Trigger |
 
@@ -375,7 +375,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| seq\_memtable\_flush\_check\_interval\_in\_ms |
 |:---:|:---|
 |Description| the interval to check whether sequence memtables need flushing |
-|Type|Int32|
+|Type|int32|
 |Default| 600000 |
 |Effective| Trigger |
 
@@ -384,7 +384,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| enable\_timed\_flush\_unseq\_memtable |
 |:---:|:---|
 |Description| whether to enable timed flush unsequence memtable |
-|Type|Bool|
+|Type|Boolean|
 |Default| false |
 |Effective| Trigger |
 
@@ -393,7 +393,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| unseq\_memtable\_flush\_interval\_in\_ms |
 |:---:|:---|
 |Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|Int32|
+|Type|int32|
 |Default| 3600000 |
 |Effective| Trigger |
 
@@ -402,7 +402,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| unseq\_memtable\_flush\_check\_interval\_in\_ms |
 |:---:|:---|
 |Description| the interval to check whether unsequence memtables need flushing |
-|Type|Int32|
+|Type|int32|
 |Default| 600000 |
 |Effective| Trigger |
 
@@ -411,7 +411,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| avg\_series\_point\_number\_threshold                  |
 |:---:|:-------------------------------------------------------|
 |Description| max average number of point of each series in memtable |
-|Type| Int32                                                  |
+|Type| int32                                                  |
 |Default| 100000                                                 |
 |Effective| After restarting system                                |
 
@@ -420,7 +420,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| flush\_thread\_count |
 |:---:|:---|
 |Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
-|Type| Int32 |
+|Type| int32 |
 |Default| 0 |
 |Effective|After restarting system|
 
@@ -429,7 +429,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| query\_thread\_count                                                                                            |
 |:---:|:---------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|Type| Int32                                                                                                                |
+|Type| int32                                                                                                                |
 |Default| 16                                                                                                                   |
 |Effective| After restarting system                                                                                              |
 
@@ -438,7 +438,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| sub\_rawQuery\_thread\_count                                                                                        |
 |:---:|:-------------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|Type| Int32                                                                                                                    |
+|Type| int32                                                                                                                    |
 |Default| 8                                                                                                                        |
 |Effective| After restarting system                                                                                                  |
 
@@ -447,7 +447,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| enable\_partial\_insert |
 |:---:|:---|
 |Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
-|Type| Bool |
+|Type| Boolean |
 |Default| true |
 |Effective|After restarting system|
 
@@ -456,7 +456,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | insert_multi_tablet_enable_multithreading_column_threshold   |
 | :---------: | :----------------------------------------------------------- |
 | Description | When the insert plan column count reaches the specified threshold, multi-threading is enabled. |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | 10                                                           |
 |  Effective  | After restarting system                                      |
 
@@ -539,7 +539,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| target\_chunk\_point\_num |
 |:---:|:---|
 |Description| The target point number of compacted chunk |
-|Type| Int32 |
+|Type| int32 |
 |Default| 100000 |
 |Effective|After restart system|
 
@@ -557,7 +557,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| chunk\_size\_lower\_bound\_in\_compaction |
 |:---:|:---|
 |Description| A source chunk will be deserialized in compaction when its point num is less than this value |
-|Type| Int32 |
+|Type| int32 |
 |Default| 100 |
 |Effective|After restart system|
 
@@ -566,7 +566,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| max\_inner\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |Description| The max num of files encounter in inner space compaction |
-|Type| Int32 |
+|Type| int32 |
 |Default| 30 |
 |Effective|After restart system|
 
@@ -575,7 +575,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| max\_cross\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |Description| The max num of files encounter in cross space compaction |
-|Type| Int32 |
+|Type| int32 |
 |Default| 1000 |
 |Effective|After restart system|
 
@@ -584,7 +584,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| cross\_compaction\_file\_selection\_time\_budget |
 |:---:|:---|
 |Description| Time budget for cross space compaction file selection |
-|Type| Int32 |
+|Type| int32 |
 |Default| 30000 |
 |Effective|After restart system|
 
@@ -593,7 +593,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| cross\_compaction\_memory\_budget |
 |:---:|:---|
 |Description| Memory budget for a cross space compaction |
-|Type| Int32 |
+|Type| int32 |
 |Default| 2147483648 |
 |Effective|After restart system|
 
@@ -602,7 +602,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| compaction\_thread\_count |
 |:---:|:---|
 |Description| thread num to execute compaction |
-|Type| Int32 |
+|Type| int32 |
 |Default| 10 |
 |Effective|After restart system|
 
@@ -629,7 +629,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| compaction\_write\_throughput\_mb\_per\_sec |
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
-|Type| Int32 |
+|Type| int32 |
 |Default| 16 |
 |Effective|After restart system|
 
@@ -642,7 +642,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name|group\_size\_in\_byte|
 |:---:|:---|
 |Description|The data size written to the disk per time|
-|Type|Int32|
+|Type|int32|
 |Default| 134217728 |
 |Effective|Trigger|
 
@@ -651,7 +651,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| page\_size\_in\_byte |
 |:---:|:---|
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
-|Type|Int32|
+|Type|int32|
 |Default| 65536 |
 |Effective|Trigger|
 
@@ -660,7 +660,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| max\_number\_of\_points\_in\_page |
 |:---:|:---|
 |Description|The maximum number of data points (timestamps - valued groups) contained in a page|
-|Type|Int32|
+|Type|int32|
 |Default| 1048576 |
 |Effective|Trigger|
 
@@ -669,7 +669,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| max\_degree\_of\_index\_node |
 |:---:|:---|
 |Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
-|Type|Int32|
+|Type|int32|
 |Default| 256 |
 |Effective|Only allowed to be modified in first start up|
 
@@ -678,7 +678,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| max\_string\_length |
 |:---:|:---|
 |Description|The maximum length of a single string (number of character)|
-|Type|Int32|
+|Type|int32|
 |Default| 128 |
 |Effective|Trigger|
 
@@ -705,7 +705,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| float_precision |
 |:---:|:---|
 |Description| The precision of the floating point number.(The number of digits after the decimal point) |
-|Type|Int32|
+|Type|int32|
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
 |Effective|Trigger|
 
@@ -741,7 +741,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| freq_block_size |
 |:---:|:---|
 |Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
-|Type|Int32|
+|Type|int32|
 |Default| 1024 |
 |Effective|Trigger|
 
@@ -775,7 +775,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | udf\_initial\_byte\_array\_length\_for\_memory\_control      |
 | :---------: | :----------------------------------------------------------- |
 | Description | Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this value to be slightly larger than the average length of all texts. |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | 48                                                           |
 |  Effective  | After restarting system                                      |
 
@@ -822,7 +822,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | concurrent_window_evaluation_thread                          |
 | :---------: | :----------------------------------------------------------- |
 | Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | The number of CPU cores                                      |
 |  Effective  | After restarting system                                      |
 
@@ -831,7 +831,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max_pending_window_evaluation_tasks                          |
 | :---------: | :----------------------------------------------------------- |
 | Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | 64                                                           |
 |  Effective  | After restarting system                                      |
 
@@ -842,7 +842,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | select_into_insert_tablet_plan_row_limit                     |
 | :---------: | :----------------------------------------------------------- |
 | Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | 10000                                                        |
 |  Effective  | Trigger                                                      |
 
@@ -853,7 +853,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | continuous_query_execution_thread                            |
 | :---------: | :----------------------------------------------------------- |
 | Description | How many threads will be set up to perform continuous queries |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | max(1, the / 2)                                              |
 |  Effective  | After restarting system                                      |
 
@@ -862,7 +862,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max_pending_continuous_query_tasks                           |
 | :---------: | :----------------------------------------------------------- |
 | Description | Maximum number of continuous query tasks that can be pending for execution |
-|    Type     | Int32                                                        |
+|    Type     | int32                                                        |
 |   Default   | 64                                                           |
 |  Effective  | After restarting system                                      |
 
@@ -935,7 +935,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | mqtt\_port                                  |
 |:-----------:|:--------------------------------------------|
 | Description | The port to which the MQTT service is bound |
-|    Type     | Int32                                       |
+|    Type     | int32                                       |
 |   Default   | 1883                                        |
 |   Effective    | Trigger                                     |
 
@@ -944,7 +944,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| mqtt\_handler\_pool\_size                                   |
 |:---:|:------------------------------------------------------------|
 |Description| The size of the handler pool used to process MQTT messages  |
-|Type| Int32                                                       |
+|Type| int32                                                       |
 |Default| 1                                                           |
 |Effective| Trigger                                                     |
 
@@ -962,7 +962,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |  Name  | mqtt\_max\_message\_size                 |
 |:------:|:-----------------------------------------|
 |   Description   | Maximum length of MQTT message in bytes  |
-|   Type   | Int32                                    |
+|   Type   | int32                                    |
 |  Default   | 1048576                                  |
 | Effective | Trigger                                  |
 
@@ -983,7 +983,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| rest_service_port |
 |:---:|:------------------|
 |Description| The Rest service listens to the port number      |
-|Type| Int32             |
+|Type| int32             |
 |Default| 18080             |
 |Effective| After restarting system              |
 
@@ -1001,7 +1001,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| rest_query_default_row_size_limit                                                         |
 |:---:|:------------------------------------------------------------------------------------------|
 |Description| The maximum number of rows in a result set that can be returned by a query                |
-|Type| Int32                                                                                     |
+|Type| int32                                                                                     |
 |Default| 10000                                                                                     |
 |Effective| After restarting system                                                                   |
 
@@ -1010,7 +1010,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| cache_expire                                            |
 |:---:|:--------------------------------------------------------|
 |Description| Expiration time for caching customer login information  |
-|Type| Int32                                                   |
+|Type| int32                                                   |
 |Default| 28800                                                   |
 |Effective| After restarting system                                 |
 
@@ -1019,7 +1019,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| cache_max_num |
 |:---:|:--------------|
 |Description| The maximum number of users stored in the cache  |
-|Type| Int32         |
+|Type| int32         |
 |Default| 100           |
 |Effective| After restarting system          |
 
@@ -1028,7 +1028,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| cache_init_num |
 |:---:|:---------------|
 |Description| Initial cache capacity        |
-|Type| Int32          |
+|Type| int32          |
 |Default| 10             |
 |Effective| After restarting system           |
 
@@ -1082,7 +1082,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Name| idle_timeout  |
 |:---:|:--------------|
 |Description| SSL timeout duration, expressed in seconds |
-|Type| Int32         |
+|Type| int32         |
 |Default| 5000          |
 |Effective| After restarting system          |
 

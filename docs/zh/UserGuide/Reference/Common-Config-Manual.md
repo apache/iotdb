@@ -43,7 +43,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| schema\_replication\_factor |
 |:---:|:---|
 |描述| Database 的默认元数据副本数 |
-|类型| Int |
+|类型| int32 |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
 
@@ -61,7 +61,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| data\_replication\_factor |
 |:---:|:---|
 |描述| Database 的默认数据副本数|
-|类型| Int |
+|类型| int32 |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
 
@@ -81,7 +81,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| series\_partition\_slot\_num |
 |:---:|:---|
 |描述| 序列分区槽数 |
-|类型| Int |
+|类型| int32 |
 |默认值| 10000 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
@@ -160,7 +160,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| primary\_array\_size |
 |:---:|:---|
 |描述| 数组池中的原始数组大小（每个数组的长度）|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 32 |
 |改后生效方式|重启服务生效|
 
@@ -205,7 +205,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| check\_period\_when\_insert\_blocked |
 |:---:|:---|
 |描述| 当插入被拒绝时，等待时间（以毫秒为单位）去再次检查系统，默认为50。若插入被拒绝，读取负载低，可以设置大一些。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 50 |
 |改后生效方式|重启服务生效|
 
@@ -214,7 +214,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| io\_task\_queue\_size\_for\_flushing |
 |:---:|:---|
 |描述| ioTaskQueue 的大小。默认值为10。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
@@ -225,7 +225,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| mlog\_buffer\_size |
 |:---:|:---|
 |描述| mlog 的 buffer 大小 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
@@ -243,7 +243,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| tag\_attribute\_total\_size |
 |:---:|:---|
 |描述| 每个时间序列标签和属性的最大持久化字节数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 700 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
@@ -252,7 +252,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| tag\_attribute\_flush\_interval |
 |:---:|:--------------------------------|
 |描述| 标签和属性记录的间隔数，达到此记录数量时将强制刷盘       |
-|类型| Int32                           |
+|类型| int32                           |
 |默认值| 1000                            |
 |改后生效方式| 仅允许在第一次启动服务前修改                  |
 
@@ -272,7 +272,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| default\_storage\_group\_level |
 |:---:|:---|
 |描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的 database，将序列路径的哪一层当做 database。例如，如果我们接到一个新序列 root.sg0.d1.s2, 并且 level=1， 那么 root.sg0 被视为database（因为 root 是 level 0 层）|
-|取值| Int32 |
+|取值| int32 |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
 
@@ -409,7 +409,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| metadata\_node\_cache\_size |
 |:---:|:---|
 |描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
-|类型|Int32|
+|类型|int32|
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
 
@@ -445,7 +445,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| default\_fill\_interval |
 |:---:|:---|
 |描述| 填充查询中使用的默认时间段，默认-1表示无限过去时间，以毫秒ms为单位 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| -1 |
 |改后生效方式|重启服务生效|
 
@@ -490,7 +490,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| slow\_query\_threshold |
 |:---:|:---|
 |描述| 慢查询的时间成本（毫秒ms）阈值。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 5000 |
 |改后生效方式|触发生效|
 
@@ -508,7 +508,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| external\_sort\_threshold |
 |:---:|:---|
 |描述| 单个时间序列的最大同时块读取数。若同时chunk读取的数量大于external_sort_threshold，则使用外部排序。当external_sort_threshold增加时，内存中同时排序的chunk数量可能会增加，这会占用更多的内存；external_sort_threshold 减小时，触发外部排序会增加耗时。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
@@ -555,7 +555,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| seq\_memtable\_flush\_interval\_in\_ms |
 |:---:|:---|
 |描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 3600000 |
 |改后生效方式| 触发生效 |
 
@@ -564,7 +564,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| seq\_memtable\_flush\_check\_interval\_in\_ms |
 |:---:|:---|
 |描述| 检查顺序 memtable 是否需要刷盘的时间间隔 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 600000 |
 |改后生效方式| 触发生效 |
 
@@ -582,7 +582,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| unseq\_memtable\_flush\_interval\_in\_ms |
 |:---:|:---|
 |描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 3600000 |
 |改后生效方式| 触发生效 |
 
@@ -591,7 +591,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| unseq\_memtable\_flush\_check\_interval\_in\_ms |
 |:---:|:---|
 |描述| 检查乱序 memtable 是否需要刷盘的时间间隔 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 600000 |
 |改后生效方式| 触发生效 |
 
@@ -600,7 +600,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| avg\_series\_point\_number\_threshold |
 |:---:|:--------------------------------------|
 |描述| 内存中平均每个时间序列点数最大值，达到触发 flush           |
-|类型| Int32                                 |
+|类型| int32                                 |
 |默认值| 100000                                |
 |改后生效方式| 重启服务生效                                |
 
@@ -609,7 +609,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| flush\_thread\_count |
 |:---:|:---|
 |描述| 当 IoTDB 将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 0 |
 |改后生效方式|重启服务生效|
 
@@ -618,7 +618,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| query\_thread\_count                                                   |
 |:---:|:----------------------------------------------------------------------------|
 |描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
-|类型| Int32                                                                       |
+|类型| int32                                                                       |
 |默认值| 16                                                                          |
 |改后生效方式| 重启服务生效                                                                      |
 
@@ -627,7 +627,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| sub\_rawQuery\_thread\_count                    |
 |:---:|:------------------------------------------------|
 |描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数 |
-|类型| Int32                                           |
+|类型| int32                                           |
 |默认值| 8                                               |
 |改后生效方式| 重启服务生效                                          |
 
@@ -636,7 +636,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| raw\_query\_blocking\_queue\_capacity |
 |:---:|:--------------------------------------|
 |描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5             |
-|类型| Int32                                 |
+|类型| int32                                 |
 |默认值| 5                                     |
 |改后生效方式| 重启服务生效                                |
 
@@ -654,7 +654,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| batch\_size |
 |:---:|:---|
 |描述| 服务器中每次迭代的数据量（数据条目，即不同时间戳的数量。） |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 100000 |
 |改后生效方式|重启服务生效|
 
@@ -672,7 +672,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold |
 | :----------: |:-----------------------------------------------------------------|
 |     描述     | 插入时启用多线程插入列数的阈值                                                  |
-|     类型     | Int32                                                            |
+|     类型     | int32                                                            |
 |    默认值    | 10                                                               |
 | 改后生效方式 | 重启服务生效                                                           |
 
@@ -737,7 +737,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| target\_chunk\_point\_num |
 |:---:|:---|
 |描述| 合并时 Chunk 的目标点数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 100000 |
 |改后生效方式|重启服务生效|
 
@@ -755,7 +755,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
 |:---:|:---|
 |描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 100 |
 |改后生效方式|重启服务生效|
 
@@ -764,7 +764,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| max\_inner\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |描述| 空间内合并中一次合并最多参与的文件数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 30|
 |改后生效方式|重启服务生效|
 
@@ -773,7 +773,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| max\_cross\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |描述| 跨空间合并中一次合并最多参与的文件数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1000|
 |改后生效方式|重启服务生效|
 
@@ -782,7 +782,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| cross\_compaction\_file\_selection\_time\_budget |
 |:---:|:---|
 |描述| 若一个合并文件选择运行的时间超过这个时间，它将结束，并且当前的文件合并选择将用作为最终选择。当时间小于0 时，则表示时间是无边界的。单位：ms。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 30000 |
 |改后生效方式| 重启服务生效|
 
@@ -791,7 +791,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| cross\_compaction\_memory\_budget |
 |:---:|:---|
 |描述| 一个合并任务可以使用多少内存（以字节为单位），默认为最大JVM内存的10%。这只是一个粗略的估计，从一个比较小的值开始，避免OOM。每个新的合并线程可能会占用这样的内存，所以merge_thread_num * merge_memory_budget是合并的预估总内存。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 2147483648 |
 |改后生效方式| 重启服务生效|
 
@@ -800,7 +800,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| compaction\_thread\_count |
 |:---:|:---|
 |描述| 执行合并任务的线程数目 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
@@ -827,7 +827,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| compaction\_write\_throughput\_mb\_per\_sec |
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 16 |
 |改后生效方式| 重启服务生效|
 
@@ -836,7 +836,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| query\_timeout\_threshold |
 |:---:|:---|
 |描述| 查询的最大执行时间。单位：毫秒。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 60000 |
 |改后生效方式| 重启服务生效|
 
@@ -847,7 +847,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| wal\_buffer\_size |
 |:---:|:---|
 |描述| 写前日志的 buffer 大小 |
-|类型|Int32|
+|类型|int32|
 |默认值| 16777216 |
 |改后生效方式|触发生效|
 
@@ -858,7 +858,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| group\_size\_in\_byte |
 |:---:|:---|
 |描述| 每次将内存中的数据写入到磁盘时的最大写入字节数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 134217728 |
 |改后生效方式|触发生效|
 
@@ -867,7 +867,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| page\_size\_in\_byte |
 |:---:|:---|
 |描述| 内存中每个列写出时，写成的单页最大的大小，单位为字节 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 65536 |
 |改后生效方式|触发生效|
 
@@ -876,7 +876,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| max\_number\_of\_points\_in\_page |
 |:---:|:---|
 |描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
@@ -885,7 +885,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| max\_string\_length |
 |:---:|:---|
 |描述| 针对字符串类型的数据，单个字符串最大长度，单位为字符|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 128 |
 |改后生效方式|触发生效|
 
@@ -894,7 +894,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| float\_precision |
 |:---:|:---|
 |描述| 浮点数精度，为小数点后数字的位数 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 默认为 2 位。注意：32 位浮点数的十进制精度为 7 位，64 位浮点数的十进制精度为 15 位。如果设置超过机器精度将没有实际意义。 |
 |改后生效方式|触发生效|
 
@@ -930,7 +930,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| max\_degree\_of\_index\_node |
 |:---:|:---|
 |描述| 元数据索引树的最大度（即每个节点的最大子节点个数）。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 256 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
@@ -939,7 +939,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| frequency\_interval\_in\_minute |
 |:---:|:---|
 |描述| 计算查询频率的时间间隔（以分钟为单位）。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1 |
 |改后生效方式|触发生效|
 
@@ -957,7 +957,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| freq_block_size |
 |:---:|:---|
 |描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
-|类型|Int32|
+|类型|int32|
 |默认值| 1024 |
 |改后生效方式|触发生效|
 
@@ -986,7 +986,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| watermark\_bit\_string |
 |:---:|:---|
 |描述| 水印比特字符串 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 100101110100 |
 |改后生效方式|重启服务生效|
 
@@ -1045,7 +1045,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| udf\_initial\_byte\_array\_length\_for\_memory\_control |
 |:---:|:---|
 |描述| 用于评估UDF查询中文本字段的内存使用情况。建议将此值设置为略大于所有文本的平均长度记录。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 48 |
 |改后生效方式|重启服务生效|
 
@@ -1083,7 +1083,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | concurrent_window_evaluation_thread |
 | :----------: | :---------------------------------- |
 |     描述     | 窗口计算线程池的默认线程数          |
-|     类型     | Int32                               |
+|     类型     | int32                               |
 |    默认值    | CPU核数                             |
 | 改后生效方式 | 重启服务生效                        |
 
@@ -1092,7 +1092,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | max_pending_window_evaluation_tasks |
 | :----------: | :---------------------------------- |
 |     描述     | 最多允许堆积的窗口计算任务          |
-|     类型     | Int32                               |
+|     类型     | int32                               |
 |    默认值    | 64                                  |
 | 改后生效方式 | 重启服务生效                        |
 
@@ -1103,7 +1103,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | select_into_insert_tablet_plan_row_limit                     |
 | :----------: | :----------------------------------------------------------- |
 |     描述     | 执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数 |
-|     类型     | Int32                                                        |
+|     类型     | int32                                                        |
 |    默认值    | 10000                                                        |
 | 改后生效方式 | 触发生效                                                     |
 
@@ -1114,7 +1114,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | max_pending_continuous_query_tasks |
 | :----------: | :--------------------------------- |
 |     描述     | 队列中连续查询最大任务堆积数       |
-|     类型     | Int32                              |
+|     类型     | int32                              |
 |    默认值    | 64                                 |
 | 改后生效方式 | 重启服务生效                       |
 
@@ -1123,7 +1123,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | continuous_query_execution_thread |
 | :----------: |:----------------------------------|
 |     描述     | 执行连续查询任务的线程池的线程数                  |
-|     类型     | Int32                             |
+|     类型     | int32                             |
 |    默认值    | 2                                 |
 | 改后生效方式 | 重启服务生效                            |
 
@@ -1212,7 +1212,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| mqtt\_port |
 |:---:|:---|
 |描述| MQTT服务绑定的port。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1883 |
 |改后生效方式|触发生效|
 
@@ -1221,7 +1221,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| mqtt\_handler\_pool\_size |
 |:---:|:---|
 |描述| 用于处理MQTT消息的处理程序池大小。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1 |
 |改后生效方式|触发生效|
 
@@ -1239,7 +1239,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| mqtt\_max\_message\_size |
 |:---:|:---|
 |描述| MQTT消息的最大长度（以字节为单位）。 |
-|类型| Int32 |
+|类型| int32 |
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
@@ -1259,7 +1259,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| rest_service_port |
 |:---:|:------------------|
 |描述| Rest服务监听端口号       |
-|类型| Int32             |
+|类型| int32             |
 |默认值| 18080             |
 |改后生效方式| 重启生效              |
 
@@ -1277,7 +1277,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| rest_query_default_row_size_limit |
 |:---:|:----------------------------------|
 |描述| 一次查询能返回的结果集最大行数                   |
-|类型| Int32                             |
+|类型| int32                             |
 |默认值| 10000                             |
 |改后生效方式| 重启生效                              |
 
@@ -1286,7 +1286,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| cache_expire  |
 |:---:|:--------------|
 |描述| 缓存客户登录信息的过期时间 |
-|类型| Int32         |
+|类型| int32         |
 |默认值| 28800         |
 |改后生效方式| 重启生效          |
 
@@ -1295,7 +1295,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| cache_max_num |
 |:---:|:--------------|
 |描述| 缓存中存储的最大用户数量  |
-|类型| Int32         |
+|类型| int32         |
 |默认值| 100           |
 |改后生效方式| 重启生效          |
 
@@ -1304,7 +1304,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| cache_init_num |
 |:---:|:---------------|
 |描述| 缓存初始容量         |
-|类型| Int32          |
+|类型| int32          |
 |默认值| 10             |
 |改后生效方式| 重启生效           |
 
@@ -1358,7 +1358,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |名字| idle_timeout  |
 |:---:|:--------------|
 |描述| SSL 超时时间，单位为秒 |
-|类型| Int32         |
+|类型| int32         |
 |默认值| 5000          |
 |改后生效方式| 重启生效          |
 
