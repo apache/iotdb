@@ -29,20 +29,20 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Replication Configuration
 
-* data\_region\_consensus\_protocol\_class
+* config\_node\_consensus\_protocol\_class
 
-|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|Type| String                                                                                                                                                       |
-|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
-|Effective| Only allowed to be modified in first start up                                                                                                                |
+|Name| config\_node\_consensus\_protocol\_class                       |
+|:---:|:---------------------------------------------------------------|
+|Description| Consensus protocol of ConfigNode replicas, only support RatisConsensus |
+|Type| String                                                         |
+|Default| org.apache.iotdb.consensus.ratis.RatisConsensus              |
+|Effective| Only allowed to be modified in first start up                  |
 
-* data\_replication\_factor
+* schema\_replication\_factor
 
-|Name| data\_replication\_factor |
+|Name| schema\_replication\_factor |
 |:---:|:---|
-|Description| Data replication num|
+|Description| Schema replication num|
 |Type| Int |
 |Default| 1 |
 |Effective|After restarting system|
@@ -56,14 +56,23 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                           |
 |Effective| Only allowed to be modified in first start up                                                                                               |
 
-* schema\_replication\_factor
+* data\_replication\_factor
 
-|Name| schema\_replication\_factor |
+|Name| data\_replication\_factor |
 |:---:|:---|
-|Description| Schema replication num|
+|Description| Data replication num|
 |Type| Int |
 |Default| 1 |
-|Effective|After restarting system| Configuration
+|Effective|After restarting system|
+
+* data\_region\_consensus\_protocol\_class
+
+|Name| data\_region\_consensus\_protocol\_class                                                                                                                     |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
+|Type| String                                                                                                                                                       |
+|Default| org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                            |
+|Effective| Only allowed to be modified in first start up                                                                                                                |
 
 ### Partition (Load balancing) Configuration
 
@@ -472,6 +481,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |  Effective  | After restarting system                                      |
 
 ### Compaction Configurations
+
 * enable\_seq\_space\_compaction
 
 |Name| enable\_seq\_space\_compaction |
