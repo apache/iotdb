@@ -22,9 +22,9 @@
 # 加载 TsFile
 
 ## 介绍
-加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。
+加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载 tsfile 文件。或者您也可以使用脚本的方式将tsfile加载进IoTDB。
 
-## 使用方式
+## 使用SQL加载
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
 ### 加载 tsfile 文件
@@ -72,22 +72,39 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
 
 **注意**，如果`$IOTDB_HOME$/conf/iotdb-datanode.properties`中`enable_auto_create_schema=true`时会在加载tsfile的时候自动创建tsfile中的元数据，否则不会自动创建。
 
-### 删除 tsfile 文件
+## 使用脚本加载
 
-删除 tsfile 文件的指令为：`remove '<path>'`
+若您在Windows环境中，请运行`$IOTDB_HOME/tools/load-tsfile.bat`，若为Linux或Unix，请运行`load-tsfile.sh`
 
-该指令通过指定文件路径删除 tsfile 文件，具体做法是将该 tsfile 和其对应的`.resource`和`.modification`文件全部删除。
+```bash
+./load-tsfile.bat -f filePath [-h host] [-p port] [-u username] [-pw password] [--sgLevel int] [--verify true/false] [--onSuccess none/delete]
+-f 			待加载的文件或文件夹路径，必要字段
+-h 			IoTDB的Host地址，可选，默认127.0.0.1
+-p 			IoTDB的端口，可选，默认6667
+-u 			IoTDb登录用户名，可选，默认root
+-pw 		IoTDB登录密码，可选，默认root
+--sgLevel 	加载TsFile自动创建Database的路径层级，可选，默认值为iotdb-common.properties指定值
+--verify 	是否对加载TsFile进行元数据校验，可选，默认为True
+--onSuccess 对成功加载的TsFile的处理方法，可选，默认为delete，成功加载之后删除源TsFile，设为none时会				保留源TsFile
+```
 
-示例：
+### 使用范例
 
-* `remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'`
+假定服务器192.168.0.101:6667上运行一个IoTDB实例，想从将本地保存的TsFile备份文件夹D:\IoTDB\data中的所有的TsFile文件都加载进此IoTDB实例。
 
-### 卸载 tsfile 文件至指定目录
+首先移动至`$IOTDB_HOME/tools/`，打开命令行，然后执行
 
-卸载 tsfile 文件的指令为：`unload '<path>' '<dir>'`
+```bash
+./load-tsfile.bat -f D:\IoTDB\data -h 192.168.0.101 -p 6667 -u root -pw root
+```
 
-该指令将指定路径的 tsfile 文件卸载并移动至目标文件夹（绝对路径）中，具体做法是在引擎中卸载该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
+等待脚本执行完成之后，可以检查IoTDB实例中数据已经被正确加载
 
-示例：
+### 常见问题
 
-* `unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'`
+- 找不到或无法加载主类
+  - 可能是由于未设置环境变量$IOTDB_HOME，请设置环境变量之后重试
+- 提示-f option must be set!
+  - 输入命令缺少待-f字段（加载文件或文件夹路径），请添加之后重新执行
+- 执行到中途崩溃了想重新加载怎么办
+  - 重新执行刚才的命令，重新加载数据不会影响加载之后的正确性

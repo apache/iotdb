@@ -72,6 +72,15 @@ public class StatementMemorySourceVisitor
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getQueryStatement());
+    DatasetHeader header =
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
+            true);
+    if (context.getAnalysis().getSourceExpressions() == null
+        || context.getAnalysis().getSourceExpressions().isEmpty()) {
+      return new StatementMemorySource(new TsBlock(0), header);
+    }
     LogicalQueryPlan logicalPlan =
         new LogicalPlanner(context.getQueryContext(), new ArrayList<>())
             .plan(context.getAnalysis());
@@ -88,11 +97,7 @@ public class StatementMemorySourceVisitor
           builder.declarePosition();
         });
     TsBlock tsBlock = builder.build();
-    DatasetHeader header =
-        new DatasetHeader(
-            Collections.singletonList(
-                new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
-            true);
+
     return new StatementMemorySource(tsBlock, header);
   }
 
