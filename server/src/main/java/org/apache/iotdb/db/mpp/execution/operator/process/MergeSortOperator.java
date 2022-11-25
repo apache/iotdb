@@ -158,6 +158,7 @@ public class MergeSortOperator implements ProcessOperator {
         }
         tsBlockIterators[minIndex].next();
         tsBlockBuilder.declarePosition();
+        if (!tsBlockIterators[minIndex].hasNext()) break;
       }
     }
     // update inputTsBlocks after consuming

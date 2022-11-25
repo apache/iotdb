@@ -33,7 +33,7 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
   String[] startKey;
   String[] endKey;
   TsBlock[] tsBlocks;
-  boolean[] tsBlocksEmpty;
+  boolean[] tsBlocksExist;
   String targetKey;
   int tsBlockCount;
 
@@ -43,7 +43,7 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     this.tsBlockCount = childNum;
     this.startKey = new String[tsBlockCount];
     this.endKey = new String[tsBlockCount];
-    this.tsBlocksEmpty = new boolean[tsBlockCount];
+    this.tsBlocksExist = new boolean[tsBlockCount];
     this.tsBlocks = new TsBlock[tsBlockCount];
   }
 
@@ -52,14 +52,14 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     this.tsBlocks[index] = tsBlock;
     startKey[index] = tsBlock.getColumn(0).getBinary(0).toString();
     endKey[index] = startKey[index];
-    tsBlocksEmpty[index] = false;
+    tsBlocksExist[index] = true;
   }
 
   @Override
   public void updateTsBlock(int index, TsBlock tsBlock) {
     if (tsBlock == null) {
       tsBlocks[index] = null;
-      tsBlocksEmpty[index] = true;
+      tsBlocksExist[index] = false;
     } else {
       tsBlocks[index] = tsBlock;
       startKey[index] = tsBlocks[index].getColumn(0).getBinary(0).toString();
@@ -81,20 +81,20 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     String minEndKey = "";
     int index = Integer.MAX_VALUE;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i]) {
+      if (tsBlocksExist[i]) {
         minEndKey = endKey[i];
         index = i;
         break;
       }
     }
     for (int i = index + 1; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && greater(minEndKey, endKey[i])) {
+      if (tsBlocksExist[i] && greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
       }
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i]))) {
+      if (tsBlocksExist[i] && (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i]))) {
         targetTsBlockIndex.add(i);
       }
     }

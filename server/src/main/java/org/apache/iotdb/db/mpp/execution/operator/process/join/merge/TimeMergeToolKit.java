@@ -32,7 +32,7 @@ public class TimeMergeToolKit implements MergeSortToolKit {
   long[] startKey;
   long[] endKey;
   TsBlock[] tsBlocks;
-  boolean[] tsBlocksEmpty;
+  boolean[] tsBlocksExist;
   long targetKey;
   int tsBlockCount;
 
@@ -42,7 +42,7 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     this.tsBlockCount = childNum;
     this.startKey = new long[tsBlockCount];
     this.endKey = new long[tsBlockCount];
-    this.tsBlocksEmpty = new boolean[tsBlockCount];
+    this.tsBlocksExist = new boolean[tsBlockCount];
     this.tsBlocks = new TsBlock[tsBlockCount];
   }
 
@@ -51,14 +51,14 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     this.tsBlocks[index] = tsBlock;
     startKey[index] = tsBlock.getStartTime();
     endKey[index] = tsBlock.getEndTime();
-    tsBlocksEmpty[index] = false;
+    tsBlocksExist[index] = true;
   }
 
   @Override
   public void updateTsBlock(int index, TsBlock tsBlock) {
     if (tsBlock == null) {
       tsBlocks[index] = null;
-      tsBlocksEmpty[index] = true;
+      tsBlocksExist[index] = false;
     } else {
       tsBlocks[index] = tsBlock;
       startKey[index] = tsBlocks[index].getTimeByIndex(0);
@@ -80,20 +80,20 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     long minEndKey = Long.MIN_VALUE;
     int index = Integer.MAX_VALUE;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i]) {
+      if (tsBlocksExist[i]) {
         minEndKey = endKey[i];
         index = i;
         break;
       }
     }
     for (int i = index + 1; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && greater(minEndKey, endKey[i])) {
+      if (tsBlocksExist[i] && greater(minEndKey, endKey[i])) {
         minEndKey = endKey[i];
       }
     }
     this.targetKey = minEndKey;
     for (int i = 0; i < tsBlockCount; i++) {
-      if (!tsBlocksEmpty[i] && (greater(minEndKey, startKey[i]) || minEndKey == startKey[i])) {
+      if (tsBlocksExist[i] && (greater(minEndKey, startKey[i]) || minEndKey == startKey[i])) {
         targetTsBlockIndex.add(i);
       }
     }
