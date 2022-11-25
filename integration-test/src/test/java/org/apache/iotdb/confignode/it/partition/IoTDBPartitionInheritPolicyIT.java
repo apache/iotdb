@@ -73,8 +73,8 @@ public class IoTDBPartitionInheritPolicyIT {
   private static final long testTimePartitionInterval = 604800000;
 
   private static final String sg = "root.sg";
-  private static final int storageGroupNum = 5;
-  private static final int testSeriesPartitionSlotNum = 100;
+  private static final int storageGroupNum = 2;
+  private static final int testSeriesPartitionSlotNum = 1000;
   private static final int seriesPartitionBatchSize = 10;
   private static final int testTimePartitionSlotsNum = 10;
   private static final int timePartitionBatchSize = 10;
