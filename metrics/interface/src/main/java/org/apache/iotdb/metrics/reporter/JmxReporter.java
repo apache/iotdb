@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,22 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.reporter;
 
-public enum DropwizardMetricType {
-  COUNTER("counter"),
-  GAUGE("gauge"),
-  SUMMARY("summary"),
-  HISTOGRAM("histogram"),
-  UNTYPED("untyped");
+import org.apache.iotdb.metrics.AbstractMetricManager;
 
-  private final String text;
-
-  DropwizardMetricType(String text) {
-    this.text = text;
-  }
-
-  public String getText() {
-    return text;
-  }
+public interface JmxReporter extends Reporter {
+  /** Set metric manager into reporter */
+  void setMetricManager(AbstractMetricManager metricManager);
 }

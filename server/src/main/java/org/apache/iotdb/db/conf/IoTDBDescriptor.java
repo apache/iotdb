@@ -48,8 +48,8 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -1544,12 +1544,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalReporter internalReporter;
+      InternalIoTDBReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
         internalReporter = new IoTDBInternalReporter();
       } else {
-        internalReporter = new MemoryInternalReporter();
+        internalReporter = new MemoryInternalIoTDBReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {

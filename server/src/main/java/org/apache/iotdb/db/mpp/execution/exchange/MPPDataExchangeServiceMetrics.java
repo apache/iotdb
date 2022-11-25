@@ -49,7 +49,7 @@ public class MPPDataExchangeServiceMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
         ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());

@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.reporter;
+package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
