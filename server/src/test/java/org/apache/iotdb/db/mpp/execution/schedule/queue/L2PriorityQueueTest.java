@@ -23,6 +23,10 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.fail;
 
 public class L2PriorityQueueTest {
   @Test
@@ -46,16 +50,18 @@ public class L2PriorityQueueTest {
                 res.add(e);
               } catch (InterruptedException e) {
                 e.printStackTrace();
-                Assert.fail();
+                fail();
               }
             });
     t1.start();
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.WAITING, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
     queue.push(e2);
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
     Assert.assertEquals(1, res.size());
     Assert.assertEquals(e2.getId().toString(), res.get(0).getId().toString());
   }
@@ -77,7 +83,7 @@ public class L2PriorityQueueTest {
     QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(2), 2);
     try {
       queue.push(e3);
-      Assert.fail();
+      fail();
     } catch (IllegalStateException e) {
       // ignore;
     }
@@ -135,7 +141,7 @@ public class L2PriorityQueueTest {
     QueueElement e1e = new QueueElement(new QueueElement.QueueElementID(1), 5);
     try {
       queue.push(e1e);
-      Assert.fail();
+      fail();
     } catch (IllegalStateException e) {
       Assert.assertTrue(e.getMessage().contains("has already contained"));
     }
