@@ -101,9 +101,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   public TriggerFireResult visitInsertRow(InsertRowNode node, TriggerEvent context) {
     Map<String, List<String>> triggerNameToMeasurementList =
         constructTriggerNameToMeasurementListMap(node, context);
-    LOGGER.warn(
-        "Trigger name list in visitInsertRow: {}",
-        String.join(",", triggerNameToMeasurementList.keySet()));
     // return success if no trigger is found
     if (triggerNameToMeasurementList.isEmpty()) {
       return TriggerFireResult.SUCCESS;
@@ -135,7 +132,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         return result;
       }
       if (result.equals(TriggerFireResult.FAILED_NO_TERMINATION)) {
-        LOGGER.info("Has failed trigger: {}", entry.getKey());
         hasFailedTrigger = true;
       }
     }
@@ -374,7 +370,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       } else {
         TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
         if (executor == null) {
-          LOGGER.warn("Failed to find an executor in TriggerFireVisitor line 374.");
           return TriggerManagementService.getInstance()
                   .getTriggerInformation(triggerName)
                   .getFailureStrategy()
@@ -385,7 +380,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         try {
           boolean fireResult = executor.fire(tablet, event);
           if (!fireResult) {
-            LOGGER.warn("fireResult is false in line 385.");
             result =
                 executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
                     ? TriggerFireResult.TERMINATION
