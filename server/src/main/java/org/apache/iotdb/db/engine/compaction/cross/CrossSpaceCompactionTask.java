@@ -170,8 +170,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        TsFileMetricManager.getInstance().deleteFile(sequenceFileSize, true);
-        TsFileMetricManager.getInstance().deleteFile(unsequenceFileSize, false);
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
