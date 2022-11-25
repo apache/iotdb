@@ -17,41 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.reporter;
+package org.apache.iotdb.metrics.reporter.iotdb;
 
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-public class MemoryInternalReporter extends InternalReporter {
-  @Override
-  public void updateValue(String name, Object value, TSDataType type, String... tags) {
-    // do nothing
-  }
+import java.util.Map;
 
-  @Override
-  public void updateValue(String name, Object value, TSDataType type, Long time, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void writeSnapshotAndCount(String name, HistogramSnapshot snapshot, String... tags) {
-    // do nothing
-  }
-
+public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
   @Override
   public InternalReporterType getType() {
     return InternalReporterType.MEMORY;
   }
 
   @Override
-  public void start() {
+  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
     // do nothing
-
   }
 
   @Override
-  public void stop() {
-    clear();
+  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
+    // do nothing
+  }
+
+  @Override
+  public boolean start() {
+    return false;
+  }
+
+  @Override
+  public boolean stop() {
+    return false;
+  }
+
+  @Override
+  public ReporterType getReporterType() {
+    return ReporterType.IOTDB;
   }
 }
