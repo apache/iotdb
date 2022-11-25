@@ -1160,6 +1160,331 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### RatisConsensus Configuration
 
+* config\_node\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | config\_node\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   Description   | confignode max payload size for a single log-sync-RPC from leader to follower                  |
+|   Type   | int32                                          |
+|  Default   | 4MB                                            |
+| Effective | After restarting system                                           |
+
+
+* schema\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | schema\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-------------------------------------------------|
+|   Description   | schema region max payload size for a single log-sync-RPC from leader to follower                |
+|   Type   | int32                                            |
+|  Default   | 4MB                                              |
+| Effective | After restarting system                                             |
+
+* data\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | data\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   Description   | data region max payload size for a single log-sync-RPC from leader to follower                 |
+|   Type   | int32                                          |
+|  Default   | 4MB                                            |
+| Effective | After restarting system                                           |
+
+* config\_node\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | config\_node\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   Description   | confignode trigger a snapshot when snapshot_trigger_threshold logs are written                 |
+|   Type   | int32                                        |
+|  Default   | 400,000                                      |
+| Effective | After restarting system                                         |
+
+* schema\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | schema\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:-----------------------------------------------|
+|   Description   | schema region trigger a snapshot when snapshot_trigger_threshold logs are written                |
+|   Type   | int32                                          |
+|  Default   | 400,000                                        |
+| Effective | After restarting system                                           |
+
+* data\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | data\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   Description   | data region trigger a snapshot when snapshot_trigger_threshold logs are written                |
+|   Type   | int32                                        |
+|  Default   | 400,000                                      |
+| Effective | After restarting system                                         |
+
+* config\_node\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | config\_node\_ratis\_log\_unsafe\_flush\_enable    |
+|:------:|:---------------------------------------------------|
+|   Description   | confignode allows flushing Raft Log asynchronously |
+|   Type   | boolean                                            |
+|  Default   | false                                              |
+| Effective | After restarting system                            |
+
+* schema\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | schema\_region\_ratis\_log\_unsafe\_flush\_enable     |
+|:------:|:------------------------------------------------------|
+|   Description   | schema region allows flushing Raft Log asynchronously |
+|   Type   | boolean                                               |
+|  Default   | false                                                 |
+| Effective | After restarting system                               |
+
+* data\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | data\_region\_ratis\_log\_unsafe\_flush\_enable     |
+|:------:|:----------------------------------------------------|
+|   Description   | data region allows flushing Raft Log asynchronously |
+|   Type   | boolean                                             |
+|  Default   | false                                               |
+| Effective | After restarting system                             |
+
+* config\_node\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | config\_node\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   Description   | confignode max capacity of a single Log segment file                   |
+|   Type   | int32                                          |
+|  Default   | 24MB                                           |
+| Effective | After restarting system                                           |
+
+* schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-------------------------------------------------|
+|   Description   | schema region max capacity of a single Log segment file              |
+|   Type   | int32                                            |
+|  Default   | 24MB                                             |
+| Effective | After restarting system                                             |
+
+* data\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | data\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   Description   | data region max capacity of a single Log segment file                |
+|   Type   | int32                                          |
+|  Default   | 24MB                                           |
+| Effective | After restarting system                                           |
+
+* config\_node\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | config\_node\_ratis\_grpc\_flow\_control\_window                             |
+|:------:|:-----------------------------------------------------------------------------|
+|   Description   | confignode flow control window for ratis grpc log appender                   |
+|   Type   | int32                                                                        |
+|  Default   | 4MB                                                                          |
+| Effective | After restarting system                                                      |
+
+* schema\_region\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | schema\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:---------------------------------------------|
+|   Description   | schema region flow control window for ratis grpc log appender                  |
+|   Type   | int32                                        |
+|  Default   | 4MB                                          |
+| Effective | After restarting system                                         |
+
+* data\_region\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | data\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:-------------------------------------------|
+|   Description   | data region flow control window for ratis grpc log appender                  |
+|   Type   | int32                                      |
+|  Default   | 4MB                                        |
+| Effective | After restarting system                                       |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | confignode min election timeout for leader election                            |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-------------------------------------------------------|
+|   Description   | schema region min election timeout for leader election                           |
+|   Type   | int32                                                  |
+|  Default   | 2000ms                                                 |
+| Effective | After restarting system                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | data region min election timeout for leader election                           |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | confignode max election timeout for leader election                            |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-------------------------------------------------------|
+|   Description   | schema region max election timeout for leader election                           |
+|   Type   | int32                                                  |
+|  Default   | 2000ms                                                 |
+| Effective | After restarting system                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | data region max election timeout for leader election                           |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* config\_node\_ratis\_request\_timeout\_ms
+
+|   Name   | config\_node\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   Description   | confignode ratis client retry threshold              |
+|   Type   | int32                                |
+|  Default   | 10s                                  |
+| Effective | After restarting system                                 |
+
+* schema\_region\_ratis\_request\_timeout\_ms
+
+|   Name   | schema\_region\_ratis\_request\_timeout\_ms |
+|:------:|:---------------------------------------|
+|   Description   | schema region ratis client retry threshold             |
+|   Type   | int32                                  |
+|  Default   | 10s                                    |
+| Effective | After restarting system                                   |
+
+* data\_region\_ratis\_request\_timeout\_ms
+
+|   Name   | data\_region\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   Description   | data region ratis client retry threshold             |
+|   Type   | int32                                |
+|  Default   | 10s                                  |
+| Effective | After restarting system                                 |
+
+* config\_node\_ratis\_max\_retry\_attempts
+
+|   Name   | config\_node\_ratis\_max\_retry\_attempts  |
+|:------:|:-------------------------------------------|
+|   Description   | confignode ratis client max retry attempts |
+|   Type   | int32                                      |
+|  Default   | 10                                         |
+| Effective | After restarting system                    |
+
+* config\_node\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | config\_node\_ratis\_initial\_sleep\_time\_ms    |
+|:------:|:-------------------------------------------------|
+|   Description   | confignode ratis client retry initial sleep time |
+|   Type   | int32                                            |
+|  Default   | 100ms                                            |
+| Effective | After restarting system                          |
+
+* config\_node\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | config\_node\_ratis\_max\_sleep\_time\_ms    |
+|:------:|:---------------------------------------------|
+|   Description   | confignode ratis client retry max sleep time |
+|   Type   | int32                                        |
+|  Default   | 10s                                          |
+| Effective | After restarting system                      |
+
+* schema\_region\_ratis\_max\_retry\_attempts
+
+|   Name   | schema\_region\_ratis\_max\_retry\_attempts |
+|:------:|:---------------------------------------|
+|   Description   | schema region ratis client max retry attempts            |
+|   Type   | int32                                  |
+|  Default   | 10                                     |
+| Effective | After restarting system                                   |
+
+* schema\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | schema\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:------------------------------------------|
+|   Description   | schema region ratis client retry initial sleep time             |
+|   Type   | int32                                     |
+|  Default   | 100ms                                     |
+| Effective | After restarting system                                      |
+
+* schema\_region\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | schema\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:--------------------------------------|
+|   Description   | schema region ratis client retry max sleep time         |
+|   Type   | int32                                 |
+|  Default   | 10s                                   |
+| Effective | After restarting system                                  |
+
+* data\_region\_ratis\_max\_retry\_attempts
+
+|   Name   | data\_region\_ratis\_max\_retry\_attempts |
+|:------:|:-------------------------------------|
+|   Description   | data region ratis client max retry attempts            |
+|   Type   | int32                                |
+|  Default   | 10                                   |
+| Effective | After restarting system                                 |
+
+* data\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | data\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:----------------------------------------|
+|   Description   | data region ratis client retry initial sleep time             |
+|   Type   | int32                                   |
+|  Default   | 100ms                                   |
+| Effective | After restarting system                                    |
+
+* data\_region\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | data\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:------------------------------------|
+|   Description   | data region ratis client retry max sleep time         |
+|   Type   | int32                               |
+|  Default   | 10s                                 |
+| Effective | After restarting system                                |
+
+* config\_node\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | config\_node\_ratis\_preserve\_logs\_num\_when\_purge          |
+|:------:|:---------------------------------------------------------------|
+|   Description   | confignode preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                          |
+|  Default   | 1000                                                           |
+| Effective | After restarting system                                        |
+
+* schema\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | schema\_region\_ratis\_preserve\_logs\_num\_when\_purge           |
+|:------:|:------------------------------------------------------------------|
+|   Description   | schema region preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                             |
+|  Default   | 1000                                                              |
+| Effective | After restarting system                                           |
+
+* data\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | data\_region\_ratis\_preserve\_logs\_num\_when\_purge           |
+|:------:|:----------------------------------------------------------------|
+|   Description   | data region preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                           |
+|  Default   | 1000                                                            |
+| Effective | After restarting system                                         |
+
 ### Procedure Configuration
 
 * procedure\_core\_worker\_thread\_count
