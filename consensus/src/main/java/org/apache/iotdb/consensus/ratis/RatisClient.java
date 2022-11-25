@@ -30,6 +30,7 @@ import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.exceptions.RaftException;
+import org.apache.ratis.protocol.exceptions.TimeoutIOException;
 import org.apache.ratis.retry.ExponentialBackoffRetry;
 import org.apache.ratis.retry.RetryPolicy;
 import org.apache.ratis.util.TimeDuration;
@@ -149,7 +150,8 @@ public class RatisClient {
 
       if (event.getCause() != null) {
         if (event.getCause() instanceof IOException
-            && !(event.getCause() instanceof RaftException)) {
+            && !(event.getCause() instanceof RaftException)
+            && !(event.getCause() instanceof TimeoutIOException)) {
           // unexpected. may be caused by statemachine.
           logger.debug("raft client request failed and caught exception: ", event.getCause());
           return NO_RETRY_ACTION;
