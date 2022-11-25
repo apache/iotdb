@@ -104,7 +104,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | GREEDY                                              |
 | 改后生效方式 | 重启服务生效                                              |
 
-
 ### 集群管理
 
 * time\_partition\_interval
@@ -272,7 +271,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| Int32 |
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
-
 
 ### 元数据引擎配置
 
@@ -797,6 +795,60 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | true                                       |
 | 改后生效方式 | 重启服务生效                               |
 
+* cross\_selector
+
+|名字| cross\_selector |
+|:---:|:----------------|
+|描述| 跨空间合并任务选择器的类型   |
+|类型| String          |
+|默认值| rewrite         |
+|改后生效方式| 重启服务生效          |
+
+* cross\_performer
+
+|名字| cross\_performer |
+|:---:|:-----------------|
+|描述| 跨空间合并任务执行器的类型    |
+|类型| String           |
+|默认值| read\_point      |
+|改后生效方式| 重启服务生效           |
+
+* inner\_seq\_selector
+
+|名字| inner\_seq\_selector |
+|:---:|:---------------------|
+|描述| 顺序空间内合并任务选择器的类型      |
+|类型| String               |
+|默认值| size\_tiered         |
+|改后生效方式| 重启服务生效               |
+
+* inner\_seq\_performer
+
+|名字| inner\_seq\_performer |
+|:---:|:----------------------|
+|描述| 顺序空间内合并任务执行器的类型       |
+|类型| String                |
+|默认值| read\_chunk           |
+|改后生效方式| 重启服务生效                |
+
+* inner\_unseq\_selector
+
+|名字| inner\_unseq\_selector |
+|:---:|:-----------------------|
+|描述| 乱序空间内合并任务选择器的类型        |
+|类型| String                 |
+|默认值| size\_tiered           |
+|改后生效方式| 重启服务生效                 |
+
+* inner\_unseq\_performer
+
+|名字| inner\_unseq\_performer |
+|:---:|:------------------------|
+|描述| 乱序空间内合并任务执行器的类型         |
+|类型| String                  |
+|默认值| read\_point             |
+|改后生效方式| 重启服务生效                  |
+
 * compaction\_priority
 
 |     名字     | compaction\_priority                                                                                                                               |
@@ -869,6 +921,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 1000|
 |改后生效方式|重启服务生效|
 
+* max\_cross\_compaction\_candidate\_file\_size
+
+|名字| max\_cross\_compaction\_candidate\_file\_size |
+|:---:|:----------------------------------------------|
+|描述| 跨空间合并中一次合并最多参与的文件总大小                          |
+|类型| Int64                                         |
+|默认值| 5368709120                                          |
+|改后生效方式| 重启服务生效                                        |
+
 * cross\_compaction\_file\_selection\_time\_budget
 
 |名字| cross\_compaction\_file\_selection\_time\_budget |
@@ -930,6 +991,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 查询的最大执行时间。单位：毫秒。|
 |类型| int32 |
 |默认值| 60000 |
+|改后生效方式| 重启服务生效|
+
+* sub\_compaction\_thread\_count
+
+|名字| sub\_compaction\_thread\_count |
+|:---:|:--|
+|描述| 每个跨空间合并任务的子任务线程数 |
+|类型| Int32 |
+|默认值| 4 |
 |改后生效方式| 重启服务生效|
 
 ### 写前日志配置
@@ -1165,7 +1235,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     类型     | int32                                  |
 |    默认值    | 30                                     |
 | 改后生效方式 | 重启服务生效                           |
-
 
 ### UDF查询配置
 

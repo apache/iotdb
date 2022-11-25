@@ -190,7 +190,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 1 |
 |Effective|After restarting system|
 
-
 * primitive\_array\_size
 
 |Name| primitive\_array\_size |
@@ -245,7 +244,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 0.001                                                        |
 |  Effective  | After restarting system                                      |
 
-
 * check\_period\_when\_insert\_blocked
 
 |Name| check\_period\_when\_insert\_blocked                                        |
@@ -281,7 +279,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| Int32 |
 |Default| 1000 |
 |Effective|After restarting system|
-
 
 ### Schema Engine Configuration
 
@@ -616,7 +613,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| true |
 |Effective|After restarting system|
 
-
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
 |    Name     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold                                     |
@@ -655,23 +651,59 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | true                                                              |
 |  Effective  | After restart system                                              |
 
-* cross\_compaction\_strategy
+* cross\_selector
 
-|    Name     | cross\_compaction\_strategy        |
-| :---------: | :--------------------------------- |
-| Description | strategy of cross space compaction |
-|    Type     | String                             |
-|   Default   | rewrite\_compaction                |
-|  Effective  | After restart system               |
+|Name| cross\_selector                                  |
+|:---:|:-------------------------------------------------|
+|Description| the task selector type of cross space compaction |
+|Type| String                                           |
+|Default| rewrite                                          |
+|Effective| After restart system                             |
 
-* inner\_compaction\_strategy
+* cross\_performer
 
-|    Name     | inner\_compaction\_strategy        |
-| :---------: | :--------------------------------- |
-| Description | strategy of inner space compaction |
-|    Type     | String                             |
-|   Default   | size\_tiered\_compaction           |
-|  Effective  | After restart system               |
+|Name| cross\_performer                                  |
+|:---:|:--------------------------------------------------|
+|Description| the task performer type of cross space compaction |
+|Type| String                                            |
+|Default| read\_point                                       |
+|Effective| After restart system                              |
+
+* inner\_seq\_selector
+
+|Name| inner\_seq\_selector                                      |
+|:---:|:----------------------------------------------------------|
+|Description| the task selector type of inner sequence space compaction |
+|Type| String                                                    |
+|Default| size\_tiered                                              |
+|Effective| After restart system                                      |
+
+* inner\_seq\_performer
+
+|Name| inner\_seq\_peformer                                       |
+|:---:|:-----------------------------------------------------------|
+|Description| the task performer type of inner sequence space compaction |
+|Type| String                                                     |
+|Default| read\_chunk                                                |
+|Effective| After restart system                                       |
+
+* inner\_unseq\_selector
+
+|Name| inner\_unseq\_selector                                      |
+|:---:|:------------------------------------------------------------|
+|Description| the task selector type of inner unsequence space compaction |
+|Type| String                                                      |
+|Default| size\_tiered                                                |
+|Effective| After restart system                                        |
+
+* inner\_unseq\_performer
+
+|Name| inner\_unseq\_peformer                                       |
+|:---:|:-------------------------------------------------------------|
+|Description| the task performer type of inner unsequence space compaction |
+|Type| String                                                       |
+|Default| read\_point                                                  |
+|Effective| After restart system                                         |
 
 * compaction\_priority
 
@@ -745,6 +777,15 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 1000 |
 |Effective|After restart system|
 
+* max\_cross\_compaction\_file\_size
+
+|Name| max\_cross\_compaction\_candidate\_file\_size             |
+|:---:|:----------------------------------------------------------|
+|Description| The max size of files encounter in cross space compaction |
+|Type| Int64                                                     |
+|Default| 5368709120                                                      |
+|Effective| After restart system                                      |
+
 * cross\_compaction\_file\_selection\_time\_budget
 
 |Name| cross\_compaction\_file\_selection\_time\_budget |
@@ -798,6 +839,15 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| int32 |
 |Default| 16 |
 |Effective|After restart system|
+
+* sub\_compaction\_thread\_count
+
+|Name| sub\_compaction\_thread\_count                                            |
+|:---:|:--------------------------------------------------------------------------|
+|Description| the number of sub-compaction threads to accelerate cross space compaction |
+|Type| Int32                                                                     |
+|Default| 4                                                                         |
+|Effective| After restart system                                                      |
 
 ### Write Ahead Log Configuration
 
@@ -988,7 +1038,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 30                                                |
 |  Effective  | After restarting system                           |
 
-
 ### UDF Configuration
 
 * udf\_initial\_byte\_array\_length\_for\_memory\_control
@@ -1131,8 +1180,8 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 800                            |
 |  Effective  | After restarting system        |
 
-
 ### MQTT Broker Configuration
+
 * enable\_mqtt\_service
 
 |    Name     | enable\_mqtt\_service。              |
@@ -1186,7 +1235,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Type   | int32                                    |
 |  Default   | 1048576                                  |
 | Effective | Trigger                                  |
-
 
 ### REST Service Configuration
 
