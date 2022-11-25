@@ -925,7 +925,7 @@ var config = {
 							['Query-Data/Overview','Overview'],
 							['Query-Data/Select-Expression','Select Expression'],
 							['Query-Data/Last-Query','Last Query'],
-							['Query-Data/Align-By','Query Result Formats'],
+							['Query-Data/Align-By','Query Alignment Mode'],
 							['Query-Data/Where-Condition','Where Condition'],
 							['Query-Data/Group-By','Group By'],
 							['Query-Data/Having-Condition','Having Condition'],

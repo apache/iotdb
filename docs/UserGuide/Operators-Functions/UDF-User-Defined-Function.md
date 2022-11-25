@@ -20,13 +20,11 @@
 -->
 
 
-
 # User Defined Function (UDF)
 
 IoTDB provides a variety of built-in functions to meet your computing needs, and you can also create user defined functions to meet more computing needs. 
 
 This document describes how to write, register and use a UDF.
-
 
 
 ## UDF Types
