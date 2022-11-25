@@ -27,22 +27,22 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ## 系统配置项
 
-### 副本及共识协议
+### 副本配置
 
-* data\_region\_consensus\_protocol\_class
+* config\_node\_consensus\_protocol\_class
 
-|名字| data\_region\_consensus\_protocol\_class                                              |
-|:---:|:--------------------------------------------------------------------------------------|
-|描述| 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
-|类型| String                                                                                |
-|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus                                     |
-|改后生效方式| 仅允许在第一次启动服务前修改                                                                        |
+|名字| config\_node\_consensus\_protocol\_class          |
+|:---:|:--------------------------------------------------|
+|描述| ConfigNode 副本的共识协议，仅支持 RatisConsensus             |
+|类型| String                                            |
+|默认值| org.apache.iotdb.consensus.ratis.RatisConsensus |
+|改后生效方式| 仅允许在第一次启动服务前修改                                    |
 
-* data\_replication\_factor
+* schema\_replication\_factor
 
-|名字| data\_replication\_factor |
+|名字| schema\_replication\_factor |
 |:---:|:---|
-|描述| Database 的默认数据副本数|
+|描述| Database 的默认元数据副本数 |
 |类型| Int |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
@@ -56,14 +56,23 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| org.apache.iotdb.consensus.simple.SimpleConsensus |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* schema\_replication\_factor
+* data\_replication\_factor
 
-|名字| schema\_replication\_factor |
+|名字| data\_replication\_factor |
 |:---:|:---|
-|描述| Database 的默认元数据副本数 |
+|描述| Database 的默认数据副本数|
 |类型| Int |
 |默认值| 1 |
 |改后生效方式|重启服务生效|
+
+* data\_region\_consensus\_protocol\_class
+
+|名字| data\_region\_consensus\_protocol\_class                                              |
+|:---:|:--------------------------------------------------------------------------------------|
+|描述| 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 MultiLeaderConsensus 或 RatisConsensus |
+|类型| String                                                                                |
+|默认值| org.apache.iotdb.consensus.simple.SimpleConsensus                                     |
+|改后生效方式| 仅允许在第一次启动服务前修改                                                                        |
 
 ### 分区（负载均衡）配置
 
@@ -1131,7 +1140,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| your principal |
 |改后生效方式|重启服务生效|
 
-### 文件层配置
+### TsFile 配置
 
 * group\_size\_in\_byte
 
