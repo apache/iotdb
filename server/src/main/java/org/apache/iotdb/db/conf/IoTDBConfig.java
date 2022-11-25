@@ -1926,7 +1926,6 @@ public class IoTDBConfig {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-
   public int getCompactionWriteThroughputMbPerSec() {
     return compactionWriteThroughputMbPerSec;
   }
