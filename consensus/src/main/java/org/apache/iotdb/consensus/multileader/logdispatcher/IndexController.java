@@ -108,7 +108,7 @@ public class IndexController {
             newFile.getAbsolutePath());
       } else {
         // In the normal state, this branch should not be triggered.
-        logger.warn(
+        logger.info(
             "failed to flush sync index. cannot find previous version file {}, current file is {}",
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
