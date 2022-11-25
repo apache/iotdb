@@ -1791,7 +1791,62 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 800                            |
 |  Effective  | After restarting system        |
 
+
 ### MQTT Broker Configuration
+* enable\_mqtt\_service
+
+|    Name     | enable\_mqtt\_service。              |
+|:-----------:|:------------------------------------|
+| Description | Whether to enable the MQTT service  |
+|    Type     | Boolean                             |
+|   Default   | False                               |
+|  Effective  | Trigger                             |
+
+* mqtt\_host
+
+|    Name     | mqtt\_host                                   |
+|:-----------:|:---------------------------------------------|
+| Description | The host to which the MQTT service is bound  |
+|    Type     | String                                       |
+|   Default   | 0.0.0.0                                      |
+|   Effective    | Trigger                                      |
+
+* mqtt\_port
+
+|    Name     | mqtt\_port                                  |
+|:-----------:|:--------------------------------------------|
+| Description | The port to which the MQTT service is bound |
+|    Type     | Int32                                       |
+|   Default   | 1883                                        |
+|   Effective    | Trigger                                     |
+
+* mqtt\_handler\_pool\_size
+
+|Name| mqtt\_handler\_pool\_size                                   |
+|:---:|:------------------------------------------------------------|
+|Description| The size of the handler pool used to process MQTT messages  |
+|Type| Int32                                                       |
+|Default| 1                                                           |
+|Effective| Trigger                                                     |
+
+* mqtt\_payload\_formatter
+
+|    Name     | mqtt\_payload\_formatter       |
+|:-----------:|:-------------------------------|
+| Description | MQTT message payload formatter |
+|    Type     | String                         |
+|   Default   | JSON                           |
+|   Effective    | Trigger                        |
+
+* mqtt\_max\_message\_size
+
+|  Name  | mqtt\_max\_message\_size                 |
+|:------:|:-----------------------------------------|
+|   Description   | Maximum length of MQTT message in bytes  |
+|   Type   | Int32                                    |
+|  Default   | 1048576                                  |
+| Effective | Trigger                                  |
+
 
 * enable\_mqtt\_service
 
@@ -1849,15 +1904,22 @@ Different configuration parameters take effect in the following three ways:
 
 ### REST Service Configuration
 
+<<<<<<< HEAD
 * enable\_rest\_service
 
 |Name| enable\_rest\_service                   |
+=======
+* enable_rest_service
+
+|Name| enable_rest_service                   |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:--------------------------------------|
 |Description| Whether to enable the Rest service    |
 |Type| Boolean                               |
 |Default| false                                 |
 |Effective| After restarting system               |
 
+<<<<<<< HEAD
 * rest\_service\_port
 
 |Name| rest\_service\_port |
@@ -1870,12 +1932,27 @@ Different configuration parameters take effect in the following three ways:
 * enable\_swagger
 
 |Name| enable\_swagger         |
+=======
+* rest_service_port
+
+|Name| rest_service_port |
+|:---:|:------------------|
+|Description| The Rest service listens to the port number      |
+|Type| Int32             |
+|Default| 18080             |
+|Effective| After restarting system              |
+
+* enable_swagger
+
+|Name| enable_swagger         |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:-----------------------|
 |Description| Whether to enable swagger to display rest interface information |
 |Type| Boolean                |
 |Default| false                  |
 |Effective| After restarting system                   |
 
+<<<<<<< HEAD
 * rest\_query\_default\_row\_size\_limit
 
 |Name| rest\_query\_default\_row\_size\_limit                                                         |
@@ -1915,54 +1992,128 @@ Different configuration parameters take effect in the following three ways:
 * enable\_https
 
 |Name| cache\_init\_num           |
+=======
+* rest_query_default_row_size_limit
+
+|Name| rest_query_default_row_size_limit                                                         |
+|:---:|:------------------------------------------------------------------------------------------|
+|Description| The maximum number of rows in a result set that can be returned by a query                |
+|Type| Int32                                                                                     |
+|Default| 10000                                                                                     |
+|Effective| After restarting system                                                                   |
+
+* cache_expire
+
+|Name| cache_expire                                            |
+|:---:|:--------------------------------------------------------|
+|Description| Expiration time for caching customer login information  |
+|Type| Int32                                                   |
+|Default| 28800                                                   |
+|Effective| After restarting system                                 |
+
+* cache_max_num
+
+|Name| cache_max_num |
+|:---:|:--------------|
+|Description| The maximum number of users stored in the cache  |
+|Type| Int32         |
+|Default| 100           |
+|Effective| After restarting system          |
+
+* cache_init_num
+
+|Name| cache_init_num |
+|:---:|:---------------|
+|Description| Initial cache capacity        |
+|Type| Int32          |
+|Default| 10             |
+|Effective| After restarting system           |
+
+* enable_https
+
+|Name| cache_init_num           |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:-------------------------|
 |Description| REST Service Specifies whether to enable SSL configuration |
 |Type| Boolean                  |
 |Default| false                    |
 |Effective| After restarting system                     |
 
+<<<<<<< HEAD
 * key\_store\_path
 
 |Name| key\_store\_path |
+=======
+* key_store_path
+
+|Name| key_store_path |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:---------------|
 |Description| keyStore path (optional)  |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
+<<<<<<< HEAD
 * key\_store\_pwd
 
 |Name| key\_store\_pwd |
+=======
+* key_store_pwd
+
+|Name| key_store_pwd |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:---------------|
 |Description| keyStore Password (optional) |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
+<<<<<<< HEAD
 * trust\_store\_path
 
 |Name| trust\_store\_path |
+=======
+* trust_store_path
+
+|Name| trust_store_path |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:---------------|
 |Description| keyStore Password (optional) |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
+<<<<<<< HEAD
 * trust\_store\_pwd
 
 |Name| trust\_store\_pwd                  |
+=======
+* trust_store_pwd
+
+|Name| trust_store_pwd                  |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |:---:|:---------------------------------|
 |Description| trustStore Password (Optional)   |
 |Type| String                           |
 |Default| ""                               |
 |Effective| After restarting system          |
 
+<<<<<<< HEAD
 * idle\_timeout
 
 |Name| idle\_timeout  |
 |:---:|:--------------|
 |Description| SSL timeout duration, expressed in seconds |
 |Type| int32         |
+=======
+* idle_timeout
+
+|Name| idle_timeout  |
+|:---:|:--------------|
+|Description| SSL timeout duration, expressed in seconds |
+|Type| Int32         |
+>>>>>>> 4d447610fc (add mqtt and rest document)
 |Default| 5000          |
 |Effective| After restarting system          |
 
