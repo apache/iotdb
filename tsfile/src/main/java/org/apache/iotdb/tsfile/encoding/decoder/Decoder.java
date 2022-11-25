@@ -61,6 +61,8 @@ public abstract class Decoder {
           case FLOAT:
           case DOUBLE:
             return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          case TEXT:
+            return new TextRleDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }

@@ -143,6 +143,8 @@ public abstract class TSEncodingBuilder {
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
+        case TEXT:
+          return new TextRleEncoder();
         default:
           throw new UnSupportedDataTypeException("RLE doesn't support data type: " + type);
       }
@@ -322,7 +324,7 @@ public abstract class TSEncodingBuilder {
     @Override
     public Encoder getEncoder(TSDataType type) {
       if (type == TSDataType.TEXT) {
-        return new HuffmanEncoder(256);
+        return new HuffmanEncoder();
       }
       throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }

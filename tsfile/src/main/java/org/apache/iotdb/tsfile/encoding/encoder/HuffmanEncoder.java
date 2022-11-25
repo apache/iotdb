@@ -22,17 +22,15 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import org.apache.iotdb.tsfile.encoding.HuffmanTree.HuffmanCode;
 import org.apache.iotdb.tsfile.encoding.HuffmanTree.HuffmanTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
 public class HuffmanEncoder extends Encoder {
 
   private HuffmanTree[] byteFrequency;
-  private List<Integer> records;
+  private List<Binary> records;
   private HuffmanCode[] huffmanCodes;
   PriorityQueue<HuffmanTree> huffmanQueue;
   private HuffmanTree treeTop;
@@ -42,79 +40,47 @@ public class HuffmanEncoder extends Encoder {
   private int usednum;
   private int maxRecordLength;
   private int totLength;
-  public int recordnum;
+  private int recordnum;
 
-  private int symbolSetSize;
-
-  public HuffmanEncoder(int _symbolSetSize) {
+  public HuffmanEncoder() {
     super(TSEncoding.HUFFMAN);
-    symbolSetSize = _symbolSetSize;
     byteFrequency =
-        new HuffmanTree
-            [_symbolSetSize]; // byteFrequency[256] is used to save the frequency of end-of-records
-    for (int i = 0; i < _symbolSetSize; i++) byteFrequency[i] = new HuffmanTree();
-    records = new ArrayList<Integer>();
+        new HuffmanTree[257]; // byteFrequency[256] is used to save the frequency of end-of-records
+    for (int i = 0; i <= 256; i++) byteFrequency[i] = new HuffmanTree();
+    records = new ArrayList<Binary>();
     huffmanQueue = new PriorityQueue<HuffmanTree>(huffmanTreeComparator);
-    huffmanCodes = new HuffmanCode[_symbolSetSize];
-    for (int i = 0; i < _symbolSetSize; i++) {
+    huffmanCodes = new HuffmanCode[257];
+    for (int i = 0; i <= 256; i++) {
       huffmanCodes[i] = new HuffmanCode();
     }
-    used = new boolean[_symbolSetSize];
+    used = new boolean[257];
     treeTop = new HuffmanTree();
     reset();
   }
 
   @Override
-  public void encode(int value, ByteArrayOutputStream out) {
+  public void encode(Binary value, ByteArrayOutputStream out) {
     recordnum++;
+    maxRecordLength = Math.max(maxRecordLength, value.getLength());
     records.add(value);
-    byteFrequency[value].frequency++;
+    for (int i = 0; i < value.getLength(); i++) {
+      byte cur = value.getValues()[i];
+      int curr = (int) cur;
+      if (curr < 0) curr += (1 << 8);
+      byteFrequency[curr].frequency++;
+    }
+    byteFrequency[256].frequency++;
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
     buildHuffmanTree();
-    double cnt = 0;
-    double cnt2 = 0;
-    int tot = 0;
-    for (int i = 0; i < symbolSetSize; i++) {
-      if (byteFrequency[i].frequency != 0) tot += 1;
-    }
-    for (int i = 0; i < symbolSetSize; i++) {
-      if (byteFrequency[i].frequency != 0) {
-        double shang = -(Math.log((double) byteFrequency[i].frequency / recordnum) / Math.log(2));
-        cnt += Math.round(shang) * byteFrequency[i].frequency;
-      }
-    }
-    cnt /= 8;
-    //  System.out.println(cnt);
     List<Boolean> code = new ArrayList<>();
     getHuffmanCode(treeTop, code);
-
-    //        for (int i = 0; i < symbolSetSize; i++) {
-    //            if (byteFrequency[i].frequency != 0) {
-    //                System.out.print(i);
-    //                System.out.print(": ");
-    //                for (Boolean b : huffmanCodes[i].huffmanCode)
-    //                    System.out.print((b.toString()));
-    //                System.out.println("");
-    //            }
-    //        }
-
     flushHeader(out);
-    //        System.out.println("    huffman heaeder:");
-    //        System.out.print("    ");
-    //        System.out.println(out.size());
-    int temp = out.size();
-    for (int i = 0; i < records.size(); i++) {
-      flushRecord(records.get(i), out);
-    }
+    for (Binary rec : records) flushRecord(rec, out);
     reset();
     clearBuffer(out);
-
-    //        System.out.println("    huffman body:");
-    //        System.out.print("    ");
-    //        System.out.println(out.size() - temp);
   }
 
   @Override
@@ -128,13 +94,14 @@ public class HuffmanEncoder extends Encoder {
   }
 
   private void buildHuffmanTree() {
-    for (int i = 0; i < symbolSetSize; i++) {
+    for (int i = 0; i <= 256; i++) {
       if (byteFrequency[i].frequency != 0) {
         huffmanQueue.add(byteFrequency[i]);
         used[i] = true;
         usednum++;
       }
     }
+    usednum -= 1;
     while (huffmanQueue.size() > 1) {
       HuffmanTree cur = new HuffmanTree();
       cur.leftNode = huffmanQueue.poll();
@@ -149,10 +116,14 @@ public class HuffmanEncoder extends Encoder {
 
   private void getHuffmanCode(HuffmanTree cur, List<Boolean> code) {
     if (cur.isLeaf) {
-      for (int i = 0; i < code.size(); i++) {
-        int idx = (int) cur.originalbyte;
-        if (idx < 0) idx += (1 << 8);
-        huffmanCodes[idx].huffmanCode.add(code.get(i));
+      if (cur.isRecordEnd) {
+        for (int i = 0; i < code.size(); i++) huffmanCodes[256].huffmanCode.add(code.get(i));
+      } else {
+        for (int i = 0; i < code.size(); i++) {
+          int idx = (int) cur.originalbyte;
+          if (idx < 0) idx += (1 << 8);
+          huffmanCodes[idx].huffmanCode.add(code.get(i));
+        }
       }
       return;
     }
@@ -167,11 +138,18 @@ public class HuffmanEncoder extends Encoder {
   private void flushHeader(ByteArrayOutputStream out) {
     writeInt(recordnum, out); // write the number of records
     totLength += 4;
+    writeInt(
+        huffmanCodes[256].huffmanCode.size(),
+        out); // Write the length of huffman code of end-of-record sign
+    totLength += 4;
+    for (boolean b : huffmanCodes[256].huffmanCode) { // Write the end-of-record sign
+      writeBit(b, out);
+    }
     writeInt(usednum, out); // Write how many character have been used in this section
     totLength += 4;
-    for (int i = 0; i < symbolSetSize; i++) {
+    for (int i = 0; i < 256; i++) {
       if (used[i]) {
-        writeInt(i, out);
+        writeByte((byte) i, out);
         writeInt(
             huffmanCodes[i].huffmanCode.size(), out); // First we store the length of huffman code
         totLength += 8;
@@ -181,26 +159,28 @@ public class HuffmanEncoder extends Encoder {
     }
   }
 
-  private void flushRecord(Integer rec, ByteArrayOutputStream out) {
-    for (boolean b : huffmanCodes[rec].huffmanCode) {
-      writeBit(b, out);
-      //      if (b)
-      //        System.out.print(1);
-      //      else
-      //        System.out.print(0);
+  private void flushRecord(Binary rec, ByteArrayOutputStream out) {
+    for (byte r : rec.getValues()) {
+      int idx = (int) r;
+      if (idx < 0) idx += (1 << 8);
+      for (boolean b : huffmanCodes[idx].huffmanCode) writeBit(b, out);
     }
-    //    System.out.println("");
+    for (boolean b : huffmanCodes[256].huffmanCode) writeBit(b, out);
   }
 
   private void reset() {
-    for (int i = 0; i < symbolSetSize; i++) {
+    for (int i = 0; i < 256; i++) {
       byteFrequency[i].frequency = 0;
-      byteFrequency[i].originalbyte = i;
+      byteFrequency[i].originalbyte = (byte) i;
       byteFrequency[i].isLeaf = true;
       byteFrequency[i].isRecordEnd = false;
       huffmanCodes[i].huffmanCode.clear();
       used[i] = false;
     }
+    byteFrequency[256].frequency = 0;
+    byteFrequency[256].isLeaf = true;
+    byteFrequency[256].isRecordEnd = true;
+    huffmanCodes[256].huffmanCode.clear();
     records.clear();
     huffmanQueue.clear();
     usednum = 0;
