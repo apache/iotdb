@@ -76,7 +76,6 @@
   - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
   - 对于 Prometheus ，可以通过对外暴露的端口的 /metrics 获取。
   - 对于 IoTDB ，可以通过执行具体查询获取监控指标
-    
 
 ## 1.4. 监控指标有哪些？
 
@@ -94,11 +93,10 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_node   | name="total",status="Registered/Online/Unknown" | 已注册/在线/离线 datanode 的节点数量   | data_node{name="total",status="Registered",} 3.0 |
 
 #### 1.4.1.2. IoTDB 进程运行状态
-| process_cpu_load      | name="cpu"     | core      | process当前CPU占用率（%）          | process_cpu_load{name="process",} 5.0           |
-| process_cpu_time      | name="cpu"     | core      | process累计占用CPU时间（ns)        | process_cpu_time{name="process",} 3.265625E9    |
-
-
-
+| Metric           | Tags       | Description                 | Example                                      |
+| ---------------- | ---------- | --------------------------- | -------------------------------------------- |
+| process_cpu_load | name="cpu" | process当前CPU占用率（%）   | process_cpu_load{name="process",} 5.0        |
+| process_cpu_time | name="cpu" | process累计占用CPU时间（ns) | process_cpu_time{name="process",} 3.265625E9 |
 
 #### 1.4.1.3. Interface
 
