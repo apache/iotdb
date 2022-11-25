@@ -33,7 +33,7 @@
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
-        <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
+        <integrationTest.parallelMode>none</integrationTest.parallelMode>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.testEnv/>
@@ -83,7 +83,7 @@
             <dependency>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M7</version>
+                <version>3.0.0-M5</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
