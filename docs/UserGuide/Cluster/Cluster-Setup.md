@@ -108,10 +108,10 @@ iotdb-common.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-confignode.sh
+bash ./sbin/start-confignode.sh
 
 # Background
-nohup ./sbin/start-confignode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -147,10 +147,10 @@ Please set the important parameters in iotdb-datanode.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-datanode.sh
+bash ./sbin/start-datanode.sh
 
 # Background
-nohup ./sbin/start-datanode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -159,6 +159,32 @@ sbin\start-datanode.bat
 ```
 
 More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+## Start StandAlone
+If you just want to setup your IoTDB locally, 
+You can quickly init 1C1D (i.e. 1 Confignode and 1 Datanode) environment by our shells.
+
+Start on Windows:
+```
+sbin\start-datanode.bat
+```
+Start on Linux:
+```
+sudo bash sbin\start-standalone.sh
+```
+Besides, with our shell, you can also directly kill these processes.
+
+Stop on Windows:
+```
+sbin\stop-datanode.bat
+```
+Stop on Linux:
+```
+sudo bash sbin\stop-standalone.sh
+```
+
+Note: On Linux, the 1C1D processes both launches on background, and you can see confignode1.log and datanode1.log 
+for details. If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
+and use "sudo kill -9 <process-id>" to manually stop the processes.
 
 ### Start Cli
 

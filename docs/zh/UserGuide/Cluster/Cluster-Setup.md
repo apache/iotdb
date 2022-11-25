@@ -107,10 +107,10 @@ iotdb-common.properties：
 Linux 启动方式：
 ```
 # 前台启动
-./sbin/start-confignode.sh
+bash ./sbin/start-confignode.sh
 
 # 后台启动
-nohup ./sbin/start-confignode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
 ```
 
 Windows 启动方式：
@@ -147,10 +147,10 @@ iotdb-datanode.properties 中的重要配置如下：
 Linux 启动方式：
 ```
 # 前台启动
-./sbin/start-datanode.sh
+bash ./sbin/start-datanode.sh
 
 # 后台启动
-nohup ./sbin/start-datanode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
 ```
 
 Windows 启动方式：
@@ -159,6 +159,30 @@ sbin\start-datanode.bat
 ```
 
 具体参考 [DataNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
+
+## 启动单机
+除了集群之外， 我们的脚本也提供了单机 1C1D（也就是1个Confignode + 1个Datanode） 的便捷启动方式。
+
+Windows 启动方式:
+```
+sbin\start-datanode.bat
+```
+Linux 启动方式:
+```
+sudo bash sbin\start-standalone.sh
+```
+也可以使用脚本直接关闭这些进程。
+
+Windows 停止方式:
+```
+sbin\stop-datanode.bat
+```
+Linux 停止方式:
+```
+sudo bash sbin\stop-standalone.sh
+```
+注意： 在 Linux 平台上，1C1D 的两个进程都在后台启动，可以查看 confignode1.log 和 datanode1.log 来找到它们的运行日志。如果 stop-standalone.sh
+出现错误，可以使用“jps”命令或“ps aux | grep iotdb“命令来查看iotdb的进程，再使用" kill -9 <进程号>"的方式来停止它们。
 
 ### 启动 Cli
 

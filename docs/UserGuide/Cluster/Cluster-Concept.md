@@ -107,7 +107,7 @@ The figure contains 3 DataRegion groups, and the data_replication_factor is 3, s
 Among multiple replicas of each region group, data consistency is guaranteed through a consensus protocol, which routes read and write requests to multiple replicas.
 
 * Current supported consensus protocol
-  * Standalone：Could only be used when replica is 1, which is the empty implementation of the consensus protocol.
+  * Simple：Could only be used when replica is 1, which is the trivial implementation of the consensus protocol.
   * MultiLeader：Could be used in any number of replicas, only for DataRegion, writings can be applied on each replica and replicated asynchronously to other replicas.
   * Ratis：Raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。
   
