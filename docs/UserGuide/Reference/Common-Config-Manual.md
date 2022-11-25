@@ -94,7 +94,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |Effective|Only allowed to be modified in first start up|
 
-
 * region\_allocate\_strategy
 
 |    Name     | region\_allocate\_strategy                                                                               |
@@ -103,24 +102,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Type     | String                                                                                                   |
 |   Default   | GREEDY                                                                                                   |
 |  Effective  | After restarting system                                                                                  |
-
-* enable\_data\_partition\_inherit\_policy
-
-|    Name     | enable\_data\_partition\_inherit\_policy |
-|:-----------:|:-----------------------------------------|
-| Description |                                          |
-|    Type     ||
-|   Default   |                                          |
-|  Effective  |                                          |
-
-* leader\_distribution\_policy
-
-|    Name     | leader\_distribution\_policy |
-|:-----------:|:-----------------------------|
-| Description |                              |
-|    Type     ||
-|   Default   |                              |
-|  Effective  |                              | Configuration Configuration
 
 ### Cluster Management
 
@@ -434,24 +415,32 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 100000                                                 |
 |Effective| After restarting system                                |
 
-* tsfile\_size\_threshold
+* flush\_thread\_count
 
-|Name| tsfile\_size\_threshold |
+|Name| flush\_thread\_count |
 |:---:|:---|
-|Description| max tsfile size|
-|Type|Long|
-|Default| 536870912 |
-|Effective| After restarting system |
-
-
-* tsfile\_size\_threshold
-
-|Name| tsfile\_size\_threshold |
-|:---:|:---|
-|Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
-|Type| Int64 |
-|Default| 536870912 |
+|Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
+|Type| Int32 |
+|Default| 0 |
 |Effective|After restarting system|
+
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| Int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restarting system                                                                                              |
+
+* sub\_rawQuery\_thread\_count
+
+|Name| sub\_rawQuery\_thread\_count                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| Int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restarting system                                                                                                  |
 
 * enable\_partial\_insert
 
@@ -460,15 +449,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
 |Type| Bool |
 |Default| true |
-|Effective|After restarting system|
-
-* mtree\_snapshot\_interval
-
-|Name| mtree\_snapshot\_interval |
-|:---:|:---|
-|Description| The least interval line numbers of mlog.txt when creating a checkpoint and saving snapshot of MTree. Unit: line numbers|
-|Type| Int32 |
-|Default| 100000 |
 |Effective|After restarting system|
 
 * insert_multi_tablet_enable_multithreading_column_threshold
@@ -617,9 +597,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 2147483648 |
 |Effective|After restart system|
 
-* concurrent\_compaction\_thread
+* compaction\_thread\_count
 
-|Name| concurrent\_compaction\_thread |
+|Name| compaction\_thread\_count |
 |:---:|:---|
 |Description| thread num to execute compaction |
 |Type| Int32 |
@@ -654,187 +634,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Effective|After restart system|
 
 ### Write Ahead Log Configuration
-
-* enable\_wal
-
-|Name| enable\_wal |
-|:---:|:---|
-|Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
-|Type|Bool|
-|Default| true |
-|Effective|Trigger|
-
-* flush\_wal\_threshold
-
-|Name| flush\_wal\_threshold |
-|:---:|:---|
-|Description| After the WAL reaches this value, it is flushed to disk, and it is possible to lose at most flush_wal_threshold operations. |
-|Type|Int32|
-|Default| 10000 |
-|Effective|Trigger|
-
-* force\_wal\_period\_in\_ms
-
-|Name| force\_wal\_period\_in\_ms |
-|:---:|:---|
-|Description| The period during which the log is periodically forced to flush to disk(in milliseconds) |
-|Type|Int32|
-|Default| 10 |
-|Effective|Trigger|
-
-* fetch\_size
-
-|Name| fetch\_size |
-|:---:|:---|
-|Description| The amount of data read each time in batch (the number of data strips, that is, the number of different timestamps.) |
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restarting system|
-
-* enable\_stat\_monitor
-
-|Name| enable\_stat\_monitor |
-|:---:|:---|
-|Description| Whether to enable background statistics|
-|Type| Boolean |
-|Default| false |
-|Effective|After restarting system|
-
-* concurrent\_flush\_thread
-
-|Name| concurrent\_flush\_thread |
-|:---:|:---|
-|Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
-|Type| Int32 |
-|Default| 0 |
-|Effective|After restarting system|
-
-* concurrent\_query\_thread
-
-|Name| concurrent\_query\_thread                                                                                            |
-|:---:|:---------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|Type| Int32                                                                                                                |
-|Default| 16                                                                                                                   |
-|Effective| After restarting system                                                                                              |
-
-* concurrent\_sub\_rawQuery\_thread
-
-|Name| concurrent\_sub\_rawQuery\_thread                                                                                        |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|Type| Int32                                                                                                                    |
-|Default| 8                                                                                                                        |
-|Effective| After restarting system                                                                                                  |
-
-* tsfile\_storage\_fs
-
-|Name| tsfile\_storage\_fs |
-|:---:|:---|
-|Description| The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
-|Type| String |
-|Default|LOCAL |
-|Effective|Only allowed to be modified in first start up|
-
-* core\_site\_path
-
-|Name| core\_site\_path |
-|:---:|:---|
-|Description| Absolute file path of core-site.xml if Tsfile and related data files are stored in HDFS.|
-|Type| String |
-|Default|/etc/hadoop/conf/core-site.xml |
-|Effective|After restarting system|
-
-* hdfs\_site\_path
-
-|Name| hdfs\_site\_path |
-|:---:|:---|
-|Description| Absolute file path of hdfs-site.xml if Tsfile and related data files are stored in HDFS.|
-|Type| String |
-|Default|/etc/hadoop/conf/hdfs-site.xml |
-|Effective|After restarting system|
-
-* hdfs\_ip
-
-|Name| hdfs\_ip |
-|:---:|:---|
-|Description| IP of HDFS if Tsfile and related data files are stored in HDFS. **If there are more than one hdfs\_ip in configuration, Hadoop HA is used.**|
-|Type| String |
-|Default|localhost |
-|Effective|After restarting system|
-
-* hdfs\_port
-
-|Name| hdfs\_port |
-|:---:|:---|
-|Description| Port of HDFS if Tsfile and related data files are stored in HDFS|
-|Type| String |
-|Default|9000 |
-|Effective|After restarting system|
-
-* dfs\_nameservices
-
-|Name| hdfs\_nameservices |
-|:---:|:---|
-|Description| Nameservices of HDFS HA if using Hadoop HA|
-|Type| String |
-|Default|hdfsnamespace |
-|Effective|After restarting system|
-
-* dfs\_ha\_namenodes
-
-|Name| hdfs\_ha\_namenodes |
-|:---:|:---|
-|Description| Namenodes under DFS nameservices of HDFS HA if using Hadoop HA|
-|Type| String |
-|Default|nn1,nn2 |
-|Effective|After restarting system|
-
-* dfs\_ha\_automatic\_failover\_enabled
-
-|Name| dfs\_ha\_automatic\_failover\_enabled |
-|:---:|:---|
-|Description| Whether using automatic failover if using Hadoop HA|
-|Type| Boolean |
-|Default|true |
-|Effective|After restarting system|
-
-* dfs\_client\_failover\_proxy\_provider
-
-|Name| dfs\_client\_failover\_proxy\_provider |
-|:---:|:---|
-|Description| Proxy provider if using Hadoop HA and enabling automatic failover|
-|Type| String |
-|Default|org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
-|Effective|After restarting system|
-
-
-* hdfs\_use\_kerberos
-
-|Name| hdfs\_use\_kerberos |
-|:---:|:---|
-|Description| Whether use kerberos to authenticate hdfs|
-|Type| String |
-|Default|false |
-|Effective|After restarting system|
-
-* kerberos\_keytab\_file_path
-
-|Name| kerberos\_keytab\_file_path |
-|:---:|:---|
-|Description| Full path of kerberos keytab file|
-|Type| String |
-|Default|/path |
-|Effective|After restarting system|
-
-* kerberos\_principal
-
-|Name| kerberos\_principal |
-|:---:|:---|
-|Description| Kerberos pricipal|
-|Type| String |
-|Default|your principal |
-|Effective|After restarting system|
 
 ### TsFile Configurations
 
@@ -919,7 +718,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | SNAPPY                                        |
 |  Effective  | Trigger                                       |
 
-
 * bloomFilterErrorRate
 
 |Name| bloomFilterErrorRate |
@@ -929,7 +727,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 0.05 |
 |Effective|After restarting system|
 
-
 * freq_snr
 
 |Name| freq_snr |
@@ -938,7 +735,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type|Double|
 |Default| 40.0 |
 |Effective|Trigger|
-
 
 * freq_block_size
 

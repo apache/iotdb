@@ -500,7 +500,8 @@ public class IoTDBDescriptor {
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "dn_session_timeout_threshold", Integer.toString(conf.getSessionTimeoutThreshold()))));
+                "dn_session_timeout_threshold",
+                Integer.toString(conf.getSessionTimeoutThreshold()))));
     conf.setMaxNumberOfSyncFileRetry(
         Integer.parseInt(
             properties

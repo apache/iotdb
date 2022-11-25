@@ -94,15 +94,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* data\_region\_per\_processor
-
-|名字| data\_region\_per\_processor |
-|:---:|:-----------------------------|
-|描述|                              |
-|类型|                              |
-|默认值|                              |
-|改后生效方式||
-
 * region\_allocate\_strategy
 
 |名字| region\_allocate\_strategy |
@@ -112,23 +103,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| GREEDY |
 |改后生效方式|重启服务生效|
 
-* enable\_data\_partition\_inherit\_policy
-
-|名字| enable\_data\_partition\_inherit\_policy |
-|:---:|:-----------------------------------------|
-|描述|                                          |
-|类型|                                          |
-|默认值|                                          |
-|改后生效方式||
-
-* leader\_distribution\_policy
-
-|名字| leader_distribution_policy |
-|:---:|:---|
-|描述| |
-|类型| |
-|默认值| |
-|改后生效方式||
 
 ### 集群管理
 
@@ -172,15 +146,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| true |
 |改后生效方式|重启服务生效|
 
-* write\_read\_schema\_free\_memory\_proportion
-
-|名字| write\_read\_schema\_free\_memory\_proportion                                                |
-|:---:|:---------------------------------------------------------------------------------------------|
-|描述| 读写内存分配比率。 参数形式为a : b : c : d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
-|类型| String                                                                                       |
-|默认值| 4:3:1:2                                                                                      |
-|改后生效方式| 重启服务生效                                                                                       |
-
 * concurrent\_writing\_time\_partition
 
 |名字| concurrent\_writing\_time\_partition |
@@ -207,15 +172,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| Double                                                              |
 |默认值| 0.4                                                                 |
 |改后生效方式| 重启服务生效                                                              |
-
-* time\_index\_memory\_proportion
-
-|名字| time\_index\_memory\_proportion |
-|:---:|:--------------------------------|
-|描述| 分配给读 timeIndex 的内存占比            |
-|类型| Double                           |
-|默认值| 0.2                             |
-|改后生效方式| 重启服务生效                          |
 
 * buffered\_arrays\_memory\_proportion
 
@@ -244,15 +200,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 0.001 |
 |改后生效方式|重启服务生效|
 
-* max\_deduplicated\_path\_num
-
-|名字| max\_deduplicated\_path\_num |
-|:---:|:---|
-|描述| 在一次查询中，允许最大重复路径的数据量，这只是一个建议值，实际限制是这个默认值和计算值的之间 |
-|类型| Int32 |
-|默认值| 1000 |
-|改后生效方式|重启服务生效|
-
 * check\_period\_when\_insert\_blocked
 
 |名字| check\_period\_when\_insert\_blocked |
@@ -260,24 +207,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 当插入被拒绝时，等待时间（以毫秒为单位）去再次检查系统，默认为50。若插入被拒绝，读取负载低，可以设置大一些。 |
 |类型| Int32 |
 |默认值| 50 |
-|改后生效方式|重启服务生效|
-
-* max\_waiting\_time\_when\_insert\_blocked
-
-|名字| max\_waiting\_time\_when\_insert\_blocked |
-|:---:|:---|
-|描述| 当插入的等待时间（以毫秒为单位）超过此值时，抛出异常。默认为10000。若插入被拒绝，读取负载低，可以设置大一些。|
-|类型| Int32 |
-|默认值| 10000 |
-|改后生效方式|重启服务生效|
-
-* estimated\_series\_size
-
-|名字| estimated\_series\_size |
-|:---:|:---|
-|描述| 在Mtree中一个时间序列的评估元数据大小（以字节byte为单位）。|
-|类型| Int32 |
-|默认值| 300 |
 |改后生效方式|重启服务生效|
 
 * io\_task\_queue\_size\_for\_flushing
@@ -448,15 +377,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 查询配置
 
-* enable\_last\_cache
-
-|名字| enable\_last\_cache |
-|:---:|:---|
-|描述| 是否开启最新点缓存 |
-|类型| Boolean |
-|默认值| true |
-|改后生效方式|重启服务生效|
-
 * meta\_data\_cache\_enable
 
 |名字| meta\_data\_cache\_enable |
@@ -474,6 +394,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| String                                                                                                                                                                    |
 |默认值| 1 : 100 : 200 : 300 : 400                                                                                                                                                 |
 |改后生效方式| 重启服务生效                                                                                                                                                                    |
+
+* enable\_last\_cache
+
+|名字| enable\_last\_cache |
+|:---:|:---|
+|描述| 是否开启最新点缓存 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
 
 * metadata\_node\_cache\_size
 
@@ -556,6 +485,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
+* slow\_query\_threshold
+
+|名字| slow\_query\_threshold |
+|:---:|:---|
+|描述| 慢查询的时间成本（毫秒ms）阈值。 |
+|类型| Int32 |
+|默认值| 5000 |
+|改后生效方式|触发生效|
+
 * enable\_external\_sort
 
 |名字| enable\_external\_sort |
@@ -593,33 +531,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| long |
 |默认值| 36000000 |
 |改后生效方式|重启服务生效|
-
-* wal\_buffer\_size
-
-|名字| wal\_buffer\_size |
-|:---:|:---|
-|描述| 写前日志的 buffer 大小 |
-|类型|Int32|
-|默认值| 16777216 |
-|改后生效方式|触发生效|
-
-* seq\_tsfile\_size
-
-|名字| seq\_tsfile\_size |
-|:---:|:---|
-|描述| 每个顺序tsfile大小,单位：byte |
-|类型|Int32|
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
-
-* unseq\_tsfile\_size
-
-|名字| unseq\_tsfile\_size |
-|:---:|:---|
-|描述| 每个无序 tsfile 大小,单位：byte |
-|类型| Int32 |
-|默认值| 1 |
-|改后生效方式| 重启服务生效|
 
 * memtable\_size\_threshold
 
@@ -693,41 +604,41 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 100000                                |
 |改后生效方式| 重启服务生效                                |
 
-* concurrent\_flush\_thread
+* flush\_thread\_count
 
-|名字| concurrent\_flush\_thread |
+|名字| flush\_thread\_count |
 |:---:|:---|
 |描述| 当 IoTDB 将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
 |类型| Int32 |
 |默认值| 0 |
 |改后生效方式|重启服务生效|
 
-* concurrent\_query\_thread
+* query\_thread\_count
 
-|名字| concurrent\_query\_thread                                                   |
+|名字| query\_thread\_count                                                   |
 |:---:|:----------------------------------------------------------------------------|
 |描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
 |类型| Int32                                                                       |
 |默认值| 16                                                                          |
 |改后生效方式| 重启服务生效                                                                      |
 
-* concurrent\_sub\_rawQuery\_thread
+* sub\_rawQuery\_thread\_count
 
-|名字| concurrent\_sub\_rawQuery\_thread |
-|:---:|:--|
-|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。|
-|类型| Int32 |
-|默认值| 8 |
-|改后生效方式|重启服务生效|
+|名字| sub\_rawQuery\_thread\_count                    |
+|:---:|:------------------------------------------------|
+|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数 |
+|类型| Int32                                           |
+|默认值| 8                                               |
+|改后生效方式| 重启服务生效                                          |
 
 * raw\_query\_blocking\_queue\_capacity
 
 |名字| raw\_query\_blocking\_queue\_capacity |
-|:---:|:--|
-|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。|
-|类型| Int32 |
-|默认值| 5 |
-|改后生效方式|重启服务生效|
+|:---:|:--------------------------------------|
+|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5             |
+|类型| Int32                                 |
+|默认值| 5                                     |
+|改后生效方式| 重启服务生效                                |
 
 * chunk\_buffer\_pool\_enable
 
@@ -756,41 +667,14 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| true |
 |改后生效方式|重启服务生效|
 
-* enable\_mtree\_snapshot
+* insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
-|名字| enable\_mtree\_snapshot |
-|:---:|:---|
-|描述| 是否启用 MTree snapshot。 从 0.11.0 开始默认为 false。|
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|重启服务生效|
-
-* mtree\_snapshot\_interval
-
-|名字| mtree\_snapshot\_interval |
-|:---:|:---|
-|描述| 创建 MTree snapshot 时至少累积的 mlog 日志行数。单位为日志行数。|
-|类型| Int32 |
-|默认值| 100000 |
-|改后生效方式|重启服务生效|
-
-* mtree\_snapshot\_threhold\_time
-
-|名字| mtree\_snapshot\_threhold\_time |
-|:---:|:---|
-|描述| MTree 修改的阈值间隔时间，若最后一次修改时间小于这个阈值，则不会创建 MTree snapshot。 单位：秒。 默认值：1 小时（3600 秒）|
-|类型| Int32 |
-|默认值| 3600 |
-|改后生效方式|重启服务生效|
-
-- insert_multi_tablet_enable_multithreading_column_threshold
-
-|     名字     | insert_multi_tablet_enable_multithreading_column_threshold |
-| :----------: | :--------------------------------------------------------- |
-|     描述     | 插入时启用多线程插入列数的阈值                             |
-|     类型     | Int32                                                      |
-|    默认值    | 10                                                         |
-| 改后生效方式 | 重启服务生效                                               |
+|     名字     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold |
+| :----------: |:-----------------------------------------------------------------|
+|     描述     | 插入时启用多线程插入列数的阈值                                                  |
+|     类型     | Int32                                                            |
+|    默认值    | 10                                                               |
+| 改后生效方式 | 重启服务生效                                                           |
 
 ### 合并配置
 
@@ -819,24 +703,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 跨空间合并，开启将乱序文件合并到顺序文件中 |
 |类型| Boolean |
 |默认值| true |
-|改后生效方式|重启服务生效|
-
-* cross\_compaction\_strategy
-
-|名字| cross\_compaction\_strategy |
-|:---:|:---|
-|描述| 跨空间合并的策略 |
-|类型| String |
-|默认值| rewrite\_compaction |
-|改后生效方式|重启服务生效|
-
-* inner\_compaction\_strategy
-
-|名字| cross\_compaction\_strategy |
-|:---:|:---|
-|描述| 空间内合并的策略 |
-|类型| String|
-|默认值| size\_tiered\_compaction |
 |改后生效方式|重启服务生效|
 
 * compaction\_priority
@@ -929,9 +795,9 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 2147483648 |
 |改后生效方式| 重启服务生效|
 
-* concurrent\_compaction\_thread
+* compaction\_thread\_count
 
-|名字| concurrent\_compaction\_thread |
+|名字| compaction\_thread\_count |
 |:---:|:---|
 |描述| 执行合并任务的线程数目 |
 |类型| Int32 |
@@ -976,169 +842,14 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 写前日志配置
 
-* enable\_wal
+* wal\_buffer\_size
 
-|名字| enable\_wal |
+|名字| wal\_buffer\_size |
 |:---:|:---|
-|描述| 是否开启写前日志，默认值为 true 表示开启，配置成 false 表示关闭 |
-|类型| Boolean|
-|默认值| true |
-|改后生效方式|触发生效|
-
-* enable\_discard\_out\_of\_order\_data
-
-|名字| enable\_discard\_out\_of\_order\_data |
-|:---:|:---|
-|描述| 是否丢弃乱序数据，默认值为 false 表示关闭 |
-|类型| Boolean |
-|默认值| false |
-|改后生效方式|触发生效|
-
-* flush\_wal\_threshold
-
-|名字| flush\_wal\_threshold |
-|:---:|:---|
-|描述| 写前日志的条数达到该值之后，持久化到磁盘，有可能丢失至多 flush\_wal\_threshold 个操作 |
-|类型| int |
-|默认值| 10000 |
-|改后生效方式|触发生效|
-
-* force\_wal\_period\_in\_ms
-
-|名字| force\_wal\_period\_in\_ms |
-|:---:|:---|
-|描述| 写前日志定期持久化到磁盘的周期，单位毫秒，有可能丢失至多 force\_wal\_period\_in\_ms 毫秒的操作。 |
-|类型| int |
-|默认值| 100 |
-|改后生效方式|触发生效|
-
-
-* freq_snr
-
-|名字| freq_snr |
-|:---:|:---|
-|描述| 有损的FREQ编码的信噪比 |
-|类型|Double|
-|默认值| 40.0 |
-|改后生效方式|触发生效|
-
-
-* freq_block_size
-
-|名字| freq_block_size |
-|:---:|:---|
-|描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
+|描述| 写前日志的 buffer 大小 |
 |类型|Int32|
-|默认值| 1024 |
+|默认值| 16777216 |
 |改后生效方式|触发生效|
-
-* tsfile\_storage\_fs
-
-|名字| tsfile\_storage\_fs |
-|:---:|:---|
-|描述| Tsfile 和相关数据文件的存储文件系统。目前支持 LOCAL（本地文件系统）和 HDFS 两种 |
-|类型| String |
-|默认值| LOCAL |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* core\_site\_path
-
-|名字| core\_site\_path |
-|:---:|:---|
-|描述| 在 Tsfile 和相关数据文件存储到 HDFS 的情况下用于配置 core-site.xml 的绝对路径 |
-|类型| String |
-|默认值| /etc/hadoop/conf/core-site.xml |
-|改后生效方式|重启服务生效|
-
-* hdfs\_site\_path
-
-|名字| hdfs\_site\_path |
-|:---:|:---|
-|描述| 在 Tsfile 和相关数据文件存储到 HDFS 的情况下用于配置 hdfs-site.xml 的绝对路径 |
-|类型| String |
-|默认值| /etc/hadoop/conf/hdfs-site.xml |
-|改后生效方式|重启服务生效|
-
-* hdfs\_ip
-
-|名字| hdfs\_ip |
-|:---:|:---|
-|描述| 在 Tsfile 和相关数据文件存储到 HDFS 的情况下用于配置 HDFS 的 IP。**如果配置了多于 1 个 hdfs\_ip，则表明启用了 Hadoop HA**|
-|类型| String |
-|默认值|localhost |
-|改后生效方式|重启服务生效|
-
-* hdfs\_port
-
-|名字| hdfs\_port |
-|:---:|:---|
-|描述| 在 Tsfile 和相关数据文件存储到 HDFS 的情况下用于配置 HDFS 的端口 |
-|类型| String |
-|默认值| 9000 |
-|改后生效方式|重启服务生效|
-
-* dfs\_nameservices
-
-|名字| hdfs\_nameservices |
-|:---:|:---|
-|描述| 在使用 Hadoop HA 的情况下用于配置 HDFS 的 nameservices |
-|类型| String |
-|默认值| hdfsnamespace |
-|改后生效方式|重启服务生效|
-
-* dfs\_ha\_namenodes
-
-|名字| hdfs\_ha\_namenodes |
-|:---:|:---|
-|描述| 在使用 Hadoop HA 的情况下用于配置 HDFS 的 nameservices 下的 namenodes |
-|类型| String |
-|默认值| nn1,nn2 |
-|改后生效方式|重启服务生效|
-
-* dfs\_ha\_automatic\_failover\_enabled
-
-|名字| dfs\_ha\_automatic\_failover\_enabled |
-|:---:|:---|
-|描述| 在使用 Hadoop HA 的情况下用于配置是否使用失败自动切换 |
-|类型| Boolean |
-|默认值| true |
-|改后生效方式|重启服务生效|
-
-* dfs\_client\_failover\_proxy\_provider
-
-|名字| dfs\_client\_failover\_proxy\_provider |
-|:---:|:---|
-|描述| 在使用 Hadoop HA 且使用失败自动切换的情况下配置失败自动切换的实现方式 |
-|类型| String |
-|默认值| org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider |
-|改后生效方式|重启服务生效|
-
-* hdfs\_use\_kerberos
-
-|名字| hdfs\_use\_kerberos |
-|:---:|:---|
-|描述| 是否使用 kerberos 验证访问 hdfs |
-|类型| String |
-|默认值| false |
-|改后生效方式|重启服务生效|
-
-* kerberos\_keytab\_file_path
-
-|名字| kerberos\_keytab\_file_path |
-|:---:|:---|
-|描述| kerberos keytab file 的完整路径 |
-|类型| String |
-|默认值| /path |
-|改后生效方式|重启服务生效|
-
-* kerberos\_principal
-
-|名字| kerberos\_principal |
-|:---:|:---|
-|描述| Kerberos 认证原则 |
-|类型| String |
-|默认值| your principal |
-|改后生效方式|重启服务生效|
 
 ### TsFile 配置
 
@@ -1232,13 +943,22 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 1 |
 |改后生效方式|触发生效|
 
-* slow\_query\_threshold
+* freq_snr
 
-|名字| slow\_query\_threshold |
+|名字| freq_snr |
 |:---:|:---|
-|描述| 慢查询的时间成本（毫秒ms）阈值。 |
-|类型| Int32 |
-|默认值| 5000 |
+|描述| 有损的FREQ编码的信噪比 |
+|类型|Double|
+|默认值| 40.0 |
+|改后生效方式|触发生效|
+
+* freq_block_size
+
+|名字| freq_block_size |
+|:---:|:---|
+|描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
+|类型|Int32|
+|默认值| 1024 |
 |改后生效方式|触发生效|
 
 ### 水印模块配置
@@ -1300,7 +1020,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 无 |
 |改后生效方式|重启服务生效|
 
-
 * admin\_name
 
 |名字| admin\_name |
@@ -1347,15 +1066,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型| String                                                  |
 |默认值| 1:1:1                                                   |
 |改后生效方式| 重启服务生效                                                  |
-
-* udf\_root\_dir
-
-|名字| udf\_root\_dir |
-|:---:|:---|
-|描述| 取消注释用以下字段来配置udf根目录。 |
-|类型| String |
-|默认值| ext/udf(Windows:ext\\udf) |
-|改后生效方式|重启服务生效|
 
 * udf\_lib\_dir
 
