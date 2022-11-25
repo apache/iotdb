@@ -190,7 +190,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 1                                                                                                                                                                                           |
 |  Effective  | After restarting system                                                                                                                                                                     |
 
-
 * primitive\_array\_size
 
 |Name| primitive\_array\_size |
@@ -245,7 +244,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 0.001                                                        |
 |  Effective  | After restarting system                                      |
 
-
 * check\_period\_when\_insert\_blocked
 
 |Name| check\_period\_when\_insert\_blocked                                        |
@@ -281,7 +279,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| Int32 |
 |Default| 1000 |
 |Effective|After restarting system|
-
 
 ### Schema Engine Configuration
 
@@ -397,10 +394,54 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Query Configurations
 
+* read\_consistency\_level
+
+|    Name     | mpp\_data\_exchange\_core\_pool\_size        |
+|:-----------:|:---------------------------------------------|
+| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+|    Type     | string                                          |
+|   Default   | strong                                           |
+|  Effective  | After restarting system                      |
+
+* meta\_data\_cache\_enable
+
+|Name| meta\_data\_cache\_enable |
+|:---:|:---|
+|Description| Whether to cache meta data(BloomFilter, ChunkMetadata and TimeSeriesMetadata) or not.|
+|Type|Boolean|
+|Default| true |
+|Effective| After restarting system|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|Name| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others. |
+|Default| 1 : 100 : 200 : 300 : 400   |
+|Effective| After restarting system |
+
+* enable\_last\_cache
+
+|Name| enable\_last\_cache |
+|:---:|:---|
+|Description| Whether to enable LAST cache. |
+|Type| Boolean |
+|Default| true |
+|Effective|After restarting system|
+
+* max\_deduplicated\_path\_num
+
+|Name| max\_deduplicated\_path\_num |
+|:---:|:---|
+|Description| allowed max numbers of deduplicated path in one query. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
-| :---------: | :------------------------------------------- |
+|:-----------:|:---------------------------------------------|
 | Description | Core size of ThreadPool of MPP data exchange |
 |    Type     | int                                          |
 |   Default   | 10                                           |
@@ -408,84 +449,93 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * mpp\_data\_exchange\_max\_pool\_size
 
-|    Name     | mpp\_data\_exchange\_max\_pool\_size        |
-| :---------: | :------------------------------------------ |
-| Description | Max size of ThreadPool of MPP data exchange |
-|    Type     | int                                         |
-|   Default   | 10                                          |
-|  Effective  | After restarting system                     |
+|Name| mpp\_data\_exchange\_max\_pool\_size |
+|:---:|:-----------------------------------------------|
+|Description| Max size of ThreadPool of MPP data exchange         |
+|Type| int                                            |
+|Default| 10                                             |
+|Effective| After restarting system                        |
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
-|    Name     | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
-| :---------: | :--------------------------------------------- |
-| Description | Max waiting time for MPP data exchange         |
-|    Type     | long                                           |
-|   Default   | 1000                                           |
-|  Effective  | After restarting system                        |
+|Name| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:---:|:---|
+|Description| Max waiting time for MPP data exchange |
+|Type| long |
+|Default| 1000 |
+|Effective|After restarting system|
 
 * driver\_task\_execution\_time\_slice\_in\_ms
 
-|    Name     | driver\_task\_execution\_time\_slice\_in\_ms |
-| :---------: | :------------------------------------------- |
-| Description | Maximum execution time of a DriverTask       |
-|    Type     | int                                          |
-|   Default   | 100                                          |
-|  Effective  | After restarting system                      |
+|Name| driver\_task\_execution\_time\_slice\_in\_ms |
+|:---:|:---|
+|Description| Maximum execution time of a DriverTask |
+|Type| int |
+|Default| 100 |
+|Effective|After restarting system|
 
 * max\_tsblock\_size\_in\_bytes
 
-|    Name     | max\_tsblock\_size\_in\_bytes |
-| :---------: | :---------------------------- |
-| Description | Maximum capacity of a TsBlock |
-|    Type     | int                           |
-|   Default   | 1024 * 1024 (1 MB)            |
-|  Effective  | After restarting system       |
+|Name| max\_tsblock\_size\_in\_bytes |
+|:---:|:---|
+|Description| Maximum capacity of a TsBlock |
+|Type| int |
+|Default| 1024 * 1024 (1 MB) |
+|Effective|After restarting system|
 
 * max\_tsblock\_line\_numbers
 
-|    Name     | max\_tsblock\_line\_numbers                 |
-| :---------: | :------------------------------------------ |
-| Description | Maximum number of lines in a single TsBlock |
-|    Type     | int                                         |
-|   Default   | 1000                                        |
-|  Effective  | After restarting system                     |
-
-* default\_fill\_interval
-
-|    Name     | default\_fill\_interval                         |
-| :---------: | :---------------------------------------------- |
-| Description | Default interval of `group by fill` query in ms |
-|    Type     | Int32                                           |
-|   Default   | -1                                              |
-|  Effective  | After restarting system                         |
-
-* group_by_fill_cache_size_in_mb
-
-|    Name     | group_by_fill_cache_size_in_mb      |
-| :---------: | :---------------------------------- |
-| Description | Cache size of `group by fill` query |
-|    Type     | Float                               |
-|   Default   | 1.0                                 |
-|  Effective  | After restarting system             |
-
-* coordinator\_read\_executor\_size
-
-|Name| coordinator\_read\_executor\_size |
+|Name| max\_tsblock\_line\_numbers |
 |:---:|:---|
-|Description| The num of thread used in coordinator for query operation |
-|Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Description| Maximum number of lines in a single TsBlock |
+|Type| int |
+|Default| 1000 |
+|Effective|After restarting system|
 
-* coordinator\_write\_executor\_size
+* slow\_query\_threshold
 
-|Name| coordinator\_write\_executor\_size |
+|Name| slow\_query\_threshold |
 |:---:|:---|
-|Description| The num of thread used in coordinator for write operation |
+|Description| Time cost(ms) threshold for slow query. |
 |Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Default| 5000 |
+|Effective|Trigger|
+
+* query\_timeout\_threshold
+
+|Name| query\_timeout\_threshold |
+|:---:|:---|
+|Description| The max executing time of query. unit: ms |
+|Type| Int32 |
+|Default| 60000 |
+|Effective| After restarting system|
+
+* max\_allowed\_concurrent\_queries
+
+|Name| max\_allowed\_concurrent\_queries |
+|:---:|:---|
+|Description| The maximum allowed concurrently executing queries. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| How many threads can concurrently execute query statement. When <= 0, use CPU core number. |
+|Type| Int32                                                               |
+|Default | CPU core number                                                    |
+|Effective| After restarting system |
+
+* batch\_size
+
+|Name| batch\_size |
+|:---:|:---|
+|Description| The amount of data iterate each time in server (the number of data strips, that is, the number of different timestamps.) |
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restarting system|
 
 ### Storage Engine Configuration
 
@@ -506,7 +556,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Type     | Long                                                         |
 |   Default   | 1073741824                                                   |
 |  Effective  | when enable\_mem\_control is false & After restarting system |
-
 
 * write\_memory\_variation\_report\_proportion
 
@@ -589,24 +638,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 0                                                                                                                                                                                                                   |
 |  Effective  | After restarting system                                                                                                                                                                                             |
 
-* query\_thread\_count
-
-|    Name     | query\_thread\_count                                                                                                 |
-| :---------: | :------------------------------------------------------------------------------------------------------------------- |
-| Description | The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|    Type     | Int32                                                                                                                |
-|   Default   | 16                                                                                                                   |
-|  Effective  | After restarting system                                                                                              |
-
-* sub\_rawQuery\_thread\_count
-
-|    Name     | sub\_rawQuery\_thread\_count                                                                                             |
-| :---------: | :----------------------------------------------------------------------------------------------------------------------- |
-| Description | The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|    Type     | Int32                                                                                                                    |
-|   Default   | 8                                                                                                                        |
-|  Effective  | After restarting system                                                                                                  |
-
 * enable\_partial\_insert
 
 |    Name     | enable\_partial\_insert                                                                        |
@@ -615,7 +646,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Type     | Bool                                                                                           |
 |   Default   | true                                                                                           |
 |  Effective  | After restarting system                                                                        |
-
 
 ### Compaction Configurations
 
@@ -902,8 +932,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 1024                                                                                                                                                                         |
 |  Effective  | Trigger                                                                                                                                                                      |
 
-### Watermark Configuration
-
 ### Authorization Configuration
 
 * authorizer\_provider\_class
@@ -978,7 +1006,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Type     | int32                                             |
 |   Default   | 30                                                |
 |  Effective  | After restarting system                           |
-
 
 ### UDF Configuration
 
