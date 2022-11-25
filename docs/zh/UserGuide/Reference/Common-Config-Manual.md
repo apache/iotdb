@@ -25,6 +25,14 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * `iotdb-common.properties`：IoTDB 的通用配置文件。
 
+## 热修改配置项
+
+为方便用户使用，IoTDB 为用户提供了热修改功能，即在系统运行过程中修改 `iotdb-datanode.properties` 和 `iotdb-common.properties` 中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`热加载`
+的均为支持热修改的配置参数。
+
+通过 Session 或 Cli 发送 ```load configuration``` 命令（SQL）至 IoTDB 可触发配置热加载。
+
+
 ## 系统配置项
 
 ### 副本配置
@@ -261,7 +269,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 开启后会预估每次查询的内存使用量，如果超过可用内存，会拒绝本次查询 |
 |类型| bool                              |
 |默认值| true                              |
-|改后生效方式| 触发生效                              |
+|改后生效方式| 热加载                              |
 
 * partition\_cache\_size
 
@@ -281,7 +289,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| mlog 的 buffer 大小 |
 |类型| int32 |
 |默认值| 1048576 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * sync\_mlog\_period\_in\_ms
 
@@ -564,7 +572,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 慢查询的时间成本（毫秒ms）阈值。 |
 |类型| int32 |
 |默认值| 5000 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * enable\_external\_sort
 
@@ -611,7 +619,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 时间戳精度，支持 ms、us、ns |
 |     类型     | String                      |
 |    默认值    | ms                          |
-| 改后生效方式 | 触发生效                    |
+| 改后生效方式 | 热加载                    |
 
 * default\_ttl\_in\_ms
 
@@ -638,7 +646,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 是否开启定时刷盘顺序 memtable       |
 |     类型     | Boolean                             |
 |    默认值    | false                               |
-| 改后生效方式 | 触发生效                            |
+| 改后生效方式 | 热加载                            |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
@@ -647,7 +655,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
 |类型| int32 |
 |默认值| 3600000 |
-|改后生效方式| 触发生效 |
+|改后生效方式| 热加载 |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -656,7 +664,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 检查顺序 memtable 是否需要刷盘的时间间隔 |
 |类型| int32 |
 |默认值| 600000 |
-|改后生效方式| 触发生效 |
+|改后生效方式| 热加载 |
 
 * enable\_timed\_flush\_unseq\_memtable
 
@@ -665,7 +673,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 是否开启定时刷新乱序 memtable         |
 |     类型     | Boolean                               |
 |    默认值    | true                                  |
-| 改后生效方式 | 触发生效                              |
+| 改后生效方式 | 热加载                              |
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
@@ -674,7 +682,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
 |类型| int32 |
 |默认值| 3600000 |
-|改后生效方式| 触发生效 |
+|改后生效方式| 热加载 |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -683,7 +691,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 检查乱序 memtable 是否需要刷盘的时间间隔 |
 |类型| int32 |
 |默认值| 600000 |
-|改后生效方式| 触发生效 |
+|改后生效方式| 热加载 |
 
 * avg\_series\_point\_number\_threshold
 
@@ -1011,7 +1019,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 写前日志的 buffer 大小 |
 |类型|int32|
 |默认值| 16777216 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 ### TsFile 配置
 
@@ -1022,7 +1030,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 每次将内存中的数据写入到磁盘时的最大写入字节数 |
 |类型| int32 |
 |默认值| 134217728 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * page\_size\_in\_byte
 
@@ -1031,7 +1039,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 内存中每个列写出时，写成的单页最大的大小，单位为字节 |
 |类型| int32 |
 |默认值| 65536 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * max\_number\_of\_points\_in\_page
 
@@ -1040,7 +1048,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量 |
 |类型| int32 |
 |默认值| 1048576 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * max\_string\_length
 
@@ -1049,7 +1057,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 针对字符串类型的数据，单个字符串最大长度，单位为字符|
 |类型| int32 |
 |默认值| 128 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * float\_precision
 
@@ -1058,7 +1066,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 浮点数精度，为小数点后数字的位数 |
 |类型| int32 |
 |默认值| 默认为 2 位。注意：32 位浮点数的十进制精度为 7 位，64 位浮点数的十进制精度为 15 位。如果设置超过机器精度将没有实际意义。 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * time\_encoder
 
@@ -1067,7 +1075,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 时间列编码方式                        |
 |     类型     | 枚举 String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |    默认值    | TS_2DIFF                              |
-| 改后生效方式 | 触发生效                              |
+| 改后生效方式 | 热加载                              |
 
 * value\_encoder
 
@@ -1076,7 +1084,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | value 列编码方式                      |
 |     类型     | 枚举 String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |    默认值    | PLAIN                                 |
-| 改后生效方式 | 触发生效                              |
+| 改后生效方式 | 热加载                              |
 
 * compressor
 
@@ -1085,7 +1093,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 数据压缩方法                                  |
 |     类型     | 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4” |
 |    默认值    | SNAPPY                                        |
-| 改后生效方式 | 触发生效                                      |
+| 改后生效方式 | 热加载                                      |
 
 * max\_degree\_of\_index\_node
 
@@ -1103,7 +1111,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 计算查询频率的时间间隔（以分钟为单位）。 |
 |类型| int32 |
 |默认值| 1 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * freq\_snr
 
@@ -1112,7 +1120,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 有损的FREQ编码的信噪比 |
 |     类型     | Double                 |
 |    默认值    | 40.0                   |
-| 改后生效方式 | 触发生效               |
+| 改后生效方式 | 热加载               |
 
 * freq\_block\_size
 
@@ -1121,7 +1129,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
 |类型|int32|
 |默认值| 1024 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 ### 水印模块配置
 
@@ -1304,7 +1312,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数 |
 |     类型     | int32                                                        |
 |    默认值    | 10000                                                        |
-| 改后生效方式 | 触发生效                                                     |
+| 改后生效方式 | 热加载                                                     |
 
 ### 连续查询配置
 
@@ -1335,7 +1343,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 设置同步功能发送端 IP 地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端 IP 地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端拒绝除了本地以外的全部 IP 的同步请求。 对该参数进行配置时，需要保证发送端所有 DataNode 地址均被覆盖。 |
 |     类型     | String                                                                                                             |
 |    默认值    | 127.0.0.1/32                                                                                                          |
-| 改后生效方式 | 触发生效                                                                                                      |
+| 改后生效方式 | 热加载                                                                                                      |
 
 * max\_number\_of\_sync\_file\_retry
 
@@ -1344,7 +1352,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 同步文件最大重试次数          |
 |     类型     | int32                           |
 |    默认值    | 5                             |
-| 改后生效方式 | 触发生效                  |
+| 改后生效方式 | 热加载                  |
 
 ### Ratis 共识协议配置
 
@@ -1386,7 +1394,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | 是否开启MQTT服务        |
 |     类型     | Boolean                 |
 |    默认值    | false                   |
-| 改后生效方式 | 触发生效                |
+| 改后生效方式 | 热加载                |
 
 * mqtt\_host
 
@@ -1395,7 +1403,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | MQTT服务绑定的host。 |
 |     类型     | String               |
 |    默认值    | 0.0.0.0              |
-| 改后生效方式 | 触发生效             |
+| 改后生效方式 | 热加载             |
 
 * mqtt\_port
 
@@ -1404,7 +1412,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| MQTT服务绑定的port。 |
 |类型| int32 |
 |默认值| 1883 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * mqtt\_handler\_pool\_size
 
@@ -1413,7 +1421,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 用于处理MQTT消息的处理程序池大小。 |
 |类型| int32 |
 |默认值| 1 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 * mqtt\_payload\_formatter
 
@@ -1422,7 +1430,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     描述     | MQTT消息有效负载格式化程序。 |
 |     类型     | String                       |
 |    默认值    | json                         |
-| 改后生效方式 | 触发生效                     |
+| 改后生效方式 | 热加载                     |
 
 * mqtt\_max\_message\_size
 
@@ -1431,7 +1439,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| MQTT消息的最大长度（以字节为单位）。 |
 |类型| int32 |
 |默认值| 1048576 |
-|改后生效方式|触发生效|
+|改后生效方式|热加载|
 
 ### REST 服务配置
 
