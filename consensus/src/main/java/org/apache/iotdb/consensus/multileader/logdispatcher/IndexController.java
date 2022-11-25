@@ -108,8 +108,12 @@ public class IndexController {
             newFile.getAbsolutePath());
       } else {
         // In the normal state, this branch should not be triggered.
+        // During the DataNode removing stage, the version file towards removing peer may be deleted
+        // before all the async operations returns. We needn't add some sync operation here
+        // because it won't infect the correctness
         logger.info(
-            "failed to flush sync index. cannot find previous version file {}, current file is {}",
+            "failed to flush sync index because previous version file {} does not exists. "
+                + "It may be caused by the target Peer is removed from current group. target file is {}",
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
       }
