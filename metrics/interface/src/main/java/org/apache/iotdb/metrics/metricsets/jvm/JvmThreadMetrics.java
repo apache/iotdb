@@ -73,15 +73,15 @@ public class JvmThreadMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
-    metricService.remove(MetricType.GAUGE, "jvm.threads.peak.threads");
-    metricService.remove(MetricType.GAUGE, "jvm.threads.daemon.threads");
-    metricService.remove(MetricType.GAUGE, "jvm.threads.live.threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.threads.peak.threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.threads.daemon.threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.threads.live.threads");
 
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
         metricService.remove(
-            MetricType.GAUGE, "jvm.threads.states.threads", "state", getStateTagValue(state));
+            MetricType.AUTO_GAUGE, "jvm.threads.states.threads", "state", getStateTagValue(state));
       }
     } catch (Error error) {
       // An error will be thrown for unsupported operations

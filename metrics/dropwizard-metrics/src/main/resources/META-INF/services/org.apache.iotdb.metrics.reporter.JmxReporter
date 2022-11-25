@@ -16,5 +16,3 @@
 # limitations under the License.
 #
 org.apache.iotdb.metrics.dropwizard.reporter.DropwizardJmxReporter
-org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter
-org.apache.iotdb.metrics.dropwizard.reporter.DropwizardIoTDBReporter
