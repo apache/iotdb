@@ -154,6 +154,15 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 1 |
 |Effective|After restarting system|
 
+* partition\_cache\_size
+
+|Name| partition\_cache\_size |
+|:---:|:---|
+|Description| The max num of partition info record cached on DataNode. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
 ### Schema Engine Configuration
 
 * mlog\_buffer\_size
@@ -163,7 +172,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| size of log buffer in each metadata operation plan(in byte) |
 |Type|Int32|
 |Default| 1048576 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * sync\_mlog\_period\_in\_ms
 
@@ -172,7 +181,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds). If force_mlog_period_in_ms = 0 it means force metadata log to be written to disk after each refreshment|
 |Type| Int64 |
 |Default| 100 |
-|Effective|After restart system|
+|Effective|After restarting system|
 
 * tag\_attribute\_flush\_interval
 
@@ -181,8 +190,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
 |Type| Int32                                                                                                                                                                                                                                          |
 |Default| 1000                                                                                                                                                                                                                                           |
-|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
-
+|Effective| Only allowed to be modified in first start up  /                                                                                                                                                                                                |
 
 * tag\_attribute\_total\_size
 
@@ -192,6 +200,24 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| Int32 |
 |Default| 700 |
 |Effective|Only allowed to be modified in first start up|
+
+* schema\_region\_device\_node\_cache\_size
+
+|Name| schema\_region\_device\_node\_cache\_size |
+|:---:|:--------------------------------|
+|Description| The max num of device node, used for speeding up device query, cached in schemaRegion.      |
+|Type| Int32                           |
+|Default| 10000                          |
+|Effective|After restarting system|
+
+* max\_measurement\_num\_of\_internal\_request
+
+|Name| max\_measurement\_num\_of\_internal\_request |
+|:---:|:--------------------------------|
+|Description| When there's too many measurements in one create timeseries plan, the plan will be split to several sub plan, with measurement num no more than this param.|
+|Type| Int32                           |
+|Default| 10000                          |
+|Effective|After restarting system|
 
 ### Configurations for creating schema automatically
 
@@ -321,6 +347,24 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Cache size of `group by fill` query |
 |    Type     | Float                               |
 |   Default   | 1.0                                 |
+|  Effective  | After restarting system             |
+
+* coordinator\_read\_executor\_size
+
+|Name| coordinator\_read\_executor\_size |
+|:---:|:---|
+|Description| The num of thread used in coordinator for query operation |
+|Type| Int32 |
+|Default| 50 |
+|  Effective  | After restarting system             |
+
+* coordinator\_write\_executor\_size
+
+|Name| coordinator\_write\_executor\_size |
+|:---:|:---|
+|Description| The num of thread used in coordinator for write operation |
+|Type| Int32 |
+|Default| 50 |
 |  Effective  | After restarting system             |
 
 ### Storage Engine Configuration
