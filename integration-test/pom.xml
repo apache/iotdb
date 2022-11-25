@@ -33,7 +33,7 @@
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
-        <integrationTest.parallelMode>none</integrationTest.parallelMode>
+        <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.testEnv/>
@@ -212,7 +212,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>none</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -239,7 +239,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>none</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
