@@ -255,7 +255,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 | :---------: | :------------------------------------------- |
 | Description | Core size of ThreadPool of MPP data exchange |
-|    Type     | int                                          |
+|    Type     | int32                                          |
 |   Default   | 10                                           |
 |  Effective  | After restarting system                      |
 
@@ -264,7 +264,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | mpp\_data\_exchange\_max\_pool\_size        |
 | :---------: | :------------------------------------------ |
 | Description | Max size of ThreadPool of MPP data exchange |
-|    Type     | int                                         |
+|    Type     | int32                                         |
 |   Default   | 10                                          |
 |  Effective  | After restarting system                     |
 
@@ -282,7 +282,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | driver\_task\_execution\_time\_slice\_in\_ms |
 | :---------: | :------------------------------------------- |
 | Description | Maximum execution time of a DriverTask       |
-|    Type     | int                                          |
+|    Type     | int32                                          |
 |   Default   | 100                                          |
 |  Effective  | After restarting system                      |
 
@@ -291,7 +291,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max\_tsblock\_size\_in\_bytes |
 | :---------: | :---------------------------- |
 | Description | Maximum capacity of a TsBlock |
-|    Type     | int                           |
+|    Type     | int32                           |
 |   Default   | 1024 * 1024 (1 MB)            |
 |  Effective  | After restarting system       |
 
@@ -300,7 +300,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max\_tsblock\_line\_numbers                 |
 | :---------: | :------------------------------------------ |
 | Description | Maximum number of lines in a single TsBlock |
-|    Type     | int                                         |
+|    Type     | int32                                         |
 |   Default   | 1000                                        |
 |  Effective  | After restarting system                     |
 
@@ -313,9 +313,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | -1                                              |
 |  Effective  | After restarting system                         |
 
-* group_by_fill_cache_size_in_mb
+* group\_by\_fill\_cache\_size\_in\_mb
 
-|    Name     | group_by_fill_cache_size_in_mb      |
+|    Name     | group\_by\_fill\_cache\_size\_in\_mb      |
 | :---------: | :---------------------------------- |
 | Description | Cache size of `group by fill` query |
 |    Type     | Float                               |
@@ -451,9 +451,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Effective|After restarting system|
 
 
-* insert_multi_tablet_enable_multithreading_column_threshold
+* insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
-|    Name     | insert_multi_tablet_enable_multithreading_column_threshold                                     |
+|    Name     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold                                     |
 | :---------: | :--------------------------------------------------------------------------------------------- |
 | Description | When the insert plan column count reaches the specified threshold, multi-threading is enabled. |
 |    Type     | int32                                                        |
@@ -511,7 +511,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 |    Name     | compaction\_priority                                                                                                                                                                                                                                                                     |
 | :---------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS_INNER, system takes precedence over executing cross space compaction task |
+| Description | Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER\_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS\_INNER, system takes precedence over executing cross space compaction task |
 |    Type     | String                                                                                                                                                                                                                                                                                   |
 |   Default   | BALANCE                                                                                                                                                                                                                                                                                  |
 |  Effective  | After restart system                                                                                                                                                                                                                                                                     |
@@ -700,9 +700,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | PLAIN                                 |
 |  Effective  | Trigger                               |
 
-* float_precision
+* float\_precision
 
-|Name| float_precision |
+|Name| float\_precision |
 |:---:|:---|
 |Description| The precision of the floating point number.(The number of digits after the decimal point) |
 |Type|int32|
@@ -727,18 +727,18 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 0.05                                                                                                                                                                                                                                                                                                                                                                                                             |
 |  Effective  | After restarting system                                                                                                                                                                                                                                                                                                                                                                                          |
 
-* freq_snr
+* freq\_snr
 
-|    Name     | freq_snr                                        |
+|    Name     | freq\_snr                                        |
 | :---------: | :---------------------------------------------- |
 | Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
 |    Type     | Double                                          |
 |   Default   | 40.0                                            |
 |  Effective  | Trigger                                         |
 
-* freq_block_size
+* freq\_block\_size
 
-|Name| freq_block_size |
+|Name| freq\_block\_size |
 |:---:|:---|
 |Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
 |Type|int32|
@@ -872,18 +872,18 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Trigger Configuration
 
-- concurrent_window_evaluation_thread
+- concurrent\_window\_evaluation\_thread
 
-|    Name     | concurrent_window_evaluation_thread                                                          |
+|    Name     | concurrent\_window\_evaluation\_thread                                                          |
 | :---------: | :------------------------------------------------------------------------------------------- |
 | Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
 |    Type     | int32                                                        |
 |   Default   | The number of CPU cores                                      |
 |  Effective  | After restarting system                                      |
 
-- max_pending_window_evaluation_tasks
+- max\_pending\_window\_evaluation\_tasks
 
-|    Name     | max_pending_window_evaluation_tasks                                                                                 |
+|    Name     | max\_pending\_window\_evaluation\_tasks                                                                                 |
 | :---------: | :------------------------------------------------------------------------------------------------------------------ |
 | Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
 |    Type     | int32                                                        |
@@ -892,9 +892,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### SELECT-INTO
 
-* select_into_insert_tablet_plan_row_limit
+* select\_into\_insert\_tablet\_plan\_row\_limit
 
-|    Name     | select_into_insert_tablet_plan_row_limit                                                                                            |
+|    Name     | select\_into\_insert\_tablet\_plan\_row\_limit                                                                                            |
 | :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
 | Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
 |    Type     | int32                                                        |
@@ -903,27 +903,27 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Continuous Query
 
-* continuous_query_execution_thread
+* continuous\_query\_execution\_thread
 
-|    Name     | continuous_query_execution_thread                             |
+|    Name     | continuous\_query\_execution\_thread                             |
 | :---------: | :------------------------------------------------------------ |
 | Description | How many threads will be set up to perform continuous queries |
 |    Type     | int32                                                        |
 |   Default   | max(1, the / 2)                                              |
 |  Effective  | After restarting system                                      |
 
-* max_pending_continuous_query_tasks
+* max\_pending\_continuous\_query\_tasks
 
-|    Name     | max_pending_continuous_query_tasks                                         |
+|    Name     | max\_pending\_continuous\_query\_tasks                                         |
 | :---------: | :------------------------------------------------------------------------- |
 | Description | Maximum number of continuous query tasks that can be pending for execution |
 |    Type     | int32                                                        |
 |   Default   | 64                                                           |
 |  Effective  | After restarting system                                      |
 
-* continuous_query_min_every_interval
+* continuous\_query\_min\_every\_interval
 
-|    Name     | continuous_query_min_every_interval                 |
+|    Name     | continuous\_query\_min\_every\_interval                 |
 | :---------: | :-------------------------------------------------- |
 | Description | Minimum every interval to perform continuous query. |
 |    Type     | duration                                            |
@@ -936,31 +936,31 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Procedure Configuration
 
-* procedure_core_worker_thread_count
+* procedure\_core\_worker\_thread\_count
 
-|    Name     | procedure_core_worker_thread_count |
+|    Name     | procedure\_core\_worker\_thread\_count |
 | :---------: | :--------------------------------- |
 | Description | The number of worker thread count  |
-|    Type     | int                                |
+|    Type     | int32                                |
 |   Default   | 4                                  |
 |  Effective  | After restarting system            |
 
-* procedure_completed_clean_interval
+* procedure\_completed\_clean\_interval
 
-|    Name     | procedure_completed_clean_interval                   |
+|    Name     | procedure\_completed\_clean\_interval                   |
 | :---------: | :--------------------------------------------------- |
 | Description | Time interval of completed procedure cleaner work in |
-|    Type     | int                                                  |
+|    Type     | int32                                                  |
 |    Unit     | second                                               |
 |   Default   | 30                                                   |
 |  Effective  | After restarting system                              |
 
-* procedure_completed_evict_ttl
+* procedure\_completed\_evict\_ttl
 
-|    Name     | procedure_completed_evict_ttl  |
+|    Name     | procedure\_completed\_evict\_ttl  |
 | :---------: | :----------------------------- |
 | Description | The ttl of completed procedure |
-|    Type     | int                            |
+|    Type     | int32                            |
 |    Unit     | second                         |
 |   Default   | 800                            |
 |  Effective  | After restarting system        |
@@ -1024,117 +1024,117 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### REST Service Configuration
 
-* enable_rest_service
+* enable\_rest\_service
 
-|Name| enable_rest_service                   |
+|Name| enable\_rest\_service                   |
 |:---:|:--------------------------------------|
 |Description| Whether to enable the Rest service    |
 |Type| Boolean                               |
 |Default| false                                 |
 |Effective| After restarting system               |
 
-* rest_service_port
+* rest\_service\_port
 
-|Name| rest_service_port |
+|Name| rest\_service\_port |
 |:---:|:------------------|
 |Description| The Rest service listens to the port number      |
 |Type| int32             |
 |Default| 18080             |
 |Effective| After restarting system              |
 
-* enable_swagger
+* enable\_swagger
 
-|Name| enable_swagger         |
+|Name| enable\_swagger         |
 |:---:|:-----------------------|
 |Description| Whether to enable swagger to display rest interface information |
 |Type| Boolean                |
 |Default| false                  |
 |Effective| After restarting system                   |
 
-* rest_query_default_row_size_limit
+* rest\_query\_default\_row\_size\_limit
 
-|Name| rest_query_default_row_size_limit                                                         |
+|Name| rest\_query\_default\_row\_size\_limit                                                         |
 |:---:|:------------------------------------------------------------------------------------------|
 |Description| The maximum number of rows in a result set that can be returned by a query                |
 |Type| int32                                                                                     |
 |Default| 10000                                                                                     |
 |Effective| After restarting system                                                                   |
 
-* cache_expire
+* cache\_expire
 
-|Name| cache_expire                                            |
+|Name| cache\_expire                                            |
 |:---:|:--------------------------------------------------------|
 |Description| Expiration time for caching customer login information  |
 |Type| int32                                                   |
 |Default| 28800                                                   |
 |Effective| After restarting system                                 |
 
-* cache_max_num
+* cache\_max\_num
 
-|Name| cache_max_num |
+|Name| cache\_max\_num |
 |:---:|:--------------|
 |Description| The maximum number of users stored in the cache  |
 |Type| int32         |
 |Default| 100           |
 |Effective| After restarting system          |
 
-* cache_init_num
+* cache\_init\_num
 
-|Name| cache_init_num |
+|Name| cache\_init\_num |
 |:---:|:---------------|
 |Description| Initial cache capacity        |
 |Type| int32          |
 |Default| 10             |
 |Effective| After restarting system           |
 
-* enable_https
+* enable\_https
 
-|Name| cache_init_num           |
+|Name| cache\_init\_num           |
 |:---:|:-------------------------|
 |Description| REST Service Specifies whether to enable SSL configuration |
 |Type| Boolean                  |
 |Default| false                    |
 |Effective| After restarting system                     |
 
-* key_store_path
+* key\_store\_path
 
-|Name| key_store_path |
+|Name| key\_store\_path |
 |:---:|:---------------|
 |Description| keyStore path (optional)  |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
-* key_store_pwd
+* key\_store\_pwd
 
-|Name| key_store_pwd |
+|Name| key\_store\_pwd |
 |:---:|:---------------|
 |Description| keyStore Password (optional) |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
-* trust_store_path
+* trust\_store\_path
 
-|Name| trust_store_path |
+|Name| trust\_store\_path |
 |:---:|:---------------|
 |Description| keyStore Password (optional) |
 |Type| String         |
 |Default| ""          |
 |Effective| After restarting system           |
 
-* trust_store_pwd
+* trust\_store\_pwd
 
-|Name| trust_store_pwd                  |
+|Name| trust\_store\_pwd                  |
 |:---:|:---------------------------------|
 |Description| trustStore Password (Optional)   |
 |Type| String                           |
 |Default| ""                               |
 |Effective| After restarting system          |
 
-* idle_timeout
+* idle\_timeout
 
-|Name| idle_timeout  |
+|Name| idle\_timeout  |
 |:---:|:--------------|
 |Description| SSL timeout duration, expressed in seconds |
 |Type| int32         |
@@ -1143,21 +1143,21 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### InfluxDB RPC Service Configuration
 
-* enable_influxdb_rpc_service
+* enable\_influxdb\_rpc\_service
 
-|    Name     | enable_influxdb_rpc_service            |
+|    Name     | enable\_influxdb\_rpc\_service            |
 | :---------: | :------------------------------------- |
 | Description | Whether to enable InfluxDB RPC service |
 |    Type     | Boolean                                |
 |   Default   | true                                   |
 |  Effective  | After restarting system                |
 
-* influxdb_rpc_port
+* influxdb\_rpc\_port
 
-|    Name     | influxdb_rpc_port                     |
+|    Name     | influxdb\_rpc\_port                     |
 | :---------: | :------------------------------------ |
 | Description | The port used by InfluxDB RPC service |
-|    Type     | INT32                                 |
+|    Type     | int32                                 |
 |   Default   | 8086                                  |
 |  Effective  | After restarting system               |
 

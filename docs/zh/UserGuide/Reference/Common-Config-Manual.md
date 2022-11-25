@@ -97,12 +97,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * region\_allocate\_strategy
 
-|     名字     | region\_allocate\_strategy                                                             |
-| :----------: | :------------------------------------------------------------------------------------- |
-|     描述     | 元数据和数据的节点分配策略，COPY_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳 |
-|     类型     | String                                                                                 |
-|    默认值    | GREEDY                                                                                 |
-| 改后生效方式 | 重启服务生效                                                                           |
+|     名字     | region\_allocate\_strategy                          |
+| :----------: |:----------------------------------------------------|
+|     描述     | 元数据和数据的节点分配策略，COPY\_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳 |
+|     类型     | String                                              |
+|    默认值    | GREEDY                                              |
+| 改后生效方式 | 重启服务生效                                              |
 
 
 ### 集群管理
@@ -333,39 +333,39 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * default\_int32\_encoding
 
-|     名字     | default\_int32\_encoding               |
-| :----------: | :------------------------------------- |
-|     描述     | int32 类型编码格式                     |
-|     取值     | PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
-|    默认值    | RLE                                    |
-| 改后生效方式 | 重启服务生效                           |
+|     名字     | default\_int32\_encoding                |
+| :----------: |:----------------------------------------|
+|     描述     | int32 类型编码格式                            |
+|     取值     | PLAIN, RLE, TS\_2DIFF, REGULAR, GORILLA |
+|    默认值    | RLE                                     |
+| 改后生效方式 | 重启服务生效                                  |
 
 * default\_int64\_encoding
 
-|     名字     | default\_int64\_encoding               |
-| :----------: | :------------------------------------- |
-|     描述     | int64 类型编码格式                     |
-|     取值     | PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
-|    默认值    | RLE                                    |
-| 改后生效方式 | 重启服务生效                           |
+|     名字     | default\_int64\_encoding                |
+| :----------: |:----------------------------------------|
+|     描述     | int64 类型编码格式                            |
+|     取值     | PLAIN, RLE, TS\_2DIFF, REGULAR, GORILLA |
+|    默认值    | RLE                                     |
+| 改后生效方式 | 重启服务生效                                  |
 
 * default\_float\_encoding
 
-|     名字     | default\_float\_encoding      |
-| :----------: | :---------------------------- |
-|     描述     | float 类型编码格式            |
-|     取值     | PLAIN, RLE, TS_2DIFF, GORILLA |
-|    默认值    | GORILLA                       |
-| 改后生效方式 | 重启服务生效                  |
+|     名字     | default\_float\_encoding       |
+| :----------: |:-------------------------------|
+|     描述     | float 类型编码格式                   |
+|     取值     | PLAIN, RLE, TS\_2DIFF, GORILLA |
+|    默认值    | GORILLA                        |
+| 改后生效方式 | 重启服务生效                         |
 
 * default\_double\_encoding
 
-|     名字     | default\_double\_encoding     |
-| :----------: | :---------------------------- |
-|     描述     | double 类型编码格式           |
-|     取值     | PLAIN, RLE, TS_2DIFF, GORILLA |
-|    默认值    | GORILLA                       |
-| 改后生效方式 | 重启服务生效                  |
+|     名字     | default\_double\_encoding      |
+| :----------: |:-------------------------------|
+|     描述     | double 类型编码格式                  |
+|     取值     | PLAIN, RLE, TS\_2DIFF, GORILLA |
+|    默认值    | GORILLA                        |
+| 改后生效方式 | 重启服务生效                         |
 
 * default\_text\_encoding
 
@@ -419,7 +419,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | mpp\_data\_exchange\_core\_pool\_size |
 | :----------: | :------------------------------------ |
 |     描述     | MPP 数据交换线程池核心线程数          |
-|     类型     | int                                   |
+|     类型     | int32                                   |
 |    默认值    | 10                                    |
 | 改后生效方式 | 重启服务生效                          |
 
@@ -428,7 +428,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | mpp\_data\_exchange\_max\_pool\_size |
 | :----------: | :----------------------------------- |
 |     描述     | MPP 数据交换线程池最大线程数         |
-|     类型     | int                                  |
+|     类型     | int32                                  |
 |    默认值    | 10                                   |
 | 改后生效方式 | 重启服务生效                         |
 
@@ -437,7 +437,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
 | :----------: | :--------------------------------------------- |
 |     描述     | MPP 数据交换最大等待时间                       |
-|     类型     | int                                            |
+|     类型     | int32                                            |
 |    默认值    | 1000                                           |
 | 改后生效方式 | 重启服务生效                                   |
 
@@ -450,9 +450,9 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| -1 |
 |改后生效方式|重启服务生效|
 
-* group_by_fill_cache_size_in_mb
+* group\_by\_fill\_cache\_size\_in\_mb
 
-|     名字     | group_by_fill_cache_size_in_mb     |
+|     名字     | group\_by\_fill\_cache\_size\_in\_mb     |
 | :----------: | :--------------------------------- |
 |     描述     | 填充查询中使用的缓存大小，单位是MB |
 |     类型     | Float                              |
@@ -464,7 +464,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | driver\_task\_execution\_time\_slice\_in\_ms |
 | :----------: | :------------------------------------------- |
 |     描述     | 单个 DriverTask 最长执行时间                 |
-|     类型     | int                                          |
+|     类型     | int32                                          |
 |    默认值    | 100                                          |
 | 改后生效方式 | 重启服务生效                                 |
 
@@ -473,7 +473,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | max\_tsblock\_size\_in\_bytes |
 | :----------: | :---------------------------- |
 |     描述     | 单个 TsBlock 的最大容量       |
-|     类型     | int                           |
+|     类型     | int32                           |
 |    默认值    | 1024 * 1024 (1 MB)            |
 | 改后生效方式 | 重启服务生效                  |
 
@@ -482,7 +482,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     名字     | max\_tsblock\_line\_numbers |
 | :----------: | :-------------------------- |
 |     描述     | 单个 TsBlock 的最大行数     |
-|     类型     | int                         |
+|     类型     | int32                         |
 |    默认值    | 1000                        |
 | 改后生效方式 | 重启服务生效                |
 
@@ -944,18 +944,18 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 1 |
 |改后生效方式|触发生效|
 
-* freq_snr
+* freq\_snr
 
-|     名字     | freq_snr               |
+|     名字     | freq\_snr               |
 | :----------: | :--------------------- |
 |     描述     | 有损的FREQ编码的信噪比 |
 |     类型     | Double                 |
 |    默认值    | 40.0                   |
 | 改后生效方式 | 触发生效               |
 
-* freq_block_size
+* freq\_block\_size
 
-|名字| freq_block_size |
+|名字| freq\_block\_size |
 |:---:|:---|
 |描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
 |类型|int32|
@@ -1116,18 +1116,18 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 触发器配置
 
-* concurrent_window_evaluation_thread
+* concurrent\_window\_evaluation\_thread
 
-|     名字     | concurrent_window_evaluation_thread |
+|     名字     | concurrent\_window\_evaluation\_thread |
 | :----------: | :---------------------------------- |
 |     描述     | 窗口计算线程池的默认线程数          |
 |     类型     | int32                               |
 |    默认值    | CPU核数                             |
 | 改后生效方式 | 重启服务生效                        |
 
-* max_pending_window_evaluation_tasks
+* max\_pending\_window\_evaluation\_tasks
 
-|     名字     | max_pending_window_evaluation_tasks |
+|     名字     | max\_pending\_window\_evaluation\_tasks |
 | :----------: | :---------------------------------- |
 |     描述     | 最多允许堆积的窗口计算任务          |
 |     类型     | int32                               |
@@ -1136,9 +1136,9 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### SELECT-INTO配置
 
-* select_into_insert_tablet_plan_row_limit
+* select\_into\_insert\_tablet\_plan\_row\_limit
 
-|     名字     | select_into_insert_tablet_plan_row_limit                              |
+|     名字     | select\_into\_insert\_tablet\_plan\_row\_limit                              |
 | :----------: | :-------------------------------------------------------------------- |
 |     描述     | 执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数 |
 |     类型     | int32                                                        |
@@ -1147,18 +1147,18 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 连续查询配置
 
-* max_pending_continuous_query_tasks
+* max\_pending\_continuous\_query\_tasks
 
-|     名字     | max_pending_continuous_query_tasks |
+|     名字     | max\_pending\_continuous\_query\_tasks |
 | :----------: | :--------------------------------- |
 |     描述     | 队列中连续查询最大任务堆积数       |
 |     类型     | int32                              |
 |    默认值    | 64                                 |
 | 改后生效方式 | 重启服务生效                       |
 
-* continuous_query_submit_thread_count
+* continuous\_query\_submit\_thread\_count
 
-|     名字     | continuous_query_execution_thread |
+|     名字     | continuous\_query\_execution\_thread |
 | :----------: |:----------------------------------|
 |     描述     | 执行连续查询任务的线程池的线程数                  |
 |     类型     | int32                             |
@@ -1167,12 +1167,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * continuous\_query\_min\_every\_interval\_in\_ms
 
-|     名字     | continuous_query_min_every_interval\_in\_ms |
-| :----------: | :------------------------------------------ |
-|     描述     | 连续查询执行时间间隔的最小值                |
-|     类型     | long (duration)                             |
-|    默认值    | 1000                                        |
-| 改后生效方式 | 重启服务生效                                |
+|     名字     | continuous\_query\_min\_every\_interval\_in\_ms |
+| :----------: |:------------------------------------------------|
+|     描述     | 连续查询执行时间间隔的最小值                                  |
+|     类型     | long (duration)                                 |
+|    默认值    | 1000                                            |
+| 改后生效方式 | 重启服务生效                                          |
 
 ### PIPE 配置
 
@@ -1185,12 +1185,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | 0.0.0.0/0                                                                                                          |
 | 改后生效方式 | 重启服务生效                                                                                                       |
 
-* max_number_of_sync_file_retry
+* max\_number\_of\_sync\_file\_retry
 
-|     名字     | max_number_of_sync_file_retry |
+|     名字     | max\_number\_of\_sync\_file\_retry |
 | :----------: | :---------------------------- |
 |     描述     | 同步文件最大重试次数          |
-|     类型     | int                           |
+|     类型     | int32                           |
 |    默认值    | 5                             |
 | 改后生效方式 | 重启服务生效                  |
 
@@ -1198,30 +1198,30 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### Procedure 配置
 
-* procedure_core_worker_thread_count
+* procedure\_core\_worker\_thread\_count
 
-|     名字     | procedure_core_worker_thread_count |
+|     名字     | procedure\_core\_worker\_thread\_count |
 | :----------: | :--------------------------------- |
 |     描述     | 工作线程数量                       |
-|     类型     | int                                |
+|     类型     | int32                                |
 |    默认值    | 4                                  |
 | 改后生效方式 | 重启服务生效                       |
 
-* procedure_completed_clean_interval
+* procedure\_completed\_clean\_interval
 
-|     名字     | procedure_completed_clean_interval |
+|     名字     | procedure\_completed\_clean\_interval |
 | :----------: | :--------------------------------- |
 |     描述     | 清理已完成的 procedure 时间间隔    |
-|     类型     | int                                |
+|     类型     | int32                                |
 |    默认值    | 30(s)                              |
 | 改后生效方式 | 重启服务生效                       |
 
-* procedure_completed_evict_ttl
+* procedure\_completed\_evict\_ttl
 
-|     名字     | procedure_completed_evict_ttl     |
+|     名字     | procedure\_completed\_evict\_ttl     |
 | :----------: | :-------------------------------- |
 |     描述     | 已完成的 procedure 的数据保留时间 |
-|     类型     | int                               |
+|     类型     | int32                               |
 |    默认值    | 800(s)                            |
 | 改后生效方式 | 重启服务生效                      |
 
@@ -1283,117 +1283,117 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### REST 服务配置
 
-* enable_rest_service
+* enable\_rest\_service
 
-|名字| enable_rest_service |
+|名字| enable\_rest\_service |
 |:---:|:--------------------|
 |描述| 是否开启Rest服务。         |
 |类型| Boolean             |
 |默认值| false               |
 |改后生效方式| 重启生效                |
 
-* rest_service_port
+* rest\_service\_port
 
-|名字| rest_service_port |
+|名字| rest\_service\_port |
 |:---:|:------------------|
 |描述| Rest服务监听端口号       |
 |类型| int32             |
 |默认值| 18080             |
 |改后生效方式| 重启生效              |
 
-* enable_swagger
+* enable\_swagger
 
-|名字| enable_swagger         |
+|名字| enable\_swagger         |
 |:---:|:-----------------------|
 |描述| 是否启用swagger来展示rest接口信息 |
 |类型| Boolean                |
 |默认值| false                  |
 |改后生效方式| 重启生效                   |
 
-* rest_query_default_row_size_limit
+* rest\_query\_default\_row\_size\_limit
 
-|名字| rest_query_default_row_size_limit |
+|名字| rest\_query\_default\_row\_size\_limit |
 |:---:|:----------------------------------|
 |描述| 一次查询能返回的结果集最大行数                   |
 |类型| int32                             |
 |默认值| 10000                             |
 |改后生效方式| 重启生效                              |
 
-* cache_expire
+* cache\_expire
 
-|名字| cache_expire  |
+|名字| cache\_expire  |
 |:---:|:--------------|
 |描述| 缓存客户登录信息的过期时间 |
 |类型| int32         |
 |默认值| 28800         |
 |改后生效方式| 重启生效          |
 
-* cache_max_num
+* cache\_max\_num
 
-|名字| cache_max_num |
+|名字| cache\_max\_num |
 |:---:|:--------------|
 |描述| 缓存中存储的最大用户数量  |
 |类型| int32         |
 |默认值| 100           |
 |改后生效方式| 重启生效          |
 
-* cache_init_num
+* cache\_init\_num
 
-|名字| cache_init_num |
+|名字| cache\_init\_num |
 |:---:|:---------------|
 |描述| 缓存初始容量         |
 |类型| int32          |
 |默认值| 10             |
 |改后生效方式| 重启生效           |
 
-* enable_https
+* enable\_https
 
-|名字| cache_init_num           |
+|名字| cache\_init\_num           |
 |:---:|:-------------------------|
 |描述| REST Service 是否开启 SSL 配置 |
 |类型| Boolean                  |
 |默认值| false                    |
 |改后生效方式| 重启生效                     |
 
-* key_store_path
+* key\_store\_path
 
-|名字| key_store_path |
+|名字| key\_store\_path |
 |:---:|:---------------|
 |描述| keyStore 所在路径（非必填）  |
 |类型| String         |
 |默认值| ""          |
 |改后生效方式| 重启生效           |
 
-* key_store_pwd
+* key\_store\_pwd
 
-|名字| key_store_pwd |
+|名字| key\_store\_pwd |
 |:---:|:---------------|
 |描述| keyStore 密码（非必填） |
 |类型| String         |
 |默认值| ""          |
 |改后生效方式| 重启生效           |
 
-* trust_store_path
+* trust\_store\_path
 
-|名字| trust_store_path |
+|名字| trust\_store\_path |
 |:---:|:---------------|
 |描述| keyStore 密码（非必填） |
 |类型| String         |
 |默认值| ""          |
 |改后生效方式| 重启生效           |
 
-* trust_store_pwd
+* trust\_store\_pwd
 
-|名字| trust_store_pwd |
+|名字| trust\_store\_pwd |
 |:---:|:---------------|
 |描述| trustStore 密码（非必填） |
 |类型| String         |
 |默认值| ""          |
 |改后生效方式| 重启生效           |
 
-* idle_timeout
+* idle\_timeout
 
-|名字| idle_timeout  |
+|名字| idle\_timeout  |
 |:---:|:--------------|
 |描述| SSL 超时时间，单位为秒 |
 |类型| int32         |
@@ -1402,20 +1402,20 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### InfluxDB 协议适配器配置
 
-* enable_influxdb_rpc_service
+* enable\_influxdb\_rpc\_service
 
-|     名字     | enable_influxdb_rpc_service  |
+|     名字     | enable\_influxdb\_rpc\_service  |
 | :----------: | :--------------------------- |
 |     描述     | 是否开启InfluxDB RPC service |
 |     类型     | Boolean                      |
 |    默认值    | true                         |
 | 改后生效方式 | 重启服务生效                 |
 
-* influxdb_rpc_port
+* influxdb\_rpc\_port
 
-|     名字     | influxdb_rpc_port            |
+|     名字     | influxdb\_rpc\_port            |
 | :----------: | :--------------------------- |
 |     描述     | influxdb rpc service占用端口 |
-|     类型     | int                          |
+|     类型     | int32                          |
 |    默认值    | 8086                         |
 | 改后生效方式 | 重启服务生效                 |
