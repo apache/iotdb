@@ -47,6 +47,6 @@ public class MultiLeaderMemoryManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "MultiLeaderConsensus");
+        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "MultiLeaderConsensus");
   }
 }

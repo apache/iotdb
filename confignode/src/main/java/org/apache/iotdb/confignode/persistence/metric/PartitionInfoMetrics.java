@@ -70,16 +70,16 @@ public class PartitionInfoMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "storageGroup");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "storageGroup");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.REGION.toString(),
         Tag.NAME.toString(),
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.SchemaRegion.toString());
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.REGION.toString(),
         Tag.NAME.toString(),
         "total",
@@ -152,14 +152,14 @@ public class PartitionInfoMetrics implements IMetricSet {
     @Override
     public void unbindFrom(AbstractMetricService metricService) {
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.REGION.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString());
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.REGION.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
@@ -167,14 +167,14 @@ public class PartitionInfoMetrics implements IMetricSet {
           TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.SLOT.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           "schemaSlotNumber");
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.SLOT.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
