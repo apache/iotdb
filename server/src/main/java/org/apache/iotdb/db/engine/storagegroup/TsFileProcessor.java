@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -376,12 +375,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     // get device id
-    IDeviceID deviceID;
-    try {
-      deviceID = getDeviceID(deviceId);
-    } catch (IllegalPathException e) {
-      throw new WriteProcessException(e);
-    }
+    IDeviceID deviceID = getDeviceID(deviceId);
 
     for (int i = 0; i < dataTypes.length; i++) {
       // skip failed Measurements
@@ -419,12 +413,7 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk alignedMemChunk = null;
     // get device id
-    IDeviceID deviceID;
-    try {
-      deviceID = getDeviceID(deviceId);
-    } catch (IllegalPathException e) {
-      throw new WriteProcessException(e);
-    }
+    IDeviceID deviceID = getDeviceID(deviceId);
 
     if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
@@ -478,12 +467,7 @@ public class TsFileProcessor {
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
     // get device id
-    IDeviceID deviceID;
-    try {
-      deviceID = getDeviceID(deviceId);
-    } catch (IllegalPathException e) {
-      throw new WriteProcessException(e);
-    }
+    IDeviceID deviceID = getDeviceID(deviceId);
 
     for (int i = 0; i < dataTypes.length; i++) {
       // skip failed Measurements
@@ -513,12 +497,7 @@ public class TsFileProcessor {
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
     // get device id
-    IDeviceID deviceID;
-    try {
-      deviceID = getDeviceID(deviceId);
-    } catch (IllegalPathException e) {
-      throw new WriteProcessException(e);
-    }
+    IDeviceID deviceID = getDeviceID(deviceId);
 
     updateAlignedMemCost(dataTypes, deviceID, measurements, start, end, memIncrements, columns);
     long memTableIncrement = memIncrements[0];
@@ -1502,13 +1481,8 @@ public class TsFileProcessor {
     return shouldClose;
   }
 
-  private IDeviceID getDeviceID(String deviceId) throws IllegalPathException {
-    try {
-      return DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId));
-    } catch (IllegalPathException e) {
-      logger.error("device id is illegal");
-      throw e;
-    }
+  private IDeviceID getDeviceID(String deviceId) {
+    return DeviceIDFactory.getInstance().getDeviceID(deviceId);
   }
 
   public boolean isEmpty() {
