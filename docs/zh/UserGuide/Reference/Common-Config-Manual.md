@@ -1245,6 +1245,123 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### REST 服务配置
 
+* enable_rest_service
+
+|名字| enable_rest_service |
+|:---:|:--------------------|
+|描述| 是否开启Rest服务。         |
+|类型| Boolean             |
+|默认值| false               |
+|改后生效方式| 重启生效                |
+
+* rest_service_port
+
+|名字| rest_service_port |
+|:---:|:------------------|
+|描述| Rest服务监听端口号       |
+|类型| Int32             |
+|默认值| 18080             |
+|改后生效方式| 重启生效              |
+
+* enable_swagger
+
+|名字| enable_swagger         |
+|:---:|:-----------------------|
+|描述| 是否启用swagger来展示rest接口信息 |
+|类型| Boolean                |
+|默认值| false                  |
+|改后生效方式| 重启生效                   |
+
+* rest_query_default_row_size_limit
+
+|名字| rest_query_default_row_size_limit |
+|:---:|:----------------------------------|
+|描述| 一次查询能返回的结果集最大行数                   |
+|类型| Int32                             |
+|默认值| 10000                             |
+|改后生效方式| 重启生效                              |
+
+* cache_expire
+
+|名字| cache_expire  |
+|:---:|:--------------|
+|描述| 缓存客户登录信息的过期时间 |
+|类型| Int32         |
+|默认值| 28800         |
+|改后生效方式| 重启生效          |
+
+* cache_max_num
+
+|名字| cache_max_num |
+|:---:|:--------------|
+|描述| 缓存中存储的最大用户数量  |
+|类型| Int32         |
+|默认值| 100           |
+|改后生效方式| 重启生效          |
+
+* cache_init_num
+
+|名字| cache_init_num |
+|:---:|:---------------|
+|描述| 缓存初始容量         |
+|类型| Int32          |
+|默认值| 10             |
+|改后生效方式| 重启生效           |
+
+* enable_https
+
+|名字| cache_init_num           |
+|:---:|:-------------------------|
+|描述| REST Service 是否开启 SSL 配置 |
+|类型| Boolean                  |
+|默认值| false                    |
+|改后生效方式| 重启生效                     |
+
+* key_store_path
+
+|名字| key_store_path |
+|:---:|:---------------|
+|描述| keyStore 所在路径（非必填）  |
+|类型| String         |
+|默认值| ""          |
+|改后生效方式| 重启生效           |
+
+* key_store_pwd
+
+|名字| key_store_pwd |
+|:---:|:---------------|
+|描述| keyStore 密码（非必填） |
+|类型| String         |
+|默认值| ""          |
+|改后生效方式| 重启生效           |
+
+* trust_store_path
+
+|名字| trust_store_path |
+|:---:|:---------------|
+|描述| keyStore 密码（非必填） |
+|类型| String         |
+|默认值| ""          |
+|改后生效方式| 重启生效           |
+
+* trust_store_pwd
+
+|名字| trust_store_pwd |
+|:---:|:---------------|
+|描述| trustStore 密码（非必填） |
+|类型| String         |
+|默认值| ""          |
+|改后生效方式| 重启生效           |
+
+* idle_timeout
+
+|名字| idle_timeout  |
+|:---:|:--------------|
+|描述| SSL 超时时间，单位为秒 |
+|类型| Int32         |
+|默认值| 5000          |
+|改后生效方式| 重启生效          |
+
 ### InfluxDB 协议适配器配置
 
 * enable_influxdb_rpc_service
