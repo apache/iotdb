@@ -40,12 +40,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * schema\_replication\_factor
 
-|    Name     | schema\_replication\_factor |
-| :---------: | :-------------------------- |
-| Description | Schema replication num      |
-|    Type     | Int                         |
-|   Default   | 1                           |
-|  Effective  | After restarting system     |
+|Name| schema\_replication\_factor |
+|:---:|:---|
+|Description| Schema replication num|
+|Type| int32 |
+|Default| 1 |
+|Effective|After restarting system|
 
 * schema\_region\_consensus\_protocol\_class
 
@@ -58,12 +58,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * data\_replication\_factor
 
-|    Name     | data\_replication\_factor |
-| :---------: | :------------------------ |
-| Description | Data replication num      |
-|    Type     | Int                       |
-|   Default   | 1                         |
-|  Effective  | After restarting system   |
+|Name| data\_replication\_factor |
+|:---:|:---|
+|Description| Data replication num|
+|Type| int32 |
+|Default| 1 |
+|Effective|After restarting system|
 
 * data\_region\_consensus\_protocol\_class
 
@@ -78,12 +78,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * series\_partition\_slot\_num
 
-|    Name     | series\_partition\_slot\_num                  |
-| :---------: | :-------------------------------------------- |
-| Description | Slot num of series partition                  |
-|    Type     | Int                                           |
-|   Default   | 10000                                         |
-|  Effective  | Only allowed to be modified in first start up |
+|Name| series\_partition\_slot\_num |
+|:---:|:---|
+|Description| Slot num of series partition |
+|Type| int32 |
+|Default| 10000 |
+|Effective|Only allowed to be modified in first start up|
 
 * series\_partition\_executor\_class
 
@@ -138,12 +138,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * enable\_mem\_control
 
-|    Name     | enable\_mem\_control               |
-| :---------: | :--------------------------------- |
-| Description | enable memory control to avoid OOM |
-|    Type     | Bool                               |
-|   Default   | true                               |
-|  Effective  | After restarting system            |
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| enable memory control to avoid OOM|
+|Type|Boolean|
+|Default| true |
+|Effective|After restarting system|
 
 * storage\_query_schema_consensus_free_memory_proportion
 
@@ -183,12 +183,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * concurrent\_writing\_time\_partition
 
-|    Name     | concurrent\_writing\_time\_partition                                                                                                                                                        |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
-|    Type     | Int32                                                                                                                                                                                       |
-|   Default   | 1                                                                                                                                                                                           |
-|  Effective  | After restarting system                                                                                                                                                                     |
+|Name| concurrent\_writing\_time\_partition |
+|:---:|:---|
+|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Type|int32|
+|Default| 1 |
+|Effective|After restarting system|
 
 
 * primitive\_array\_size
@@ -287,12 +287,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * mlog\_buffer\_size
 
-|    Name     | mlog\_buffer\_size                                          |
-| :---------: | :---------------------------------------------------------- |
-| Description | size of log buffer in each metadata operation plan(in byte) |
-|    Type     | Int32                                                       |
-|   Default   | 1048576                                                     |
-|  Effective  | After restarting system                                        |
+|Name| mlog\_buffer\_size |
+|:---:|:---|
+|Description| size of log buffer in each metadata operation plan(in byte) |
+|Type|int32|
+|Default| 1048576 |
+|Effective|After restart system|
 
 * sync\_mlog\_period\_in\_ms
 
@@ -305,21 +305,21 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * tag\_attribute\_flush\_interval
 
-|    Name     | tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
-| :---------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
-|    Type     | Int32                                                                                                                                                                                                                                          |
-|   Default   | 1000                                                                                                                                                                                                                                           |
-|  Effective  | Only allowed to be modified in first start up                                                                                                                                                                                                  |
+|Name| tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
+|:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
+|Type| int32                                                                                                                                                                                                                                          |
+|Default| 1000                                                                                                                                                                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
 
 * tag\_attribute\_total\_size
 
-|    Name     | tag\_attribute\_total\_size                                              |
-| :---------: | :----------------------------------------------------------------------- |
-| Description | The maximum persistence size of tags and attributes of each time series. |
-|    Type     | Int32                                                                    |
-|   Default   | 700                                                                      |
-|  Effective  | Only allowed to be modified in first start up                            |
+|Name| tag\_attribute\_total\_size |
+|:---:|:---|
+|Description| The maximum persistence size of tags and attributes of each time series.|
+|Type| int32 |
+|Default| 700 |
+|Effective|Only allowed to be modified in first start up|
 
 * schema\_region\_device\_node\_cache\_size
 
@@ -402,7 +402,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 | :---------: | :------------------------------------------- |
 | Description | Core size of ThreadPool of MPP data exchange |
-|    Type     | int                                          |
+|    Type     | int32                                          |
 |   Default   | 10                                           |
 |  Effective  | After restarting system                      |
 
@@ -411,7 +411,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | mpp\_data\_exchange\_max\_pool\_size        |
 | :---------: | :------------------------------------------ |
 | Description | Max size of ThreadPool of MPP data exchange |
-|    Type     | int                                         |
+|    Type     | int32                                         |
 |   Default   | 10                                          |
 |  Effective  | After restarting system                     |
 
@@ -429,7 +429,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | driver\_task\_execution\_time\_slice\_in\_ms |
 | :---------: | :------------------------------------------- |
 | Description | Maximum execution time of a DriverTask       |
-|    Type     | int                                          |
+|    Type     | int32                                          |
 |   Default   | 100                                          |
 |  Effective  | After restarting system                      |
 
@@ -438,7 +438,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max\_tsblock\_size\_in\_bytes |
 | :---------: | :---------------------------- |
 | Description | Maximum capacity of a TsBlock |
-|    Type     | int                           |
+|    Type     | int32                           |
 |   Default   | 1024 * 1024 (1 MB)            |
 |  Effective  | After restarting system       |
 
@@ -447,7 +447,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | max\_tsblock\_line\_numbers                 |
 | :---------: | :------------------------------------------ |
 | Description | Maximum number of lines in a single TsBlock |
-|    Type     | int                                         |
+|    Type     | int32                                         |
 |   Default   | 1000                                        |
 |  Effective  | After restarting system                     |
 
@@ -456,13 +456,13 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | default\_fill\_interval                         |
 | :---------: | :---------------------------------------------- |
 | Description | Default interval of `group by fill` query in ms |
-|    Type     | Int32                                           |
+|    Type     | int32                                           |
 |   Default   | -1                                              |
 |  Effective  | After restarting system                         |
 
-* group_by_fill_cache_size_in_mb
+* group\_by\_fill\_cache\_size\_in\_mb
 
-|    Name     | group_by_fill_cache_size_in_mb      |
+|    Name     | group\_by\_fill\_cache\_size\_in\_mb      |
 | :---------: | :---------------------------------- |
 | Description | Cache size of `group by fill` query |
 |    Type     | Float                               |
@@ -519,103 +519,112 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * enable\_timed\_flush\_seq\_memtable
 
-|    Name     | enable\_timed\_flush\_seq\_memtable             |
-| :---------: | :---------------------------------------------- |
-| Description | whether to enable timed flush sequence memtable |
-|    Type     | Bool                                            |
-|   Default   | false                                           |
-|  Effective  | Trigger                                         |
+|Name| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|Description| whether to enable timed flush sequence memtable |
+|Type|Boolean|
+|Default| false |
+|Effective| Trigger |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
-|    Name     | seq\_memtable\_flush\_interval\_in\_ms                                                                   |
-| :---------: | :------------------------------------------------------------------------------------------------------- |
-| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|    Type     | Int32                                                                                                    |
-|   Default   | 3600000                                                                                                  |
-|  Effective  | Trigger                                                                                                  |
+|Name| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|int32|
+|Default| 3600000 |
+|Effective| Trigger |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
-|    Name     | seq\_memtable\_flush\_check\_interval\_in\_ms                  |
-| :---------: | :------------------------------------------------------------- |
-| Description | the interval to check whether sequence memtables need flushing |
-|    Type     | Int32                                                          |
-|   Default   | 600000                                                         |
-|  Effective  | Trigger                                                        |
+|Name| seq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description| the interval to check whether sequence memtables need flushing |
+|Type|int32|
+|Default| 600000 |
+|Effective| Trigger |
 
 * enable\_timed\_flush\_unseq\_memtable
 
-|    Name     | enable\_timed\_flush\_unseq\_memtable             |
-| :---------: | :------------------------------------------------ |
-| Description | whether to enable timed flush unsequence memtable |
-|    Type     | Bool                                              |
-|   Default   | false                                             |
-|  Effective  | Trigger                                           |
+|Name| enable\_timed\_flush\_unseq\_memtable |
+|:---:|:---|
+|Description| whether to enable timed flush unsequence memtable |
+|Type|Boolean|
+|Default| false |
+|Effective| Trigger |
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
-|    Name     | unseq\_memtable\_flush\_interval\_in\_ms                                                                 |
-| :---------: | :------------------------------------------------------------------------------------------------------- |
-| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|    Type     | Int32                                                                                                    |
-|   Default   | 3600000                                                                                                  |
-|  Effective  | Trigger                                                                                                  |
+|Name| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|int32|
+|Default| 3600000 |
+|Effective| Trigger |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
-|    Name     | unseq\_memtable\_flush\_check\_interval\_in\_ms                  |
-| :---------: | :--------------------------------------------------------------- |
-| Description | the interval to check whether unsequence memtables need flushing |
-|    Type     | Int32                                                            |
-|   Default   | 600000                                                           |
-|  Effective  | Trigger                                                          |
+|Name| unseq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description| the interval to check whether unsequence memtables need flushing |
+|Type|int32|
+|Default| 600000 |
+|Effective| Trigger |
 
 * avg\_series\_point\_number\_threshold
 
-|    Name     | avg\_series\_point\_number\_threshold                  |
-| :---------: | :----------------------------------------------------- |
-| Description | max average number of point of each series in memtable |
-|    Type     | Int32                                                  |
-|   Default   | 100000                                                 |
-|  Effective  | After restarting system                                |
+|Name| avg\_series\_point\_number\_threshold                  |
+|:---:|:-------------------------------------------------------|
+|Description| max average number of point of each series in memtable |
+|Type| int32                                                  |
+|Default| 100000                                                 |
+|Effective| After restarting system                                |
 
 * flush\_thread\_count
 
-|    Name     | flush\_thread\_count                                                                                                                                                                                                |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0. |
-|    Type     | Int32                                                                                                                                                                                                               |
-|   Default   | 0                                                                                                                                                                                                                   |
-|  Effective  | After restarting system                                                                                                                                                                                             |
+|Name| flush\_thread\_count |
+|:---:|:---|
+|Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
+|Type| int32 |
+|Default| 0 |
+|Effective|After restarting system|
 
 * query\_thread\_count
 
-|    Name     | query\_thread\_count                                                                                                 |
-| :---------: | :------------------------------------------------------------------------------------------------------------------- |
-| Description | The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|    Type     | Int32                                                                                                                |
-|   Default   | 16                                                                                                                   |
-|  Effective  | After restarting system                                                                                              |
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restarting system                                                                                              |
 
 * sub\_rawQuery\_thread\_count
 
-|    Name     | sub\_rawQuery\_thread\_count                                                                                             |
-| :---------: | :----------------------------------------------------------------------------------------------------------------------- |
-| Description | The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|    Type     | Int32                                                                                                                    |
-|   Default   | 8                                                                                                                        |
-|  Effective  | After restarting system                                                                                                  |
+|Name| sub\_rawQuery\_thread\_count                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restarting system                                                                                                  |
 
 * enable\_partial\_insert
 
-|    Name     | enable\_partial\_insert                                                                        |
-| :---------: | :--------------------------------------------------------------------------------------------- |
-| Description | Whether continue to write other measurements if some measurements are failed in one insertion. |
-|    Type     | Bool                                                                                           |
-|   Default   | true                                                                                           |
-|  Effective  | After restarting system                                                                        |
+|Name| enable\_partial\_insert |
+|:---:|:---|
+|Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
+|Type| Boolean |
+|Default| true |
+|Effective|After restarting system|
 
+
+* insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
+
+|    Name     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold                                     |
+| :---------: | :--------------------------------------------------------------------------------------------- |
+| Description | When the insert plan column count reaches the specified threshold, multi-threading is enabled. |
+|    Type     | int32                                                        |
+|   Default   | 10                                                           |
+|  Effective  | After restarting system                                      |
 
 ### Compaction Configurations
 
@@ -668,7 +677,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 |    Name     | compaction\_priority                                                                                                                                                                                                                                                                     |
 | :---------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS_INNER, system takes precedence over executing cross space compaction task |
+| Description | Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER\_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS\_INNER, system takes precedence over executing cross space compaction task |
 |    Type     | String                                                                                                                                                                                                                                                                                   |
 |   Default   | BALANCE                                                                                                                                                                                                                                                                                  |
 |  Effective  | After restart system                                                                                                                                                                                                                                                                     |
@@ -693,12 +702,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * target\_chunk\_point\_num
 
-|    Name     | target\_chunk\_point\_num                  |
-| :---------: | :----------------------------------------- |
-| Description | The target point number of compacted chunk |
-|    Type     | Int32                                      |
-|   Default   | 100000                                     |
-|  Effective  | After restart system                       |
+|Name| target\_chunk\_point\_num |
+|:---:|:---|
+|Description| The target point number of compacted chunk |
+|Type| int32 |
+|Default| 100000 |
+|Effective|After restart system|
 
 * chunk\_size\_lower\_bound\_in\_compaction
 
@@ -711,57 +720,57 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * chunk\_point\_num\_lower\_bound\_in\_compaction
 
-|    Name     | chunk\_size\_lower\_bound\_in\_compaction                                                    |
-| :---------: | :------------------------------------------------------------------------------------------- |
-| Description | A source chunk will be deserialized in compaction when its point num is less than this value |
-|    Type     | Int32                                                                                        |
-|   Default   | 100                                                                                          |
-|  Effective  | After restart system                                                                         |
+|Name| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|Description| A source chunk will be deserialized in compaction when its point num is less than this value |
+|Type| int32 |
+|Default| 100 |
+|Effective|After restart system|
 
 * max\_inner\_compaction\_candidate\_file\_num
 
-|    Name     | max\_inner\_compaction\_candidate\_file\_num             |
-| :---------: | :------------------------------------------------------- |
-| Description | The max num of files encounter in inner space compaction |
-|    Type     | Int32                                                    |
-|   Default   | 30                                                       |
-|  Effective  | After restart system                                     |
+|Name| max\_inner\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|Description| The max num of files encounter in inner space compaction |
+|Type| int32 |
+|Default| 30 |
+|Effective|After restart system|
 
 * max\_cross\_compaction\_file\_num
 
-|    Name     | max\_cross\_compaction\_candidate\_file\_num             |
-| :---------: | :------------------------------------------------------- |
-| Description | The max num of files encounter in cross space compaction |
-|    Type     | Int32                                                    |
-|   Default   | 1000                                                     |
-|  Effective  | After restart system                                     |
+|Name| max\_cross\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|Description| The max num of files encounter in cross space compaction |
+|Type| int32 |
+|Default| 1000 |
+|Effective|After restart system|
 
 * cross\_compaction\_file\_selection\_time\_budget
 
-|    Name     | cross\_compaction\_file\_selection\_time\_budget      |
-| :---------: | :---------------------------------------------------- |
-| Description | Time budget for cross space compaction file selection |
-|    Type     | Int32                                                 |
-|   Default   | 30000                                                 |
-|  Effective  | After restart system                                  |
+|Name| cross\_compaction\_file\_selection\_time\_budget |
+|:---:|:---|
+|Description| Time budget for cross space compaction file selection |
+|Type| int32 |
+|Default| 30000 |
+|Effective|After restart system|
 
 * cross\_compaction\_memory\_budget
 
-|    Name     | cross\_compaction\_memory\_budget          |
-| :---------: | :----------------------------------------- |
-| Description | Memory budget for a cross space compaction |
-|    Type     | Int32                                      |
-|   Default   | 2147483648                                 |
-|  Effective  | After restart system                       |
+|Name| cross\_compaction\_memory\_budget |
+|:---:|:---|
+|Description| Memory budget for a cross space compaction |
+|Type| int32 |
+|Default| 2147483648 |
+|Effective|After restart system|
 
 * compaction\_thread\_count
 
-|    Name     | compaction\_thread\_count        |
-| :---------: | :------------------------------- |
-| Description | thread num to execute compaction |
-|    Type     | Int32                            |
-|   Default   | 10                               |
-|  Effective  | After restart system             |
+|Name| compaction\_thread\_count |
+|:---:|:---|
+|Description| thread num to execute compaction |
+|Type| int32 |
+|Default| 10 |
+|Effective|After restart system|
 
 * compaction\_schedule\_interval\_in\_ms
 
@@ -783,12 +792,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * compaction\_write\_throughput\_mb\_per\_sec
 
-|    Name     | compaction\_write\_throughput\_mb\_per\_sec    |
-| :---------: | :--------------------------------------------- |
-| Description | The write rate of all compaction tasks in MB/s |
-|    Type     | Int32                                          |
-|   Default   | 16                                             |
-|  Effective  | After restart system                           |
+|Name| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| int32 |
+|Default| 16 |
+|Effective|After restart system|
 
 ### Write Ahead Log Configuration
 
@@ -796,48 +805,48 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * group\_size\_in\_byte
 
-|    Name     | group\_size\_in\_byte                      |
-| :---------: | :----------------------------------------- |
-| Description | The data size written to the disk per time |
-|    Type     | Int32                                      |
-|   Default   | 134217728                                  |
-|  Effective  | Trigger                                    |
+|Name|group\_size\_in\_byte|
+|:---:|:---|
+|Description|The data size written to the disk per time|
+|Type|int32|
+|Default| 134217728 |
+|Effective|Trigger|
 
 * page\_size\_in\_byte
 
-|    Name     | page\_size\_in\_byte                                                                                 |
-| :---------: | :--------------------------------------------------------------------------------------------------- |
-| Description | The maximum size of a single page written in memory when each column in memory is written (in bytes) |
-|    Type     | Int32                                                                                                |
-|   Default   | 65536                                                                                                |
-|  Effective  | Trigger                                                                                              |
+|Name| page\_size\_in\_byte |
+|:---:|:---|
+|Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
+|Type|int32|
+|Default| 65536 |
+|Effective|Trigger|
 
 * max\_number\_of\_points\_in\_page
 
-|    Name     | max\_number\_of\_points\_in\_page                                                  |
-| :---------: | :--------------------------------------------------------------------------------- |
-| Description | The maximum number of data points (timestamps - valued groups) contained in a page |
-|    Type     | Int32                                                                              |
-|   Default   | 1048576                                                                            |
-|  Effective  | Trigger                                                                            |
+|Name| max\_number\_of\_points\_in\_page |
+|:---:|:---|
+|Description|The maximum number of data points (timestamps - valued groups) contained in a page|
+|Type|int32|
+|Default| 1048576 |
+|Effective|Trigger|
 
 * max\_degree\_of\_index\_node
 
-|    Name     | max\_degree\_of\_index\_node                                                                    |
-| :---------: | :---------------------------------------------------------------------------------------------- |
-| Description | The maximum degree of the metadata index tree (that is, the max number of each node's children) |
-|    Type     | Int32                                                                                           |
-|   Default   | 256                                                                                             |
-|  Effective  | Only allowed to be modified in first start up                                                   |
+|Name| max\_degree\_of\_index\_node |
+|:---:|:---|
+|Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
+|Type|int32|
+|Default| 256 |
+|Effective|Only allowed to be modified in first start up|
 
 * max\_string\_length
 
-|    Name     | max\_string\_length                                         |
-| :---------: | :---------------------------------------------------------- |
-| Description | The maximum length of a single string (number of character) |
-|    Type     | Int32                                                       |
-|   Default   | 128                                                         |
-|  Effective  | Trigger                                                     |
+|Name| max\_string\_length |
+|:---:|:---|
+|Description|The maximum length of a single string (number of character)|
+|Type|int32|
+|Default| 128 |
+|Effective|Trigger|
 
 * time\_encoder
 
@@ -857,14 +866,14 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | PLAIN                                 |
 |  Effective  | Trigger                               |
 
-* float_precision
+* float\_precision
 
-|    Name     | float_precision                                                                                                                                                                                                                                         |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | The precision of the floating point number.(The number of digits after the decimal point)                                                                                                                                                               |
-|    Type     | Int32                                                                                                                                                                                                                                                   |
-|   Default   | The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
-|  Effective  | Trigger                                                                                                                                                                                                                                                 |
+|Name| float\_precision |
+|:---:|:---|
+|Description| The precision of the floating point number.(The number of digits after the decimal point) |
+|Type|int32|
+|Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
+|Effective|Trigger|
 
 * compressor
 
@@ -884,23 +893,23 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 0.05                                                                                                                                                                                                                                                                                                                                                                                                             |
 |  Effective  | After restarting system                                                                                                                                                                                                                                                                                                                                                                                          |
 
-* freq_snr
+* freq\_snr
 
-|    Name     | freq_snr                                        |
+|    Name     | freq\_snr                                        |
 | :---------: | :---------------------------------------------- |
 | Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
 |    Type     | Double                                          |
 |   Default   | 40.0                                            |
 |  Effective  | Trigger                                         |
 
-* freq_block_size
+* freq\_block\_size
 
-|    Name     | freq_block_size                                                                                                                                                              |
-| :---------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
-|    Type     | Int32                                                                                                                                                                        |
-|   Default   | 1024                                                                                                                                                                         |
-|  Effective  | Trigger                                                                                                                                                                      |
+|Name| freq\_block\_size |
+|:---:|:---|
+|Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
+|Type|int32|
+|Default| 1024 |
+|Effective|Trigger|
 
 ### Watermark Configuration
 
@@ -987,9 +996,9 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Name     | udf\_initial\_byte\_array\_length\_for\_memory\_control                                                                                                          |
 | :---------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Description | Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this value to be slightly larger than the average length of all texts. |
-|    Type     | Int32                                                                                                                                                            |
-|   Default   | 48                                                                                                                                                               |
-|  Effective  | After restarting system                                                                                                                                          |
+|    Type     | int32                                                        |
+|   Default   | 48                                                           |
+|  Effective  | After restarting system                                      |
 
 * udf\_memory\_budget\_in\_mb
 
@@ -1029,58 +1038,58 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Trigger Configuration
 
-- concurrent_window_evaluation_thread
+- concurrent\_window\_evaluation\_thread
 
-|    Name     | concurrent_window_evaluation_thread                                                          |
+|    Name     | concurrent\_window\_evaluation\_thread                                                          |
 | :---------: | :------------------------------------------------------------------------------------------- |
 | Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
-|    Type     | Int32                                                                                        |
-|   Default   | The number of CPU cores                                                                      |
-|  Effective  | After restarting system                                                                      |
+|    Type     | int32                                                        |
+|   Default   | The number of CPU cores                                      |
+|  Effective  | After restarting system                                      |
 
-- max_pending_window_evaluation_tasks
+- max\_pending\_window\_evaluation\_tasks
 
-|    Name     | max_pending_window_evaluation_tasks                                                                                 |
+|    Name     | max\_pending\_window\_evaluation\_tasks                                                                                 |
 | :---------: | :------------------------------------------------------------------------------------------------------------------ |
 | Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
-|    Type     | Int32                                                                                                               |
-|   Default   | 64                                                                                                                  |
-|  Effective  | After restarting system                                                                                             |
+|    Type     | int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
 
 ### SELECT-INTO
 
-* select_into_insert_tablet_plan_row_limit
+* select\_into\_insert\_tablet\_plan\_row\_limit
 
-|    Name     | select_into_insert_tablet_plan_row_limit                                                                                            |
+|    Name     | select\_into\_insert\_tablet\_plan\_row\_limit                                                                                            |
 | :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
 | Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
-|    Type     | Int32                                                                                                                               |
-|   Default   | 10000                                                                                                                               |
-|  Effective  | Trigger                                                                                                                             |
+|    Type     | int32                                                        |
+|   Default   | 10000                                                        |
+|  Effective  | Trigger                                                      |
 
 ### Continuous Query
 
-* continuous_query_execution_thread
+* continuous\_query\_execution\_thread
 
-|    Name     | continuous_query_execution_thread                             |
+|    Name     | continuous\_query\_execution\_thread                             |
 | :---------: | :------------------------------------------------------------ |
 | Description | How many threads will be set up to perform continuous queries |
-|    Type     | Int32                                                         |
-|   Default   | max(1, the / 2)                                               |
-|  Effective  | After restarting system                                       |
+|    Type     | int32                                                        |
+|   Default   | max(1, the / 2)                                              |
+|  Effective  | After restarting system                                      |
 
-* max_pending_continuous_query_tasks
+* max\_pending\_continuous\_query\_tasks
 
-|    Name     | max_pending_continuous_query_tasks                                         |
+|    Name     | max\_pending\_continuous\_query\_tasks                                         |
 | :---------: | :------------------------------------------------------------------------- |
 | Description | Maximum number of continuous query tasks that can be pending for execution |
-|    Type     | Int32                                                                      |
-|   Default   | 64                                                                         |
-|  Effective  | After restarting system                                                    |
+|    Type     | int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
 
-* continuous_query_min_every_interval
+* continuous\_query\_min\_every\_interval
 
-|    Name     | continuous_query_min_every_interval                 |
+|    Name     | continuous\_query\_min\_every\_interval                 |
 | :---------: | :-------------------------------------------------- |
 | Description | Minimum every interval to perform continuous query. |
 |    Type     | duration                                            |
@@ -1093,56 +1102,228 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Procedure Configuration
 
-* procedure_core_worker_thread_count
+* procedure\_core\_worker\_thread\_count
 
-|    Name     | procedure_core_worker_thread_count |
+|    Name     | procedure\_core\_worker\_thread\_count |
 | :---------: | :--------------------------------- |
 | Description | The number of worker thread count  |
-|    Type     | int                                |
+|    Type     | int32                                |
 |   Default   | 4                                  |
 |  Effective  | After restarting system            |
 
-* procedure_completed_clean_interval
+* procedure\_completed\_clean\_interval
 
-|    Name     | procedure_completed_clean_interval                   |
+|    Name     | procedure\_completed\_clean\_interval                   |
 | :---------: | :--------------------------------------------------- |
 | Description | Time interval of completed procedure cleaner work in |
-|    Type     | int                                                  |
+|    Type     | int32                                                  |
 |    Unit     | second                                               |
 |   Default   | 30                                                   |
 |  Effective  | After restarting system                              |
 
-* procedure_completed_evict_ttl
+* procedure\_completed\_evict\_ttl
 
-|    Name     | procedure_completed_evict_ttl  |
+|    Name     | procedure\_completed\_evict\_ttl  |
 | :---------: | :----------------------------- |
 | Description | The ttl of completed procedure |
-|    Type     | int                            |
+|    Type     | int32                            |
 |    Unit     | second                         |
 |   Default   | 800                            |
 |  Effective  | After restarting system        |
 
+
 ### MQTT Broker Configuration
+* enable\_mqtt\_service
+
+|    Name     | enable\_mqtt\_service。              |
+|:-----------:|:------------------------------------|
+| Description | Whether to enable the MQTT service  |
+|    Type     | Boolean                             |
+|   Default   | False                               |
+|  Effective  | Trigger                             |
+
+* mqtt\_host
+
+|    Name     | mqtt\_host                                   |
+|:-----------:|:---------------------------------------------|
+| Description | The host to which the MQTT service is bound  |
+|    Type     | String                                       |
+|   Default   | 0.0.0.0                                      |
+|   Effective    | Trigger                                      |
+
+* mqtt\_port
+
+|    Name     | mqtt\_port                                  |
+|:-----------:|:--------------------------------------------|
+| Description | The port to which the MQTT service is bound |
+|    Type     | int32                                       |
+|   Default   | 1883                                        |
+|   Effective    | Trigger                                     |
+
+* mqtt\_handler\_pool\_size
+
+|Name| mqtt\_handler\_pool\_size                                   |
+|:---:|:------------------------------------------------------------|
+|Description| The size of the handler pool used to process MQTT messages  |
+|Type| int32                                                       |
+|Default| 1                                                           |
+|Effective| Trigger                                                     |
+
+* mqtt\_payload\_formatter
+
+|    Name     | mqtt\_payload\_formatter       |
+|:-----------:|:-------------------------------|
+| Description | MQTT message payload formatter |
+|    Type     | String                         |
+|   Default   | JSON                           |
+|   Effective    | Trigger                        |
+
+* mqtt\_max\_message\_size
+
+|  Name  | mqtt\_max\_message\_size                 |
+|:------:|:-----------------------------------------|
+|   Description   | Maximum length of MQTT message in bytes  |
+|   Type   | int32                                    |
+|  Default   | 1048576                                  |
+| Effective | Trigger                                  |
+
 
 ### REST Service Configuration
 
+* enable\_rest\_service
+
+|Name| enable\_rest\_service                   |
+|:---:|:--------------------------------------|
+|Description| Whether to enable the Rest service    |
+|Type| Boolean                               |
+|Default| false                                 |
+|Effective| After restarting system               |
+
+* rest\_service\_port
+
+|Name| rest\_service\_port |
+|:---:|:------------------|
+|Description| The Rest service listens to the port number      |
+|Type| int32             |
+|Default| 18080             |
+|Effective| After restarting system              |
+
+* enable\_swagger
+
+|Name| enable\_swagger         |
+|:---:|:-----------------------|
+|Description| Whether to enable swagger to display rest interface information |
+|Type| Boolean                |
+|Default| false                  |
+|Effective| After restarting system                   |
+
+* rest\_query\_default\_row\_size\_limit
+
+|Name| rest\_query\_default\_row\_size\_limit                                                         |
+|:---:|:------------------------------------------------------------------------------------------|
+|Description| The maximum number of rows in a result set that can be returned by a query                |
+|Type| int32                                                                                     |
+|Default| 10000                                                                                     |
+|Effective| After restarting system                                                                   |
+
+* cache\_expire
+
+|Name| cache\_expire                                            |
+|:---:|:--------------------------------------------------------|
+|Description| Expiration time for caching customer login information  |
+|Type| int32                                                   |
+|Default| 28800                                                   |
+|Effective| After restarting system                                 |
+
+* cache\_max\_num
+
+|Name| cache\_max\_num |
+|:---:|:--------------|
+|Description| The maximum number of users stored in the cache  |
+|Type| int32         |
+|Default| 100           |
+|Effective| After restarting system          |
+
+* cache\_init\_num
+
+|Name| cache\_init\_num |
+|:---:|:---------------|
+|Description| Initial cache capacity        |
+|Type| int32          |
+|Default| 10             |
+|Effective| After restarting system           |
+
+* enable\_https
+
+|Name| cache\_init\_num           |
+|:---:|:-------------------------|
+|Description| REST Service Specifies whether to enable SSL configuration |
+|Type| Boolean                  |
+|Default| false                    |
+|Effective| After restarting system                     |
+
+* key\_store\_path
+
+|Name| key\_store\_path |
+|:---:|:---------------|
+|Description| keyStore path (optional)  |
+|Type| String         |
+|Default| ""          |
+|Effective| After restarting system           |
+
+* key\_store\_pwd
+
+|Name| key\_store\_pwd |
+|:---:|:---------------|
+|Description| keyStore Password (optional) |
+|Type| String         |
+|Default| ""          |
+|Effective| After restarting system           |
+
+* trust\_store\_path
+
+|Name| trust\_store\_path |
+|:---:|:---------------|
+|Description| keyStore Password (optional) |
+|Type| String         |
+|Default| ""          |
+|Effective| After restarting system           |
+
+* trust\_store\_pwd
+
+|Name| trust\_store\_pwd                  |
+|:---:|:---------------------------------|
+|Description| trustStore Password (Optional)   |
+|Type| String                           |
+|Default| ""                               |
+|Effective| After restarting system          |
+
+* idle\_timeout
+
+|Name| idle\_timeout  |
+|:---:|:--------------|
+|Description| SSL timeout duration, expressed in seconds |
+|Type| int32         |
+|Default| 5000          |
+|Effective| After restarting system          |
+
 ### InfluxDB RPC Service Configuration
 
-* enable_influxdb_rpc_service
+* enable\_influxdb\_rpc\_service
 
-|    Name     | enable_influxdb_rpc_service            |
+|    Name     | enable\_influxdb\_rpc\_service            |
 | :---------: | :------------------------------------- |
 | Description | Whether to enable InfluxDB RPC service |
 |    Type     | Boolean                                |
 |   Default   | true                                   |
 |  Effective  | After restarting system                |
 
-* influxdb_rpc_port
+* influxdb\_rpc\_port
 
-|    Name     | influxdb_rpc_port                     |
+|    Name     | influxdb\_rpc\_port                     |
 | :---------: | :------------------------------------ |
 | Description | The port used by InfluxDB RPC service |
-|    Type     | INT32                                 |
+|    Type     | int32                                 |
 |   Default   | 8086                                  |
 |  Effective  | After restarting system               |
 
