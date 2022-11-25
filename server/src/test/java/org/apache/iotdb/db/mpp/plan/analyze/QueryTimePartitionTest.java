@@ -348,8 +348,14 @@ public class QueryTimePartitionTest {
 
   @Test
   public void testGetTimePartitionSlotList() {
+
+    // time >= 10 and time <= 9
+    List<TTimePartitionSlot> res =
+        getTimePartitionSlotList(new AndFilter(TimeFilter.gtEq(10), TimeFilter.ltEq(9)));
+    assertTrue(res.isEmpty());
+
     // time >= 10
-    List<TTimePartitionSlot> res = getTimePartitionSlotList(TimeFilter.gtEq(10));
+    res = getTimePartitionSlotList(TimeFilter.gtEq(10));
     assertTrue(res.isEmpty());
 
     // time < 20

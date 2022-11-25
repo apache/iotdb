@@ -1139,6 +1139,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return Collections.emptyList();
     }
     List<TimeRange> timeRangeList = timeFilter.getTimeRanges();
+    if (timeRangeList.isEmpty()) {
+      return Collections.emptyList();
+    }
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE
         || timeRangeList.get(timeRangeList.size() - 1).getMax() == Long.MAX_VALUE) {
       return Collections.emptyList();
