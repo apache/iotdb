@@ -23,6 +23,9 @@ import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -35,6 +38,7 @@ import java.nio.file.StandardOpenOption;
 
 public class TriggerFireTimesCounter implements Trigger {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireTimesCounter.class);
   private String TXT_PATH;
 
   @Override
@@ -80,6 +84,7 @@ public class TriggerFireTimesCounter implements Trigger {
         }
       }
     } catch (Throwable t) {
+      LOGGER.warn("TriggerFireTimesCounter error", t);
       return false;
     }
     return true;

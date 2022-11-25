@@ -20,7 +20,7 @@
 package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.Clock;
@@ -33,9 +33,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class MicrometerJmxReporter implements Reporter {
+public class MicrometerJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerJmxReporter.class);
-  private AbstractMetricManager metricManager;
 
   @Override
   public boolean start() {
@@ -82,6 +81,6 @@ public class MicrometerJmxReporter implements Reporter {
 
   @Override
   public void setMetricManager(AbstractMetricManager metricManager) {
-    this.metricManager = metricManager;
+    // do nothing
   }
 }

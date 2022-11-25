@@ -51,7 +51,7 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
         ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());

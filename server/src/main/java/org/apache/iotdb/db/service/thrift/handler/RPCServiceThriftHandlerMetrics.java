@@ -47,7 +47,7 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
+        MetricType.AUTO_GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
   }
 
   @Override
