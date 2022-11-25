@@ -75,6 +75,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPrevi
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -1511,15 +1512,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeJoinOperator.class.getSimpleName());
-    TimeComparator timeComparator = ASC_TIME_COMPARATOR;
-    List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
-    List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
+                VerticallyConcatOperator.class.getSimpleName());
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new RowBasedTimeJoinOperator(
-        operatorContext, children, Ordering.ASC, outputColumnTypes, mergers, timeComparator);
+    return new VerticallyConcatOperator(operatorContext, children, outputColumnTypes);
   }
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {

@@ -130,7 +130,6 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    hasCandidateResult = true;
     firstValue.setObject(finalResult.getObject(0));
   }
 
