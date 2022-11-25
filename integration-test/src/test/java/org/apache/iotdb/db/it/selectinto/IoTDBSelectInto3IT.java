@@ -42,7 +42,7 @@ public class IoTDBSelectInto3IT extends IoTDBSelectIntoIT {
         ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
     queryThreadCount = ConfigFactory.getConfig().getQueryThreadCount();
     ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(5);
-    ConfigFactory.getConfig().setQueryThreadCount(2);
+    ConfigFactory.getConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
