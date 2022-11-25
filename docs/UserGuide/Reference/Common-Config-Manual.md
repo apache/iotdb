@@ -1078,15 +1078,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | max(1, the / 2)                                              |
 |  Effective  | After restarting system                                      |
 
-* max\_pending\_continuous\_query\_tasks
-
-|    Name     | max\_pending\_continuous\_query\_tasks                                         |
-| :---------: | :------------------------------------------------------------------------- |
-| Description | Maximum number of continuous query tasks that can be pending for execution |
-|    Type     | int32                                                        |
-|   Default   | 64                                                           |
-|  Effective  | After restarting system                                      |
-
 * continuous\_query\_min\_every\_interval
 
 |    Name     | continuous\_query\_min\_every\_interval                 |
