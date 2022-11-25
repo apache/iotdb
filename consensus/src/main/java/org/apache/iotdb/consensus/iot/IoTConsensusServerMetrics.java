@@ -38,24 +38,24 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
         .createAutoGauge(
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             impl,
             IoTConsensusServerImpl::getIndex,
             Tag.NAME.toString(),
-            "multiLeaderServerImpl",
+            "ioTConsensusServerImpl",
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "searchIndex");
     MetricService.getInstance()
         .createAutoGauge(
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             impl,
             IoTConsensusServerImpl::getCurrentSafelyDeletedSearchIndex,
             Tag.NAME.toString(),
-            "multiLeaderServerImpl",
+            "ioTConsensusServerImpl",
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
@@ -67,9 +67,9 @@ public class IoTConsensusServerMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
-            "multiLeaderServerImpl",
+            "ioTConsensusServerImpl",
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
@@ -77,9 +77,9 @@ public class IoTConsensusServerMetrics implements IMetricSet {
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
-            "multiLeaderServerImpl",
+            "ioTConsensusServerImpl",
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),

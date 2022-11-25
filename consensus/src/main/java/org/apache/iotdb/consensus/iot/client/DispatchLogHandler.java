@@ -69,7 +69,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
             Metric.STAGE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            Metric.MULTI_LEADER.toString(),
+            Metric.IOT_CONSENSUS.toString(),
             Tag.TYPE.toString(),
             "syncLogTimePerRequest",
             Tag.REGION.toString(),
