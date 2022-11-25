@@ -673,17 +673,17 @@ class RatisConsensus implements IConsensus {
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {
-    logger.error("{} request failed with exception {}", this, e);
+    logger.debug("{} request failed with exception {}", this, e);
     return ConsensusGenericResponse.newBuilder().setSuccess(false).setException(e).build();
   }
 
   private ConsensusWriteResponse failedWrite(ConsensusException e) {
-    logger.error("{} write request failed with exception {}", this, e);
+    logger.debug("{} write request failed with exception {}", this, e);
     return ConsensusWriteResponse.newBuilder().setException(e).build();
   }
 
   private ConsensusReadResponse failedRead(ConsensusException e) {
-    logger.error("{} read request failed with exception {}", this, e);
+    logger.debug("{} read request failed with exception {}", this, e);
     return ConsensusReadResponse.newBuilder().setException(e).build();
   }
 
