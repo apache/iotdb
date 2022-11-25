@@ -177,7 +177,6 @@ public class PrometheusReporter implements Reporter {
     prometheusTextWriter.writeSample(
         name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
     prometheusTextWriter.writeSample(name + "_count", tags, count);
-    prometheusTextWriter.writeSample(name, addTags(tags, "quantile", "0.5"), snapshot.getMedian());
 
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.0"), snapshot.getValue(0.0));

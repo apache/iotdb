@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /** Used by timer and histogram. */
@@ -47,13 +48,13 @@ public interface HistogramSnapshot extends IMetric {
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
-    result.put("min", getMin());
-    result.put("p50", getMedian());
-    result.put("p75", getValue(0.75));
-    result.put("p90", getValue(0.90));
-    result.put("p95", getValue(0.95));
-    result.put("p99", getValue(0.99));
     result.put("max", getMax());
-    result.put("mean", getMean());
+    result.put("sum", Arrays.stream(getValues()).sum());
+
+    result.put("p0", getValue(0.0));
+    result.put("p25", getValue(0.25));
+    result.put("p50", getValue(0.5));
+    result.put("p75", getValue(0.75));
+    result.put("p100", getValue(1.0));
   }
 }
