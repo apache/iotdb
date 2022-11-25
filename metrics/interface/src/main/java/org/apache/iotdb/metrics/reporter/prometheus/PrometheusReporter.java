@@ -98,17 +98,17 @@ public class PrometheusReporter implements Reporter {
         MetricType metricType = metricInfo.getMetaInfo().getType();
         if (metric instanceof Counter) {
           name += "_total";
-          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeHelp(name);
           prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
           Counter counter = (Counter) metric;
           prometheusTextWriter.writeSample(name, metricInfo.getTags(), counter.count());
         } else if (metric instanceof Gauge) {
-          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeHelp(name);
           prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
           Gauge gauge = (Gauge) metric;
           prometheusTextWriter.writeSample(name, metricInfo.getTags(), gauge.value());
         } else if (metric instanceof AutoGauge) {
-          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeHelp(name);
           prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
           AutoGauge gauge = (AutoGauge) metric;
           prometheusTextWriter.writeSample(name, metricInfo.getTags(), gauge.value());
@@ -124,7 +124,7 @@ public class PrometheusReporter implements Reporter {
               prometheusTextWriter);
         } else if (metric instanceof Rate) {
           name += "_total";
-          prometheusTextWriter.writeHelp(name, getHelpMessage(name, metricType));
+          prometheusTextWriter.writeHelp(name);
           prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
           Rate rate = (Rate) metric;
           prometheusTextWriter.writeSample(name, metricInfo.getTags(), rate.getCount());
@@ -139,6 +139,7 @@ public class PrometheusReporter implements Reporter {
         } else if (metric instanceof Timer) {
           Timer timer = (Timer) metric;
           HistogramSnapshot snapshot = timer.takeSnapshot();
+          name += "_seconds";
           writeSnapshotAndCount(
               name,
               metricInfo.getTags(),
@@ -170,22 +171,24 @@ public class PrometheusReporter implements Reporter {
       long count,
       PrometheusTextWriter prometheusTextWriter)
       throws IOException {
-    name += "_seconds";
-    prometheusTextWriter.writeHelp(name, getHelpMessage(name, type));
+    prometheusTextWriter.writeHelp(name);
     prometheusTextWriter.writeType(name, type);
     prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getMax());
     prometheusTextWriter.writeSample(
         name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
     prometheusTextWriter.writeSample(name + "_count", tags, count);
     prometheusTextWriter.writeSample(name, addTags(tags, "quantile", "0.5"), snapshot.getMedian());
+
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.0"), snapshot.getValue(0.0));
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.25"), snapshot.getValue(0.25));
+    prometheusTextWriter.writeSample(
+        name, addTags(tags, "quantile", "0.5"), snapshot.getValue(0.5));
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.75"), snapshot.getValue(0.75));
     prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.90"), snapshot.getValue(0.90));
-    prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.95"), snapshot.getValue(0.95));
-    prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.99"), snapshot.getValue(0.99));
+        name, addTags(tags, "quantile", "1.0"), snapshot.getValue(1.0));
   }
 
   private Map<String, String> addTags(Map<String, String> tags, String key, String value) {

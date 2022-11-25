@@ -32,11 +32,9 @@ class PrometheusTextWriter extends FilterWriter {
     super(out);
   }
 
-  public void writeHelp(String name, String value) throws IOException {
+  public void writeHelp(String name) throws IOException {
     write("# HELP ");
     write(name);
-    write(' ');
-    write(value);
     write('\n');
   }
 
@@ -47,9 +45,9 @@ class PrometheusTextWriter extends FilterWriter {
     switch (type) {
       case GAUGE:
       case AUTO_GAUGE:
-      case COUNTER:
         write("gauge");
         break;
+      case COUNTER:
       case RATE:
         write("counter");
         break;
