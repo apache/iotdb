@@ -95,7 +95,7 @@ public class IoTDBPartitionInheritPolicyIT {
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
     originalSeriesPartitionSlotNum = ConfigFactory.getConfig().getSeriesPartitionSlotNum();
-    ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum);
+    ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);

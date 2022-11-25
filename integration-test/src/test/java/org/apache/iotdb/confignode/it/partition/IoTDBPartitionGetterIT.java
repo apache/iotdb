@@ -119,7 +119,7 @@ public class IoTDBPartitionGetterIT {
     CONF.setDataReplicationFactor(testReplicationFactor);
 
     originalSeriesPartitionSlotNum = CONF.getSeriesPartitionSlotNum();
-    CONF.setSeriesPartitionSlotNum(testSeriesPartitionSlotNum);
+    CONF.setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
 
     originalTimePartitionInterval = CONF.getTimePartitionInterval();
     CONF.setTimePartitionInterval(testTimePartitionInterval);
@@ -468,7 +468,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(
-          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
+          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
@@ -476,7 +476,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(
-          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
+          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
