@@ -938,8 +938,18 @@ var config = {
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
-							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
+							['Process-Data/Continuous-Query','CQ (Continuous Query)']
+						]
+					},
+					{
+						title: 'Trigger',
+						sidebarDepth: 1,
+						children: [
+							['Trigger/Instructions','Instructions'],
+							['Trigger/Implement-Trigger','How to implement a trigger'],
+							['Trigger/Trigger-Management','Trigger Management'],
+							['Trigger/Notes','Notes'],
+							['Trigger/Configuration-Parameters','Configuration-Parameters'],
 						]
 					},
 					{
@@ -1925,7 +1935,11 @@ var config = {
 						title: '触发器',
 						sidebarDepth: 1,
 						children: [
-							['Trigger/Trigger','触发器'],
+							['Trigger/Instructions','使用说明'],
+							['Trigger/Implement-Trigger','编写触发器'],
+							['Trigger/Trigger-Management','管理触发器'],
+							['Trigger/Notes','重要注意事项'],
+							['Trigger/Configuration-Parameters','配置参数'],
 						]
 					},
 					{
