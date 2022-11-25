@@ -86,6 +86,8 @@ public class IoTDBPartitionGetterIT {
   private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
+  private static int originalSeriesPartitionSlotNum;
+
   private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
 
@@ -94,9 +96,9 @@ public class IoTDBPartitionGetterIT {
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
-  private static final int seriesPartitionSlotsNum = 10000;
-  private static final int seriesPartitionBatchSize = 100;
-  private static final int timePartitionSlotsNum = 10;
+  private static final int testSeriesPartitionSlotNum = 100;
+  private static final int seriesPartitionBatchSize = 10;
+  private static final int testTimePartitionSlotsNum = 10;
   private static final int timePartitionBatchSize = 10;
 
   @BeforeClass
@@ -115,6 +117,9 @@ public class IoTDBPartitionGetterIT {
     originalDataReplicationFactor = CONF.getDataReplicationFactor();
     CONF.setSchemaReplicationFactor(testReplicationFactor);
     CONF.setDataReplicationFactor(testReplicationFactor);
+
+    originalSeriesPartitionSlotNum = CONF.getSeriesPartitionSlotNum();
+    CONF.setSeriesPartitionSlotNum(testSeriesPartitionSlotNum);
 
     originalTimePartitionInterval = CONF.getTimePartitionInterval();
     CONF.setTimePartitionInterval(testTimePartitionInterval);
@@ -168,8 +173,8 @@ public class IoTDBPartitionGetterIT {
       /* Create DataPartitions */
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
@@ -227,6 +232,7 @@ public class IoTDBPartitionGetterIT {
 
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
     CONF.setTimePartitionInterval(originalTimePartitionInterval);
   }
 
@@ -320,8 +326,8 @@ public class IoTDBPartitionGetterIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
@@ -461,14 +467,16 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
@@ -482,7 +490,8 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
     }
   }
 
