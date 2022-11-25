@@ -1307,15 +1307,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 连续查询配置
 
-* max\_pending\_continuous\_query\_tasks
-
-|     名字     | max\_pending\_continuous\_query\_tasks |
-| :----------: | :--------------------------------- |
-|     描述     | 队列中连续查询最大任务堆积数       |
-|     类型     | int32                              |
-|    默认值    | 64                                 |
-| 改后生效方式 | 重启服务生效                       |
-
 * continuous\_query\_submit\_thread\_count
 
 |     名字     | continuous\_query\_execution\_thread |
