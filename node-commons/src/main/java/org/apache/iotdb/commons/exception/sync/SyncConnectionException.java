@@ -16,35 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.sync;
+package org.apache.iotdb.commons.exception.sync;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ISyncClient;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.ArrayList;
-import java.util.List;
+public class SyncConnectionException extends IoTDBException {
 
-public class MockSyncClient implements ISyncClient {
+  private static final long serialVersionUID = -6661904365503849681L;
 
-  private final List<PipeData> pipeDataList;
-
-  public MockSyncClient() {
-    this.pipeDataList = new ArrayList<>();
+  public SyncConnectionException(String message) {
+    super(message, TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
   }
 
-  public List<PipeData> getPipeDataList() {
-    return pipeDataList;
+  public SyncConnectionException(String message, Throwable cause) {
+    super(message + cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
   }
 
-  @Override
-  public void handshake() {}
-
-  @Override
-  public boolean send(PipeData pipeData) {
-    pipeDataList.add(pipeData);
-    return true;
+  public SyncConnectionException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
   }
-
-  @Override
-  public void close() {}
 }
