@@ -46,7 +46,7 @@ public class JvmClassLoaderMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.GAUGE, "jvm.classes.loaded.classes");
-    metricService.remove(MetricType.GAUGE, "jvm.classes.unloaded.classes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.classes.loaded.classes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm.classes.unloaded.classes");
   }
 }
