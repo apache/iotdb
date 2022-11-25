@@ -19,7 +19,7 @@
 
 -->
 
-# Query Result Alignment
+# Query Alignment Mode
 
 In addition, IoTDB supports another result set format: `ALIGN BY DEVICE`.
 

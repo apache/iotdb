@@ -19,7 +19,7 @@
 
 -->
 
-# Series Processing
+# Time Series Processing
 
 ## CHANGE_POINTS
 
