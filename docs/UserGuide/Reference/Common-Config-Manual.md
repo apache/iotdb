@@ -67,23 +67,23 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Partition (Load balancing) Configuration
 
-* series\_partition\_slot_num
+* series\_partition\_slot\_num
 
-|    Name     | series\_partition\_slot_num |
-|:-----------:|:----------------------------|
-| Description |                             |
-|    Type     |                             |
-|   Default   |                             |
-|  Effective  |                             |
+|Name| series\_partition\_slot\_num |
+|:---:|:---|
+|Description| Slot num of series partition |
+|Type| Int |
+|Default| 10000 |
+|Effective|Only allowed to be modified in first start up|
 
 * series\_partition\_executor\_class
 
-|    Name     | series\_partition\_executor\_class |
-|:-----------:|:-----------------------------------|
-| Description |                                    |
-|    Type     ||
-|   Default   |                                    |
-|  Effective  |                                    |
+|Name| series\_partition\_executor\_class |
+|:---:|:---|
+|Description| Series partition hash function |
+|Type| String |
+|Default| org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
+|Effective|Only allowed to be modified in first start up|
 
 
 * region\_allocate\_strategy
