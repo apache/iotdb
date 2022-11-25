@@ -190,7 +190,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
 |Type| Int32                                                                                                                                                                                                                                          |
 |Default| 1000                                                                                                                                                                                                                                           |
-|Effective| Only allowed to be modified in first start up  /                                                                                                                                                                                                |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
 
 * tag\_attribute\_total\_size
 
