@@ -280,12 +280,12 @@ public class RouteBalancer {
 
   private void balancingRegionLeader() {
     if ((IS_SCHEMA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_MULTI_LEADER)
-        || IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS) {
+        || (!IS_SCHEMA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
       balancingRegionLeader(TConsensusGroupType.SchemaRegion);
     }
 
     if ((IS_DATA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_MULTI_LEADER)
-        || IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS) {
+        || (!IS_DATA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
       balancingRegionLeader(TConsensusGroupType.DataRegion);
     }
   }
