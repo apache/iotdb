@@ -204,7 +204,7 @@ public interface BaseEnv {
   /** Start an existed DataNode */
   void startDataNode(int index);
 
-  /** Start an existed DataNode */
+  /** Shutdown an existed DataNode */
   void shutdownDataNode(int index);
 
   int getMqttPort();
