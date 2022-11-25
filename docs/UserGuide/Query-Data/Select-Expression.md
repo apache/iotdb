@@ -54,7 +54,7 @@ From this syntax definition, `selectExpr` can contain:
 - function
    - Built-in aggregation functions, see [Aggregate Query](./Aggregate-Query.md) for details.
    - Time series generation function
-   - User-defined functions, see [UDF](../Process-Data/UDF-User-Defined-Function.md) for details.
+   - User-defined functions, see [UDF](../Operators-Functions/UDF-User-Defined-Function.md) for details.
 - expressions
    - Arithmetic operation expressions
    - Time series generating nested expressions
@@ -1056,7 +1056,7 @@ It costs 0.118s
 
 ### User Defined Timeseries Generating Functions
 
-Please refer to [UDF (User Defined Function)](../Process-Data/UDF-User-Defined-Function.md).
+Please refer to [UDF (User Defined Function)](../Operators-Functions/UDF-User-Defined-Function.md).
 
 Known Implementation UDF Libraries:
 

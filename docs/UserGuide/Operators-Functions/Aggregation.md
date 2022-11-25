@@ -18,10 +18,3 @@
     under the License.
 
 -->
-
-
-# M4
-
-## M4
-
-The documentation of M4 has been moved to [Query Data->Select Expression->Time Series Generating Functions](../Query-Data/Select-Expression.md).
