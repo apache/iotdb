@@ -35,11 +35,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TriggerFireTimesCounter implements Trigger {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireTimesCounter.class);
   private String TXT_PATH;
+
+  private final ReentrantLock lock = new ReentrantLock();
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
@@ -70,23 +73,28 @@ public class TriggerFireTimesCounter implements Trigger {
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
-    try (FileChannel fileChannel =
-            FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
-        FileLock fileLock = fileChannel.tryLock()) {
-      int rows = tablet.rowSize;
-      if (fileLock != null && fileLock.isValid()) {
-        String records = System.lineSeparator() + rows;
-        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-        byteBuffer.put(records.getBytes());
-        byteBuffer.flip();
-        while (byteBuffer.hasRemaining()) {
-          fileChannel.write(byteBuffer);
+    try {
+      lock.lock();
+      try (FileChannel fileChannel =
+              FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
+          FileLock fileLock = fileChannel.tryLock()) {
+        int rows = tablet.rowSize;
+        if (fileLock != null && fileLock.isValid()) {
+          String records = System.lineSeparator() + rows;
+          ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+          byteBuffer.put(records.getBytes());
+          byteBuffer.flip();
+          while (byteBuffer.hasRemaining()) {
+            fileChannel.write(byteBuffer);
+          }
         }
+      } catch (Throwable t) {
+        LOGGER.warn("TriggerFireTimesCounter error", t);
+        return false;
       }
-    } catch (Throwable t) {
-      LOGGER.warn("TriggerFireTimesCounter error", t);
-      return false;
+      return true;
+    } finally {
+      lock.unlock();
     }
-    return true;
   }
 }
