@@ -893,6 +893,96 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 ### Write Ahead Log Configuration
 
+* wal\_mode
+
+|    Name     | wal\_mode                                                                                                                                                                                                                                                                                                                                                               |
+|:-----------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The write mode of wal. For DISABLE mode, the system will disable wal. For SYNC mode, the system will submit wal synchronously, write request will not return until its wal is fsynced to the disk successfully. For ASYNC mode, the system will submit wal asynchronously, write request will return immediately no matter its wal is fsynced to the disk successfully. |
+|    Type     | String                                                                                                                                                                                                                                                                                                                                                                  |
+|   Default   | ASYNC                                                                                                                                                                                                                                                                                                                                                                   |
+|  Effective  | After restart system                                                                                                                                                                                                                                                                                                                                                    |
+
+* max\_wal\_nodes\_num
+
+|    Name     | max\_wal\_nodes\_num                                                                                                                   |
+|:-----------:|:---------------------------------------------------------------------------------------------------------------------------------------|
+| Description | Max number of wal nodes, each node corresponds to one wal directory. The default value 0 means the number is determined by the system. |
+|    Type     | int32                                                                                                                                  |
+|   Default   | 0                                                                                                                                      |
+|  Effective  | After restart system                                                                                                                   |
+
+* fsync\_wal\_delay\_in\_ms
+
+|    Name     | fsync\_wal\_delay\_in\_ms                                     |
+|:-----------:|:--------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync |
+|    Type     | int32                                                         |
+|   Default   | 3                                                             |
+|  Effective  | hot-load                                                      |
+
+* wal\_buffer\_size\_in\_byte
+
+|    Name     | wal\_buffer\_size\_in\_byte  |
+|:-----------:|:-----------------------------|
+| Description | Buffer size of each wal node |
+|    Type     | int32                        |
+|   Default   | 16777216                     |
+|  Effective  | After restart system         |
+
+* wal\_buffer\_queue\_capacity
+
+|    Name     | wal\_buffer\_queue\_capacity               |
+|:-----------:|:-------------------------------------------|
+| Description | Blocking queue capacity of each wal buffer |
+|    Type     | int32                                      |
+|   Default   | 50                                         |
+|  Effective  | After restart system                       |
+
+* wal\_file\_size\_threshold\_in\_byte
+
+|    Name     | wal\_file\_size\_threshold\_in\_byte |
+|:-----------:|:-------------------------------------|
+| Description | Size threshold of each wal file      |
+|    Type     | int32                                |
+|   Default   | 10485760                             |
+|  Effective  | hot-load                             |
+
+* wal\_min\_effective\_info\_ratio
+
+|    Name     | wal\_min\_effective\_info\_ratio                    |
+|:-----------:|:----------------------------------------------------|
+| Description | Minimum ratio of effective information in wal files |
+|    Type     | double                                              |
+|   Default   | 0.1                                                 |
+|  Effective  | hot-load                                            |
+
+* wal\_memtable\_snapshot\_threshold\_in\_byte
+
+|    Name     | wal\_memtable\_snapshot\_threshold\_in\_byte                    |
+|:-----------:|:----------------------------------------------------------------|
+| Description | MemTable size threshold for triggering MemTable snapshot in wal |
+|    Type     | int64                                                           |
+|   Default   | 8388608                                                         |
+|  Effective  | hot-load                                                        |
+
+* max\_wal\_memtable\_snapshot\_num
+
+|    Name     | max\_wal\_memtable\_snapshot\_num     |
+|:-----------:|:--------------------------------------|
+| Description | MemTable's max snapshot number in wal |
+|    Type     | int32                                 |
+|   Default   | 1                                     |
+|  Effective  | hot-load                              |
+
+* delete\_wal\_files\_period\_in\_ms
+
+|    Name     | delete\_wal\_files\_period\_in\_ms                          |
+|:-----------:|:------------------------------------------------------------|
+| Description | The period when outdated wal files are periodically deleted |
+|    Type     | int64                                                       |
+|   Default   | 20000                                                       |
+|  Effective  | hot-load                                                    |
+
 ### TsFile Configurations
 
 * group\_size\_in\_byte
