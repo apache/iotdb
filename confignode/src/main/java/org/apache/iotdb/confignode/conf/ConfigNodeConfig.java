@@ -72,8 +72,8 @@ public class ConfigNodeConfig {
   private int leastDataRegionGroupNum = 5;
 
   /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
-      RegionBalancer.RegionAllocateStrategy.GREEDY;
+  private RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy =
+      RegionBalancer.RegionGroupAllocateStrategy.GREEDY;
 
   /**
    * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
@@ -445,13 +445,13 @@ public class ConfigNodeConfig {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
   }
 
-  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
-    return regionAllocateStrategy;
+  public RegionBalancer.RegionGroupAllocateStrategy getRegionAllocateStrategy() {
+    return regionGroupAllocateStrategy;
   }
 
   public void setRegionAllocateStrategy(
-      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
-    this.regionAllocateStrategy = regionAllocateStrategy;
+      RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy) {
+    this.regionGroupAllocateStrategy = regionGroupAllocateStrategy;
   }
 
   public boolean isEnableDataPartitionInheritPolicy() {

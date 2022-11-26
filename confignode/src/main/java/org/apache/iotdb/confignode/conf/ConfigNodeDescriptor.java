@@ -220,7 +220,7 @@ public class ConfigNodeDescriptor {
 
     try {
       conf.setRegionAllocateStrategy(
-          RegionBalancer.RegionAllocateStrategy.valueOf(
+          RegionBalancer.RegionGroupAllocateStrategy.valueOf(
               properties
                   .getProperty("region_allocate_strategy", conf.getRegionAllocateStrategy().name())
                   .trim()));
