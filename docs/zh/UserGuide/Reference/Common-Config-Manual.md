@@ -621,6 +621,33 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | 36000000                                                    |
 | 改后生效方式 | 重启服务生效                                                |
 
+* max\_waiting\_time\_when\_insert\_blocked
+
+|     名字     | max\_waiting\_time\_when\_insert\_blocked |
+| :----------: |:------------------------------------------|
+|     描述     | 当插入请求等待超过这个时间，则抛出异常，单位 ms                 |
+|     类型     | Int32                                     |
+|    默认值    | 10000                                     |
+| 改后生效方式 | 重启服务生效                                 |   
+
+* enable\_discard\_out\_of\_order\_data
+
+|     名字     | enable\_discard\_out\_of\_order\_data |
+| :----------: |:--------------------------------------|
+|     描述     | 是否支持写入乱序数据                            |
+|     类型     | Boolean                               |
+|    默认值    | false                                 |
+| 改后生效方式 | 重启服务生效                                |
+
+* handle\_system\_error
+
+|     名字     | handle\_system\_error  |
+| :----------: |:-----------------------|
+|     描述     | 当系统遇到不可恢复的错误时的处理方法     |
+|     类型     | String                 |
+|    默认值    | CHANGE\_TO\_READ\_ONLY |
+| 改后生效方式 | 重启服务生效                 |
+
 * memtable\_size\_threshold
 
 |     名字     | memtable\_size\_threshold                          |
@@ -684,6 +711,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 600000 |
 |改后生效方式| 热加载 |
 
+* tvlist\_sort\_algorithm
+
+|名字| tvlist\_sort\_algorithm |
+|:---:|:------------------------|
+|描述| memtable中数据的排序方法        |
+|类型| String                  |
+|默认值| TIM                     |
+|改后生效方式| 重启服务生效                  |
+
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |
@@ -710,6 +746,24 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     类型     | Boolean                                                            |
 |    默认值    | true                                                               |
 | 改后生效方式 | 重启服务生效                                                       |
+
+* recovery\_log\_interval\_in\_ms
+
+|     名字     | recovery\_log\_interval\_in\_ms |
+| :----------: |:--------------------------------|
+|     描述     | data region的恢复过程中打印日志信息的间隔      |
+|     类型     | Int32                           |
+|    默认值    | 5000                            |
+| 改后生效方式 | 重启服务生效                          |
+
+* upgrade\_thread\_count
+
+|     名字     | upgrade\_thread\_count          |
+| :----------: |:--------------------------------|
+|     描述     | 当存在老版本TsFile(v2)，执行文件升级任务使用的线程数 |
+|     类型     | Int32                           |
+|    默认值    | 1                               |
+| 改后生效方式 | 重启服务生效                          |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
