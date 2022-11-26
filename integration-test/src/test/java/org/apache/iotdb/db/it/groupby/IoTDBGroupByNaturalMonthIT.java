@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -166,6 +167,7 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** StartTime: now() - 1mo, EndTime: now(). */
   @Test
+  @Ignore // TODO add it back after we can query with no DataRegion
   @Category(LocalStandaloneIT.class) // datasets are inconsistent in cluster
   public void groupByNaturalMonthWithNowTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -184,10 +186,6 @@ public class IoTDBGroupByNaturalMonthIT {
           if (ans == null) {
             cnt++;
           }
-        }
-        if (cnt < 28 || cnt > 31) {
-          System.out.println("cnt: " + cnt);
-          System.out.println(times);
         }
         Assert.assertTrue(cnt >= 28);
         Assert.assertTrue(cnt <= 31);
