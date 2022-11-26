@@ -28,7 +28,6 @@ import org.junit.Test;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class MetricConfigTest {
   @Test
@@ -53,7 +52,6 @@ public class MetricConfigTest {
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
-    assertTrue(metricConfig.getEnablePerformanceStat());
     assertEquals(3, metricConfig.getMetricReporterList().size());
     assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
@@ -94,7 +92,6 @@ public class MetricConfigTest {
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
-    assertTrue(metricConfig.getEnablePerformanceStat());
     assertEquals(3, metricConfig.getMetricReporterList().size());
     assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());

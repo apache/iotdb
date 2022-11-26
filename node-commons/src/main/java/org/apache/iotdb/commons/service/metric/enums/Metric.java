@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.service.metric.enums;
 
 public enum Metric {
   ENTRY,
+  OPERATION,
   COST_TASK,
   QUEUE,
   FILE_SIZE,

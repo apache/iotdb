@@ -220,7 +220,7 @@ public class ConfigNodeDescriptor {
 
     try {
       conf.setRegionAllocateStrategy(
-          RegionBalancer.RegionAllocateStrategy.valueOf(
+          RegionBalancer.RegionGroupAllocateStrategy.valueOf(
               properties
                   .getProperty("region_allocate_strategy", conf.getRegionAllocateStrategy().name())
                   .trim()));
@@ -315,6 +315,22 @@ public class ConfigNodeDescriptor {
               "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
               leaderDistributionPolicy));
     }
+
+    conf.setEnableAutoLeaderBalanceForRatis(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_ratis",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForRatis()))
+                .trim()));
+
+    conf.setEnableAutoLeaderBalanceForMultiLeader(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_multileader",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForMultiLeader()))
+                .trim()));
 
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();

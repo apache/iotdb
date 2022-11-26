@@ -37,7 +37,7 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.createAutoGauge(
-          "jvm.buffer.count.buffers",
+          "jvm_buffer_count_buffers",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getCount,
@@ -45,7 +45,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           bufferPoolBean.getName());
 
       metricService.createAutoGauge(
-          "jvm.buffer.memory.used.bytes",
+          "jvm_buffer_memory_used_bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getMemoryUsed,
@@ -53,7 +53,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           bufferPoolBean.getName());
 
       metricService.createAutoGauge(
-          "jvm.buffer.total.capacity.bytes",
+          "jvm_buffer_total_capacity_bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getTotalCapacity,
@@ -66,7 +66,7 @@ public class JvmMemoryMetrics implements IMetricSet {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
       metricService.createAutoGauge(
-          "jvm.memory.used.bytes",
+          "jvm_memory_used_bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getUsed),
@@ -76,7 +76,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           area);
 
       metricService.createAutoGauge(
-          "jvm.memory.committed.bytes",
+          "jvm_memory_committed_bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getCommitted),
@@ -86,7 +86,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           area);
 
       metricService.createAutoGauge(
-          "jvm.memory.max.bytes",
+          "jvm_memory_max_bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getMax),
@@ -102,13 +102,13 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.count.buffers", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm_buffer_count_buffers", "id", bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.memory.used.bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm_buffer_memory_used_bytes", "id", bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.buffer.total.capacity.bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE, "jvm_buffer_total_capacity_bytes", "id", bufferPoolBean.getName());
     }
 
     for (MemoryPoolMXBean memoryPoolBean :
@@ -116,18 +116,28 @@ public class JvmMemoryMetrics implements IMetricSet {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.memory.used.bytes", "id", memoryPoolBean.getName(), "area", area);
-
-      metricService.remove(
-          MetricType.GAUGE,
-          "jvm.memory.committed.bytes",
+          MetricType.AUTO_GAUGE,
+          "jvm_memory_used_bytes",
           "id",
           memoryPoolBean.getName(),
           "area",
           area);
 
       metricService.remove(
-          MetricType.GAUGE, "jvm.memory.max.bytes", "id", memoryPoolBean.getName(), "area", area);
+          MetricType.AUTO_GAUGE,
+          "jvm_memory_committed_bytes",
+          "id",
+          memoryPoolBean.getName(),
+          "area",
+          area);
+
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          "jvm_memory_max_bytes",
+          "id",
+          memoryPoolBean.getName(),
+          "area",
+          area);
     }
   }
 }

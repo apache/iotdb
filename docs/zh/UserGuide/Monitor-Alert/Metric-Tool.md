@@ -19,13 +19,9 @@
 
 -->
 
-当前用户可以使用多种手段对正在运行的IoTDB进程进行系统监控，包括使用 Java 的 Jconsole 工具对正在运行的 IoTDB 进程进行系统状态监控，使用 IoTDB 为用户开发的接口查看数据统计量，使用监控框架进行 IoTDB 的运行状态监控
+在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标**就是系统监控指标。
 
-# 1. 监控框架
-
-在IoTDB运行过程中，我们希望对IoTDB的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险。能**反映系统运行状态的一系列指标**就是系统监控指标。
-
-## 1.1. 什么场景下会使用到监控框架?
+# 1. 什么场景下会使用到监控?
 
 那么什么时候会用到监控框架呢？下面列举一些常见的场景。
 
@@ -48,239 +44,277 @@
 
    此时我们可能需要通过错误日志的数量、集群节点的状态等指标来判断系统是否在正常运行。
 
-## 1.2. 什么人需要使用监控框架?
+# 2. 什么人需要使用监控?
 
 所有关注系统状态的人员都可以使用，包括但不限于研发、测试、运维、DBA等等
 
-## 1.3. IoTDB都有哪些监控指标?
+# 3. 什么是监控指标？
 
-目前，IoTDB对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。
+## 3.1. 监控指标名词解释
 
-### 1.3.1. 名词解释
+在 IoTDB 的监控模块，每个监控指标被 `Metric Name` 和 `Tags` 唯一标识。
 
-在进一步了解这些指标之前，我们先来看几个名词解释：
-
-- Metric Name
-
-  指标名称，比如logback_events_total表示日志事件发生的总次数。
-
-- Tag
-
-  每个指标下面可以有0到多个分类，比如logback_events_total下有一个```level```的分类，用来表示特定级别下的日志数量。
-
-### 1.3.2. 数据格式
-
-IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
-
-接下来我们以Prometheus格式为例对目前已有监控项进行说明。
-
-### 1.3.3. IoTDB 默认指标
-
-#### 1.3.3.1. Interface
-
-| Metric                | Tag                      | level     | 说明                | 示例                                         |
-| --------------------- | ------------------------ |-----------| ------------------- | -------------------------------------------- |
-| entry_seconds_count   | name="{{interface}}"     | important | 接口累计访问次数    | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum     | name="{{interface}}"     | important | 接口累计耗时(s)     | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max     | name="{{interface}}"     | important | 接口最大耗时(s)     | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total        | name="pointsIn"          | important | 系统累计写入点数    | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections    | name="{{thriftService}}" | important | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
-| thrift_active_threads | name="{{thriftThread}}"  | important | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
-
-#### 1.3.3.2. Task
-
-| Metric                      | Tag                                                                          | level     | 说明                            | 示例                                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| queue                       | name="compaction_inner/compaction_cross/flush",<br/>status="running/waiting" | important | 当前时间任务数                  | queue{name="flush",status="waiting",} 0.0<br/>queue{name="compaction/flush",status="running",} 0.0 |
-| cost_task_seconds_count     | name="inner_compaction/cross_compaction/flush"                               | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
-| cost_task_seconds_max       | name="inner_compaction/cross_compaction/flush"                               | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
-| cost_task_seconds_sum       | name="inner_compaction/cross_compaction/flush"                               | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
-| data_written_total          | name="compaction", <br/>type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written_total{name="compaction",type="total",} 10240                                          |
-| data_read_total             | name="compaction"                                                            | important | 合并文件时的读取量              | data_read_total{name="compaction",} 10240                                                          |
-| compaction_task_count_total | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross" | important | 合并任务个数                    | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                            |
-
-#### 1.3.3.3. 内存占用
-
-| Metric | Tag                                                          | level     | 说明                       | 示例                              |
-| ------ | ------------------------------------------------------------ | --------- | -------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree/MultiLeaderConsensus" | important | 对应部分占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
-
-#### 1.3.3.4. 缓存
-
-| Metric      | Tag                                                               | level     | 说明                                                         | 示例                                                |
-| ----------- | ----------------------------------------------------------------- | --------- | ------------------------------------------------------------ | --------------------------------------------------- |
-| cache_hit   | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache"               | important | chunk/timeSeriesMeta/SchemaCache缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80                         |
-| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | StorageGroup/SchemaPartition/DataPartition 的命中/总次数     | cache_total{name="DataPartition",type="all",} 801.0 |
-
-#### 1.3.3.5. 业务数据
-
-| Metric   | Tag                                   | level     | 说明                                         | 示例                             |
-| -------- | ------------------------------------- | --------- | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
-
-#### 1.3.3.6. 集群
-
-##### 1.3.3.6.1. 集群状态
-
-| Metric                    | Tag                                                                | level     | 说明                                                          | 示例                                                                         |
-| ------------------------- | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | 节点状态，0=Unkonwn 1=online                                  | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0             |
-| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| config_node               | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 confignode 的节点数量                        | config_node{name="total",status="Online",} 2.0                               |
-| data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 datanode 的节点数量                          | data_node{name="total",status="Registered",} 3.0                             |
-| partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
-| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | database 的 DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | database 的 schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
-
-##### 1.3.3.6.2. 弱一致性
-| Metric       | Tag                                                                                          | level    | 说明                                                 | 示例                                                                                                             |
-| ------------ | -------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex/safeIndex"              | core     | 弱一致性对应region的写入index和同步index             | multi_leader{name="multiLeaderServerImpl",region="DataRegion[7]",type="searchIndex",} 1945.0                     |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | important | 弱一致性对应region的同步线程当前的同步index          | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[7]",type="currentSyncIndex",} 1945.0        |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | important | 弱一致性对应region的同步线程缓存的队列总大小         | multi_leader{name="logDispatcher-127.0.0.1:40014",region="DataRegion[9]",type="cachedRequestInMemoryQueue",} 0.0 |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | important | 弱一致性对应region获取状态机锁的耗时                 | stage{name="multi_leader",region="DataRegion[6]",type="getStateMachineLock",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | important | 弱一致性对应region状态机完成写前检查的耗时           | stage{name="multi_leader",region="DataRegion[5]",type="checkingBeforeWrite",quantile="0.5",} 0.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | important | 弱一致性对应region状态机写入请求的耗时               | stage{name="multi_leader",region="DataRegion[6]",type="writeStateMachine",quantile="0.5",} 1.0                   |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | important | 弱一致性对应region状态机尝试将请求放入同步队列的耗时 | stage{name="multi_leader",region="DataRegion[6]",type="offerRequestToQueue",quantile="0.5",} 1.0                 |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | important | 弱一致性对应region状态机处理共识层请求的耗时         | stage{name="multi_leader",region="DataRegion[6]",type="consensusWrite",quantile="0.5",} 2.0625                   |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | important | 弱一致性对应同步线程完成一个请求构造的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="constructBatch",quantile="0.5",} 0.0                      |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | important | 弱一致性对应同步线程完成一个请求同步的耗时           | stage{name="multi_leader",region="DataRegion[7]",type="syncLogTimePerRequest",quantile="0.5",} 0.0               |
-
-
-### 1.3.4. IoTDB 预定义指标集
-
-#### 1.3.4.1. JVM
-
-##### 1.3.4.1.1. 线程
-
-| Metric                     | Tag                                                           | level     | 说明                     | 示例                                               |
-| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ | -------------------------------------------------- |
-| jvm_threads_live_threads   | 无                                                            | important | 当前线程数               | jvm_threads_live_threads 25.0                      |
-| jvm_threads_daemon_threads | 无                                                            | important | 当前daemon线程数         | jvm_threads_daemon_threads 12.0                    |
-| jvm_threads_peak_threads   | 无                                                            | important | 峰值线程数               | jvm_threads_peak_threads 28.0                      |
-| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | important | 当前处于各种状态的线程数 | jvm_threads_states_threads{state="runnable",} 10.0 |
-
-##### 1.3.4.1.2. 垃圾回收
-
-| Metric                              | Tag                                                    | level     | 说明                                         | 示例                                                                                    |
-| ----------------------------------- | ------------------------------------------------------ | --------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
-| jvm_gc_pause_seconds_count          | action="end of major GC/end of minor GC",cause="xxxx"  | important | YGC/FGC发生次数及其原因                      | jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",} 1.0 |
-| jvm_gc_pause_seconds_sum            | action="end of major GC/end of minor GC",cause="xxxx"  | important | YGC/FGC累计耗时及其原因                      | jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",} 0.03  |
-| jvm_gc_pause_seconds_max            | action="end of major GC",cause="Metadata GC Threshold" | important | YGC/FGC最大耗时及其原因                      | jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",} 0.0   |
-| jvm_gc_memory_promoted_bytes_total  | 无                                                     | important | 从GC之前到GC之后老年代内存池大小正增长的累计 | jvm_gc_memory_promoted_bytes_total 8425512.0                                            |
-| jvm_gc_max_data_size_bytes          | 无                                                     | important | 老年代内存的历史最大值                       | jvm_gc_max_data_size_bytes 2.863661056E9                                                |
-| jvm_gc_live_data_size_bytes         | 无                                                     | important | GC后老年代内存的大小                         | jvm_gc_live_data_size_bytes 8450088.0                                                   |
-| jvm_gc_memory_allocated_bytes_total | 无                                                     | important | 在一个GC之后到下一个GC之前年轻代增加的内存   | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
-
-##### 1.3.4.1.3. 内存
-
-| Metric                          | Tag                             | level     | 说明                    | 示例                                                                                                                                                          |
-| ------------------------------- | ------------------------------- | --------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | important | 已经使用的缓冲区大小    | jvm_buffer_memory_used_bytes{id="direct",} 3.46728099E8                                                                                                       |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | important | 最大缓冲区大小          | jvm_buffer_total_capacity_bytes{id="mapped",} 0.0                                                                                                             |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | important | 当前缓冲区数量          | jvm_buffer_count_buffers{id="direct",} 183.0                                                                                                                  |
-| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | important | 当前向JVM申请的内存大小 | jvm_memory_committed_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_committed_bytes{area="nonheap",id="Metaspace",} 3.9051264E7<br/> |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | important | JVM最大内存             | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | important | JVM已使用内存大小       | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
-
-##### 1.3.4.1.4. Classes
-
-| Metric                       | Tag                                           | level     | 说明                   | 示例                                                                          |
-| ---------------------------- | --------------------------------------------- | --------- | ---------------------- | ----------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes | 无                                            | important | jvm累计卸载的class数量 | jvm_classes_unloaded_classes 680.0                                            |
-| jvm_classes_loaded_classes   | 无                                            | important | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                             |
-| jvm_compilation_time_ms      | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
-
-#### 1.3.4.2. 文件（File）
-
-| Metric     | Tag                  | level     | 说明                                | 示例                        |
-| ---------- | -------------------- | --------- | ----------------------------------- | --------------------------- |
-| file_size  | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
-| file_count | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
-
-#### 1.3.4.3. 日志(logback)
-
-| Metric               | Tag                                    | level     | 说明                                    | 示例                                    |
-| -------------------- | -------------------------------------- | --------- | --------------------------------------- | --------------------------------------- |
-| logback_events_total | {level="trace/debug/info/warn/error",} | important | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
-
-#### 1.3.4.4. 进程（Process）
-| Metric                | Tag            | level     | 说明                               | 示例                                            |
-| --------------------- | -------------- |-----------| ---------------------------------- | ----------------------------------------------- |
-| process_cpu_load      | name="cpu"     | core      | process当前CPU占用率（%）          | process_cpu_load{name="process",} 5.0           |
-| process_cpu_time      | name="cpu"     | core      | process累计占用CPU时间（ns)        | process_cpu_time{name="process",} 3.265625E9    |
-| process_max_mem       | name="memory"  | core      | JVM最大可用内存                    | process_max_mem{name="process",} 3.545759744E9  |
-| process_used_mem      | name="memory"  | important | JVM当前使用内存                    | process_used_mem{name="process",} 4.6065456E7   |
-| process_total_mem     | name="memory"  | core      | JVM当前已申请内存                  | process_total_mem{name="process",} 2.39599616E8 |
-| process_free_mem      | name="memory"  | core      | JVM当前剩余可用内存                | process_free_mem{name="process",} 1.94035584E8  |
-| process_mem_ratio     | name="memory"  | important | 进程的内存占用比例                 | process_mem_ratio{name="process",} 0.0          |
-| process_threads_count | name="process" | important | 当前线程数                         | process_threads_count{name="process",} 11.0     |
-| process_status        | name="process" | important | 进程存活状态，1.0为存活，0.0为终止 | process_status{name="process",} 1.0             |
-
-#### 1.3.4.5. 系统（System）
-| Metric                         | Tag           | level     | 说明                                       | 示例                                                           |
-| ------------------------------ | ------------- | --------- | ------------------------------------------ | -------------------------------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | core      | system当前CPU占用率（%）                   | sys_cpu_load{name="system",} 15.0                              |
-| sys_cpu_cores                  | name="cpu"    | core      | jvm可用处理器数                            | sys_cpu_cores{name="system",} 16.0                             |
-| sys_total_physical_memory_size | name="memory" | core      | system最大物理内存                         | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
-| sys_free_physical_memory_size  | name="memory" | core      | system当前剩余可用内存                     | sys_free_physical_memory_size{name="system",} 4.532396032E9    |
-| sys_total_swap_space_size      | name="memory" | core      | system交换区最大空间                       | sys_total_swap_space_size{name="system",} 2.1051273216E10      |
-| sys_free_swap_space_size       | name="memory" | core      | system交换区剩余可用空间                   | sys_free_swap_space_size{name="system",} 2.931576832E9         |
-| sys_committed_vm_size          | name="memory" | important | system保证可用于正在运行的进程的虚拟内存量 | sys_committed_vm_size{name="system",} 5.04344576E8             |
-| sys_disk_total_space           | name="disk"   | core      | 磁盘总大小                                 | sys_disk_total_space{name="system",} 5.10770798592E11          |
-| sys_disk_free_space            | name="disk"   | core      | 磁盘可用大小                               | sys_disk_free_space{name="system",} 3.63467845632E11           |
-
-### 1.3.5. 自定义添加埋点
-
-- 如果想自己在IoTDB中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
-- Metric 埋点定义规则
-    - `Metric`：监控项的名称，比如`entry_seconds_count`为接口累计访问次数，file_size 为文件总数。
-    - `Tags`：Key-Value对，用来明确被监控项，可选项
-        - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
-        - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
-        - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
-        - 根据具体情况自定义......
-- 监控指标级别含义：
-    - 线上运行默认启动级别为`Important`级，线下调试默认启动级别为`Normal`级，审核严格程度`Core > Important > Normal > All`
-    - `Core`：系统的核心指标，供**运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
+- `Metric Name`：**指标类型名称**，比如logback_events表示日志事件。
+- `Tags`：**指标分类**，形式为Key-Value对，每个指标下面可以有0到多个分类，常见的Key-Value对：
+  - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
+  - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
+  - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
+  - 根据具体情况自定义：比如logback_events_total下有一个```level```的分类，用来表示特定级别下的日志数量
+- `Metric Level`：**指标管理级别**，默认启动级别为`Core`级别，建议启动级别为`Important级别`，审核严格程度`Core > Important > Normal > All`
+    - `Core`：系统的核心指标，供**系统内核和运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
     - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
     - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
     - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
 
-## 1.4. 怎样获取这些系统监控指标？
+## 3.2. 监控指标对外获取数据格式
+- IoTDB 对外提供 JMX、 Prometheus 和 IoTDB 格式的监控指标：
+  - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
+  - 对于 Prometheus ，可以通过对外暴露的端口获取监控指标的值
+  - 对于 IoTDB 方式对外暴露：可以通过执行 IoTDB 的查询来获取监控指标
 
-监控模块的相关配置均在`conf/iotdb-{datanode/confignode}.properties`中，所有配置项支持通过`load configuration`命令热加载。
+# 4. 监控指标有哪些？
 
-### 1.4.1. 配置文件
-以DataNode为例
+目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
+
+## 4.1. Core 级别监控指标
+
+Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别的监控指标的添加都需要经过谨慎的评估，目前 Core 级别的监控指标如下所述：
+
+### 4.1.1. 集群运行状态
+
+| Metric      | Tags                                            | Type      | Description                            |
+| ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
+| config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
+| data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
+
+### 4.1.2. IoTDB 进程运行状态
+| Metric            | Tags          | Type      | Description                         |
+| ----------------- | ------------- | --------- | ----------------------------------- |
+| process_cpu_load  | name="cpu"    | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
+| process_cpu_time  | name="cpu"    | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
+| process_max_mem   | name="memory" | AutoGauge | IoTDB 进程最大可用内存              |
+| process_total_mem | name="memory" | AutoGauge | IoTDB 进程当前已申请内存            |
+| process_free_mem  | name="memory" | AutoGauge | IoTDB 进程当前剩余可用内存          |
+
+### 4.1.3. 系统运行状态
+| Metric                         | Tags          | Type      | Description                              |
+| ------------------------------ | ------------- | --------- | ---------------------------------------- |
+| sys_cpu_load                   | name="cpu"    | AutoGauge | 系统的 CPU 占用率，单位为%               |
+| sys_cpu_cores                  | name="cpu"    | Gauge     | 系统的可用处理器数                       |
+| sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存                       |
+| sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存                       |
+| sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间                     |
+| sys_free_swap_space_size       | name="memory" | AutoGauge | 系统的交换区剩余可用空间                 |
+| sys_committed_vm_size          | name="memory" | AutoGauge | 系统保证可用于正在运行的进程的虚拟内存量 |
+| sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小                           |
+| sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小                         |
+
+## 4.2. Important 级别监控指标
+
+目前 Important 级别的监控指标如下所述：
+
+### 4.2.1. 集群运行状态
+| Metric                    | Tags                                              | Type  | Description                    |
+| ------------------------- | ------------------------------------------------- | ----- | ------------------------------ |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | 节点上共识组Leader的数量       |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
+
+### 4.2.2. 节点统计
+| Metric   | Tags                                       | Type      | Description                        |
+| -------- | ------------------------------------------ | --------- | ---------------------------------- |
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                     |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                   |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                   |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
+| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+
+### 4.2.3. 弱一致性共识协议统计
+| Metric       | Tags                                                                                         | Type      | Description                      |
+| ------------ | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
+| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | 副本组主流程写入进度             |
+| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | 副本组同步进度                   |
+| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | 主流程获取状态机锁耗时           |
+| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | 主流程写入状态机检查耗时         |
+| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | 主流程写入状态机耗时             |
+| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | 主流程尝试添加队列耗时           |
+| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | 主流程全写入耗时                 |
+| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | 同步线程构造 Batch 耗时          |
+| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | 异步回调流程同步日志耗时         |
+
+### 4.2.4. 缓存统计
+| Metric    | Tags                               | Type      | Description                                             |
+| --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
+| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
+| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
+| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
+| cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
+| cache     | name="StorageGroup", type="hit"    | Counter   | StorageGroup Cache 的命中次数                           |
+| cache     | name="StorageGroup", type="all"    | Counter   | StorageGroup Cache 的访问次数                           |
+| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
+| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
+| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
+| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
+
+### 4.2.5. 接口层统计
+| Metric                | Tags                               | Type      | Description                         |
+| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
+| operation             | name = "{{name}}"                  | Histogram | 客户端执行的操作的耗时情况          |
+| entry                 | name="{{interface}}"               | Timer     | Client 建立的 Thrift 的耗时情况     |
+| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
+| thrift_connections    | name="Internal"                    | AutoGauge | DataNode 的内部 Thrift 连接数       |
+| thrift_connections    | name="MPPDataExchange"             | AutoGauge | MPP 框架的内部 Thrift 连接数        |
+| thrift_connections    | name="RPC"                         | AutoGauge | Client 建立的 Thrift 连接数         |
+| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
+| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
+| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
+
+### 4.2.6. 内存统计
+| Metric | Tags                          | Type      | Description                                       |
+| ------ | ----------------------------- | --------- | ------------------------------------------------- |
+| mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="MultiLeaderConsensus"   | AutoGauge | 弱一致性共识协议的内存占用，单位为byte            |
+
+### 4.2.7. 任务统计
+| Metric    | Tags                                              | Type      | Description        |
+| --------- | ------------------------------------------------- | --------- | ------------------ |
+| queue     | name="compaction_inner", status="running/waiting" | Gauge     | 空间内合并任务数   |
+| queue     | name="compaction_cross", status="running/waiting" | Gauge     | 跨空间合并任务数   |
+| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况       |
+| queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
+| queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
+
+
+### 4.2.8. 合并统计
+| Metric                | Tags                                                | Type    | Description        |
+| --------------------- | --------------------------------------------------- | ------- | ------------------ |
+| data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | 合并时写入量       |
+| data_read             | name="compaction"                                   | Counter | 合并时的读取量     |
+| compaction_task_count | name = "inner_compaction", type="sequence"          | Counter | 顺序空间内合并次数 |
+| compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
+| compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
+
+### 4.2.9. 文件统计信息
+| Metric     | Tags         | Type      | Description                  |
+| ---------- | ------------ | --------- | ---------------------------- |
+| file_size  | name="wal"   | AutoGauge | 写前日志总大小，单位为byte   |
+| file_size  | name="seq"   | AutoGauge | 顺序TsFile总大小，单位为byte |
+| file_size  | name="unseq" | AutoGauge | 乱序TsFile总大小，单位为byte |
+| file_count | name="wal"   | AutoGauge | 写前日志文件个数             |
+| file_count | name="seq"   | AutoGauge | 顺序TsFile文件个数           |
+| file_count | name="unseq" | AutoGauge | 乱序TsFile文件个数           |
+
+### 4.2.10. IoTDB 进程统计
+| Metric                | Tags           | Type      | Description                          |
+| --------------------- | -------------- | --------- | ------------------------------------ |
+| process_used_mem      | name="memory"  | AutoGauge | IoTDB 进程当前使用内存               |
+| process_mem_ratio     | name="memory"  | AutoGauge | IoTDB 进程的内存占用比例             |
+| process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
+| process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
+
+### 4.2.11. IoTDB 日志统计
+| Metric         | Tags                                | Type    | Description        |
+| -------------- | ----------------------------------- | ------- | ------------------ |
+| logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
+
+
+### 4.2.12. JVM 线程统计
+
+| Metric                     | Tags                                                          | Type      | Description              |
+| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
+| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数               |
+| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数       |
+| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
+
+### 4.2.13. JVM GC 统计
+| Metric                        | Tags                                                  | Type      | Description                            |
+| ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
+| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | 老年代内存的历史最大值                 |
+| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                     |
+| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
+| jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
+
+### 4.2.14. JVM 内存统计
+| Metric                          | Tags                            | Type      | Description          |
+| ------------------------------- | ------------------------------- | --------- | -------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小       |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量       |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
+
+### 4.2.15. JVM 类加载统计
+| Metric                       | Tags | Type      | Description         |
+| ---------------------------- | ---- | --------- | ------------------- |
+| jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
+| jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
+
+###  4.2.16. JVM 编译时间统计
+| Metric                  | Tags                                          | Type      | Description        |
+| ----------------------- | --------------------------------------------- | --------- | ------------------ |
+| jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
+
+
+## 4.3. All 级别监控指标
+目前还没有All级别的监控指标，后续会持续添加。
+
+# 5. 怎样获取这些系统监控？
+
+- 监控模块的相关配置均在`conf/iotdb-{datanode/confignode}.properties`中，所有配置项支持通过`load configuration`命令热加载。
+
+## 5.1. 使用 JMX 方式
+对于使用 JMX 对外暴露的指标，可以通过 Jconsole 来进行查看。在进入 Jconsole 监控页面后，首先会看到 IoTDB 的各类运行情况的概览。在这里，您可以看到堆内存信息、线程信息、类信息以及服务器的 CPU 使用情况。
+
+### 5.1.1. 获取监控指标数据
+连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.metrics" 的 "MBean"，可以在侧边栏中查看所有监控指标的具体值。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://user-images.githubusercontent.com/46039728/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
+
+### 5.1.2. 获取其他相关数据
+连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示，了解服务的基本状态
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+
+为了提高查询性能，IOTDB 对 ChunkMetaData 和 TsFileMetaData 进行了缓存。用户可以使用 MXBean ，展开侧边栏`org.apache.iotdb.db.service`查看缓存命中率：
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+
+## 5.2. 使用 Prometheus 方式
+
+### 5.2.1. 监控指标的 Prometheus 映射关系
+> 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，其中 value 为具体值
+
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
+| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
+| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
+
+### 5.2.2. 修改配置文件
+1) 以 DataNode 为例，修改 iotdb-datanode.properties 配置文件如下：
 
 ```properties
-# Whether enable metric module
-# Datatype: boolean
-dn_enable_metric=true
-
-# The reporters of metric module to report metrics
-# If there are more than one reporter, please separate them by commas ",".
-# Options: [JMX, PROMETHEUS, IOTDB]
-# Datatype: String
-dn_metric_reporter_list=JMX,PROMETHEUS
-
-# The level of metric module
-# Options: [Core, Important, Normal, All]
-# Datatype: String
+dn_metric_reporter_list=PROMETHEUS
 dn_metric_level=CORE
-
-# The port of prometheus reporter of metric module
-# Datatype: int
 dn_metric_prometheus_reporter_port=9091
 ```
 
-1. 在配置文件中修改如上配置
-2. 启动IoTDB
-3. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
+2) 启动 IoTDB DataNode
+
+3) 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能得到如下 metric 数据：
 
 ```
 ...
@@ -289,37 +323,12 @@ dn_metric_prometheus_reporter_port=9091
 file_count{name="wal",} 0.0
 file_count{name="unseq",} 0.0
 file_count{name="seq",} 2.0
-# HELP file_size
-# TYPE file_size gauge
-file_size{name="wal",} 0.0
-file_size{name="unseq",} 0.0
-file_size{name="seq",} 560.0
-# HELP queue
-# TYPE queue gauge
-queue{name="flush",status="waiting",} 0.0
-queue{name="flush",status="running",} 0.0
-# HELP quantity
-# TYPE quantity gauge
-quantity{name="timeSeries",} 1.0
-quantity{name="storageGroup",} 1.0
-quantity{name="device",} 1.0
-# HELP logback_events_total Number of error level events that made it to the logs
-# TYPE logback_events_total counter
-logback_events_total{level="warn",} 0.0
-logback_events_total{level="debug",} 2760.0
-logback_events_total{level="error",} 0.0
-logback_events_total{level="trace",} 0.0
-logback_events_total{level="info",} 71.0
-# HELP mem
-# TYPE mem gauge
-mem{name="storageGroup",} 0.0
-mem{name="mtree",} 1328.0
 ...
 ```
 
-### 1.4.2. 对接Prometheus和Grafana
+### 5.2.3. Prometheus + Grafana
 
-如上面所述，IoTDB对外暴露出标准Prometheus格式的监控指标数据，可以直接和Prometheus以及Grafana集成。
+如上所示，IoTDB 对外暴露出标准的 Prometheus 格式的监控指标数据，可以使用 Prometheus 采集并存储监控指标，使用 Grafana 可视化监控指标。
 
 IoTDB、Prometheus、Grafana三者的关系如下图所示:
 
@@ -358,147 +367,126 @@ static_configs:
 
 [Grafana从Prometheus查询数据并绘图的文档](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-### 1.4.3. Apache IoTDB Dashboard
+### 5.2.4. Apache IoTDB Dashboard
 我们提供了Apache IoTDB Dashboard，在Grafana中显示的效果图如下所示：
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-#### 1.4.3.1. 获取方式
-1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+#### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
+
+1. 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
 
-#### 1.4.3.2. Apache IoTDB StandAlone Dashboard 说明
+#### 5.2.4.2. Apache IoTDB StandAlone Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
-1. `Overview`：系统概述
-   1. `The number of entity`：实体数量，目前包含时间序列的数量
-   2. `write point per minute`：每分钟系统累计写入点数
-   3. `database used memory`：每个 database 使用的内存大小
-2. `Interface`：接口
-   1. `The QPS of Interface`：系统接口每秒钟访问次数
-   2. `The time consumed of Interface`：系统接口的平均耗时
-   3. `Cache hit rate`：缓存命中率
-3. `Engine`：引擎
-   1. `Task number(pending and active)`：系统中不同状态的任务个数
-   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
-4. `System`：系统
-   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-   5. `Heap Memory`：IoTDB的堆内存
-   6. `Off-heap Memory`：IoTDB的堆外内存
-   7. `The number of Java Thread`：IoTDB的不同状态线程数
+- `Overview`：系统概述
+  - `The number of entity`：实体数量，目前包含时间序列的数量
+  - `write point per minute`：每分钟系统累计写入点数
+  - `database used memory`：每个 database 使用的内存大小
+- `Interface`：接口
+  - `The QPS of Interface`：系统接口每秒钟访问次数
+  - `The time consumed of Interface`：系统接口的平均耗时
+  - `Cache hit rate`：缓存命中率
+- `Engine`：引擎
+  - `Task number(pending and active)`：系统中不同状态的任务个数
+  - `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
+- `System`：系统
+  - `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
+  - `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
+  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
+  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
+  - `Heap Memory`：IoTDB的堆内存
+  - `Off-heap Memory`：IoTDB的堆外内存
+  - `The number of Java Thread`：IoTDB的不同状态线程数
 
-#### 1.4.3.3. Apache IoTDB ConfigNode Dashboard 说明
+#### 5.2.4.3. Apache IoTDB ConfigNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
-1. `Overview`：系统概述
-   1. `Online ConfigNode`：正常运行ConfigNode个数
-   2. `Registered ConfigNode`：注册ConfigNode个数
-   3. `Unknown ConfigNode`：状态未知ConfigNode个数
-   4. `Online DataNode`：正常运行DataNode个数
-   5. `Registered DataNode`：注册DataNode个数
-   3. `Unknown DataNode`：状态未知DataNode个数
-   4. `TotalRegion`：Region总数量
-   5. `DataRegion`：DataRegion总数量
-   6. `SchemaRegion`：SchemaRegion总数量
-2. `Node Info`：节点信息
-   1. `The status of cluster node`：集群节点状态
-   2. `Leadership distribution`：Leader分布情况
-3. `Region`：Region分布情况
-   1. `Total Region in Node`：不同Node的Region总数量
-   2. `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
-   3. `Region in Database`(Normal级别)：不同数据库的Region数量，包括SchemaRegion、DataRegion
-   4. `Slot in Database`(Normal级别)：不同数据库的Slot数量，包括DataSlot数量和SchemaSlot数量
-4. `System`：系统
-   1. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-   2. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-   3. `Heap Memory`：IoTDB的堆内存
-   4. `Off-heap Memory`：IoTDB的堆外内存
-   5. `The number of Java Thread`：IoTDB的不同状态线程数
-   6. `The time consumed of Interface`：系统接口的平均耗时
-   7. `CPU Load`：当前处理器的总负载
-   8. `Memory`：系统内存大小和已经使用的大小
+- `Overview`：系统概述
+  - `Online ConfigNode`：正常运行ConfigNode个数
+  - `Registered ConfigNode`：注册ConfigNode个数
+  - `Unknown ConfigNode`：状态未知ConfigNode个数
+  - `Online DataNode`：正常运行DataNode个数
+  - `Registered DataNode`：注册DataNode个数
+  - `Unknown DataNode`：状态未知DataNode个数
+  - `TotalRegion`：Region总数量
+  - `DataRegion`：DataRegion总数量
+  - `SchemaRegion`：SchemaRegion总数量
+- `Node Info`：节点信息
+  - `The status of cluster node`：集群节点状态
+  - `Leadership distribution`：Leader分布情况
+- `Region`：Region分布情况
+  - `Total Region in Node`：不同Node的Region总数量
+  - `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
+  - `Region in Database`(Normal级别)：不同数据库的Region数量，包括SchemaRegion、DataRegion
+  - `Slot in Database`(Normal级别)：不同数据库的Slot数量，包括DataSlot数量和SchemaSlot数量
+- `System`：系统
+  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
+  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
+  - `Heap Memory`：IoTDB的堆内存
+  - `Off-heap Memory`：IoTDB的堆外内存
+  - `The number of Java Thread`：IoTDB的不同状态线程数
+  - `The time consumed of Interface`：系统接口的平均耗时
+  - `CPU Load`：当前处理器的总负载
+  - `Memory`：系统内存大小和已经使用的大小
 
-#### 1.4.3.4. Apache IoTDB DataNode Dashboard 说明
+#### 5.2.4.4. Apache IoTDB DataNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
-1. `Overview`：系统概述
-   1. `The number of entity`：实体数量，目前包含时间序列的数量
-   2. `write point per minute`：每分钟系统累计写入点数
-   3. `database used memory`：每个 database 使用的内存大小
-   4. `Memory`：系统内存大小和已经使用的大小
-2. `Interface`：接口
-   1. `The QPS of Interface`：系统接口每秒钟访问次数
-   2. `The time consumed of Interface`：系统接口的平均耗时
-   3. `Cache hit Rate`：缓存命中率
-3. `Engine`：引擎
-   1. `Task number(pending and active)`：系统中不同状态的任务个数
-   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
-4. `MultiLeader`：弱一致性共识协议
-   1. `MultiLeader Used Memory`：弱一致性共识层使用的内存大小
-   2. `MultiLeader Sync Index`：不同的Region的写入Index和同步Index
-   3. `MultiLeader Overview`：不同节点的同步总差距、总缓存的请求个数
-   4. `The time consumed of different stages(50%)`：不同阶段耗时的中位数
-   5. `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
-   6. `The time consumed of different stages(100%)`：不同阶段耗时的最大值
-   7. `MultiLeader Search Index Rate`：不同region的写入Index的增长速度
-   8. `MultiLeader Safe Index Rate`：不同region的同步Index的增长速度
-   9. `MultiLeader LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
-   10. `Sync Lag`：每个region的同步index差距
-   11. `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
-   12. `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
-5. `CPU`：处理器
-   1. `CPU Load`：当前处理器的总负载
-   2. `Process CPU Load`：IoTDB进程占用处理器的负载
-6. `File System`：文件系统
-   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-   3. `Disk Space`：当前data目录所挂载的磁盘总大小和剩余大小
-7. `JVM`：系统
-   1. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-   2. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-   3. `Heap Memory`：IoTDB的堆内存
-   4. `Off-heap Memory`：IoTDB的堆外内存
-   5. `The number of Java Thread`：IoTDB的不同状态线程数
+- `Overview`：系统概述
+  - `The number of entity`：实体数量，目前包含时间序列的数量
+  - `write point per minute`：每分钟系统累计写入点数
+  - `database used memory`：每个 database 使用的内存大小
+  - `Memory`：系统内存大小和已经使用的大小
+- `Interface`：接口
+  - `The QPS of Interface`：系统接口每秒钟访问次数
+  - `The time consumed of Interface`：系统接口的平均耗时
+  - `Cache hit Rate`：缓存命中率
+- `Engine`：引擎
+  - `Task number(pending and active)`：系统中不同状态的任务个数
+  - `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
+- `MultiLeader`：弱一致性共识协议
+  - `MultiLeader Used Memory`：弱一致性共识层使用的内存大小
+  - `MultiLeader Sync Index`：不同的Region的写入Index和同步Index
+  - `MultiLeader Overview`：不同节点的同步总差距、总缓存的请求个数
+  - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
+  - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
+  - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
+  - `MultiLeader Search Index Rate`：不同region的写入Index的增长速度
+  - `MultiLeader Safe Index Rate`：不同region的同步Index的增长速度
+  - `MultiLeader LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
+  - `Sync Lag`：每个region的同步index差距
+  - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
+  - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
+- `CPU`：处理器
+  - `CPU Load`：当前处理器的总负载
+  - `Process CPU Load`：IoTDB进程占用处理器的负载
+- `File System`：文件系统
+  - `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
+  - `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
+  - `Disk Space`：当前data目录所挂载的磁盘总大小和剩余大小
+- `JVM`：系统
+  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
+  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
+  - `Heap Memory`：IoTDB的堆内存
+  - `Off-heap Memory`：IoTDB的堆外内存
+  - `The number of Java Thread`：IoTDB的不同状态线程数
 
-# 2. 系统状态监控
-进入 Jconsole 监控页面后，首先看到的是 IoTDB 各类运行情况的概览。在这里，您可以看到堆内存信息、线程信息、类信息以及服务器的 CPU 使用情况。
+## 5.3. 使用 IoTDB 方式
 
-# 3. JMX MBean 监控
-通过使用 JConsole 工具并与 JMX 连接，您可以查看一些系统统计信息和参数。
-本节描述如何使用 JConsole 的 "Mbean" 选项卡来监视 IoTDB 的一些系统配置、写入数据统计等等。 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示。
+### 5.3.1. 监控指标的 IoTDB 映射关系
+> 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric 为例
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AutoGauge、Gauge | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Histogram        | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
+| Rate             | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Timer            | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15 |
 
-# 4. 性能监控
-
-## 4.1. 介绍
-
-性能监控模块用来监控 IOTDB 每一个操作的耗时，以便用户更好的了解数据库的整体性能。该模块会统计每一种操作的下四分位数、中位数、上四分位数和最大值。目前操作包括`EXECUTE_BATCH`、`EXECUTE_ONE_SQL_IN_BATCH`和`EXECUTE_QUERY`。
-
-## 4.2. 配置参数
-
-- 配置文件位置
-  - datanode：conf/iotdb-datanode.properties
-  - confignode：conf/iotdb-confignode.properties
-
-<center>
-
-**表-配置参数以及描述项**
-
-| 参数                      | 默认值 | 描述                 |
-| :------------------------ | :----- | :------------------- |
-| enable\_performance\_stat | false  | 是否开启性能监控模块 |
-</center>
-
-# 5. Cache 命中率统计
-
-为了提高查询性能，IOTDB 对 ChunkMetaData 和 TsFileMetaData 进行了缓存。用户可以通过 debug 级别的日志以及 MXBean 两种方式来查看缓存的命中率，并根据缓存命中率以及系统内存来调节缓存所使用的内存大小。使用 MXBean 查看缓存命中率的方法为：
-1. 通过端口 31999 连接 jconsole，并在上方菜单项中选择‘MBean’. 
-2. 展开侧边框并选择 'org.apache.iotdb.db.service'. 将会得到如下图所示结果：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+### 5.3.2. 获取监控指标
+根据如上的映射关系，可以构成相关的 IoTDB 查询语句获取监控指标

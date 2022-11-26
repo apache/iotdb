@@ -21,9 +21,9 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.sync.receiver.load.DeletionLoader;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
-import org.apache.iotdb.db.sync.receiver.load.TsFileLoader;
+import org.apache.iotdb.db.sync.pipedata.load.DeletionLoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.TsFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 

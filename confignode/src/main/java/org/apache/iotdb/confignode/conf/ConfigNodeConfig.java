@@ -72,8 +72,8 @@ public class ConfigNodeConfig {
   private int leastDataRegionGroupNum = 5;
 
   /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
-      RegionBalancer.RegionAllocateStrategy.GREEDY;
+  private RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy =
+      RegionBalancer.RegionGroupAllocateStrategy.GREEDY;
 
   /**
    * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
@@ -156,6 +156,12 @@ public class ConfigNodeConfig {
 
   /** The policy of cluster RegionGroups' leader distribution */
   private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
+
+  /** Whether to enable auto leader balance for Ratis consensus protocol */
+  private boolean enableAutoLeaderBalanceForRatis = false;
+
+  /** Whether to enable auto leader balance for MultiLeader consensus protocol */
+  private boolean enableAutoLeaderBalanceForMultiLeader = true;
 
   /** The route priority policy of cluster read/write requests */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
@@ -439,13 +445,13 @@ public class ConfigNodeConfig {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
   }
 
-  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
-    return regionAllocateStrategy;
+  public RegionBalancer.RegionGroupAllocateStrategy getRegionAllocateStrategy() {
+    return regionGroupAllocateStrategy;
   }
 
   public void setRegionAllocateStrategy(
-      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
-    this.regionAllocateStrategy = regionAllocateStrategy;
+      RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy) {
+    this.regionGroupAllocateStrategy = regionGroupAllocateStrategy;
   }
 
   public boolean isEnableDataPartitionInheritPolicy() {
@@ -576,6 +582,23 @@ public class ConfigNodeConfig {
 
   public void setLeaderDistributionPolicy(String leaderDistributionPolicy) {
     this.leaderDistributionPolicy = leaderDistributionPolicy;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForRatis() {
+    return enableAutoLeaderBalanceForRatis;
+  }
+
+  public void setEnableAutoLeaderBalanceForRatis(boolean enableAutoLeaderBalanceForRatis) {
+    this.enableAutoLeaderBalanceForRatis = enableAutoLeaderBalanceForRatis;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForMultiLeader() {
+    return enableAutoLeaderBalanceForMultiLeader;
+  }
+
+  public void setEnableAutoLeaderBalanceForMultiLeader(
+      boolean enableAutoLeaderBalanceForMultiLeader) {
+    this.enableAutoLeaderBalanceForMultiLeader = enableAutoLeaderBalanceForMultiLeader;
   }
 
   public String getRoutePriorityPolicy() {

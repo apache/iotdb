@@ -39,7 +39,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -257,7 +256,9 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       if (entry.getValue().size() > SPLIT_SIZE) {
         for (MeasurementGroup splitMeasurementGroup : entry.getValue().split(SPLIT_SIZE)) {
           if (splitMeasurementGroup.size() == SPLIT_SIZE) {
-            result.add(Collections.singletonMap(entry.getKey(), splitMeasurementGroup));
+            Map<PartialPath, MeasurementGroup> singletonMap = new HashMap<>();
+            singletonMap.put(entry.getKey(), splitMeasurementGroup);
+            result.add(singletonMap);
           } else {
             // each device has at most one splitMeasurementGroup with size < splitSize
             if (tmpSum + splitMeasurementGroup.size() > SPLIT_SIZE) {

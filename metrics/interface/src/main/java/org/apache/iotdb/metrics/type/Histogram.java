@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
+
 public interface Histogram extends IMetric {
 
   /** Update histogram by value */
@@ -29,4 +31,10 @@ public interface Histogram extends IMetric {
 
   /** Take snapshot of histogram */
   HistogramSnapshot takeSnapshot();
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("count", count());
+    takeSnapshot().constructValueMap(result);
+  }
 }

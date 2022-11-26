@@ -21,8 +21,6 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import java.io.OutputStream;
-
 public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingMetric {
   @Override
   public double getValue(double quantile) {
@@ -57,10 +55,5 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   @Override
   public long getMin() {
     return 0;
-  }
-
-  @Override
-  public void dump(OutputStream output) {
-    // do nothing
   }
 }

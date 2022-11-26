@@ -33,12 +33,12 @@ public class JvmClassLoaderMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
     metricService.createAutoGauge(
-        "jvm.classes.loaded.classes",
+        "jvm_classes_loaded_classes",
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getLoadedClassCount);
     metricService.createAutoGauge(
-        "jvm.classes.unloaded.classes",
+        "jvm_classes_unloaded_classes",
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getUnloadedClassCount);
@@ -46,7 +46,7 @@ public class JvmClassLoaderMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.GAUGE, "jvm.classes.loaded.classes");
-    metricService.remove(MetricType.GAUGE, "jvm.classes.unloaded.classes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_classes_loaded_classes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_classes_unloaded_classes");
   }
 }
