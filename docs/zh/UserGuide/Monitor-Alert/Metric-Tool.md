@@ -52,31 +52,29 @@
 
 ## 3.1. 监控指标名词解释
 
-在 IoTDB 的监控模块，每个监控质指标被 Metric Name 和 Tags 唯一标识。
+在 IoTDB 的监控模块，每个监控指标被 `Metric Name` 和 `Tags` 唯一标识。
 
-- Metric Name：**指标名称**，比如logback_events_total表示日志事件发生的总次数。
-- Tags：**指标分类**，形式为Key-Value对，每个指标下面可以有0到多个分类，常见的Key-Value对：
+- `Metric Name`：**指标类型名称**，比如logback_events表示日志事件。
+- `Tags`：**指标分类**，形式为Key-Value对，每个指标下面可以有0到多个分类，常见的Key-Value对：
   - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
   - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
   - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
   - 根据具体情况自定义：比如logback_events_total下有一个```level```的分类，用来表示特定级别下的日志数量
-- Metric Level：**指标管理级别**：默认启动级别为`Core`级别，建议启动级别为`Important级别`，审核严格程度`Core > Important > Normal > All`
+- `Metric Level`：**指标管理级别**，默认启动级别为`Core`级别，建议启动级别为`Important级别`，审核严格程度`Core > Important > Normal > All`
     - `Core`：系统的核心指标，供**系统内核和运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
     - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
     - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
     - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
 
 ## 3.2. 监控指标对外获取数据格式
-- IoTDB 对外提供 JMX 、 Prometheus 和 IoTDB 格式的监控指标：
+- IoTDB 对外提供 JMX、 Prometheus 和 IoTDB 格式的监控指标：
   - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
   - 对于 Prometheus ，可以通过对外暴露的端口获取监控指标的值
   - 对于 IoTDB 方式对外暴露：可以通过执行 IoTDB 的查询来获取监控指标
 
 # 4. 监控指标有哪些？
 
-目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。
-
-IoTDB 的监控指标被划分为 Core, Important, Normal, All 四个级别，如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
+目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
 
 ## 4.1. Core 级别监控指标
 
@@ -127,10 +125,10 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | quantity | name="database"                            | AutoGauge | 系统数据库数量                     |
 | quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                   |
 | quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                   |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中SchemaRegion总数量         |
-| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中DataRegion总数量           |
-| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上DataRegion总数量 |
-| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上DataRegion总数量 |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
+| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
 ### 4.2.3. 弱一致性共识协议统计
 | Metric       | Tags                                                                                         | Type      | Description                      |
@@ -267,15 +265,8 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-## 4.3. Normal 级别监控指标
 
-### 4.3.1. 集群运行状态
-| Metric | Tags                                                               | Type      | Description                                    |
-| ------ | ------------------------------------------------------------------ | --------- | ---------------------------------------------- |
-| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 节点上对应 database 的 DataRegion/Schema个数   |
-| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 节点上对应 database 的 schemaSlot/dataSlot个数 |
-
-## 4.4. All 级别监控指标
+## 4.3. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
 
 # 5. 怎样获取这些系统监控？
@@ -313,7 +304,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
 
 ### 5.2.2. 修改配置文件
-- 1)以 DataNode 为例，修改 iotdb-datanode.properties 配置文件如下
+1) 以 DataNode 为例，修改 iotdb-datanode.properties 配置文件如下：
 
 ```properties
 dn_metric_reporter_list=PROMETHEUS
@@ -321,8 +312,9 @@ dn_metric_level=CORE
 dn_metric_prometheus_reporter_port=9091
 ```
 
-- 2)启动 IoTDB DataNode
-- 3)打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能得到如下 metric 数据：
+2) 启动 IoTDB DataNode
+
+3) 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能得到如下 metric 数据：
 
 ```
 ...
@@ -380,13 +372,14 @@ static_configs:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-- 获取方式
-  - 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
-  - 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
-- 使用方式：
-  - 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
+#### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
 
-#### 5.2.4.1. Apache IoTDB StandAlone Dashboard 说明
+1. 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
+
+在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
+
+#### 5.2.4.2. Apache IoTDB StandAlone Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
@@ -409,7 +402,7 @@ static_configs:
   - `Off-heap Memory`：IoTDB的堆外内存
   - `The number of Java Thread`：IoTDB的不同状态线程数
 
-#### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
+#### 5.2.4.3. Apache IoTDB ConfigNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
@@ -440,7 +433,7 @@ static_configs:
   - `CPU Load`：当前处理器的总负载
   - `Memory`：系统内存大小和已经使用的大小
 
-#### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
+#### 5.2.4.4. Apache IoTDB DataNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
