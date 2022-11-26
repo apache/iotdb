@@ -187,7 +187,7 @@ sudo bash sbin\stop-confignode.sh
 
 Windows 启动方式:
 ```
-sbin\start-datanode.bat
+sbin\start-standalone.bat
 ```
 Linux 启动方式:
 ```
