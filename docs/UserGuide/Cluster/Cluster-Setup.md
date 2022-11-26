@@ -189,7 +189,7 @@ This will work well if you don't change our default settings.
 
 Start on Windows:
 ```
-sbin\start-datanode.bat
+sbin\start-standalone.bat
 ```
 Start on Linux:
 ```
