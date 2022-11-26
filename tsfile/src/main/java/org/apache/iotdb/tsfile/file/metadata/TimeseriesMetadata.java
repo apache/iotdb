@@ -125,8 +125,8 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   /**
-   * Return null if excludedMeasurements contains the measurementId without deserializing chunk
-   * metadata.
+   * Return timeseries metadata without deserializing chunk metadatas if excludedMeasurements
+   * contains the measurementId of this timeseries metadata or needChunkMetadata is false.
    */
   public static TimeseriesMetadata deserializeFrom(
       ByteBuffer buffer, Set<String> excludedMeasurements, boolean needChunkMetadata) {
@@ -135,17 +135,16 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     TSDataType tsDataType = ReadWriteIOUtils.readDataType(buffer);
     int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, tsDataType);
-    if (excludedMeasurements.contains(measurementID)) {
-      buffer.position(buffer.position() + chunkMetaDataListDataSize);
-      return null;
-    }
+
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
-    timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
     timeseriesMetaData.setMeasurementId(measurementID);
+    timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
     timeseriesMetaData.setTSDataType(tsDataType);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(statistics);
-    if (needChunkMetadata) {
+
+    if (!excludedMeasurements.contains(measurementID) && needChunkMetadata) {
+      // measurement is not in the excluded set and need chunk metadata
       ByteBuffer byteBuffer = buffer.slice();
       byteBuffer.limit(chunkMetaDataListDataSize);
       timeseriesMetaData.chunkMetadataList = new ArrayList<>();

@@ -38,6 +38,9 @@ public class TsFileConstant {
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
 
+  // measurementID of aligned time chunk
+  public static final String TIME_COLUMN_ID = "";
+
   private static final String IDENTIFIER_MATCHER = "([a-zA-Z0-9_\\u2E80-\\u9FFF]+)";
   public static final Pattern IDENTIFIER_PATTERN = Pattern.compile(IDENTIFIER_MATCHER);
 

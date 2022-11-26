@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 
 public enum CrossCompactionPerformer {
-  READ_POINT;
+  READ_POINT,
+  FAST;
 
   public static CrossCompactionPerformer getCrossCompactionPerformer(String name) {
     if (READ_POINT.toString().equalsIgnoreCase(name)) {
       return READ_POINT;
+    } else if (FAST.toString().equalsIgnoreCase(name)) {
+      return FAST;
     }
     throw new RuntimeException("Illegal compaction performer for cross compaction " + name);
   }
@@ -34,8 +38,11 @@ public enum CrossCompactionPerformer {
   public ICrossCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
-      default:
         return new ReadPointCompactionPerformer();
+      case FAST:
+        return new FastCompactionPerformer(true);
+      default:
+        throw new RuntimeException("Illegal compaction performer for cross compaction " + this);
     }
   }
 }

@@ -149,6 +149,10 @@ public class CompactionExceptionHandler {
     tsFileManager.writeLock("CompactionExceptionHandler");
     try {
       for (TsFileResource targetTsFile : targetResourceList) {
+        if (targetTsFile == null) {
+          // target file has been deleted due to empty after compaction
+          continue;
+        }
         // delete target file
         targetTsFile.writeLock();
         if (!targetTsFile.remove()) {
@@ -228,7 +232,7 @@ public class CompactionExceptionHandler {
       String fullStorageGroupName)
       throws IOException {
     for (TsFileResource targetResource : targetResources) {
-      if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
+      if (targetResource != null && !TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -73,6 +73,8 @@ import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TAR
 import static org.junit.Assert.assertEquals;
 
 public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactionTest {
+
+  ICompactionPerformer performer = new FastCompactionPerformer(false);
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -146,9 +148,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
@@ -270,9 +271,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
@@ -383,9 +383,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     // target file may not exist
@@ -498,9 +497,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -575,7 +573,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -646,7 +645,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     // target file may not exist
@@ -719,7 +719,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     CompactionLogger compactionLogger = new CompactionLogger(logFile);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -833,9 +834,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
@@ -934,9 +934,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -1038,9 +1037,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logFiles(tmpSeqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
     deleteFileIfExists(targetTsFileResource.getTsFile());
-    ICompactionPerformer performer =
-        new ReadChunkCompactionPerformer(
-            new ArrayList<>(seqResources.subList(0, 3)), targetTsFileResource);
+    performer.setSourceFiles(new ArrayList<>(seqResources.subList(0, 3)));
+    performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
