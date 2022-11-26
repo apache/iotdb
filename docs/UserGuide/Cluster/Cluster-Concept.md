@@ -107,10 +107,6 @@ The figure contains 3 DataRegionGroups, and the data_replication_factor is 3, so
 Among multiple Regions of each RegionGroup, consistency is guaranteed through a consensus protocol, which routes read and write requests to multiple replicas.
 
 * Current supported consensus protocol
-
-
-<img style="width:100%; max-width:800px; max-height:1000px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Preview1-Function.png?raw=true">
-=======
   * SimpleConsensus：Provide strong consistency, could only be used when replica is 1, which is the empty implementation of the consensus protocol.
   * IoTConsensus：Provide eventual consistency, could be used in any number of replicas, 2 replicas could avoid single point failure, only for DataRegion, writings can be applied on each replica and replicated asynchronously to other replicas.
-  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。
+  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。 
