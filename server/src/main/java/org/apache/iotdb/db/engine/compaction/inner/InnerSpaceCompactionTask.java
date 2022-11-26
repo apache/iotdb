@@ -203,13 +203,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId);
       // delete the old files
+      long totalSizeOfDeletedFile = 0L;
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        totalSizeOfDeletedFile += resource.getTsFileSize();
+      }
       CompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileMetricManager.getInstance().deleteFile(resource.getTsFile().length(), sequence);
-      }
+      TsFileMetricManager.getInstance()
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
       // inner space compaction task has only one target file
       if (targetTsFileList.size() > 0) {
         // if the target tsfile is empty file, it will be removed

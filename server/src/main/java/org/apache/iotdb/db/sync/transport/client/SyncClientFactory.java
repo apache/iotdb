@@ -21,18 +21,12 @@ package org.apache.iotdb.db.sync.transport.client;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class SyncClientFactory {
 
@@ -46,11 +40,7 @@ public class SyncClientFactory {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
         return new IoTDBSyncClient(
-            pipe,
-            ioTDBPipeSink.getIp(),
-            ioTDBPipeSink.getPort(),
-            getLocalIP(ioTDBPipeSink),
-            dataRegion.getStorageGroupName());
+            pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort(), dataRegion.getStorageGroupName());
       case ExternalPipe:
       default:
         throw new UnsupportedOperationException();
@@ -61,30 +51,10 @@ public class SyncClientFactory {
     switch (pipeSink.getType()) {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
-        return new IoTDBSyncClient(
-            pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort(), getLocalIP(ioTDBPipeSink));
+        return new IoTDBSyncClient(pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort());
       case ExternalPipe:
       default:
         throw new UnsupportedOperationException();
     }
-  }
-
-  private static String getLocalIP(IoTDBPipeSink pipeSink) {
-    String localIP;
-    try {
-      InetAddress inetAddress = InetAddress.getLocalHost();
-      if (inetAddress.isLoopbackAddress()) {
-        try (final DatagramSocket socket = new DatagramSocket()) {
-          socket.connect(InetAddress.getByName(pipeSink.getIp()), pipeSink.getPort());
-          localIP = socket.getLocalAddress().getHostAddress();
-        }
-      } else {
-        localIP = inetAddress.getHostAddress();
-      }
-    } catch (UnknownHostException | SocketException e) {
-      logger.error("Get local host error when create transport handler.", e);
-      localIP = SyncConstant.UNKNOWN_IP;
-    }
-    return localIP;
   }
 }

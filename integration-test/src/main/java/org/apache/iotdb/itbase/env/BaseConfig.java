@@ -247,6 +247,14 @@ public interface BaseConfig {
     return 1;
   }
 
+  default BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    return this;
+  }
+
+  default int getSeriesPartitionSlotNum() {
+    return 10000;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }

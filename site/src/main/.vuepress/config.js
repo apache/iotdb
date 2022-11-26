@@ -885,7 +885,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB Protocol'],
-							['API/Status-Codes','Status Codes'],
 							['API/Interface-Comparison', 'Interface Comparison']
 						]
 					},
@@ -908,7 +907,6 @@ var config = {
 							['Write-Data/Session','Native API Write'],
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
-							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
 							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
@@ -924,24 +922,59 @@ var config = {
 						title: 'Query Data',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Overview.md','Overview'],
-							['Query-Data/Select-Expression.md','Select Expression'],
-							['Query-Data/Query-Filter.md','Query Filter'],
-							['Query-Data/Pagination.md','Pagination'],
-							['Query-Data/Result-Format.md','Query Result Formats'],
-							['Query-Data/Aggregate-Query.md','Aggregate Query'],
-							['Query-Data/Last-Query.md','Last Query'],
-							['Query-Data/Fill-Null-Value.md','Fill Null Value']
+							['Query-Data/Overview','Overview'],
+							['Query-Data/Select-Expression','Select Expression'],
+							['Query-Data/Last-Query','Last Query'],
+							['Query-Data/Align-By','Query Alignment Mode'],
+							['Query-Data/Where-Condition','Where Condition'],
+							['Query-Data/Group-By','Group By'],
+							['Query-Data/Having-Condition','Having Condition'],
+							// ['Query-Data/Order-By','Order By'],
+							['Query-Data/Fill','Fill Null Value'],
+							['Query-Data/Pagination','Pagination'],
+							['Query-Data/Select-Into','Select Into'],
+							['Query-Data/Continuous-Query','Continuous Query'],
 						]
 					},
 					{
-						title: 'Process Data',
+						title: 'Operators and Functions',
 						sidebarDepth: 1,
 						children: [
-							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
-							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
+							['Operators-Functions/Overview','Overview'],
+							['Operators-Functions/User-Defined-Function','UDF (User Defined Function)'],
+							['Operators-Functions/Aggregation','Aggregation'],
+							['Operators-Functions/Mathematical','Mathematical'],
+							['Operators-Functions/Comparison','Comparison'],
+							['Operators-Functions/Logical','Logical'],
+							['Operators-Functions/String','Conversion'],
+							['Operators-Functions/Conversion','Conversion'],
+							['Operators-Functions/Constant','Constant'],
+							['Operators-Functions/Selection','Selection'],
+							['Operators-Functions/Continuous-Interval','Continuous Interval'],
+							['Operators-Functions/Variation-Trend','Variation Trend'],
+							['Operators-Functions/Sample','Sample'],
+							['Operators-Functions/Time-Series','Time-Series'],
+							['Operators-Functions/Lambda','Lambda'],
+
+							// IoTDB-Quality
+							['Operators-Functions/Data-Profiling','Data Profiling'],
+							['Operators-Functions/Anomaly-Detection','Anomaly Detection'],
+							['Operators-Functions/Data-Matching','Data Matching'],
+							['Operators-Functions/Frequency-Domain','Frequency Domain'],
+							['Operators-Functions/Data-Quality','Data Quality'],
+							['Operators-Functions/Data-Repairing','Data Repairing'],
+							['Operators-Functions/Series-Discovery','Series Discovery']
+						]
+					},
+					{
+						title: 'Trigger',
+						sidebarDepth: 1,
+						children: [
+							['Trigger/Instructions','Instructions'],
+							['Trigger/Implement-Trigger','How to implement a trigger'],
+							['Trigger/Trigger-Management','Trigger Management'],
+							['Trigger/Notes','Notes'],
+							['Trigger/Configuration-Parameters','Configuration-Parameters'],
 						]
 					},
 					{
@@ -965,8 +998,12 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
+							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
+							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
+							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1000,23 +1037,6 @@ var config = {
 						]
 					},
 					{
-					    title: 'UDF Library',
-					    sidebarDepth: 1,
-					    children: [
-					        ['UDF-Library/Quick-Start', 'Quick Start'],
-					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
-					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
-					        ['UDF-Library/Data-Matching', 'Data Matching'],
-					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
-					        ['UDF-Library/Data-Quality', 'Data Quality'],
-					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
-					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
-					        ['UDF-Library/Series-Processing', 'Series Processing'],
-                            ['UDF-Library/String-Processing', 'String Processing'],
-                            ['UDF-Library/M4', 'M4']
-					    ]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
@@ -1027,6 +1047,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
+							['Reference/Status-Codes','Status Codes'],
 							['Reference/Keywords','Keywords'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1837,7 +1858,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器'],
-							['API/Status-Codes','状态码'],
 							['API/Interface-Comparison', '原生接口对比']
 						]
 					},
@@ -1860,7 +1880,6 @@ var config = {
 							['Write-Data/Session','原生接口写入'],
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
-							['Write-Data/Load-External-Tsfile','加载 TsFile'],
 							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
@@ -1883,7 +1902,7 @@ var config = {
 							['Query-Data/Where-Condition','查询过滤条件'],
 							['Query-Data/Group-By','分段分组聚合'],
 							['Query-Data/Having-Condition','聚合结果过滤'],
-							['Query-Data/Order-By','结果集排序'],
+							// ['Query-Data/Order-By','结果集排序'],
 							['Query-Data/Fill','结果集补空值'],
 							['Query-Data/Pagination','结果集分页'],
 							['Query-Data/Select-Into','查询写回'],
@@ -1924,7 +1943,11 @@ var config = {
 						title: '触发器',
 						sidebarDepth: 1,
 						children: [
-							['Trigger/Trigger','触发器'],
+							['Trigger/Instructions','使用说明'],
+							['Trigger/Implement-Trigger','编写触发器'],
+							['Trigger/Trigger-Management','管理触发器'],
+							['Trigger/Notes','重要注意事项'],
+							['Trigger/Configuration-Parameters','配置参数'],
 						]
 					},
 					{
@@ -1948,8 +1971,12 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
+							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
+							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
+              ['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
+              ['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -1993,6 +2020,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
+							['Reference/Status-Codes','状态码'],
 							['Reference/Keywords','关键字'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]

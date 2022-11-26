@@ -324,7 +324,7 @@ public class ClusterSchemaManager {
       try {
         // Adjust maxSchemaRegionGroupNum for each StorageGroup.
         // All StorageGroups share the DataNodes equally.
-        // Allocated SchemaRegionGroups are not shrunk.
+        // The allocated SchemaRegionGroups will not be shrunk.
         int allocatedSchemaRegionGroupCount =
             getPartitionManager()
                 .getRegionGroupCount(
@@ -335,20 +335,24 @@ public class ClusterSchemaManager {
                 // by parameter least_schema_region_group_num, which is currently unconfigurable.
                 LEAST_SCHEMA_REGION_GROUP_NUM,
                 Math.max(
-                    // The maxSchemaRegionGroupNum of the current StorageGroup is expected to be
-                    // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
-                    // (createdStorageGroupNum * schemaReplicationFactor)
                     (int)
-                        (SCHEMA_REGION_PER_DATA_NODE
-                            * dataNodeNum
-                            / (double)
-                                (storageGroupNum
-                                    * storageGroupSchema.getSchemaReplicationFactor())),
+                        // Use Math.ceil here to ensure that the maxSchemaRegionGroupNum
+                        // will be increased as long as the number of cluster DataNodes is increased
+                        Math.ceil(
+                            // The maxSchemaRegionGroupNum of the current StorageGroup
+                            // is expected to be:
+                            // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
+                            // (createdStorageGroupNum * schemaReplicationFactor)
+                            SCHEMA_REGION_PER_DATA_NODE
+                                * dataNodeNum
+                                / (double)
+                                    (storageGroupNum
+                                        * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
 
         // Adjust maxDataRegionGroupNum for each StorageGroup.
         // All StorageGroups divide the total cpu cores equally.
-        // Allocated DataRegionGroups are not shrunk.
+        // The allocated DataRegionGroups will not be shrunk.
         int allocatedDataRegionGroupCount =
             getPartitionManager()
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
@@ -358,14 +362,19 @@ public class ClusterSchemaManager {
                 // by parameter least_data_region_group_num.
                 LEAST_DATA_REGION_GROUP_NUM,
                 Math.max(
-                    // The maxDataRegionGroupNum of the current StorageGroup is expected to be
-                    // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
-                    // (createdStorageGroupNum * dataReplicationFactor)
                     (int)
-                        (DATA_REGION_PER_PROCESSOR
-                            * totalCpuCoreNum
-                            / (double)
-                                (storageGroupNum * storageGroupSchema.getDataReplicationFactor())),
+                        // Use Math.ceil here to ensure that the maxDataRegionGroupNum
+                        // will be increased as long as the number of cluster DataNodes is increased
+                        Math.ceil(
+                            // The maxDataRegionGroupNum of the current StorageGroup
+                            // is expected to be:
+                            // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
+                            // (createdStorageGroupNum * dataReplicationFactor)
+                            DATA_REGION_PER_PROCESSOR
+                                * totalCpuCoreNum
+                                / (double)
+                                    (storageGroupNum
+                                        * storageGroupSchema.getDataReplicationFactor())),
                     allocatedDataRegionGroupCount));
 
         adjustMaxRegionGroupNumPlan.putEntry(
