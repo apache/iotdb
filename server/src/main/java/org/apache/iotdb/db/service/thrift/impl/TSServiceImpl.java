@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Operation;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -71,7 +72,6 @@ import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1412,16 +1412,12 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricService.getInstance()
-          .histogram(
-              System.currentTimeMillis() - startTime,
-              "operation_histogram",
-              MetricLevel.IMPORTANT,
-              "name",
-              operation.getName());
-      MetricService.getInstance()
-          .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
-    }
+    MetricService.getInstance()
+        .histogram(
+            System.currentTimeMillis() - startTime,
+            Metric.OPERATION.toString(),
+            MetricLevel.IMPORTANT,
+            "name",
+            operation.getName());
   }
 }

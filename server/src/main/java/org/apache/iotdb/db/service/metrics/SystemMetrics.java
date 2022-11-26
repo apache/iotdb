@@ -106,7 +106,7 @@ public class SystemMetrics implements IMetricSet {
 
     metricService
         .getOrCreateGauge(
-            Metric.SYS_CPU_CORES.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "system")
+            Metric.SYS_CPU_CORES.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
         .set(osMXBean.getAvailableProcessors());
   }
 
