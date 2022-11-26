@@ -18,6 +18,24 @@
 # under the License.
 #
 
-nohup bash start-confignode.sh > confignode1.log 2>&1 &
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="`dirname "$0"`/.."
+fi
+
+if [ -f "$IOTDB_HOME/sbin/start-confignode.sh" ]; then
+  export CONFIGNODE_START_PATH="$IOTDB_HOME/sbin/start-confignode.sh"
+else
+  echo "Can't find start-confignode.sh"
+  exit 0
+fi
+
+if [ -f "$IOTDB_HOME/sbin/start-datanode.sh" ]; then
+  export DATANODE_START_PATH="$IOTDB_HOME/sbin/start-confignode.sh"
+else
+  echo "Can't find start-datanode.sh"
+  exit 0
+fi
+
+nohup bash "$CONFIGNODE_START_PATH" > confignode1.log 2>&1 &
 sleep 6
-nohup bash start-datanode.sh > datanode1.log 2>&1 &
+nohup bash "$DATANODE_START_PATH" > datanode1.log 2>&1 &

@@ -18,5 +18,23 @@
 # under the License.
 #
 
-bash stop-confignode.sh
-bash stop-datanode.sh
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="`dirname "$0"`/.."
+fi
+
+if [ -f "$IOTDB_HOME/sbin/stop-confignode.sh" ]; then
+  export CONFIGNODE_STOP_PATH="$IOTDB_HOME/sbin/stop-confignode.sh"
+else
+  echo "Can't find stop-confignode.sh"
+  exit 0
+fi
+
+if [ -f "$IOTDB_HOME/sbin/stop-datanode.sh" ]; then
+  export DATANODE_STOP_PATH="$IOTDB_HOME/sbin/stop-confignode.sh"
+else
+  echo "Can't find stop-datanode.sh"
+  exit 0
+fi
+
+bash "$CONFIGNODE_STOP_PATH"
+bash "$DATANODE_STOP_PATH"
