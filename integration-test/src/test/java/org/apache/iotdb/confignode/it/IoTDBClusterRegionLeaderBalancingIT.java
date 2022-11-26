@@ -40,6 +40,7 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -63,7 +64,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Category({ClusterIT.class})
 public class IoTDBClusterRegionLeaderBalancingIT {
 
-  protected static boolean originalEnableLeaderBalancing;
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
+
+  protected static boolean originalEnableRatisLeaderBalance;
+  protected static boolean originalEnableMultiLeaderLeaderBalance;
 
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
@@ -80,36 +84,33 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @BeforeClass
   public static void setUp() {
-    originalEnableLeaderBalancing = ConfigFactory.getConfig().isEnableLeaderBalancing();
-    ConfigFactory.getConfig().setEnableLeaderBalancing(true);
+    originalEnableRatisLeaderBalance = CONF.isEnableRatisLeaderBalance();
+    CONF.setEnableRatisLeaderBalance(true);
+    originalEnableMultiLeaderLeaderBalance = CONF.isEnableMultiLeaderLeaderBalance();
+    CONF.setEnableMultiLeaderLeaderBalance(true);
 
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
+    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
+    CONF.setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
 
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass);
+    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    CONF.setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass);
 
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
+    originalDataReplicationFactor = CONF.getDataReplicationFactor();
+    CONF.setSchemaReplicationFactor(testReplicationFactor);
+    CONF.setDataReplicationFactor(testReplicationFactor);
   }
 
   @AfterClass
   public static void tearDown() {
-    ConfigFactory.getConfig().setEnableLeaderBalancing(originalEnableLeaderBalancing);
+    CONF.setEnableRatisLeaderBalance(originalEnableRatisLeaderBalance);
+    CONF.setEnableMultiLeaderLeaderBalance(originalEnableMultiLeaderLeaderBalance);
 
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
 
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    CONF.setDataReplicationFactor(originalDataReplicationFactor);
   }
 
   @Test
