@@ -232,9 +232,12 @@ public class StatementGenerator {
     // construct insert statement
     InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    Map<String, PartialPath> devicePathMap = new HashMap<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-      insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
+      insertTabletStatement.setDevicePath(
+          devicePathMap.putIfAbsent(
+              req.getPrefixPaths().get(i), new PartialPath(req.getPrefixPaths().get(i))));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       insertTabletStatement.setTimes(
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -270,9 +273,12 @@ public class StatementGenerator {
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    Map<String, PartialPath> devicePathMap = new HashMap<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(
+          devicePathMap.putIfAbsent(
+              req.getPrefixPaths().get(i), new PartialPath(req.getPrefixPaths().get(i))));
       statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
@@ -292,9 +298,12 @@ public class StatementGenerator {
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    Map<String, PartialPath> devicePathMap = new HashMap<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(
+          devicePathMap.putIfAbsent(
+              req.getPrefixPaths().get(i), new PartialPath(req.getPrefixPaths().get(i))));
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
       statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
