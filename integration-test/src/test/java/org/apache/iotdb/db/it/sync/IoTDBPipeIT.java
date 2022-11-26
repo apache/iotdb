@@ -37,7 +37,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
+import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -110,6 +112,18 @@ public class IoTDBPipeIT {
         assertResultSetEqual(resultSet, SHOW_PIPE_HEADER, expectedRetSet);
       }
       statement.execute("START PIPE p1;");
+      await()
+          .atMost(5, SECONDS)
+          .until(
+              () -> {
+                try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
+                  int cnt = 0;
+                  while (resultSet.next()) {
+                    cnt++;
+                  }
+                  return cnt == 2;
+                }
+              });
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
             new String[] {
