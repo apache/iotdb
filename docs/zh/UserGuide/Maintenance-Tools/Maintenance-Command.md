@@ -36,25 +36,6 @@ IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
 IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
-## MERGE
-
-触发层级合并和乱序合并。当前 IoTDB 支持使用如下两种 SQL 手动触发数据文件的合并：
-
-* `MERGE` 先触发层级合并，等层级合并执行完后，再触发乱序合并。在乱序合并中，仅重写重复的 Chunk，整理速度快，但是最终磁盘会存在多余数据。
-* `FULL MERGE` 先触发层级合并，等层级合并执行完后，再触发乱序合并。在乱序合并中，将需要合并的顺序和乱序文件的所有数据都重新写一份，整理速度慢，最终磁盘将不存在无用的数据。
-
-```sql
-IoTDB> MERGE
-IoTDB> FULL MERGE
-```
-同时，在集群模式中支持对本节点或整个集群手动触发数据文件的合并:
-```sql
-IoTDB> MERGE ON LOCAL
-IoTDB> MERGE ON CLUSTER
-IoTDB> FULL MERGE ON LOCAL
-IoTDB> FULL MERGE ON CLUSTER
-```
-
 ## CLEAR CACHE
 
 
