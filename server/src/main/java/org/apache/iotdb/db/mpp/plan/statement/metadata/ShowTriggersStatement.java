@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
@@ -29,11 +28,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class ShowTriggersStatement extends ShowStatement implements IConfigStatement {
-
-  public ShowTriggersStatement() {
-    super();
-    statementType = StatementType.SHOW_TRIGGERS;
-  }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
