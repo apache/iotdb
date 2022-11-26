@@ -76,8 +76,16 @@ public class RouteBalancer {
       CONF.getSchemaRegionConsensusProtocolClass();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getDataRegionConsensusProtocolClass();
-  private static final boolean IS_IOT_CONSENSUS =
-      ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass());
+
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS =
+      CONF.isEnableAutoLeaderBalanceForRatis();
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS =
+      CONF.isEnableAutoLeaderBalanceForIoTConsensus();
+
+  private static final boolean IS_SCHEMA_REGION_IOT_CONSENSUS =
+      ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
+  private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
+      ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
   private final IManager configManager;
 
@@ -135,7 +143,8 @@ public class RouteBalancer {
    * @param leaderSample <Sample timestamp, leaderDataNodeId>, The newest HeartbeatSample
    */
   public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType()) && IS_IOT_CONSENSUS) {
+    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+        && IS_DATA_REGION_IOT_CONSENSUS) {
       // The leadership of multi-leader consensus protocol is decided by ConfigNode-leader
       return;
     }
@@ -163,7 +172,8 @@ public class RouteBalancer {
     AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
-          if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType()) && IS_IOT_CONSENSUS) {
+          if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+              && IS_DATA_REGION_IOT_CONSENSUS) {
             // Ignore IoTConsensus consensus protocol
             return;
           }
@@ -269,8 +279,15 @@ public class RouteBalancer {
   }
 
   private void balancingRegionLeader() {
-    balancingRegionLeader(TConsensusGroupType.SchemaRegion);
-    balancingRegionLeader(TConsensusGroupType.DataRegion);
+    if ((IS_SCHEMA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS)
+        || (!IS_SCHEMA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+      balancingRegionLeader(TConsensusGroupType.SchemaRegion);
+    }
+
+    if ((IS_DATA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS)
+        || (!IS_DATA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+      balancingRegionLeader(TConsensusGroupType.DataRegion);
+    }
   }
 
   private void balancingRegionLeader(TConsensusGroupType regionGroupType) {
@@ -358,7 +375,7 @@ public class RouteBalancer {
   public void initRegionRouteMap() {
     synchronized (regionRouteMap) {
       regionRouteMap.clear();
-      if (IS_IOT_CONSENSUS) {
+      if (IS_DATA_REGION_IOT_CONSENSUS) {
         // Greedily pick leader for all existed DataRegionGroups
         List<TRegionReplicaSet> dataRegionGroups =
             getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
