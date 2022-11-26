@@ -367,13 +367,13 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
-  private boolean enableTimedFlushSeqMemtable = false;
+  private boolean enableTimedFlushSeqMemtable = true;
 
   /**
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
   private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -385,7 +385,7 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -730,7 +730,7 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 32;
+  private int primitiveArraySize = 64;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;

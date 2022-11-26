@@ -201,12 +201,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * primitive\_array\_size
 
-|名字| primary\_array\_size |
-|:---:|:---|
-|描述| 数组池中的原始数组大小（每个数组的长度）|
-|类型| int32 |
-|默认值| 32 |
-|改后生效方式|重启服务生效|
+|   名字   | primitive\_array\_size |
+|:------:|:-----------------------|
+|   描述   | 数组池中的原始数组大小（每个数组的长度）   |
+|   类型   | int32                  |
+|  默认值   | 64                     |
+| 改后生效方式 | 重启服务生效                 |
 
 * flush\_proportion
 
@@ -659,21 +659,21 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * enable\_timed\_flush\_seq\_memtable
 
-|     名字     | enable\_timed\_flush\_seq\_memtable |
-| :----------: | :---------------------------------- |
-|     描述     | 是否开启定时刷盘顺序 memtable       |
-|     类型     | Boolean                             |
-|    默认值    | false                               |
-| 改后生效方式 | 热加载                            |
+|   名字   | enable\_timed\_flush\_seq\_memtable |
+|:------:|:------------------------------------|
+|   描述   | 是否开启定时刷盘顺序 memtable                 |
+|   类型   | Boolean                             |
+|  默认值   | true                                |
+| 改后生效方式 | 热加载                                 |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
-|名字| seq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
-|类型| int32 |
-|默认值| 3600000 |
-|改后生效方式| 热加载 |
+|   名字   | seq\_memtable\_flush\_interval\_in\_ms       |
+|:------:|:---------------------------------------------|
+|   描述   | 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|   类型   | int32                                        |
+|  默认值   | 10800000                                     |
+| 改后生效方式 | 热加载                                          |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -695,12 +695,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
-|名字| unseq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
-|类型| int32 |
-|默认值| 3600000 |
-|改后生效方式| 热加载 |
+|   名字   | unseq\_memtable\_flush\_interval\_in\_ms     |
+|:------:|:---------------------------------------------|
+|   描述   | 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|   类型   | int32                                        |
+|  默认值   | 10800000                                     |
+| 改后生效方式 | 热加载                                          |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
