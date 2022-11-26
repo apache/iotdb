@@ -197,7 +197,7 @@ sudo bash sbin\start-standalone.sh
 
 Windows 停止方式:
 ```
-sbin\stop-datanode.bat
+sbin\stop-standalone.bat
 ```
 Linux 停止方式:
 ```
