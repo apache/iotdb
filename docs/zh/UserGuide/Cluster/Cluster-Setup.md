@@ -173,13 +173,14 @@ sbin\stop-confignode.bat
 ```
 在 Linux 上:
 ```
-sudo bash sbin\stop-datanode.sh
+bash sbin/stop-datanode.sh
 ```
 ```
-sudo bash sbin\stop-confignode.sh
+bash sbin/stop-confignode.sh
 ```
 
 注意不要遗漏 ”sudo“ 的标签，因为一些端口信息的获取需要 root 权限。如果无法 sudo 或遇到其他问题，可以使用 jps 或 ps aux | grep iotdb 的命令来获取 IoTDB 的进程，然后使用 kill -9 进程号来结束此进程。
+
 ## 启动单机
 除了集群之外， 我们的脚本也提供了单机 1C1D（也就是1个Confignode + 1个Datanode） 的便捷启动方式。
 
@@ -191,7 +192,7 @@ sbin\start-standalone.bat
 ```
 Linux 启动方式:
 ```
-sudo bash sbin\start-standalone.sh
+bash sbin\start-standalone.sh
 ```
 这里建议使用 sudo，因为后台日志的写入可能需要 root 权限。
 
@@ -203,7 +204,7 @@ sbin\stop-standalone.bat
 ```
 Linux 停止方式:
 ```
-sudo bash sbin\stop-standalone.sh
+bash sbin/stop-standalone.sh
 ```
 注意： 在 Linux 平台上，1C1D 的两个进程都在后台启动，可以查看 confignode1.log 和 datanode1.log 来找到它们的运行日志。
 

@@ -65,7 +65,7 @@ Users can start IoTDB standalone mode by the start-standalone script under the s
 
 ```
 # Unix/OS X
-> sudo bash sbin/start-standalone.sh
+> bash sbin/start-standalone.sh
 ```
 It's recommended to use sudo here, because you may need root permission to write backstage logs.
 
@@ -214,7 +214,7 @@ The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/OS X
-> sudo bash sbin/stop-standalone.sh
+> bash sbin/stop-standalone.sh
 
 # Windows
 > sbin/stop-standalone.bat

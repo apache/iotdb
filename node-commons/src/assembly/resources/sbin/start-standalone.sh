@@ -30,12 +30,14 @@ else
 fi
 
 if [ -f "$IOTDB_HOME/sbin/start-datanode.sh" ]; then
-  export DATANODE_START_PATH="$IOTDB_HOME/sbin/start-confignode.sh"
+  export DATANODE_START_PATH="$IOTDB_HOME/sbin/start-datanode.sh"
 else
   echo "Can't find start-datanode.sh"
   exit 0
 fi
 
-nohup bash "$CONFIGNODE_START_PATH" > confignode1.log 2>&1 &
-sleep 6
-nohup bash "$DATANODE_START_PATH" > datanode1.log 2>&1 &
+nohup bash "$CONFIGNODE_START_PATH" >/dev/null 2>&1 &
+sleep 5
+nohup bash "$DATANODE_START_PATH" >/dev/null 2>&1 &
+
+echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"

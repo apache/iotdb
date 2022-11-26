@@ -173,10 +173,10 @@ sbin\stop-confignode.bat
 ```
 In Linux:
 ```
-sudo bash sbin\stop-datanode.sh
+bash sbin\stop-datanode.sh
 ```
 ```
-sudo bash sbin\stop-confignode.sh
+bash sbin\stop-confignode.sh
 ```
 Be careful not to miss the "sudo" label, because some port info's acquisition may require root authority. If you can't sudo, just
 use "jps" or "ps aux | grep iotdb" to get the process's id, then use "kill -9 <process-id>" to stop the process.  
@@ -193,7 +193,7 @@ sbin\start-standalone.bat
 ```
 Start on Linux:
 ```
-sudo bash sbin\start-standalone.sh
+bash sbin\start-standalone.sh
 ```
 It's recommended to use sudo here, for that the backstage logs may need sudo permission.
 
@@ -205,13 +205,13 @@ sbin\stop-standalone.bat
 ```
 Stop on Linux:
 ```
-sudo bash sbin\stop-standalone.sh
+bash sbin\stop-standalone.sh
 ```
 
-Note: On Linux, the 1C1D processes both launches in the background, and you can see confignode1.log and datanode1.log 
-for details. 
+Note: On Linux, the 1C1D processes both launches in the background, and you can see the logs for details. 
 
-The stop-standalone.sh may not work well without sudo, since IoTDB's port numbers may be invisible without permission. If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
+The stop-standalone.sh may not work well without sudo, since IoTDB's port numbers may be invisible without permission. 
+If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
 and use "sudo kill -9 <process-id>" to manually stop the processes.
 
 ## Start Cli

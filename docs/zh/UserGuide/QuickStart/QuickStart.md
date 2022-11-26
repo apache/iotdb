@@ -58,17 +58,17 @@ IoTDB 是一个基于分布式系统的数据库。要启动 IoTDB ，你可以�
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> sudo bash sbin/start-standalone.sh
+> bash sbin/start-standalone.sh
 ```
 这里最好使用sudo，如果不使用 sudo，可能会提示后台日志无权限写入。
 
 Windows 系统启动命令如下：
 
 ```
-> sbin/start-standalone.bat
+> sbin\start-standalone.bat
 ```
 
-注意：目前，要使用单机模式，你需要保证所有的地址设置为 127.0.0.1，而副本数设置为1。并且，推荐使用 SimpleConsensus，因为这会带来额外的效率。这些现在都是默认配置。
+注意：目前，要使用单机模式，你需要保证所有的地址设置为 127.0.0.1，副本数设置为1。并且，推荐使用 SimpleConsensus，因为这会带来额外的效率。这些现在都是默认配置。
 ### 使用 Cli 工具
 
 IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使用 Cli 工具进行写入、查询数据的基本步骤。
