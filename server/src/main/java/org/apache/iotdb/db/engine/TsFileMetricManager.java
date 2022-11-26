@@ -48,13 +48,13 @@ public class TsFileMetricManager {
     }
   }
 
-  public void deleteFile(long size, boolean seq) {
+  public void deleteFile(long size, boolean seq, int num) {
     if (seq) {
       seqFileSize.getAndAdd(-size);
-      seqFileNum.getAndAdd(-1);
+      seqFileNum.getAndAdd(-num);
     } else {
       unseqFileSize.getAndAdd(-size);
-      unseqFileNum.getAndAdd(-1);
+      unseqFileNum.getAndAdd(-num);
     }
   }
 

@@ -121,9 +121,9 @@ All parameters are in `$IOTDB_ HOME$/conf/iotdb-common.properties`, after all mo
 
 | **Parameter Name** | **ip_white_list**                                            |
 | ------------------ | ------------------------------------------------------------ |
-| Description        | Set the white list of IP addresses of the sending end of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiving end accepts the synchronization request of all IP addresses. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
+| Description        | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
 | Data type          | String                                                       |
-| Default value      | 0.0.0.0/0                                                    |
+| Default value      | 127.0.0.1/32                                                    |
 
 ## 6.SQL
 
@@ -231,9 +231,10 @@ IoTDB> DROP PIPE <PipeName>
     - When role is sender, the value of this field is the synchronization start time of the Pipe and whether to synchronize the delete operation.
     - When role is receiver, the value of this field is the name of the database corresponding to the synchronization connection created on this DataNode.
 
-  - `message`: the status message of this pipe. When pipe runs normally, this column is usually empty. When an exception occurs, messages may appear in  following two states.
+  - `message`: the status message of this pipe. When pipe runs normally, this column is NORMAL. When an exception occurs, messages may appear in  following two states.
     - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
-    - ERROR, this indicates that the network is interrupted for a long time or there is a problem at the receiving end. The pipe is stopped and set to STOP state.
+    - ERROR, This indicates a problem where the network connection works but the data cannot be transferred, for example, the IP of the sender is not in the whitelist of the receiver or the version of the sender is not compatible with that of the receiver.
+    - When the ERROR status appears, it is recommended to check the DataNode logs after STOP PIPE, check the receiver configuration or network conditions, and then START PIPE again.
 
 
 ```
@@ -242,9 +243,9 @@ IoTDB>
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 |            create time|   name |    role|       remote|   status|                          attributes|message|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
-|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0|       |
+|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0| NORMAL|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+ 
-|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'|       |
+|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'| NORMAL|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 ```
 
@@ -265,18 +266,18 @@ IoTDB> SHOW PIPE [PipeName]
 
 ### Receiver
 
-- `vi conf/iotdb-common.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
+- `vi conf/iotdb-common.properties`  to config the parameters，set the IP white list to 192.168.0.1/32 to receive and only receive data from sender.
 
 ```
 ####################
 ### PIPE Server Configuration
 ####################
 # White IP list of Sync client.
-# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+# Please use the form of IPv4 network segment to present the range of IP, for example: 192.168.0.0/16
 # If there are more than one IP segment, please separate them by commas
-# The default is to allow all IP to sync
+# The default is to reject all IP to sync except 0.0.0.0
 # Datatype: String
-ip_white_list=192.168.0.1/1
+ip_white_list=192.168.0.1/32
 ```
 
 ### Sender

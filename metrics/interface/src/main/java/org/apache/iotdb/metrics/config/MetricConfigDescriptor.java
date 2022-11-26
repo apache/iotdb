@@ -51,10 +51,7 @@ public class MetricConfigDescriptor {
     MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (!metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig
-              .getEnablePerformanceStat()
-              .equals(newMetricConfig.getEnablePerformanceStat())
-          || !metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
+      if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
           || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
           || !metricConfig
               .getAsyncCollectPeriodInSecond()
@@ -78,13 +75,6 @@ public class MetricConfigDescriptor {
   /** Load properties into metric config */
   private MetricConfig generateFromProperties(Properties properties) {
     MetricConfig loadConfig = new MetricConfig();
-
-    loadConfig.setEnablePerformanceStat(
-        Boolean.parseBoolean(
-            getProperty(
-                "enable_performance_stat",
-                String.valueOf(loadConfig.getEnablePerformanceStat()),
-                properties)));
 
     String reporterList =
         getProperty(

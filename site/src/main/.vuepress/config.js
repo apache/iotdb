@@ -922,24 +922,59 @@ var config = {
 						title: 'Query Data',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Overview.md','Overview'],
-							['Query-Data/Select-Expression.md','Select Expression'],
-							['Query-Data/Query-Filter.md','Query Filter'],
-							['Query-Data/Pagination.md','Pagination'],
-							['Query-Data/Result-Format.md','Query Result Formats'],
-							['Query-Data/Aggregate-Query.md','Aggregate Query'],
-							['Query-Data/Last-Query.md','Last Query'],
-							['Query-Data/Fill-Null-Value.md','Fill Null Value']
+							['Query-Data/Overview','Overview'],
+							['Query-Data/Select-Expression','Select Expression'],
+							['Query-Data/Last-Query','Last Query'],
+							['Query-Data/Align-By','Query Alignment Mode'],
+							['Query-Data/Where-Condition','Where Condition'],
+							['Query-Data/Group-By','Group By'],
+							['Query-Data/Having-Condition','Having Condition'],
+							// ['Query-Data/Order-By','Order By'],
+							['Query-Data/Fill','Fill Null Value'],
+							['Query-Data/Pagination','Pagination'],
+							['Query-Data/Select-Into','Select Into'],
+							['Query-Data/Continuous-Query','Continuous Query'],
 						]
 					},
 					{
-						title: 'Process Data',
+						title: 'Operators and Functions',
 						sidebarDepth: 1,
 						children: [
-							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
-							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
+							['Operators-Functions/Overview','Overview'],
+							['Operators-Functions/User-Defined-Function','UDF (User Defined Function)'],
+							['Operators-Functions/Aggregation','Aggregation'],
+							['Operators-Functions/Mathematical','Mathematical'],
+							['Operators-Functions/Comparison','Comparison'],
+							['Operators-Functions/Logical','Logical'],
+							['Operators-Functions/String','Conversion'],
+							['Operators-Functions/Conversion','Conversion'],
+							['Operators-Functions/Constant','Constant'],
+							['Operators-Functions/Selection','Selection'],
+							['Operators-Functions/Continuous-Interval','Continuous Interval'],
+							['Operators-Functions/Variation-Trend','Variation Trend'],
+							['Operators-Functions/Sample','Sample'],
+							['Operators-Functions/Time-Series','Time-Series'],
+							['Operators-Functions/Lambda','Lambda'],
+
+							// IoTDB-Quality
+							['Operators-Functions/Data-Profiling','Data Profiling'],
+							['Operators-Functions/Anomaly-Detection','Anomaly Detection'],
+							['Operators-Functions/Data-Matching','Data Matching'],
+							['Operators-Functions/Frequency-Domain','Frequency Domain'],
+							['Operators-Functions/Data-Quality','Data Quality'],
+							['Operators-Functions/Data-Repairing','Data Repairing'],
+							['Operators-Functions/Series-Discovery','Series Discovery']
+						]
+					},
+					{
+						title: 'Trigger',
+						sidebarDepth: 1,
+						children: [
+							['Trigger/Instructions','Instructions'],
+							['Trigger/Implement-Trigger','How to implement a trigger'],
+							['Trigger/Trigger-Management','Trigger Management'],
+							['Trigger/Notes','Notes'],
+							['Trigger/Configuration-Parameters','Configuration-Parameters'],
 						]
 					},
 					{
@@ -1000,23 +1035,6 @@ var config = {
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup']
 						]
-					},
-					{
-					    title: 'UDF Library',
-					    sidebarDepth: 1,
-					    children: [
-					        ['UDF-Library/Quick-Start', 'Quick Start'],
-					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
-					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
-					        ['UDF-Library/Data-Matching', 'Data Matching'],
-					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
-					        ['UDF-Library/Data-Quality', 'Data Quality'],
-					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
-					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
-					        ['UDF-Library/Series-Processing', 'Series Processing'],
-                            ['UDF-Library/String-Processing', 'String Processing'],
-                            ['UDF-Library/M4', 'M4']
-					    ]
 					},
 					{
 						title: 'FAQ',
@@ -1925,7 +1943,11 @@ var config = {
 						title: '触发器',
 						sidebarDepth: 1,
 						children: [
-							['Trigger/Trigger','触发器'],
+							['Trigger/Instructions','使用说明'],
+							['Trigger/Implement-Trigger','编写触发器'],
+							['Trigger/Trigger-Management','管理触发器'],
+							['Trigger/Notes','重要注意事项'],
+							['Trigger/Configuration-Parameters','配置参数'],
 						]
 					},
 					{

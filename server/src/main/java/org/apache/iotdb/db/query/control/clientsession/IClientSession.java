@@ -43,7 +43,7 @@ public abstract class IClientSession {
 
   private long logInTime;
 
-  abstract String getClientAddress();
+  public abstract String getClientAddress();
 
   abstract int getClientPort();
 

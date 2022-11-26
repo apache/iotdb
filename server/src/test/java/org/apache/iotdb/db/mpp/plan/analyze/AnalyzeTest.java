@@ -768,7 +768,7 @@ public class AnalyzeTest {
       return analyzer.analyze(statement);
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      fail(sql + ", " + e.getMessage());
     }
     fail();
     return null;

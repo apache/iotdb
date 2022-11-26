@@ -19,18 +19,18 @@
 
 -->
 
-# DataNode/Standalone Configuration Parameters
+# DataNode Configuration Parameters
 
 We use the same configuration files for IoTDB DataNode and Standalone version, all under the `conf`.
 
 * `datanode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of DataNode and Standalone.
 
-* `iotdb-datanode.properties`：IoTDB DataNode/Standalone system configurations.
+* `iotdb-datanode.properties`：IoTDB DataNode system configurations.
 
 ## Hot Modification Configuration
 
 For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately. 
-In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
+In the parameters described below, these parameters whose way of `Effective` is `hot-load` support hot modification.
 
 Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
 
@@ -273,7 +273,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 | Description | The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it. |
 |    Type     | String[]                                                                                                                                                                                                                                                                    |
 |   Default   | data/datanode/data (Windows: data\\datanode\\data)                                                                                                                                                                                                                          |
-|  Effective  | Trigger                                                                                                                                                                                                                                                                     |
+|  Effective  | hot-load                                                                                                                                                                                                                                                                     |
 
 * dn\_multi\_dir\_strategy
 
@@ -282,7 +282,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
 |Type|String|
 |Default| MaxDiskUsableSpaceFirstStrategy |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * dn\_consensus\_dir
 

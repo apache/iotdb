@@ -243,6 +243,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    confignodeProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
+    return this;
+  }
+
+  @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
         "time_partition_interval", String.valueOf(timePartitionInterval));
@@ -321,9 +328,17 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  public BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
     confignodeProperties.setProperty(
-        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+        "enable_auto_leader_balance_for_ratis", String.valueOf(enableRatisLeaderBalance));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMultiLeaderLeaderBalance(boolean enableMultiLeaderLeaderBalance) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_multileader",
+        String.valueOf(enableMultiLeaderLeaderBalance));
     return this;
   }
 
