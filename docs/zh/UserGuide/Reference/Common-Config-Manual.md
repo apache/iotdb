@@ -1355,6 +1355,332 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 | 改后生效方式 | 热加载                  |
 
 ### Ratis 共识协议配置
+当Region配置了RatisConsensus共识协议之后，下述的配置项才会生效
+
+* config\_node\_ratis\_log\_appender\_buffer\_size\_max
+
+|   名字   | config\_node\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   描述   | confignode 一次同步日志RPC最大的传输字节限制                  |
+|   类型   | int32                                          |
+|  默认值   | 4MB                                            |
+| 改后生效方式 | 重启生效                                           |
+
+
+* schema\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   名字   | schema\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-------------------------------------------------|
+|   描述   | schema region 一次同步日志RPC最大的传输字节限制                 |
+|   类型   | int32                                            |
+|  默认值   | 4MB                                              |
+| 改后生效方式 | 重启生效                                             |
+
+* data\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   名字   | data\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   描述   | data region 一次同步日志RPC最大的传输字节限制                 |
+|   类型   | int32                                          |
+|  默认值   | 4MB                                            |
+| 改后生效方式 | 重启生效                                           |
+
+* config\_node\_ratis\_snapshot\_trigger\_threshold
+
+|   名字   | config\_node\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   描述   | confignode 触发snapshot需要的日志条数                 |
+|   类型   | int32                                        |
+|  默认值   | 400,000                                      |
+| 改后生效方式 | 重启生效                                         |
+
+* schema\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   名字   | schema\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:-----------------------------------------------|
+|   描述   | schema region 触发snapshot需要的日志条数                |
+|   类型   | int32                                          |
+|  默认值   | 400,000                                        |
+| 改后生效方式 | 重启生效                                           |
+
+* data\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   名字   | data\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   描述   | data region 触发snapshot需要的日志条数                |
+|   类型   | int32                                        |
+|  默认值   | 400,000                                      |
+| 改后生效方式 | 重启生效                                         |
+
+* config\_node\_ratis\_log\_unsafe\_flush\_enable
+
+|   名字   | config\_node\_ratis\_log\_unsafe\_flush\_enable |
+|:------:|:------------------------------------------|
+|   描述   | confignode 是否允许Raft日志异步刷盘                 |
+|   类型   | boolean                                   |
+|  默认值   | false                                     |
+| 改后生效方式 | 重启生效                                      |
+
+* schema\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   名字   | schema\_region\_ratis\_log\_unsafe\_flush\_enable |
+|:------:|:--------------------------------------------|
+|   描述   | schema region 是否允许Raft日志异步刷盘                |
+|   类型   | boolean                                     |
+|  默认值   | false                                       |
+| 改后生效方式 | 重启生效                                        |
+
+* data\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   名字   | data\_region\_ratis\_log\_unsafe\_flush\_enable |
+|:------:|:------------------------------------------|
+|   描述   | data region 是否允许Raft日志异步刷盘                |
+|   类型   | boolean                                   |
+|  默认值   | false                                     |
+| 改后生效方式 | 重启生效                                      |
+
+* config\_node\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   名字   | config\_node\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   描述   | confignode 一个RaftLog日志段文件的大小                   |
+|   类型   | int32                                          |
+|  默认值   | 24MB                                           |
+| 改后生效方式 | 重启生效                                           |
+
+* schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   名字   | schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-------------------------------------------------|
+|   描述   | schema region 一个RaftLog日志段文件的大小                  |
+|   类型   | int32                                            |
+|  默认值   | 24MB                                             |
+| 改后生效方式 | 重启生效                                             |
+
+* data\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   名字   | data\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   描述   | data region 一个RaftLog日志段文件的大小                  |
+|   类型   | int32                                          |
+|  默认值   | 24MB                                           |
+| 改后生效方式 | 重启生效                                           |
+
+* config\_node\_ratis\_grpc\_flow\_control\_window
+
+|   名字   | config\_node\_ratis\_grpc\_flow\_control\_window |
+|:------:|:-------------------------------------------|
+|   描述   | confignode grpc 流式拥塞窗口大小                   |
+|   类型   | int32                                      |
+|  默认值   | 4MB                                        |
+| 改后生效方式 | 重启生效                                       |
+
+* schema\_region\_ratis\_grpc\_flow\_control\_window
+
+|   名字   | schema\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:---------------------------------------------|
+|   描述   | schema region grpc 流式拥塞窗口大小                  |
+|   类型   | int32                                        |
+|  默认值   | 4MB                                          |
+| 改后生效方式 | 重启生效                                         |
+
+* data\_region\_ratis\_grpc\_flow\_control\_window
+
+|   名字   | data\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:-------------------------------------------|
+|   描述   | data region grpc 流式拥塞窗口大小                  |
+|   类型   | int32                                      |
+|  默认值   | 4MB                                        |
+| 改后生效方式 | 重启生效                                       |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   名字   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   描述   | confignode leader 选举超时最小值                            |
+|   类型   | int32                                                |
+|  默认值   | 2000ms                                               |
+| 改后生效方式 | 重启生效                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   名字   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-------------------------------------------------------|
+|   描述   | schema region leader 选举超时最小值                           |
+|   类型   | int32                                                  |
+|  默认值   | 2000ms                                                 |
+| 改后生效方式 | 重启生效                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   名字   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   描述   | data region leader 选举超时最小值                           |
+|   类型   | int32                                                |
+|  默认值   | 2000ms                                               |
+| 改后生效方式 | 重启生效                                                 |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   名字   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   描述   | confignode leader 选举超时最大值                            |
+|   类型   | int32                                                |
+|  默认值   | 2000ms                                               |
+| 改后生效方式 | 重启生效                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   名字   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-------------------------------------------------------|
+|   描述   | schema region leader 选举超时最大值                           |
+|   类型   | int32                                                  |
+|  默认值   | 2000ms                                                 |
+| 改后生效方式 | 重启生效                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   名字   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   描述   | data region leader 选举超时最大值                           |
+|   类型   | int32                                                |
+|  默认值   | 2000ms                                               |
+| 改后生效方式 | 重启生效                                                 |
+
+* config\_node\_ratis\_request\_timeout\_ms
+
+|   名字   | config\_node\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   描述   | confignode Raft 客户端重试超时              |
+|   类型   | int32                                |
+|  默认值   | 10s                                  |
+| 改后生效方式 | 重启生效                                 |
+
+* schema\_region\_ratis\_request\_timeout\_ms
+
+|   名字   | schema\_region\_ratis\_request\_timeout\_ms |
+|:------:|:---------------------------------------|
+|   描述   | schema region Raft 客户端重试超时             |
+|   类型   | int32                                  |
+|  默认值   | 10s                                    |
+| 改后生效方式 | 重启生效                                   |
+
+* data\_region\_ratis\_request\_timeout\_ms
+
+|   名字   | data\_region\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   描述   | data region Raft 客户端重试超时             |
+|   类型   | int32                                |
+|  默认值   | 10s                                  |
+| 改后生效方式 | 重启生效                                 |
+
+* config\_node\_ratis\_max\_retry\_attempts
+
+|   名字   | config\_node\_ratis\_max\_retry\_attempts |
+|:------:|:-------------------------------------|
+|   描述   | confignode Raft客户端最大重试次数             |
+|   类型   | int32                                |
+|  默认值   | 10                                   |
+| 改后生效方式 | 重启生效                                 |
+
+* config\_node\_ratis\_initial\_sleep\_time\_ms
+
+|   名字   | config\_node\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:----------------------------------------|
+|   描述   | confignode Raft客户端初始重试睡眠时长              |
+|   类型   | int32                                   |
+|  默认值   | 100ms                                   |
+| 改后生效方式 | 重启生效                                    |
+
+* config\_node\_ratis\_max\_sleep\_time\_ms
+
+|   名字   | config\_node\_ratis\_max\_sleep\_time\_ms |
+|:------:|:------------------------------------|
+|   描述   | confignode Raft客户端最大重试睡眠时长          |
+|   类型   | int32                               |
+|  默认值   | 10s                                 |
+| 改后生效方式 | 重启生效                                |
+
+* schema\_region\_ratis\_max\_retry\_attempts
+
+|   名字   | schema\_region\_ratis\_max\_retry\_attempts |
+|:------:|:---------------------------------------|
+|   描述   | schema region Raft客户端最大重试次数            |
+|   类型   | int32                                  |
+|  默认值   | 10                                     |
+| 改后生效方式 | 重启生效                                   |
+
+* schema\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   名字   | schema\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:------------------------------------------|
+|   描述   | schema region Raft客户端初始重试睡眠时长             |
+|   类型   | int32                                     |
+|  默认值   | 100ms                                     |
+| 改后生效方式 | 重启生效                                      |
+
+* schema\_region\_ratis\_max\_sleep\_time\_ms
+
+|   名字   | schema\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:--------------------------------------|
+|   描述   | schema region Raft客户端最大重试睡眠时长         |
+|   类型   | int32                                 |
+|  默认值   | 10s                                   |
+| 改后生效方式 | 重启生效                                  |
+
+* data\_region\_ratis\_max\_retry\_attempts
+
+|   名字   | data\_region\_ratis\_max\_retry\_attempts |
+|:------:|:-------------------------------------|
+|   描述   | data region Raft客户端最大重试次数            |
+|   类型   | int32                                |
+|  默认值   | 10                                   |
+| 改后生效方式 | 重启生效                                 |
+
+* data\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   名字   | data\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:----------------------------------------|
+|   描述   | data region Raft客户端初始重试睡眠时长             |
+|   类型   | int32                                   |
+|  默认值   | 100ms                                   |
+| 改后生效方式 | 重启生效                                    |
+
+* data\_region\_ratis\_max\_sleep\_time\_ms
+
+|   名字   | data\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:------------------------------------|
+|   描述   | data region Raft客户端最大重试睡眠时长         |
+|   类型   | int32                               |
+|  默认值   | 10s                                 |
+| 改后生效方式 | 重启生效                                |
+
+* config\_node\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   名字   | config\_node\_ratis\_preserve\_logs\_num\_when\_purge |
+|:------:|:-----------------------------------------------|
+|   描述   | confignode snapshot后保持一定数量日志不删除                |
+|   类型   | int32                                          |
+|  默认值   | 1000                                           |
+| 改后生效方式 | 重启生效                                           |
+
+* schema\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   名字   | schema\_region\_ratis\_preserve\_logs\_num\_when\_purge |
+|:------:|:-------------------------------------------------|
+|   描述   | schema region snapshot后保持一定数量日志不删除               |
+|   类型   | int32                                            |
+|  默认值   | 1000                                             |
+| 改后生效方式 | 重启生效                                             |
+
+* data\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   名字   | data\_region\_ratis\_preserve\_logs\_num\_when\_purge |
+|:------:|:-----------------------------------------------|
+|   描述   | data region snapshot后保持一定数量日志不删除               |
+|   类型   | int32                                          |
+|  默认值   | 1000                                           |
+| 改后生效方式 | 重启生效                                           |
 
 ### Procedure 配置
 
