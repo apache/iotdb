@@ -168,15 +168,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
 
-        deleteOldFiles(selectedSequenceFiles);
-        deleteOldFiles(selectedUnsequenceFiles);
+        long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
+        long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
-        for (TsFileResource seqResource : selectedSequenceFiles) {
-          TsFileMetricManager.getInstance().deleteFile(seqResource.getTsFileSize(), true);
-        }
-        for (TsFileResource unseqResource : selectedUnsequenceFiles) {
-          TsFileMetricManager.getInstance().deleteFile(unseqResource.getTsFileSize(), false);
-        }
         for (TsFileResource targetResource : targetTsfileResourceList) {
           TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
         }
@@ -299,14 +297,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 
-  private void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+  private long deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+    long totalSize = 0;
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      totalSize += tsFileResource.getTsFileSize();
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
+    return totalSize;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {

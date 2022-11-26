@@ -19,7 +19,7 @@
 
 -->
 
-# Pagination with LIMIT & OFFSET
+# Pagination
 
 When the query result set has a large amount of data, it is not conducive to display on one page. You can use the `LIMIT/SLIMIT` clause and the `OFFSET/SOFFSET` clause to control paging.
 
