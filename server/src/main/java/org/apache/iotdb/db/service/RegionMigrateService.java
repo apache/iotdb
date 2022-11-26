@@ -420,7 +420,8 @@ public class RegionMigrateService implements IService {
         status.setMessage(errorMsg);
         return status;
       }
-      taskLogger.info("Succeed to deletePeer {} from consensus group", regionId);
+      taskLogger.info(
+          "{}, Succeed to deletePeer {} from consensus group", REGION_MIGRATE_PROCESS, regionId);
       status.setMessage("deletePeer from consensus group " + regionId + "succeed");
       return status;
     }
@@ -466,7 +467,11 @@ public class RegionMigrateService implements IService {
       reportRegionMigrateResultToConfigNode(req);
     } catch (Throwable e) {
       LOGGER.error(
-          "Report region {} migrate result error in reportSucceed, result: {}", tRegionId, req, e);
+          "{}, Report region {} migrate result error in reportSucceed, result: {}",
+          REGION_MIGRATE_PROCESS,
+          tRegionId,
+          req,
+          e);
     }
   }
 
@@ -482,7 +487,12 @@ public class RegionMigrateService implements IService {
     try {
       reportRegionMigrateResultToConfigNode(req);
     } catch (Throwable e) {
-      LOGGER.error("Report region {} migrate error in reportFailed, result:{}", tRegionId, req, e);
+      LOGGER.error(
+          "{}, Report region {} migrate error in reportFailed, result:{}",
+          REGION_MIGRATE_PROCESS,
+          tRegionId,
+          req,
+          e);
     }
   }
 
@@ -492,7 +502,8 @@ public class RegionMigrateService implements IService {
     try (ConfigNodeClient client = new ConfigNodeClient()) {
       status = client.reportRegionMigrateResult(req);
       LOGGER.info(
-          "Report region {} migrate result {} to Config node succeed, result: {}",
+          "{}, Report region {} migrate result {} to Config node succeed, result: {}",
+          REGION_MIGRATE_PROCESS,
           req.getRegionId(),
           req,
           status);

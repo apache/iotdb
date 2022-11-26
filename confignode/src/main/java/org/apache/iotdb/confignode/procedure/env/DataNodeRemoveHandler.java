@@ -180,7 +180,7 @@ public class DataNodeRemoveHandler {
 
     List<TDataNodeLocation> currentPeerNodes;
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       // parameter of createPeer for MultiLeader should be all peers
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
       currentPeerNodes.add(destDataNode);
