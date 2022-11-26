@@ -64,6 +64,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endChunkGroup() throws IOException {
+    CompactionUtils.updateResource(targetResource, fileWriter, deviceId);
     fileWriter.endChunkGroup();
   }
 
@@ -102,9 +103,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
-    // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
-    // time and end time in resource.
-    CompactionUtils.updateResource(targetResource, fileWriter, deviceId);
     fileWriter.checkMetadataSizeAndMayFlush();
   }
 }

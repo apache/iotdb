@@ -101,9 +101,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     for (int i = 0; i < seqTsFileResources.size(); i++) {
       TsFileIOWriter targetFileWriter = targetFileWriters.get(i);
       if (isDeviceExistedInTargetFiles[i]) {
+        // update resource
+        CompactionUtils.updateResource(targetResources.get(i), targetFileWriter, deviceId);
         targetFileWriter.endChunkGroup();
       } else {
-        targetFileWriter.endChunkGroup();
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
       }
       isDeviceExistedInTargetFiles[i] = false;
@@ -165,9 +166,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   public void checkAndMayFlushChunkMetadata() throws IOException {
     for (int i = 0; i < targetFileWriters.size(); i++) {
       TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      // Before flushing chunk metadatas, we use chunk metadatas in tsfile io writer to update start
-      // time and end time in resource.
-      CompactionUtils.updateResource(targetResources.get(i), fileIOWriter, deviceId);
       fileIOWriter.checkMetadataSizeAndMayFlush();
     }
   }

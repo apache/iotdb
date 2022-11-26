@@ -135,9 +135,9 @@ public class FastCompactionPerformer
           compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }
 
+        compactionWriter.endChunkGroup();
         // update resource of the current device and check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
-        compactionWriter.endChunkGroup();
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
