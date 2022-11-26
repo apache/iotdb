@@ -77,13 +77,17 @@ public class RouteBalancer {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getDataRegionConsensusProtocolClass();
 
-  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS =
-      CONF.isEnableAutoLeaderBalanceForRatis();
-  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS =
-      CONF.isEnableAutoLeaderBalanceForIoTConsensus();
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
+      (CONF.isEnableAutoLeaderBalanceForRatis()
+              && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS));
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
+      (CONF.isEnableAutoLeaderBalanceForRatis()
+              && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
 
-  private static final boolean IS_SCHEMA_REGION_IOT_CONSENSUS =
-      ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
       ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
@@ -279,13 +283,11 @@ public class RouteBalancer {
   }
 
   private void balancingRegionLeader() {
-    if ((IS_SCHEMA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS)
-        || (!IS_SCHEMA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
       balancingRegionLeader(TConsensusGroupType.SchemaRegion);
     }
 
-    if ((IS_DATA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_IOT_CONSENSUS)
-        || (!IS_DATA_REGION_IOT_CONSENSUS && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
       balancingRegionLeader(TConsensusGroupType.DataRegion);
     }
   }
