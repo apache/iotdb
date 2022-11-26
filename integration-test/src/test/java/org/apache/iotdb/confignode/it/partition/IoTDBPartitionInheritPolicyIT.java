@@ -53,10 +53,9 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBPartitionInheritPolicyTest {
+public class IoTDBPartitionInheritPolicyIT {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBPartitionInheritPolicyTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionInheritPolicyIT.class);
 
   private static boolean originalEnableDataPartitionInheritPolicy;
   private static final boolean testEnableDataPartitionInheritPolicy = true;
@@ -68,13 +67,17 @@ public class IoTDBPartitionInheritPolicyTest {
   private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
+  private static int originalSeriesPartitionSlotNum;
+
   private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
 
   private static final String sg = "root.sg";
-  private static final int storageGroupNum = 5;
-  private static final int seriesPartitionSlotsNum = 10000;
-  private static final int timePartitionSlotsNum = 10;
+  private static final int storageGroupNum = 2;
+  private static final int testSeriesPartitionSlotNum = 1000;
+  private static final int seriesPartitionBatchSize = 10;
+  private static final int testTimePartitionSlotsNum = 10;
+  private static final int timePartitionBatchSize = 10;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -90,6 +93,9 @@ public class IoTDBPartitionInheritPolicyTest {
 
     originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+
+    originalSeriesPartitionSlotNum = ConfigFactory.getConfig().getSeriesPartitionSlotNum();
+    ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
@@ -117,14 +123,13 @@ public class IoTDBPartitionInheritPolicyTest {
     ConfigFactory.getConfig()
         .setEnableDataPartitionInheritPolicy(originalEnableDataPartitionInheritPolicy);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+    ConfigFactory.getConfig().setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
     ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
   public void testDataPartitionInheritPolicy()
       throws TException, IOException, InterruptedException {
-    final int seriesPartitionBatchSize = 100;
-    final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -134,8 +139,8 @@ public class IoTDBPartitionInheritPolicyTest {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
@@ -176,7 +181,8 @@ public class IoTDBPartitionInheritPolicyTest {
                 // All Timeslots belonging to the same SeriesSlot are allocated to the same
                 // DataRegionGroup
                 Assert.assertEquals(
-                    regionInfo.getSeriesSlots() * timePartitionSlotsNum, regionInfo.getTimeSlots());
+                    regionInfo.getSeriesSlots() * testTimePartitionSlotsNum,
+                    regionInfo.getTimeSlots());
               });
     }
   }

@@ -243,6 +243,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    confignodeProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
+    return this;
+  }
+
+  @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
         "time_partition_interval", String.valueOf(timePartitionInterval));

@@ -169,7 +169,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       throws IOException, InterruptedException, TException, IllegalPathException {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
-    final int retryNum = 40;
+    final int retryNum = 100;
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
 
     TSStatus status;
