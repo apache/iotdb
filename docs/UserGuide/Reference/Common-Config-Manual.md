@@ -402,10 +402,54 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 ### Query Configurations
 
+* read\_consistency\_level
+
+|    Name     | mpp\_data\_exchange\_core\_pool\_size        |
+|:-----------:|:---------------------------------------------|
+| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+|    Type     | string                                          |
+|   Default   | strong                                           |
+|  Effective  | After restarting system                      |
+
+* meta\_data\_cache\_enable
+
+|Name| meta\_data\_cache\_enable |
+|:---:|:---|
+|Description| Whether to cache meta data(BloomFilter, ChunkMetadata and TimeSeriesMetadata) or not.|
+|Type|Boolean|
+|Default| true |
+|Effective| After restarting system|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|Name| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others. |
+|Default| 1 : 100 : 200 : 300 : 400   |
+|Effective| After restarting system |
+
+* enable\_last\_cache
+
+|Name| enable\_last\_cache |
+|:---:|:---|
+|Description| Whether to enable LAST cache. |
+|Type| Boolean |
+|Default| true |
+|Effective|After restarting system|
+
+* max\_deduplicated\_path\_num
+
+|Name| max\_deduplicated\_path\_num |
+|:---:|:---|
+|Description| allowed max numbers of deduplicated path in one query. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
-| :---------: | :------------------------------------------- |
+|:-----------:|:---------------------------------------------|
 | Description | Core size of ThreadPool of MPP data exchange |
 |    Type     | int32                                          |
 |   Default   | 10                                           |
@@ -422,12 +466,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
-|    Name     | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
-| :---------: | :--------------------------------------------- |
-| Description | Max waiting time for MPP data exchange         |
-|    Type     | long                                           |
-|   Default   | 1000                                           |
-|  Effective  | After restarting system                        |
+|Name| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:---:|:---|
+|Description| Max waiting time for MPP data exchange |
+|Type| long |
+|Default| 1000 |
+|Effective|After restarting system|
 
 * driver\_task\_execution\_time\_slice\_in\_ms
 
@@ -456,41 +500,50 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |   Default   | 1000                                        |
 |  Effective  | After restarting system                     |
 
-* default\_fill\_interval
+* slow\_query\_threshold
 
-|    Name     | default\_fill\_interval                         |
-| :---------: | :---------------------------------------------- |
-| Description | Default interval of `group by fill` query in ms |
-|    Type     | int32                                           |
-|   Default   | -1                                              |
-|  Effective  | After restarting system                         |
-
-* group\_by\_fill\_cache\_size\_in\_mb
-
-|    Name     | group\_by\_fill\_cache\_size\_in\_mb      |
-| :---------: | :---------------------------------- |
-| Description | Cache size of `group by fill` query |
-|    Type     | Float                               |
-|   Default   | 1.0                                 |
-|  Effective  | After restarting system             |
-
-* coordinator\_read\_executor\_size
-
-|Name| coordinator\_read\_executor\_size |
+|Name| slow\_query\_threshold |
 |:---:|:---|
-|Description| The num of thread used in coordinator for query operation |
+|Description| Time cost(ms) threshold for slow query. |
 |Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Default| 5000 |
+|Effective|Trigger|
 
-* coordinator\_write\_executor\_size
+* query\_timeout\_threshold
 
-|Name| coordinator\_write\_executor\_size |
+|Name| query\_timeout\_threshold |
 |:---:|:---|
-|Description| The num of thread used in coordinator for write operation |
+|Description| The max executing time of query. unit: ms |
 |Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Default| 60000 |
+|Effective| After restarting system|
+
+* max\_allowed\_concurrent\_queries
+
+|Name| max\_allowed\_concurrent\_queries |
+|:---:|:---|
+|Description| The maximum allowed concurrently executing queries. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| How many threads can concurrently execute query statement. When <= 0, use CPU core number. |
+|Type| Int32                                                               |
+|Default | CPU core number                                                    |
+|Effective| After restarting system |
+
+* batch\_size
+
+|Name| batch\_size |
+|:---:|:---|
+|Description| The amount of data iterate each time in server (the number of data strips, that is, the number of different timestamps.) |
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restarting system|
 
 ### Storage Engine Configuration
 
@@ -511,7 +564,6 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |    Type     | Long                                                         |
 |   Default   | 1073741824                                                   |
 |  Effective  | when enable\_mem\_control is false & After restarting system |
-
 
 * write\_memory\_variation\_report\_proportion
 
@@ -593,24 +645,6 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |Type| int32 |
 |Default| 0 |
 |Effective|After restarting system|
-
-* query\_thread\_count
-
-|Name| query\_thread\_count                                                                                            |
-|:---:|:---------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|Type| int32                                                                                                                |
-|Default| 16                                                                                                                   |
-|Effective| After restarting system                                                                                              |
-
-* sub\_rawQuery\_thread\_count
-
-|Name| sub\_rawQuery\_thread\_count                                                                                        |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|Type| int32                                                                                                                    |
-|Default| 8                                                                                                                        |
-|Effective| After restarting system                                                                                                  |
 
 * enable\_partial\_insert
 
@@ -968,8 +1002,6 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |Type|int32|
 |Default| 1024 |
 |Effective|hot-load|
-
-### Watermark Configuration
 
 ### Authorization Configuration
 

@@ -457,14 +457,23 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 查询配置
 
+* read\_consistency\_level
+
+|名字| read\_consistency\_level |
+|:---:|:---|
+|描述| 查询一致性等级，取值 “strong” 时从 Leader 副本查询，取值 “weak” 时随机查询一个副本。|
+|类型| String |
+|默认值| strong |
+|改后生效方式| 重启服务生效 |
+
 * meta\_data\_cache\_enable
 
-|     名字     | meta\_data\_cache\_enable                               |
-| :----------: | :------------------------------------------------------ |
-|     描述     | 是否缓存元数据Chunk Metadata 和 TimeSeries Metadata）。 |
-|     类型     | Boolean                                                 |
-|    默认值    | true                                                    |
-| 改后生效方式 | 重启服务生效                                            |
+|名字| meta\_data\_cache\_enable |
+|:---:|:---|
+|描述| 是否缓存元数据（包括 BloomFilter、Chunk Metadata 和 TimeSeries Metadata。）|
+|类型|Boolean|
+|默认值| true |
+|改后生效方式| 重启服务生效|
 
 * chunk\_timeseriesmeta\_free\_memory\_proportion
 
@@ -484,13 +493,13 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | true                |
 | 改后生效方式 | 重启服务生效        |
 
-* metadata\_node\_cache\_size
+* max\_deduplicated\_path\_num
 
-|名字| metadata\_node\_cache\_size |
+|名字| max\_deduplicated\_path\_num |
 |:---:|:---|
-|描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
-|类型|int32|
-|默认值| 300000 |
+|描述| 单次查询允许的最大路径数。 |
+|类型| Int32 |
+|默认值| 1000 |
 |改后生效方式|重启服务生效|
 
 * mpp\_data\_exchange\_core\_pool\_size
@@ -519,24 +528,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     类型     | int32                                            |
 |    默认值    | 1000                                           |
 | 改后生效方式 | 重启服务生效                                   |
-
-* default\_fill\_interval
-
-|名字| default\_fill\_interval |
-|:---:|:---|
-|描述| 填充查询中使用的默认时间段，默认-1表示无限过去时间，以毫秒ms为单位 |
-|类型| int32 |
-|默认值| -1 |
-|改后生效方式|重启服务生效|
-
-* group\_by\_fill\_cache\_size\_in\_mb
-
-|     名字     | group\_by\_fill\_cache\_size\_in\_mb     |
-| :----------: | :--------------------------------- |
-|     描述     | 填充查询中使用的缓存大小，单位是MB |
-|     类型     | Float                              |
-|    默认值    | 1.0                                |
-| 改后生效方式 | 重启服务生效                       |
 
 * driver\_task\_execution\_time\_slice\_in\_ms
 
@@ -569,45 +560,45 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 |名字| slow\_query\_threshold |
 |:---:|:---|
-|描述| 慢查询的时间成本（毫秒ms）阈值。 |
-|类型| int32 |
+|描述| 慢查询的时间阈值。单位：毫秒。|
+|类型| Int32 |
 |默认值| 5000 |
 |改后生效方式|热加载|
 
-* enable\_external\_sort
+* query\_timeout\_threshold
 
-|     名字     | enable\_external\_sort |
-| :----------: | :--------------------- |
-|     描述     | 是否开启外部排序功能   |
-|     类型     | Boolean                |
-|    默认值    | true                   |
-| 改后生效方式 | 重启服务生效           |
-
-* external\_sort\_threshold
-
-|名字| external\_sort\_threshold |
+|名字| query\_timeout\_threshold |
 |:---:|:---|
-|描述| 单个时间序列的最大同时块读取数。若同时chunk读取的数量大于external_sort_threshold，则使用外部排序。当external_sort_threshold增加时，内存中同时排序的chunk数量可能会增加，这会占用更多的内存；external_sort_threshold 减小时，触发外部排序会增加耗时。|
-|类型| int32 |
+|描述| 查询的最大执行时间。单位：毫秒。|
+|类型| Int32 |
+|默认值| 60000 |
+|改后生效方式| 重启服务生效|
+
+* max\_allowed\_concurrent\_queries
+
+|名字| max\_allowed\_concurrent\_queries |
+|:---:|:---|
+|描述| 允许的最大并发查询数量。 |
+|类型| Int32 |
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
-* coordinator\_read\_executor\_size
+* query\_thread\_count
 
-|名字| coordinator\_read\_executor\_size |
+|名字| query\_thread\_count                                                   |
+|:---:|:----------------------------------------------------------------------------|
+|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。 |
+|类型| Int32                                                                       |
+|默认值| CPU 核数                                                                          |
+|改后生效方式| 重启服务生效 |
+
+* batch\_size
+
+|名字| batch\_size |
 |:---:|:---|
-|描述| coordinator中用于执行查询操作的线程数 |
+|描述| 服务器中每次迭代的数据量（数据条目，即不同时间戳的数量。） |
 |类型| Int32 |
-|默认值| 50 |
-|改后生效方式|重启服务生效|
-
-* coordinator\_write\_executor\_size
-
-|名字| coordinator\_write\_executor\_size |
-|:---:|:---|
-|描述| coordinator中用于执行写入操作的线程数 |
-|类型| Int32 |
-|默认值| 50 |
+|默认值| 100000 |
 |改后生效方式|重启服务生效|
 
 ### 存储引擎配置
@@ -709,51 +700,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |描述| 当 IoTDB 将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
 |类型| int32 |
 |默认值| 0 |
-|改后生效方式|重启服务生效|
-
-* query\_thread\_count
-
-|名字| query\_thread\_count                                                   |
-|:---:|:----------------------------------------------------------------------------|
-|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
-|类型| int32                                                                       |
-|默认值| 16                                                                          |
-|改后生效方式| 重启服务生效                                                                      |
-
-* sub\_rawQuery\_thread\_count
-
-|名字| sub\_rawQuery\_thread\_count                    |
-|:---:|:------------------------------------------------|
-|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数 |
-|类型| int32                                           |
-|默认值| 8                                               |
-|改后生效方式| 重启服务生效                                          |
-
-* raw\_query\_blocking\_queue\_capacity
-
-|名字| raw\_query\_blocking\_queue\_capacity |
-|:---:|:--------------------------------------|
-|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5             |
-|类型| int32                                 |
-|默认值| 5                                     |
-|改后生效方式| 重启服务生效                                |
-
-* chunk\_buffer\_pool\_enable
-
-|     名字     | chunk\_buffer\_pool\_enable                                                                |
-| :----------: | :----------------------------------------------------------------------------------------- |
-|     描述     | 在将 memtable 序列化为内存中的字节时，是否开启由 IoTDB 而不是 JVM 接管内存管理，默认关闭。 |
-|     类型     | Boolean                                                                                    |
-|    默认值    | false                                                                                      |
-| 改后生效方式 | 重启服务生效                                                                               |
-
-* batch\_size
-
-|名字| batch\_size |
-|:---:|:---|
-|描述| 服务器中每次迭代的数据量（数据条目，即不同时间戳的数量。） |
-|类型| int32 |
-|默认值| 100000 |
 |改后生效方式|重启服务生效|
 
 * enable\_partial\_insert
@@ -992,15 +938,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 16 |
 |改后生效方式| 重启服务生效|
 
-* query\_timeout\_threshold
-
-|名字| query\_timeout\_threshold |
-|:---:|:---|
-|描述| 查询的最大执行时间。单位：毫秒。|
-|类型| int32 |
-|默认值| 60000 |
-|改后生效方式| 重启服务生效|
-
 * sub\_compaction\_thread\_count
 
 |名字| sub\_compaction\_thread\_count |
@@ -1130,44 +1067,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |类型|int32|
 |默认值| 1024 |
 |改后生效方式|热加载|
-
-### 水印模块配置
-
-* watermark\_module\_opened
-
-|     名字     | watermark\_module\_opened |
-| :----------: | :------------------------ |
-|     描述     | 是否开启水印水印嵌入功能  |
-|     取值     | true or false             |
-|    默认值    | false                     |
-| 改后生效方式 | 重启服务生效              |
-
-* watermark\_secret\_key
-
-|     名字     | watermark\_secret\_key |
-| :----------: | :--------------------- |
-|     描述     | 水印嵌入功能秘钥       |
-|     类型     | String                 |
-|    默认值    | IoTDB * 2019@Beijing   |
-| 改后生效方式 | 重启服务生效           |
-
-* watermark\_bit\_string
-
-|名字| watermark\_bit\_string |
-|:---:|:---|
-|描述| 水印比特字符串 |
-|类型| int32 |
-|默认值| 100101110100 |
-|改后生效方式|重启服务生效|
-
-* watermark\_method
-
-|     名字     | watermark\_method                                      |
-| :----------: | :----------------------------------------------------- |
-|     描述     | 水印嵌入方法                                           |
-|     类型     | String                                                 |
-|    默认值    | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) |
-| 改后生效方式 | 重启服务生效                                           |
 
 ### 授权配置
 
