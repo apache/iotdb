@@ -136,7 +136,7 @@ public class FastCompactionPerformer
         }
 
         compactionWriter.endChunkGroup();
-        // update resource of the current device and check whether to flush chunk metadata or not
+        // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         sortedSourceFiles.clear();
       }

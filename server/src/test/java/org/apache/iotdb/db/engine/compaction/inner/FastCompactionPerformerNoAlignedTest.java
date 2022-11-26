@@ -217,7 +217,6 @@ public class FastCompactionPerformerNoAlignedTest {
       for (String path : fullPathSet) {
         CompactionCheckerUtils.putOnePageChunks(chunkPagePointsNumMerged, path, points);
       }
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -312,7 +311,6 @@ public class FastCompactionPerformerNoAlignedTest {
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -411,7 +409,6 @@ public class FastCompactionPerformerNoAlignedTest {
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -502,7 +499,6 @@ public class FastCompactionPerformerNoAlignedTest {
       for (String path : fullPathSetWithDeleted) {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -606,7 +602,6 @@ public class FastCompactionPerformerNoAlignedTest {
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -684,7 +679,6 @@ public class FastCompactionPerformerNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunk(
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -770,7 +764,6 @@ public class FastCompactionPerformerNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunk(
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -855,7 +848,6 @@ public class FastCompactionPerformerNoAlignedTest {
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -940,7 +932,6 @@ public class FastCompactionPerformerNoAlignedTest {
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);

@@ -174,7 +174,7 @@ public class ReadPointCompactionPerformer
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
-      // update resource and check whether to flush chunk metadata or not
+      // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
@@ -221,7 +221,7 @@ public class ReadPointCompactionPerformer
         future.get();
       }
       compactionWriter.endChunkGroup();
-      // update resource and check whether to flush chunk metadata or not
+      // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
