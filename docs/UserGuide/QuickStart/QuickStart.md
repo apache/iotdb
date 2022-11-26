@@ -65,8 +65,9 @@ Users can start IoTDB standalone mode by the start-standalone script under the s
 
 ```
 # Unix/OS X
-> nohup bash sbin/start-standalone.sh
+> sudo bash sbin/start-standalone.sh
 ```
+It's recommended to use sudo here, because you may need root permission to write backstage logs.
 
 ```
 # Windows
@@ -87,7 +88,7 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
 > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root

@@ -195,6 +195,8 @@ Start on Linux:
 ```
 sudo bash sbin\start-standalone.sh
 ```
+It's recommended to use sudo here, for that the backstage logs may need sudo permission.
+
 Besides, with our shell, you can also directly kill these processes.
 
 Stop on Windows:

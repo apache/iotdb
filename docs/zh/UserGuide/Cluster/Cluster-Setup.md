@@ -193,6 +193,8 @@ Linux 启动方式:
 ```
 sudo bash sbin\start-standalone.sh
 ```
+这里建议使用 sudo，因为后台日志的写入可能需要 root 权限。
+
 也可以使用脚本直接关闭这些进程。
 
 Windows 停止方式:

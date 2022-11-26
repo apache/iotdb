@@ -30,7 +30,7 @@ else
 fi
 
 if [ -f "$IOTDB_HOME/sbin/stop-datanode.sh" ]; then
-  export DATANODE_STOP_PATH="$IOTDB_HOME/sbin/stop-confignode.sh"
+  export DATANODE_STOP_PATH="$IOTDB_HOME/sbin/stop-datanode.sh"
 else
   echo "Can't find stop-datanode.sh"
   exit 0
