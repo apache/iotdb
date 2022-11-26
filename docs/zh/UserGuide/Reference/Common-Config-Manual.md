@@ -951,93 +951,93 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * wal\_mode
 
-|    Name     | wal\_mode                                                                           |
-|:-----------:|:------------------------------------------------------------------------------------|
-| Description | 写前日志的写入模式. DISABLE 模式下会关闭写前日志；SYNC 模式下写入请求会在成功写入磁盘后返回； ASYNC 模式下写入请求返回时可能尚未成功写入磁盘后。 |
-|    Type     | String                                                                              |
-|   Default   | ASYNC                                                                               |
-|  Effective  | 重启服务生效                                                                              |
+|   名字   | wal\_mode                                                                           |
+|:------:|:------------------------------------------------------------------------------------|
+|   描述   | 写前日志的写入模式. DISABLE 模式下会关闭写前日志；SYNC 模式下写入请求会在成功写入磁盘后返回； ASYNC 模式下写入请求返回时可能尚未成功写入磁盘后。 |
+|   类型   | String                                                                              |
+|  默认值   | ASYNC                                                                               |
+| 改后生效方式 | 重启服务生效                                                                              |
 
 * max\_wal\_nodes\_num
 
-|    Name     | max\_wal\_nodes\_num         |
-|:-----------:|:-----------------------------|
-| Description | 写前日志节点的最大数量，默认值 0 表示数量由系统控制。 |
-|    Type     | int32                        |
-|   Default   | 0                            |
-|  Effective  | 重启服务生效                       |
+|   名字   | max\_wal\_nodes\_num         |
+|:------:|:-----------------------------|
+|   描述   | 写前日志节点的最大数量，默认值 0 表示数量由系统控制。 |
+|   类型   | int32                        |
+|  默认值   | 0                            |
+| 改后生效方式 | 重启服务生效                       |
 
 * fsync\_wal\_delay\_in\_ms
 
-|    Name     | fsync\_wal\_delay\_in\_ms |
-|:-----------:|:--------------------------|
-| Description | 写前日志调用 fsync 前的等待时间       |
-|    Type     | int32                     |
-|   Default   | 3                         |
-|  Effective  | 热加载                       |
+|   名字   | fsync\_wal\_delay\_in\_ms |
+|:------:|:--------------------------|
+|   描述   | 写前日志调用 fsync 前的等待时间       |
+|   类型   | int32                     |
+|  默认值   | 3                         |
+| 改后生效方式 | 热加载                       |
 
 * wal\_buffer\_size\_in\_byte
 
-|    Name     | wal\_buffer\_size\_in\_byte |
-|:-----------:|:----------------------------|
-| Description | 写前日志的 buffer 大小             |
-|    Type     | int32                       |
-|   Default   | 16777216                    |
-|  Effective  | 重启服务生效                      |
+|   名字   | wal\_buffer\_size\_in\_byte |
+|:------:|:----------------------------|
+|   描述   | 写前日志的 buffer 大小             |
+|   类型   | int32                       |
+|  默认值   | 16777216                    |
+| 改后生效方式 | 重启服务生效                      |
 
 * wal\_buffer\_queue\_capacity
 
-|    Name     | wal\_buffer\_queue\_capacity |
-|:-----------:|:-----------------------------|
-| Description | 写前日志阻塞队列大小上限                 |
-|    Type     | int32                        |
-|   Default   | 50                           |
-|  Effective  | 重启服务生效                       |
+|   名字   | wal\_buffer\_queue\_capacity |
+|:------:|:-----------------------------|
+|   描述   | 写前日志阻塞队列大小上限                 |
+|   类型   | int32                        |
+|  默认值   | 50                           |
+| 改后生效方式 | 重启服务生效                       |
 
 * wal\_file\_size\_threshold\_in\_byte
 
-|    Name     | wal\_file\_size\_threshold\_in\_byte |
-|:-----------:|:-------------------------------------|
-| Description | 写前日志文件封口阈值                           |
-|    Type     | int32                                |
-|   Default   | 10485760                             |
-|  Effective  | 热加载                                  |
+|   名字   | wal\_file\_size\_threshold\_in\_byte |
+|:------:|:-------------------------------------|
+|   描述   | 写前日志文件封口阈值                           |
+|   类型   | int32                                |
+|  默认值   | 10485760                             |
+| 改后生效方式 | 热加载                                  |
 
 * wal\_min\_effective\_info\_ratio
 
-|    Name     | wal\_min\_effective\_info\_ratio |
-|:-----------:|:---------------------------------|
-| Description | 写前日志最小有效信息比                      |
-|    Type     | double                           |
-|   Default   | 0.1                              |
-|  Effective  | 热加载                              |
+|   名字   | wal\_min\_effective\_info\_ratio |
+|:------:|:---------------------------------|
+|   描述   | 写前日志最小有效信息比                      |
+|   类型   | double                           |
+|  默认值   | 0.1                              |
+| 改后生效方式 | 热加载                              |
 
 * wal\_memtable\_snapshot\_threshold\_in\_byte
 
-|    Name     | wal\_memtable\_snapshot\_threshold\_in\_byte |
-|:-----------:|:---------------------------------------------|
-| Description | 触发写前日志中内存表快照的内存表大小阈值                         |
-|    Type     | int64                                        |
-|   Default   | 8388608                                      |
-|  Effective  | 热加载                                          |
+|   名字   | wal\_memtable\_snapshot\_threshold\_in\_byte |
+|:------:|:---------------------------------------------|
+|   描述   | 触发写前日志中内存表快照的内存表大小阈值                         |
+|   类型   | int64                                        |
+|  默认值   | 8388608                                      |
+| 改后生效方式 | 热加载                                          |
 
 * max\_wal\_memtable\_snapshot\_num
 
-|    Name     | max\_wal\_memtable\_snapshot\_num |
-|:-----------:|:----------------------------------|
-| Description | 写前日志中内存表的最大数量上限                   |
-|    Type     | int32                             |
-|   Default   | 1                                 |
-|  Effective  | 热加载                               |
+|   名字   | max\_wal\_memtable\_snapshot\_num |
+|:------:|:----------------------------------|
+|   描述   | 写前日志中内存表的最大数量上限                   |
+|   类型   | int32                             |
+|  默认值   | 1                                 |
+| 改后生效方式 | 热加载                               |
 
 * delete\_wal\_files\_period\_in\_ms
 
-|    Name     | delete\_wal\_files\_period\_in\_ms |
-|:-----------:|:-----------------------------------|
-| Description | 删除写前日志的检查间隔                        |
-|    Type     | int64                              |
-|   Default   | 20000                              |
-|  Effective  | 热加载                                |
+|   名字   | delete\_wal\_files\_period\_in\_ms |
+|:------:|:-----------------------------------|
+|   描述   | 删除写前日志的检查间隔                        |
+|   类型   | int64                              |
+|  默认值   | 20000                              |
+| 改后生效方式 | 热加载                                |
 
 ### TsFile 配置
 
