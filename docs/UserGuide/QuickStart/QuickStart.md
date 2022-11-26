@@ -217,7 +217,7 @@ The server can be stopped with ctrl-C or the following script:
 > bash sbin/stop-standalone.sh
 
 # Windows
-> sbin/stop-standalone.bat
+> sbin\stop-standalone.bat
 ```
 Note: In Linux, please add the "sudo" as far as possible, or else the stopping process may fail.
 More explanations are in Cluster/Cluster-setup.md.
