@@ -556,6 +556,33 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |   Default   | Infinity                               |
 |  Effective  | After restarting system                |
 
+* max\_waiting\_time\_when\_insert\_blocked
+
+|    Name     | max\_waiting\_time\_when\_insert\_blocked                                     |
+| :---------: |:------------------------------------------------------------------------------|
+| Description | When the waiting time(in ms) of an inserting exceeds this, throw an exception |
+|    Type     | Int32                                                                         |
+|   Default   | 10000                                                                         |
+|  Effective  | After restarting system                                                       |
+
+* enable\_discard\_out\_of\_order\_data
+
+|    Name     | enable\_discard\_out\_of\_order\_data |
+| :---------: |:--------------------------------------|
+| Description | whether to discard out of order data  |
+|    Type     | Boolean                               |
+|   Default   | false                                 |
+|  Effective  | After restarting system               |
+
+* handle\_system\_error
+
+|    Name     | handle\_system\_error                                  |
+| :---------: |:-------------------------------------------------------|
+| Description | What will the system do when unrecoverable error occurs|
+|    Type     | String                                                 |
+|   Default   | CHANGE\_TO\_READ\_ONLY                                 |
+|  Effective  | After restarting system                                |
+
 * memtable\_size\_threshold
 
 |    Name     | memtable\_size\_threshold                                    |
@@ -628,6 +655,15 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |Default| 600000 |
 |Effective| hot-load |
 
+* tvlist\_sort\_algorithm
+
+|Name| tvlist\_sort\_algorithm                           |
+|:---:|:--------------------------------------------------|
+|Description| the sort algorithm used in the memtable's TVList  |
+|Type| String                                            |
+|Default| TIM                                               |
+|Effective| After restarting system                           |
+
 * avg\_series\_point\_number\_threshold
 
 |Name| avg\_series\_point\_number\_threshold                  |
@@ -654,6 +690,24 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |Type| Boolean |
 |Default| true |
 |Effective|After restarting system|
+
+* recovery\_log\_interval\_in\_ms
+
+|Name| recovery\_log\_interval\_in\_ms                                         |
+|:---:|:------------------------------------------------------------------------|
+|Description| the interval to log recover progress of each region when starting iotdb |
+|Type| Int32                                                                   |
+|Default| 5000                                                                    |
+|Effective| After restarting system                                                 |
+
+* upgrade\_thread\_count
+
+|   Name    | upgrade\_thread\_count                                                                            |
+|:---------:|:--------------------------------------------------------------------------------------------------|
+|Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
+|   Type    | Int32                                                                                             |
+|  Default  | 1                                                                                                 |
+| Effective | After restarting system                                                                           |                                                                        |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
