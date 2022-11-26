@@ -199,7 +199,7 @@ Besides, with our shell, you can also directly kill these processes.
 
 Stop on Windows:
 ```
-sbin\stop-datanode.bat
+sbin\stop-standalone.bat
 ```
 Stop on Linux:
 ```
