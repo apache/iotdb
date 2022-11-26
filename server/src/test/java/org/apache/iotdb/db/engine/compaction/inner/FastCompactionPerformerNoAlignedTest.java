@@ -684,7 +684,7 @@ public class FastCompactionPerformerNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunk(
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
-      CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -770,7 +770,7 @@ public class FastCompactionPerformerNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunk(
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
-      CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      // CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
