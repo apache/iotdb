@@ -72,8 +72,8 @@ public class ConfigNodeConfig {
   private int leastDataRegionGroupNum = 5;
 
   /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
-      RegionBalancer.RegionAllocateStrategy.GREEDY;
+  private RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy =
+      RegionBalancer.RegionGroupAllocateStrategy.GREEDY;
 
   /**
    * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
@@ -160,8 +160,8 @@ public class ConfigNodeConfig {
   /** Whether to enable auto leader balance for Ratis consensus protocol */
   private boolean enableAutoLeaderBalanceForRatis = false;
 
-  /** Whether to enable auto leader balance for MultiLeader consensus protocol */
-  private boolean enableAutoLeaderBalanceForMultiLeader = true;
+  /** Whether to enable auto leader balance for IoTConsensus protocol */
+  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
 
   /** The route priority policy of cluster read/write requests */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
@@ -445,13 +445,13 @@ public class ConfigNodeConfig {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
   }
 
-  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
-    return regionAllocateStrategy;
+  public RegionBalancer.RegionGroupAllocateStrategy getRegionAllocateStrategy() {
+    return regionGroupAllocateStrategy;
   }
 
   public void setRegionAllocateStrategy(
-      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
-    this.regionAllocateStrategy = regionAllocateStrategy;
+      RegionBalancer.RegionGroupAllocateStrategy regionGroupAllocateStrategy) {
+    this.regionGroupAllocateStrategy = regionGroupAllocateStrategy;
   }
 
   public boolean isEnableDataPartitionInheritPolicy() {
@@ -592,13 +592,13 @@ public class ConfigNodeConfig {
     this.enableAutoLeaderBalanceForRatis = enableAutoLeaderBalanceForRatis;
   }
 
-  public boolean isEnableAutoLeaderBalanceForMultiLeader() {
-    return enableAutoLeaderBalanceForMultiLeader;
+  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return enableAutoLeaderBalanceForIoTConsensus;
   }
 
-  public void setEnableAutoLeaderBalanceForMultiLeader(
-      boolean enableAutoLeaderBalanceForMultiLeader) {
-    this.enableAutoLeaderBalanceForMultiLeader = enableAutoLeaderBalanceForMultiLeader;
+  public void setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
   }
 
   public String getRoutePriorityPolicy() {

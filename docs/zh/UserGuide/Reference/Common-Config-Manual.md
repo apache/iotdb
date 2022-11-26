@@ -621,6 +621,33 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |    默认值    | 36000000                                                    |
 | 改后生效方式 | 重启服务生效                                                |
 
+* max\_waiting\_time\_when\_insert\_blocked
+
+|     名字     | max\_waiting\_time\_when\_insert\_blocked |
+| :----------: |:------------------------------------------|
+|     描述     | 当插入请求等待超过这个时间，则抛出异常，单位 ms                 |
+|     类型     | Int32                                     |
+|    默认值    | 10000                                     |
+| 改后生效方式 | 重启服务生效                                 |   
+
+* enable\_discard\_out\_of\_order\_data
+
+|     名字     | enable\_discard\_out\_of\_order\_data |
+| :----------: |:--------------------------------------|
+|     描述     | 是否支持写入乱序数据                            |
+|     类型     | Boolean                               |
+|    默认值    | false                                 |
+| 改后生效方式 | 重启服务生效                                |
+
+* handle\_system\_error
+
+|     名字     | handle\_system\_error  |
+| :----------: |:-----------------------|
+|     描述     | 当系统遇到不可恢复的错误时的处理方法     |
+|     类型     | String                 |
+|    默认值    | CHANGE\_TO\_READ\_ONLY |
+| 改后生效方式 | 重启服务生效                 |
+
 * memtable\_size\_threshold
 
 |     名字     | memtable\_size\_threshold                          |
@@ -684,6 +711,15 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 600000 |
 |改后生效方式| 热加载 |
 
+* tvlist\_sort\_algorithm
+
+|名字| tvlist\_sort\_algorithm |
+|:---:|:------------------------|
+|描述| memtable中数据的排序方法        |
+|类型| String                  |
+|默认值| TIM                     |
+|改后生效方式| 重启服务生效                  |
+
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |
@@ -710,6 +746,24 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |     类型     | Boolean                                                            |
 |    默认值    | true                                                               |
 | 改后生效方式 | 重启服务生效                                                       |
+
+* recovery\_log\_interval\_in\_ms
+
+|     名字     | recovery\_log\_interval\_in\_ms |
+| :----------: |:--------------------------------|
+|     描述     | data region的恢复过程中打印日志信息的间隔      |
+|     类型     | Int32                           |
+|    默认值    | 5000                            |
+| 改后生效方式 | 重启服务生效                          |
+
+* upgrade\_thread\_count
+
+|     名字     | upgrade\_thread\_count          |
+| :----------: |:--------------------------------|
+|     描述     | 当存在老版本TsFile(v2)，执行文件升级任务使用的线程数 |
+|     类型     | Int32                           |
+|    默认值    | 1                               |
+| 改后生效方式 | 重启服务生效                          |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -893,15 +947,6 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 |默认值| 30000 |
 |改后生效方式| 重启服务生效|
 
-* cross\_compaction\_memory\_budget
-
-|名字| cross\_compaction\_memory\_budget |
-|:---:|:---|
-|描述| 一个合并任务可以使用多少内存（以字节为单位），默认为最大JVM内存的10%。这只是一个粗略的估计，从一个比较小的值开始，避免OOM。每个新的合并线程可能会占用这样的内存，所以merge_thread_num * merge_memory_budget是合并的预估总内存。|
-|类型| int32 |
-|默认值| 2147483648 |
-|改后生效方式| 重启服务生效|
-
 * compaction\_thread\_count
 
 |名字| compaction\_thread\_count |
@@ -949,14 +994,95 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 ### 写前日志配置
 
-* wal\_buffer\_size
+* wal\_mode
 
-|名字| wal\_buffer\_size |
-|:---:|:---|
-|描述| 写前日志的 buffer 大小 |
-|类型|int32|
-|默认值| 16777216 |
-|改后生效方式|热加载|
+|   名字   | wal\_mode                                                                           |
+|:------:|:------------------------------------------------------------------------------------|
+|   描述   | 写前日志的写入模式. DISABLE 模式下会关闭写前日志；SYNC 模式下写入请求会在成功写入磁盘后返回； ASYNC 模式下写入请求返回时可能尚未成功写入磁盘后。 |
+|   类型   | String                                                                              |
+|  默认值   | ASYNC                                                                               |
+| 改后生效方式 | 重启服务生效                                                                              |
+
+* max\_wal\_nodes\_num
+
+|   名字   | max\_wal\_nodes\_num         |
+|:------:|:-----------------------------|
+|   描述   | 写前日志节点的最大数量，默认值 0 表示数量由系统控制。 |
+|   类型   | int32                        |
+|  默认值   | 0                            |
+| 改后生效方式 | 重启服务生效                       |
+
+* fsync\_wal\_delay\_in\_ms
+
+|   名字   | fsync\_wal\_delay\_in\_ms |
+|:------:|:--------------------------|
+|   描述   | 写前日志调用 fsync 前的等待时间       |
+|   类型   | int32                     |
+|  默认值   | 3                         |
+| 改后生效方式 | 热加载                       |
+
+* wal\_buffer\_size\_in\_byte
+
+|   名字   | wal\_buffer\_size\_in\_byte |
+|:------:|:----------------------------|
+|   描述   | 写前日志的 buffer 大小             |
+|   类型   | int32                       |
+|  默认值   | 16777216                    |
+| 改后生效方式 | 重启服务生效                      |
+
+* wal\_buffer\_queue\_capacity
+
+|   名字   | wal\_buffer\_queue\_capacity |
+|:------:|:-----------------------------|
+|   描述   | 写前日志阻塞队列大小上限                 |
+|   类型   | int32                        |
+|  默认值   | 50                           |
+| 改后生效方式 | 重启服务生效                       |
+
+* wal\_file\_size\_threshold\_in\_byte
+
+|   名字   | wal\_file\_size\_threshold\_in\_byte |
+|:------:|:-------------------------------------|
+|   描述   | 写前日志文件封口阈值                           |
+|   类型   | int32                                |
+|  默认值   | 10485760                             |
+| 改后生效方式 | 热加载                                  |
+
+* wal\_min\_effective\_info\_ratio
+
+|   名字   | wal\_min\_effective\_info\_ratio |
+|:------:|:---------------------------------|
+|   描述   | 写前日志最小有效信息比                      |
+|   类型   | double                           |
+|  默认值   | 0.1                              |
+| 改后生效方式 | 热加载                              |
+
+* wal\_memtable\_snapshot\_threshold\_in\_byte
+
+|   名字   | wal\_memtable\_snapshot\_threshold\_in\_byte |
+|:------:|:---------------------------------------------|
+|   描述   | 触发写前日志中内存表快照的内存表大小阈值                         |
+|   类型   | int64                                        |
+|  默认值   | 8388608                                      |
+| 改后生效方式 | 热加载                                          |
+
+* max\_wal\_memtable\_snapshot\_num
+
+|   名字   | max\_wal\_memtable\_snapshot\_num |
+|:------:|:----------------------------------|
+|   描述   | 写前日志中内存表的最大数量上限                   |
+|   类型   | int32                             |
+|  默认值   | 1                                 |
+| 改后生效方式 | 热加载                               |
+
+* delete\_wal\_files\_period\_in\_ms
+
+|   名字   | delete\_wal\_files\_period\_in\_ms |
+|:------:|:-----------------------------------|
+|   描述   | 删除写前日志的检查间隔                        |
+|   类型   | int64                              |
+|  默认值   | 20000                              |
+| 改后生效方式 | 热加载                                |
 
 ### TsFile 配置
 

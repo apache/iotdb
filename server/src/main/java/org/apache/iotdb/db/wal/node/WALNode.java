@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -519,7 +519,7 @@ public class WALNode implements IWALNode {
             long currentIndex = buffer.getLong();
             buffer.clear();
             if (currentIndex == targetIndex) {
-              tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+              tmpNodes.add(new IoTConsensusRequest(buffer));
             } else { // different search index, all slices found
               if (!tmpNodes.isEmpty()) {
                 insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
@@ -527,7 +527,7 @@ public class WALNode implements IWALNode {
               }
               // remember to add current plan node
               if (currentIndex > targetIndex) {
-                tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+                tmpNodes.add(new IoTConsensusRequest(buffer));
                 targetIndex = currentIndex;
               }
             }
@@ -588,7 +588,7 @@ public class WALNode implements IWALNode {
                   long currentIndex = buffer.getLong();
                   buffer.clear();
                   if (currentIndex == targetIndex) {
-                    tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+                    tmpNodes.add(new IoTConsensusRequest(buffer));
                   } else { // find all slices of plan node
                     insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
                     tmpNodes = Collections.emptyList();

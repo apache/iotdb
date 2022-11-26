@@ -355,11 +355,11 @@ public interface BaseConfig {
     return false;
   }
 
-  default BaseConfig setEnableMultiLeaderLeaderBalance(boolean enableMultiLeaderLeaderBalance) {
+  default BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
     return this;
   }
 
-  default boolean isEnableMultiLeaderLeaderBalance() {
+  default boolean isEnableIoTConsensusLeaderBalance() {
     return true;
   }
 
