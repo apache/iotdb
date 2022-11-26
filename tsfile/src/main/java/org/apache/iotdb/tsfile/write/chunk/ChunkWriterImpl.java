@@ -350,8 +350,9 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag) {
-    if (flag && pageWriter.getPointNumber() == 0) {
+  public boolean checkIsUnsealedPageOverThreshold(
+      long size, long pointNum, boolean returnTrueIfPageEmpty) {
+    if (returnTrueIfPageEmpty && pageWriter.getPointNumber() == 0) {
       // return true if there is no unsealed page
       return true;
     }
@@ -359,8 +360,9 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean flag) {
-    if (flag && statistics.getCount() + pageWriter.getPointNumber() == 0) {
+  public boolean checkIsChunkSizeOverThreshold(
+      long size, long pointNum, boolean returnTrueIfChunkEmpty) {
+    if (returnTrueIfChunkEmpty && statistics.getCount() + pageWriter.getPointNumber() == 0) {
       // return true if there is no unsealed chunk
       return true;
     }

@@ -50,11 +50,11 @@ public interface IChunkWriter {
    * used for compaction to check whether the chunk is over threshold or not. Return true if there
    * is no unsealed chunk.
    */
-  boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean flag);
+  boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean returnTrueIfChunkEmpty);
 
   /**
    * used for compaction to check whether the unsealed page is over threshold or not. Return true if
    * there is no unsealed page.
    */
-  boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag);
+  boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean returnTrueIfPageEmpty);
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -47,8 +46,6 @@ import java.util.Set;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final int subTaskNum =
-      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
@@ -217,7 +214,7 @@ public class CompactionUtils {
   public static void updateResource(
       TsFileResource resource, TsFileIOWriter tsFileIOWriter, String deviceId) {
     List<ChunkMetadata> chunkMetadatasOfCurrentDevice =
-        tsFileIOWriter.getChunkMetadatasOfCurrentDeviceInMemory();
+        tsFileIOWriter.getChunkMetadataListOfCurrentDeviceInMemory();
     if (chunkMetadatasOfCurrentDevice != null) {
       // this target file contains current device
       for (ChunkMetadata chunkMetadata : chunkMetadatasOfCurrentDevice) {
@@ -245,8 +242,10 @@ public class CompactionUtils {
       TsFileResource targetResource = targetResources.get(i);
       // remove the target file been deleted from list
       if (!targetResource.getTsFile().exists()) {
-        targetResources.remove(i);
-        targetResources.add(i, null);
+        logger.info(
+            "[Compaction] target file {} has been deleted after compaction.",
+            targetResource.getTsFilePath());
+        targetResources.set(i, null);
         continue;
       }
       for (TsFileResource unseqResource : unseqResources) {

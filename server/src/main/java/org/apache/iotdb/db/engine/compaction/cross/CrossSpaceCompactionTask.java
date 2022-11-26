@@ -124,11 +124,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files : {}, unsequence files : {} . Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
           storageGroupName,
           dataRegionId,
           selectedSequenceFiles.size(),
           selectedUnsequenceFiles.size(),
+          selectedSequenceFiles,
+          selectedUnsequenceFiles,
           selectedSeqFileSize / 1024 / 1024,
           selectedUnseqFileSize / 1024 / 1024,
           (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);

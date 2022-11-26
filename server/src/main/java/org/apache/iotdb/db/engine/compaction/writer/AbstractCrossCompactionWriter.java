@@ -103,6 +103,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       if (isDeviceExistedInTargetFiles[i]) {
         targetFileWriter.endChunkGroup();
       } else {
+        targetFileWriter.endChunkGroup();
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
       }
       isDeviceExistedInTargetFiles[i] = false;

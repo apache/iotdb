@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -61,8 +61,9 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
 
-public class InnerUnseqCompactionTest {
-  private static final Logger LOG = LoggerFactory.getLogger(InnerUnseqCompactionTest.class);
+public class InnerUnseqCompactionWithReadPointPerformerTest {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(InnerUnseqCompactionWithReadPointPerformerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
@@ -378,7 +379,7 @@ public class InnerUnseqCompactionTest {
                             && timeValuePair.getTimestamp() <= 300L);
               }
               ICompactionPerformer performer =
-                  new FastCompactionPerformer(
+                  new ReadPointCompactionPerformer(
                       Collections.emptyList(),
                       toMergeResources,
                       Collections.singletonList(targetTsFileResource));

@@ -118,7 +118,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       throws IOException, PageException {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            targetPageSize, targetPagePointNum, true);
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     if (isUnsealedPageOverThreshold) {
       // seal page
       chunkWriters[subTaskId].sealCurrentPage();
@@ -151,7 +151,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) throws PageException {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
-            targetPageSize, targetPagePointNum, true);
+            pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
     if (isUnsealedPageOverThreshold) {
       // seal page
       chunkWriters[subTaskId].sealCurrentPage();
@@ -206,7 +206,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   private boolean checkIsPageLargeEnough(PageHeader pageHeader) {
-    return pageHeader.getStatistics().getCount() >= targetPagePointNum
-        || pageHeader.getSerializedPageSize() >= targetPageSize;
+    return pageHeader.getStatistics().getCount() >= pagePointNumLowerBoundInCompaction
+        || pageHeader.getSerializedPageSize() >= pageSizeLowerBoundInCompaction;
   }
 }

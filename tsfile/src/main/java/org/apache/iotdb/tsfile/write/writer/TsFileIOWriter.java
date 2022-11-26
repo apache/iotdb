@@ -566,10 +566,10 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /**
-   * This method should be called before flushing chunk group metadatas, otherwise, it will return
-   * null.
+   * This method should be called before flushing chunk group metadata list, otherwise, it will
+   * return null.
    */
-  public List<ChunkMetadata> getChunkMetadatasOfCurrentDeviceInMemory() {
+  public List<ChunkMetadata> getChunkMetadataListOfCurrentDeviceInMemory() {
     return chunkMetadataList;
   }
 

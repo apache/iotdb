@@ -69,7 +69,7 @@ import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunks;
 
-public class InnerSeqCompactionTest {
+public class InnerSeqCompactionWithFastPerformerTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
