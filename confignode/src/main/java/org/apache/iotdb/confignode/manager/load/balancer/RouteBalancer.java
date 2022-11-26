@@ -149,7 +149,7 @@ public class RouteBalancer {
   public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
         && IS_DATA_REGION_IOT_CONSENSUS) {
-      // The leadership of multi-leader consensus protocol is decided by ConfigNode-leader
+      // The leadership of IoTConsensus protocol is decided by ConfigNode-leader
       return;
     }
 
@@ -354,7 +354,7 @@ public class RouteBalancer {
       TDataNodeLocation newLeader) {
     switch (consensusProtocolClass) {
       case ConsensusFactory.IOT_CONSENSUS:
-        // For multi-leader protocol, change RegionRouteMap is enough.
+        // For IoTConsensus protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
         regionRouteMap.setLeader(regionGroupId, newLeader.getDataNodeId());
         break;
