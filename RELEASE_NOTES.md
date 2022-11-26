@@ -36,7 +36,7 @@ The 0.14.0-preview2 version only contains the new cluster version.
 ## Improvements
 
 * Add memory control for query
-* Balance write load of MultiLeader consensus
+* Balance write load of IoT consensus
 * Optimize python client query performance
 * Optimize c++ client tablet insert performance
 * Print detailed info when failed opening session

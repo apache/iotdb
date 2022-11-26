@@ -77,15 +77,19 @@ public class RouteBalancer {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getDataRegionConsensusProtocolClass();
 
-  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS =
-      CONF.isEnableAutoLeaderBalanceForRatis();
-  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_MULTI_LEADER =
-      CONF.isEnableAutoLeaderBalanceForMultiLeader();
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
+      (CONF.isEnableAutoLeaderBalanceForRatis()
+              && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS));
+  private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
+      (CONF.isEnableAutoLeaderBalanceForRatis()
+              && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+              && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
 
-  private static final boolean IS_SCHEMA_REGION_MULTI_LEADER =
-      ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
-  private static final boolean IS_DATA_REGION_MULTI_LEADER =
-      ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
+  private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
+      ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
   private final IManager configManager;
 
@@ -144,8 +148,8 @@ public class RouteBalancer {
    */
   public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && IS_DATA_REGION_MULTI_LEADER) {
-      // The leadership of multi-leader consensus protocol is decided by ConfigNode-leader
+        && IS_DATA_REGION_IOT_CONSENSUS) {
+      // The leadership of IoTConsensus protocol is decided by ConfigNode-leader
       return;
     }
 
@@ -173,8 +177,8 @@ public class RouteBalancer {
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
           if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-              && IS_DATA_REGION_MULTI_LEADER) {
-            // Ignore MultiLeader consensus protocol
+              && IS_DATA_REGION_IOT_CONSENSUS) {
+            // Ignore IoTConsensus consensus protocol
             return;
           }
 
@@ -279,13 +283,11 @@ public class RouteBalancer {
   }
 
   private void balancingRegionLeader() {
-    if ((IS_SCHEMA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_MULTI_LEADER)
-        || (!IS_SCHEMA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
       balancingRegionLeader(TConsensusGroupType.SchemaRegion);
     }
 
-    if ((IS_DATA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_MULTI_LEADER)
-        || (!IS_DATA_REGION_MULTI_LEADER && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_RATIS)) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
       balancingRegionLeader(TConsensusGroupType.DataRegion);
     }
   }
@@ -340,8 +342,7 @@ public class RouteBalancer {
     }
   }
 
-  public void changeLeaderForMultiLeaderConsensus(
-      TConsensusGroupId regionGroupId, int newLeaderId) {
+  public void changeLeaderForIoTConsensus(TConsensusGroupId regionGroupId, int newLeaderId) {
     regionRouteMap.setLeader(regionGroupId, newLeaderId);
   }
 
@@ -352,8 +353,8 @@ public class RouteBalancer {
       TConsensusGroupId regionGroupId,
       TDataNodeLocation newLeader) {
     switch (consensusProtocolClass) {
-      case ConsensusFactory.MULTI_LEADER_CONSENSUS:
-        // For multi-leader protocol, change RegionRouteMap is enough.
+      case ConsensusFactory.IOT_CONSENSUS:
+        // For IoTConsensus protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
         regionRouteMap.setLeader(regionGroupId, newLeader.getDataNodeId());
         break;
@@ -376,7 +377,7 @@ public class RouteBalancer {
   public void initRegionRouteMap() {
     synchronized (regionRouteMap) {
       regionRouteMap.clear();
-      if (IS_DATA_REGION_MULTI_LEADER) {
+      if (IS_DATA_REGION_IOT_CONSENSUS) {
         // Greedily pick leader for all existed DataRegionGroups
         List<TRegionReplicaSet> dataRegionGroups =
             getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
