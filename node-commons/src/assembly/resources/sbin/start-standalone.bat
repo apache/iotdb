@@ -36,7 +36,7 @@ IF EXIST "%IOTDB_HOME%\sbin\start-datanode.bat" (
 )
 
 start cmd /c %CONFIGNODE_START_PATH%
-TIMEOUT /T 6 /NOBREAK
+TIMEOUT /T 5 /NOBREAK
 start cmd /c %DATANODE_START_PATH%
 
 echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"
