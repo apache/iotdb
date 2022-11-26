@@ -184,6 +184,7 @@ public class SeriesScanOperator implements DataSourceOperator {
     for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
       columnBuilder.write(column, i);
+      builder.declarePosition();
     }
   }
 

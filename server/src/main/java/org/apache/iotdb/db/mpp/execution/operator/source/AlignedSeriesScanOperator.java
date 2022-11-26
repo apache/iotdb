@@ -179,6 +179,8 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
+      builder.declarePosition();
+      ;
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
