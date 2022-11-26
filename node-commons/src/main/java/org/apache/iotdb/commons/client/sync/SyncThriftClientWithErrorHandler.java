@@ -91,7 +91,8 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
           ((SyncThriftClient) o).invalidateAll();
         }
       }
-      throw new TException("Error in calling method " + method.getName(), t);
+      throw new TException(
+          "Error in calling method " + method.getName() + ", because: " + t.getMessage(), t);
     }
   }
 

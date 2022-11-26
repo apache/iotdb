@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -62,6 +63,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_OFF_DIG;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_LST;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_METRIC;
 
@@ -148,7 +150,6 @@ public abstract class PageManager implements IPageManager {
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     String alias;
-    int secIdxEntrance = -1; // first page of secondary index
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, IMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
@@ -428,11 +429,14 @@ public abstract class PageManager implements IPageManager {
   }
 
   @Override
-  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
+  public void inspect(PrintWriter pw) throws IOException, MetadataException {
+    String pageContent;
     for (int i = 0; i <= lastPageIndex.get(); i++) {
-      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
+      pageContent = getPageInstance(i).inspect();
+      pw.print("---------------------\n");
+      pw.print(pageContent);
+      pw.print("\n");
     }
-    return builder;
   }
 
   @Override
@@ -477,7 +481,7 @@ public abstract class PageManager implements IPageManager {
   @Deprecated
   // TODO: improve to remove
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISegmentedPage page = getMinApplSegmentedPageInMem(size);
+    ISegmentedPage page = getMinApplSegmentedPageInMem((short) (size + SEG_OFF_DIG));
     return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
@@ -621,6 +625,9 @@ public abstract class PageManager implements IPageManager {
    * SchemaPageOverflowException} occurs. It is designed to accelerate when there is lots of new
    * children nodes, avoiding segments extend several times.
    *
+   * <p>Notice that SegmentOverflowException inside a page with sufficient space will not reach
+   * here. Supposed to merge with SchemaFile#reEstimateSegSize.
+   *
    * @param expSize expected size calculated from next new record
    * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
    * @return estimated size
@@ -630,14 +637,21 @@ public abstract class PageManager implements IPageManager {
     if (batchSize < SEG_SIZE_METRIC[0]) {
       return reEstimateSegSize(expSize);
     }
+    int base_tier = 0;
+    for (int i = 0; i < SEG_SIZE_LST.length; i++) {
+      if (SEG_SIZE_LST[i] >= expSize) {
+        base_tier = i;
+        break;
+      }
+    }
     int tier = SEG_SIZE_LST.length - 1;
-    while (tier > 0) {
+    while (tier >= base_tier) {
       if (batchSize > SEG_SIZE_METRIC[tier]) {
         return SEG_SIZE_LST[tier];
       }
       tier--;
     }
-    return SEG_SIZE_LST[0];
+    return SEG_SIZE_LST[base_tier];
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {

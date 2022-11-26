@@ -98,6 +98,9 @@ public class CreateRegionGroupsProcedure
                             // A RegionGroup was created successfully when
                             // all RegionReplicas were created successfully
                             persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+                            LOGGER.info(
+                                "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
+                                regionReplicaSet.getRegionId());
                           } else {
                             TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
@@ -127,6 +130,9 @@ public class CreateRegionGroupsProcedure
                                         offerPlan.appendRegionMaintainTask(createTask);
                                       });
 
+                              LOGGER.info(
+                                  "[CreateRegionGroups] Failed to create some replicas of RegionGroup: {}, but this RegionGroup can still be used.",
+                                  regionReplicaSet.getRegionId());
                             } else {
                               // The redundant RegionReplicas should be deleted otherwise
                               regionReplicaSet
@@ -142,11 +148,15 @@ public class CreateRegionGroupsProcedure
                                           offerPlan.appendRegionMaintainTask(deleteTask);
                                         }
                                       });
+
+                              LOGGER.info(
+                                  "[CreateRegionGroups] Failed to create most of replicas in RegionGroup: {}, The redundant replicas in this RegionGroup will be deleted.",
+                                  regionReplicaSet.getRegionId());
                             }
                           }
                         }));
 
-        env.persistAndBroadcastRegionGroup(persistPlan);
+        env.persistRegionGroup(persistPlan);
         env.getConfigManager().getConsensusManager().write(offerPlan);
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
@@ -191,6 +201,7 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
+        env.broadcastRegionGroup();
         return Flow.NO_MORE_STATE;
     }
 

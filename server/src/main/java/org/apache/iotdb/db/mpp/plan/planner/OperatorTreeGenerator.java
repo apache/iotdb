@@ -177,6 +177,7 @@ import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -243,6 +244,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SeriesScanOperator.class.getSimpleName());
 
+    Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             node.getPlanNodeId(),
@@ -250,8 +253,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
             seriesPath.getSeriesType(),
             operatorContext,
-            node.getTimeFilter(),
-            node.getValueFilter(),
+            timeFilter != null ? timeFilter.copy() : null,
+            valueFilter != null ? valueFilter.copy() : null,
             ascending);
 
     context.addSourceOperator(seriesScanOperator);
@@ -273,13 +276,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 AlignedSeriesScanOperator.class.getSimpleName());
 
+    Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
             node.getPlanNodeId(),
             seriesPath,
             operatorContext,
-            node.getTimeFilter(),
-            node.getValueFilter(),
+            timeFilter != null ? timeFilter.copy() : null,
+            valueFilter != null ? valueFilter.copy() : null,
             ascending);
 
     context.addSourceOperator(seriesScanOperator);
@@ -320,6 +325,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         AggregationUtil.calculateMaxAggregationResultSize(
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
+    Filter timeFilter = node.getTimeFilter();
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
@@ -328,7 +334,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             operatorContext,
             aggregators,
             timeRangeIterator,
-            node.getTimeFilter(),
+            timeFilter != null ? timeFilter.copy() : null,
             ascending,
             node.getGroupByTimeParameter(),
             maxReturnSize);
@@ -381,6 +387,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         AggregationUtil.calculateMaxAggregationResultSize(
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
+    Filter timeFilter = node.getTimeFilter();
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
@@ -388,7 +395,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             operatorContext,
             aggregators,
             timeRangeIterator,
-            node.getTimeFilter(),
+            timeFilter != null ? timeFilter.copy() : null,
             ascending,
             groupByTimeParameter,
             maxReturnSize);

@@ -79,19 +79,28 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Send asynchronous requests to the specified DataNodes
+   * Send asynchronous requests to the specified DataNodes with default retry num
    *
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
    * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
   public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
+    sendAsyncRequest(clientHandler, MAX_RETRY_NUM);
+  }
+
+  public void sendAsyncRequestToDataNodeWithRetry(
+      AsyncClientHandler<?, ?> clientHandler, int retryNum) {
+    sendAsyncRequest(clientHandler, retryNum);
+  }
+
+  private void sendAsyncRequest(AsyncClientHandler<?, ?> clientHandler, int retryNum) {
     if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
 
     DataNodeRequestType requestType = clientHandler.getRequestType();
-    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
+    for (int retry = 0; retry < retryNum; retry++) {
       // Always Reset CountDownLatch first
       clientHandler.resetCountDownLatch();
 

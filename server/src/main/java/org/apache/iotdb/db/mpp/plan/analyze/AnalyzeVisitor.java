@@ -116,6 +116,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -138,6 +139,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -145,6 +147,9 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
@@ -252,9 +257,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
             analyzeSelect(analysis, queryStatement, schemaTree);
         outputExpressions = new ArrayList<>();
-        outputExpressionMap
-            .values()
-            .forEach(outputExpressionList -> outputExpressions.addAll(outputExpressionList));
+        outputExpressionMap.values().forEach(outputExpressions::addAll);
         analyzeHaving(analysis, queryStatement, schemaTree);
         analyzeGroupByLevel(analysis, queryStatement, outputExpressionMap, outputExpressions);
         analyzeGroupByTag(analysis, queryStatement, outputExpressions, schemaTree);
@@ -360,10 +363,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Set<String> deviceSet =
         allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
+
+    List<TTimePartitionSlot> timePartitionSlotList =
+        getTimePartitionSlotList(analysis.getGlobalTimeFilter());
+
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
     for (String devicePath : deviceSet) {
-      DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-      queryParam.setDevicePath(devicePath);
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(devicePath, timePartitionSlotList);
       sgNameToQueryParamsMap
           .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
           .add(queryParam);
@@ -631,6 +638,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeExpression(analysis, havingExpression);
       analysis.setHavingExpression(havingExpression);
       updateGroupByLevelExpressions(
+          analysis,
           havingExpression,
           groupByLevelExpressions,
           groupByLevelController.getGroupedExpressionToRawExpressionsMap());
@@ -654,7 +662,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeExpression(analysis, groupedExpressionWithoutAlias);
         outputExpressions.add(outputExpression);
         updateGroupByLevelExpressions(
-            groupedExpressionWithoutAlias,
+            analysis,
+            groupedExpression,
             groupByLevelExpressions,
             groupByLevelController.getGroupedExpressionToRawExpressionsMap());
         paginationController.consumeLimit();
@@ -684,14 +693,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void updateGroupByLevelExpressions(
+      Analysis analysis,
       Expression expression,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       Map<Expression, Set<Expression>> groupedExpressionToRawExpressionsMap) {
     for (Expression groupedAggregationExpression :
         ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+      Set<Expression> groupedExpressionSet =
+          groupedExpressionToRawExpressionsMap.get(groupedAggregationExpression).stream()
+              .map(ExpressionAnalyzer::removeAliasFromExpression)
+              .collect(Collectors.toSet());
+      Expression groupedAggregationExpressionWithoutAlias =
+          ExpressionAnalyzer.removeAliasFromExpression(groupedAggregationExpression);
+
+      analyzeExpression(analysis, groupedAggregationExpressionWithoutAlias);
+      groupedExpressionSet.forEach(
+          groupedExpression -> analyzeExpression(analysis, groupedExpression));
+
       groupByLevelExpressions
-          .computeIfAbsent(groupedAggregationExpression, key -> new HashSet<>())
-          .addAll(groupedExpressionToRawExpressionsMap.get(groupedAggregationExpression));
+          .computeIfAbsent(groupedAggregationExpressionWithoutAlias, key -> new HashSet<>())
+          .addAll(groupedExpressionSet);
     }
   }
 
@@ -1104,15 +1125,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
       }
     }
-    DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
     analysis.setDataPartitionInfo(dataPartition);
   }
 
-  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, ISchemaTree schemaTree) {
+  private DataPartition fetchDataPartitionByDevices(
+      Set<String> deviceSet, ISchemaTree schemaTree, Filter globalTimeFilter) {
+    List<TTimePartitionSlot> timePartitionSlotList = getTimePartitionSlotList(globalTimeFilter);
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
     for (String devicePath : deviceSet) {
-      DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-      queryParam.setDevicePath(devicePath);
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(devicePath, timePartitionSlotList);
       sgNameToQueryParamsMap
           .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
           .add(queryParam);
@@ -1123,6 +1147,50 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     QueryStatistics.getInstance()
         .addCost(QueryStatistics.PARTITION_FETCHER, System.nanoTime() - startTime);
     return dataPartition;
+  }
+
+  public static List<TTimePartitionSlot> getTimePartitionSlotList(Filter timeFilter) {
+    if (timeFilter == null) {
+      return Collections.emptyList();
+    }
+    List<TimeRange> timeRangeList = timeFilter.getTimeRanges();
+    if (timeRangeList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    if (timeRangeList.get(0).getMin() == Long.MIN_VALUE
+        || timeRangeList.get(timeRangeList.size() - 1).getMax() == Long.MAX_VALUE) {
+      return Collections.emptyList();
+    }
+
+    List<TTimePartitionSlot> result = new ArrayList<>();
+    long startTime =
+        (timeRangeList.get(0).getMin() / TimePartitionUtils.timePartitionInterval)
+            * TimePartitionUtils.timePartitionInterval; // included
+    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMin());
+    int index = 0, size = timeRangeList.size();
+    while (index < size) {
+      long curLeft = timeRangeList.get(index).getMin();
+      long curRight = timeRangeList.get(index).getMax();
+      if (curLeft >= endTime) {
+        result.add(timePartitionSlot);
+        // next init
+        endTime =
+            (curLeft / TimePartitionUtils.timePartitionInterval + 1)
+                * TimePartitionUtils.timePartitionInterval;
+        timePartitionSlot = TimePartitionUtils.getTimePartition(curLeft);
+      } else if (curRight >= endTime) {
+        result.add(timePartitionSlot);
+        // next init
+        timePartitionSlot = new TTimePartitionSlot(endTime);
+        endTime = endTime + TimePartitionUtils.timePartitionInterval;
+      } else {
+        index++;
+      }
+    }
+    result.add(timePartitionSlot);
+    return result;
   }
 
   private void analyzeInto(
@@ -1281,11 +1349,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateTimeseries(
       CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
     if (createTimeSeriesStatement.getPath().getNodeLength() < 3) {
       throw new RuntimeException(
           new IllegalPathException(createTimeSeriesStatement.getPath().getFullPath()));
     }
-    context.setQueryType(QueryType.WRITE);
+    analyzeSchemaProps(createTimeSeriesStatement.getProps());
     if (createTimeSeriesStatement.getTags() != null
         && !createTimeSeriesStatement.getTags().isEmpty()
         && createTimeSeriesStatement.getAttributes() != null
@@ -1297,6 +1366,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
     }
+
     Analysis analysis = new Analysis();
     analysis.setStatement(createTimeSeriesStatement);
 
@@ -1360,14 +1430,44 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
+  private void analyzeSchemaProps(Map<String, String> props) {
+    if (props == null || props.isEmpty()) {
+      return;
+    }
+    Map<String, String> caseChangeMap = new HashMap<>();
+    for (String key : props.keySet()) {
+      caseChangeMap.put(key.toLowerCase(Locale.ROOT), key);
+    }
+    for (String lowerCaseKey : caseChangeMap.keySet()) {
+      if (!ALLOWED_SCHEMA_PROPS.contains(lowerCaseKey)) {
+        throw new SemanticException(
+            new MetadataException(
+                String.format("%s is not a legal prop.", caseChangeMap.get(lowerCaseKey))));
+      }
+      props.put(lowerCaseKey, props.remove(caseChangeMap.get(lowerCaseKey)));
+    }
+    if (props.containsKey(DEADBAND)) {
+      props.put(LOSS, props.remove(DEADBAND));
+    }
+  }
+
+  private void analyzeSchemaProps(List<Map<String, String>> propsList) {
+    if (propsList == null) {
+      return;
+    }
+    for (Map<String, String> props : propsList) {
+      analyzeSchemaProps(props);
+    }
+  }
+
   @Override
   public Analysis visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
     if (createAlignedTimeSeriesStatement.getDevicePath().getNodeLength() < 2) {
       throw new RuntimeException(
           new IllegalPathException(createAlignedTimeSeriesStatement.getDevicePath().getFullPath()));
     }
-    context.setQueryType(QueryType.WRITE);
     List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
     Set<String> measurementsSet = new HashSet<>(measurements);
     if (measurementsSet.size() < measurements.size()) {
@@ -1426,6 +1526,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     analysis.setStatement(createMultiTimeSeriesStatement);
+
+    analyzeSchemaProps(createMultiTimeSeriesStatement.getPropsList());
 
     List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
@@ -1585,7 +1687,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (loadTsFileStatement.isVerifySchema()) {
         verifyLoadingMeasurements(device2Schemas);
       }
-      if (loadTsFileStatement.isAutoCreateSchema()) {
+      if (loadTsFileStatement.isAutoCreateDatabase()) {
         autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
       }
       ISchemaTree schemaTree =
@@ -1653,7 +1755,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
 
-      if (statement.isAutoCreateSchema() || statement.isVerifySchema()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+          || statement.isVerifySchema()) {
         // construct schema
         for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
           String device = entry.getKey();

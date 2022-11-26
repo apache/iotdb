@@ -111,7 +111,7 @@ public class TsFilePipe implements Pipe {
   private void recover() {
     File dir =
         new File(
-            SyncPathUtil.getSenderRealTimePipeLogDir(
+            SyncPathUtil.getSenderHistoryPipeLogDir(
                 pipeInfo.getPipeName(), pipeInfo.getCreateTime()));
     if (dir.exists()) {
       File[] fileList = dir.listFiles();
@@ -121,11 +121,21 @@ public class TsFilePipe implements Pipe {
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(
                     pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
+        historyQueueMap.put(dataRegionId, historyQueue);
+      }
+    }
+    dir =
+        new File(
+            SyncPathUtil.getSenderRealTimePipeLogDir(
+                pipeInfo.getPipeName(), pipeInfo.getCreateTime()));
+    if (dir.exists()) {
+      File[] fileList = dir.listFiles();
+      for (File file : fileList) {
+        String dataRegionId = file.getName();
         BufferedPipeDataQueue realTimeQueue =
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(
                     pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
-        historyQueueMap.put(dataRegionId, historyQueue);
         realTimeQueueMap.put(dataRegionId, realTimeQueue);
         this.maxSerialNumber.set(
             Math.max(this.maxSerialNumber.get(), realTimeQueue.getLastMaxSerialNumber()));
@@ -138,6 +148,8 @@ public class TsFilePipe implements Pipe {
     if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
+    // check connection
+    senderManager.checkConnection();
 
     // init sync manager
     List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();

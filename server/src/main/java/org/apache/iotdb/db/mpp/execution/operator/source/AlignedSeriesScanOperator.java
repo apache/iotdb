@@ -24,10 +24,16 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.ALIGNED_SERIES_SCAN_OPERATOR;
 
@@ -36,8 +42,8 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
   private final OperatorContext operatorContext;
   private final AlignedSeriesScanUtil seriesScanUtil;
   private final PlanNodeId sourceId;
-  private TsBlock tsBlock;
-  private boolean hasCachedTsBlock = false;
+
+  private final TsBlockBuilder builder;
   private boolean finished = false;
 
   private final long maxReturnSize;
@@ -63,6 +69,7 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
     this.maxReturnSize =
         (1L + seriesPath.getMeasurementList().size())
             * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
 
   @Override
@@ -72,49 +79,54 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public TsBlock next() {
-    if (hasCachedTsBlock || hasNext()) {
-      hasCachedTsBlock = false;
-      TsBlock res = tsBlock;
-      tsBlock = null;
-      return res;
+    long startTime = System.nanoTime();
+    try {
+      TsBlock block = builder.build();
+      builder.reset();
+      return block;
+    } finally {
+      operatorContext.addOperatorTime(ALIGNED_SERIES_SCAN_OPERATOR, System.nanoTime() - startTime);
     }
-    throw new IllegalStateException("no next batch");
   }
 
   @Override
   public boolean hasNext() {
     long startTime = System.nanoTime();
     try {
-      if (hasCachedTsBlock) {
-        return true;
-      }
 
-      /*
-       * consume page data firstly
-       */
-      if (readPageData()) {
-        hasCachedTsBlock = true;
-        return true;
-      }
+      // start stopwatch
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      long start = System.nanoTime();
 
-      /*
-       * consume chunk data secondly
-       */
-      if (readChunkData()) {
-        hasCachedTsBlock = true;
-        return true;
-      }
-
-      /*
-       * consume next file finally
-       */
-      while (seriesScanUtil.hasNextFile()) {
-        if (readChunkData()) {
-          hasCachedTsBlock = true;
-          return true;
+      // here use do-while to promise doing this at least once
+      do {
+        /*
+         * consume page data firstly
+         */
+        if (readPageData()) {
+          continue;
         }
-      }
-      return hasCachedTsBlock;
+
+        /*
+         * consume chunk data secondly
+         */
+        if (readChunkData()) {
+          continue;
+        }
+
+        /*
+         * consume next file finally
+         */
+        if (readFileData()) {
+          continue;
+        }
+        break;
+
+      } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
+
+      finished = builder.isEmpty();
+
+      return !finished;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     } finally {
@@ -124,7 +136,7 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = !hasNext());
+    return finished;
   }
 
   @Override
@@ -142,6 +154,15 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
     return 0L;
   }
 
+  private boolean readFileData() throws IOException {
+    while (seriesScanUtil.hasNextFile()) {
+      if (readChunkData()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean readChunkData() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (readPageData()) {
@@ -153,12 +174,33 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   private boolean readPageData() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
-      tsBlock = seriesScanUtil.nextPage();
+      TsBlock tsBlock = seriesScanUtil.nextPage();
       if (!isEmpty(tsBlock)) {
+        appendToBuilder(tsBlock);
         return true;
       }
     }
     return false;
+  }
+
+  private void appendToBuilder(TsBlock tsBlock) {
+    int size = tsBlock.getPositionCount();
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    for (int i = 0; i < size; i++) {
+      timeColumnBuilder.writeLong(timeColumn.getLong(i));
+      builder.declarePosition();
+      ;
+    }
+    for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
+        columnIndex < columnSize;
+        columnIndex++) {
+      ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+      Column column = tsBlock.getColumn(columnIndex);
+      for (int i = 0; i < size; i++) {
+        columnBuilder.write(column, i);
+      }
+    }
   }
 
   private boolean isEmpty(TsBlock tsBlock) {

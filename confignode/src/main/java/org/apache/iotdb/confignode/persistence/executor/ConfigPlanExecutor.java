@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -268,9 +269,9 @@ public class ConfigPlanExecutor {
           return status;
         }
         return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
-      case AdjustMaxRegionGroupCount:
+      case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
-            (AdjustMaxRegionGroupCountPlan) physicalPlan);
+            (AdjustMaxRegionGroupNumPlan) physicalPlan);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
@@ -357,6 +358,8 @@ public class ConfigPlanExecutor {
         return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
       case DropPipe:
         return syncInfo.dropPipe((DropPipePlan) physicalPlan);
+      case RecordPipeMessage:
+        return syncInfo.recordPipeMessage((RecordPipeMessagePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

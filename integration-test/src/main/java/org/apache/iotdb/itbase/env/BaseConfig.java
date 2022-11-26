@@ -247,6 +247,14 @@ public interface BaseConfig {
     return 1;
   }
 
+  default BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    return this;
+  }
+
+  default int getSeriesPartitionSlotNum() {
+    return 10000;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
@@ -339,11 +347,27 @@ public interface BaseConfig {
     return 10000;
   }
 
-  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  default BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
     return this;
   }
 
-  default boolean isEnableLeaderBalancing() {
+  default boolean isEnableRatisLeaderBalance() {
     return false;
+  }
+
+  default BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
+    return this;
+  }
+
+  default boolean isEnableIoTConsensusLeaderBalance() {
+    return true;
+  }
+
+  default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    return this;
+  }
+
+  default int getLeastDataRegionGroupNum() {
+    return 5;
   }
 }

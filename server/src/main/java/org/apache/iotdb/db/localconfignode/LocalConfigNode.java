@@ -66,40 +66,27 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -121,7 +108,7 @@ import java.util.stream.Collectors;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
- * configs include database, schema region and template. The data config is dataRegion.
+ * configs include database and schema region. The data config is dataRegion.
  */
 public class LocalConfigNode {
 
@@ -135,7 +122,6 @@ public class LocalConfigNode {
 
   private final IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
-  private final TemplateManager templateManager = TemplateManager.getInstance();
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final LocalSchemaPartitionTable schemaPartitionTable =
       LocalSchemaPartitionTable.getInstance();
@@ -189,8 +175,6 @@ public class LocalConfigNode {
     }
 
     try {
-
-      templateManager.init();
       storageGroupSchemaManager.init();
 
       Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo =
@@ -238,7 +222,6 @@ public class LocalConfigNode {
       schemaPartitionTable.clear();
       schemaEngine.clear();
       storageGroupSchemaManager.clear();
-      templateManager.clear();
 
       dataPartitionInfo.clear();
 
@@ -255,7 +238,6 @@ public class LocalConfigNode {
     }
 
     storageGroupSchemaManager.forceLog();
-    templateManager.forceLog();
   }
 
   // endregion
@@ -290,10 +272,6 @@ public class LocalConfigNode {
 
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
-
-    for (Template template : templateManager.getTemplateMap().values()) {
-      templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
-    }
 
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
@@ -459,42 +437,6 @@ public class LocalConfigNode {
   }
 
   /**
-   * For a path, infer all databases it may belong to. The path can have wildcards. Resolve the path
-   * or path pattern into StorageGroupName-FullPath pairs that FullPath matches the given path.
-   *
-   * <p>Consider the path into two parts: (1) the sub path which can not contain a database name and
-   * (2) the sub path which is substring that begin after the database name.
-   *
-   * <p>(1) Suppose the part of the path can not contain a database name (e.g.,
-   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
-   * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
-   * inference will go on until the databases are found and the wildcard will be kept. (2) Suppose
-   * the part of the path is a substring that begin after the database name. (e.g., For
-   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a database, then this part is "a.*.b.*"). For this
-   * part, keep what it is.
-   *
-   * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
-   * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
-   * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns
-   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
-   *
-   * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
-   *
-   * @param path can be a path pattern or a full path.
-   * @return StorageGroupName-FullPath pairs
-   * @apiNote :for cluster
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    Map<String, List<PartialPath>> sgPathMap =
-        storageGroupSchemaManager.groupPathByStorageGroup(path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("The databases of path {} are {}", path, sgPathMap.keySet());
-    }
-    return sgPathMap;
-  }
-
-  /**
    * get all storageGroups ttl
    *
    * @return key-> storageGroupPath, value->ttl
@@ -519,13 +461,9 @@ public class LocalConfigNode {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     return storageGroupSchemaManager.getNodesListInGivenLevel(
-        pathPattern, nodeLevel, isPrefixMatch, filter);
+        pathPattern, nodeLevel, isPrefixMatch);
   }
 
   /**
@@ -656,188 +594,6 @@ public class LocalConfigNode {
 
   public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
     return schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup);
-  }
-
-  // endregion
-
-  // region Interfaces and Implementation for Template operations
-  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
-    templateManager.createSchemaTemplate(plan);
-  }
-
-  public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
-    if (templateManager.getTemplate(plan.getName()) == null) {
-      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
-    }
-
-    boolean isTemplateAppendable = true;
-
-    Template template = templateManager.getTemplate(plan.getName());
-
-    for (SchemaRegionId schemaRegionId : template.getRelatedSchemaRegion()) {
-      if (!schemaEngine
-          .getSchemaRegion(schemaRegionId)
-          .isTemplateAppendable(template, plan.getMeasurements())) {
-        isTemplateAppendable = false;
-        break;
-      }
-    }
-
-    if (!isTemplateAppendable) {
-      throw new MetadataException(
-          String.format(
-              "Template [%s] cannot be appended for overlapping of new measurement and MTree",
-              plan.getName()));
-    }
-
-    templateManager.appendSchemaTemplate(plan);
-  }
-
-  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws MetadataException {
-    if (templateManager.getTemplate(plan.getName()) == null) {
-      throw new MetadataException(String.format("Template [%s] does not exist.", plan.getName()));
-    }
-
-    if (templateManager.getTemplate(plan.getName()).getRelatedSchemaRegion().size() > 0) {
-      throw new MetadataException(
-          String.format(
-              "Template [%s] cannot be pruned since had been set before.", plan.getName()));
-    }
-
-    templateManager.pruneSchemaTemplate(plan);
-  }
-
-  public int countMeasurementsInTemplate(String templateName) throws MetadataException {
-    try {
-      return templateManager.getTemplate(templateName).getMeasurementsCount();
-    } catch (UndefinedTemplateException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  /**
-   * @param templateName name of template to check
-   * @param path full path to check
-   * @return if path correspond to a measurement in template
-   * @throws MetadataException
-   */
-  public boolean isMeasurementInTemplate(String templateName, String path)
-      throws MetadataException {
-    return templateManager.getTemplate(templateName).isPathMeasurement(path);
-  }
-
-  public boolean isPathExistsInTemplate(String templateName, String path) throws MetadataException {
-    return templateManager.getTemplate(templateName).isPathExistInTemplate(path);
-  }
-
-  public List<String> getMeasurementsInTemplate(String templateName, String path)
-      throws MetadataException {
-    return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
-  }
-
-  public List<Pair<String, IMeasurementSchema>> getSchemasInTemplate(
-      String templateName, String path) throws MetadataException {
-    Set<Map.Entry<String, IMeasurementSchema>> rawSchemas =
-        templateManager.getTemplate(templateName).getSchemaMap().entrySet();
-    return rawSchemas.stream()
-        .filter(e -> e.getKey().startsWith(path))
-        .collect(
-            ArrayList::new,
-            (res, elem) -> res.add(new Pair<>(elem.getKey(), elem.getValue())),
-            ArrayList::addAll);
-  }
-
-  public Set<String> getAllTemplates() {
-    return templateManager.getAllTemplateName();
-  }
-
-  /**
-   * Get all paths set designated template
-   *
-   * @param templateName designated template name, blank string for any template exists
-   * @return paths set
-   */
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    Set<String> result = new HashSet<>();
-    if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
-        result.addAll(schemaRegion.getPathsSetTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      }
-    } else {
-      for (SchemaRegionId schemaRegionId :
-          templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
-        result.addAll(
-            schemaEngine.getSchemaRegion(schemaRegionId).getPathsSetTemplate(templateName));
-      }
-    }
-
-    return result;
-  }
-
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    Set<String> result = new HashSet<>();
-    if (templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      for (ISchemaRegion schemaRegion : schemaEngine.getAllSchemaRegions()) {
-        result.addAll(schemaRegion.getPathsUsingTemplate(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-      }
-    } else {
-      for (SchemaRegionId schemaRegionId :
-          templateManager.getTemplate(templateName).getRelatedSchemaRegion()) {
-        result.addAll(
-            schemaEngine.getSchemaRegion(schemaRegionId).getPathsUsingTemplate(templateName));
-      }
-    }
-
-    return result;
-  }
-
-  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
-    String templateName = plan.getName();
-    // check whether template exists
-    if (!templateManager.getAllTemplateName().contains(templateName)) {
-      throw new UndefinedTemplateException(templateName);
-    }
-
-    if (templateManager.getTemplate(plan.getName()).getRelatedSchemaRegion().size() > 0) {
-      throw new MetadataException(
-          String.format(
-              "Template [%s] has been set on MTree, cannot be dropped now.", templateName));
-    }
-
-    templateManager.dropSchemaTemplate(plan);
-  }
-
-  public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    PartialPath path = new PartialPath(plan.getPrefixPath());
-    try {
-      schemaEngine
-          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
-          .setSchemaTemplate(plan);
-    } catch (StorageGroupAlreadySetException e) {
-      throw new MetadataException("Template should not be set above storageGroup");
-    }
-  }
-
-  public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    PartialPath path = new PartialPath(plan.getPrefixPath());
-    try {
-      schemaEngine.getSchemaRegion(getBelongedSchemaRegionId(path)).unsetSchemaTemplate(plan);
-    } catch (StorageGroupNotSetException e) {
-      throw new PathNotExistException(plan.getPrefixPath());
-    }
-  }
-
-  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
-    PartialPath path = plan.getPrefixPath();
-    try {
-      schemaEngine
-          .getSchemaRegion(getBelongedSchemaRegionIdWithAutoCreate(path))
-          .setUsingSchemaTemplate(plan);
-    } catch (StorageGroupNotSetException e) {
-      throw new MetadataException(
-          String.format(
-              "Path [%s] has not been set any template.", plan.getPrefixPath().toString()));
-    }
   }
 
   // endregion

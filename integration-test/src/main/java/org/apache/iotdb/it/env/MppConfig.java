@@ -100,14 +100,14 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
+        "dn_rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
+        "dn_rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
@@ -243,6 +243,13 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    confignodeProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
+    return this;
+  }
+
+  @Override
   public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     confignodeProperties.setProperty(
         "time_partition_interval", String.valueOf(timePartitionInterval));
@@ -321,9 +328,24 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  public BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
     confignodeProperties.setProperty(
-        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+        "enable_auto_leader_balance_for_ratis", String.valueOf(enableRatisLeaderBalance));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_iot_consensus",
+        String.valueOf(enableIoTConsensusLeaderBalance));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    confignodeProperties.setProperty(
+        "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
     return this;
   }
 }

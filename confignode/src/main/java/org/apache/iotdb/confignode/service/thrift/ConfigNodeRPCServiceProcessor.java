@@ -114,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -255,8 +256,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
-    storageGroupSchema.setMaxSchemaRegionGroupCount(0);
-    storageGroupSchema.setMaxDataRegionGroupCount(0);
+    storageGroupSchema.setMaxSchemaRegionGroupNum(0);
+    storageGroupSchema.setMaxDataRegionGroupNum(0);
 
     SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);
@@ -452,14 +453,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
     return StatusUtils.OK;
-  }
-
-  @Override
-  public TSStatus isConsensusInitialized() throws TException {
-    if (configManager.getConsensusManager() != null) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */
@@ -727,6 +720,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
+  }
+
+  @Override
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
+    return configManager.recordPipeMessage(req);
   }
 
   @Override

@@ -20,12 +20,10 @@
 package org.apache.iotdb.metrics.config;
 
 public enum ReloadLevel {
-  // start metric service
-  START_METRIC,
-  // stop metric service
-  STOP_METRIC,
   // restart metric service
   RESTART_METRIC,
+  // restart internal reporter,
+  RESTART_INTERNAL_REPORTER,
   // restart metric service reporter
   RESTART_REPORTER,
   // do nothing

@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Counter;
 
-public class DoNothingCounter implements Counter {
+public class DoNothingCounter implements Counter, DoNothingMetric {
   @Override
   public void inc() {
     // do nothing

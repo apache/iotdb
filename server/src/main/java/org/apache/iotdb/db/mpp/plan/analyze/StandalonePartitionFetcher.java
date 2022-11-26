@@ -109,7 +109,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       } else {
         for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
           Pair<List<PartialPath>, Set<PartialPath>> result =
-              localConfigNode.getNodesListInGivenLevel(pathPattern, level, false, null);
+              localConfigNode.getNodesListInGivenLevel(pathPattern, level, false);
           matchedNodes.addAll(
               result.left.stream()
                   .map(

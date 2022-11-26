@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -55,6 +56,7 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -195,54 +197,52 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica() {
+  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
     return configManager
-            .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
-            .size()
-        > NodeInfo.getMinimumDataNode();
+                .getNodeManager()
+                .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+                .size()
+            - Boolean.compare(
+                configManager
+                        .getNodeManager()
+                        .getNodeStatusByNodeId(removedDatanode.getDataNodeId())
+                    != NodeStatus.Unknown,
+                false)
+        >= NodeInfo.getMinimumDataNode();
   }
 
   /**
-   * Only ConfigNode leader will invoke this method. Add the new ConfigNode Peer into
-   * ConfigNodeRegionGroup.
+   * Let the remotely new ConfigNode build the ConsensusGroup. Actually, the parameter of this
+   * method can be empty, adding new raft peer to exist group should invoke createPeer(groupId,
+   * emptyList).
    *
-   * @param newConfigNode The new ConfigNode
-   * @throws AddPeerException When addNewNodeToExistedGroup doesn't success
+   * @param tConfigNodeLocation New ConfigNode's location
    */
-  public void addNewNodeToExistedGroup(TConfigNodeLocation newConfigNode) throws AddPeerException {
-    for (int i = 0; i < 3; i++) {
-      try {
-        // sleep 5 seconds to wait the registered ConfigNode completed initConsensusManager
-        TimeUnit.SECONDS.sleep(5);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOG.warn("Unexpected interruption in ConfigNode addNewNodeToExistedGroup", e);
-      }
-
-      TSStatus status =
-          (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      newConfigNode.getInternalEndPoint(),
-                      null,
-                      ConfigNodeRequestType.QUERY_CONSENSUS_MANAGER_STATUS);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        break;
-      }
-
-      LOG.info(
-          "The ConsensusManager of Registered-ConfigNode is not initialized, wait 7 seconds, ConfigNode: {}, status: {}",
-          newConfigNode,
-          status);
-    }
-
-    List<TConfigNodeLocation> originalConfigNodes =
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+      throws AddConsensusGroupException {
+    List<TConfigNodeLocation> configNodeLocations =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
+    configNodeLocations.add(tConfigNodeLocation);
+    TSStatus status =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    new TAddConsensusGroupReq(configNodeLocations),
+                    ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AddConsensusGroupException(tConfigNodeLocation);
+    }
+  }
 
-    configManager
-        .getConsensusManager()
-        .addNewNodeToExistedGroup(originalConfigNodes, newConfigNode);
+  /**
+   * Leader will add the new ConfigNode Peer into ConfigNodeRegion
+   *
+   * @param configNodeLocation The new ConfigNode
+   * @throws AddPeerException When addPeer doesn't success
+   */
+  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
+    configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
   }
 
   /**
@@ -367,11 +367,21 @@ public class ConfigNodeProcedureEnv {
    */
   public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
     // Send request to update NodeStatus on the DataNode to be removed
-    SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            dataNodeLocation.getInternalEndPoint(),
-            NodeStatus.Removing.getStatus(),
-            DataNodeRequestType.SET_SYSTEM_STATUS);
+    if (configManager.getNodeManager().getNodeStatusByNodeId(dataNodeLocation.getDataNodeId())
+        == NodeStatus.Unknown) {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithGivenRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              DataNodeRequestType.SET_SYSTEM_STATUS,
+              1);
+    } else {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              DataNodeRequestType.SET_SYSTEM_STATUS);
+    }
 
     // Force updating NodeStatus
     long currentTime = System.currentTimeMillis();
@@ -517,11 +527,9 @@ public class ConfigNodeProcedureEnv {
     return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
   }
 
-  public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
+  public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
-    // Broadcast the latest RegionRouteMap
-    getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public void activateRegionGroup(
@@ -540,7 +548,7 @@ public class ConfigNodeProcedureEnv {
 
     // Select leader greedily for multi-leader consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
+        && ConsensusFactory.IOT_CONSENSUS.equals(
             ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
       List<Integer> availableDataNodes = new ArrayList<>();
       for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
@@ -553,6 +561,11 @@ public class ConfigNodeProcedureEnv {
 
     // Force update RegionRouteMap
     getLoadManager().getRouteBalancer().updateRegionRouteMap();
+  }
+
+  public void broadcastRegionGroup() {
+    // Broadcast the latest RegionRouteMap
+    getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

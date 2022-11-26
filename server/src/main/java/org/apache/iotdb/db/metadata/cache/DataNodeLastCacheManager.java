@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import org.slf4j.Logger;

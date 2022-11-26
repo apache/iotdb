@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,7 +33,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class ActivateTemplatePlan extends PhysicalPlan implements IActivateTemplatePlan {
+public class ActivateTemplatePlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(ActivateTemplatePlan.class);
   PartialPath prefixPath;
@@ -57,7 +56,6 @@ public class ActivateTemplatePlan extends PhysicalPlan implements IActivateTempl
     return prefixPath;
   }
 
-  @Override
   public void setPrefixPath(PartialPath prefixPath) {
     this.prefixPath = prefixPath;
   }

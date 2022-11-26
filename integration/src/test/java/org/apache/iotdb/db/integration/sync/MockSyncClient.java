@@ -37,9 +37,7 @@ public class MockSyncClient implements ISyncClient {
   }
 
   @Override
-  public boolean handshake() {
-    return true;
-  }
+  public void handshake() {}
 
   @Override
   public boolean send(PipeData pipeData) {

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALNode;
 

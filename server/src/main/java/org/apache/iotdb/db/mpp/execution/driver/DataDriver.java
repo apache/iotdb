@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -140,12 +141,13 @@ public class DataDriver extends Driver {
       Set<String> selectedDeviceIdSet =
           pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
 
+      Filter timeFilter = context.getTimeFilter();
       QueryDataSource dataSource =
           dataRegion.query(
               pathList,
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               driverContext.getFragmentInstanceContext(),
-              context.getTimeFilter());
+              timeFilter != null ? timeFilter.copy() : null);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge

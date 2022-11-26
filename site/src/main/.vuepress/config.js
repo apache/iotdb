@@ -647,7 +647,7 @@ var config = {
 				],
 				'/UserGuide/V0.13.x/': [
 					{
-						title:'IoTDB User Guide (latest)',
+						title:'IoTDB User Guide (V0.13.x)',
 						collapsable: false,
 					},
 					{
@@ -864,7 +864,13 @@ var config = {
 						title: 'Syntax Conventions',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions','Syntax Conventions'],
+							['Syntax-Conventions/Literal-Values', 'Literal Values'],
+							['Syntax-Conventions/Identifier', 'Identifier'],
+							['Syntax-Conventions/NodeName-In-Path', 'NodeName in Path'],
+							['Syntax-Conventions/KeyValue-Pair', 'Key-Value Pair'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', 'Keywords'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', 'Detailed Definitions of Lexical and Grammar'],
 						]
 					},
 					{
@@ -879,7 +885,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB Protocol'],
-							['API/Status-Codes','Status Codes'],
 							['API/Interface-Comparison', 'Interface Comparison']
 						]
 					},
@@ -887,7 +892,7 @@ var config = {
 						title: 'Operate Metadata',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','Storage Group'],
+							['Operate-Metadata/Database','Database'],
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
@@ -902,8 +907,7 @@ var config = {
 							['Write-Data/Session','Native API Write'],
 							['Write-Data/REST-API','REST API'],
 							['Write-Data/MQTT','MQTT Write'],
-							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
-							['Write-Data/CSV-Tool','CSV Tool'],
+							['Write-Data/Batch-Load-Tool','Batch Data Load']
 						]
 					},
 					{
@@ -918,26 +922,59 @@ var config = {
 						title: 'Query Data',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Overview.md','Overview'],
-							['Query-Data/Select-Expression.md','Select Expression'],
-							['Query-Data/Query-Filter.md','Query Filter'],
-							['Query-Data/Pagination.md','Pagination'],
-							['Query-Data/Result-Format.md','Query Result Formats'],
-							['Query-Data/Aggregate-Query.md','Aggregate Query'],
-							['Query-Data/Last-Query.md','Last Query'],
-							['Query-Data/Fill-Null-Value.md','Fill Null Value'],
-							['Query-Data/Without-Null.md','Without Null'],
-							['Query-Data/Tracing-Tool.md','Tracing Tool']
+							['Query-Data/Overview','Overview'],
+							['Query-Data/Select-Expression','Select Expression'],
+							['Query-Data/Last-Query','Last Query'],
+							['Query-Data/Align-By','Query Alignment Mode'],
+							['Query-Data/Where-Condition','Where Condition'],
+							['Query-Data/Group-By','Group By'],
+							['Query-Data/Having-Condition','Having Condition'],
+							// ['Query-Data/Order-By','Order By'],
+							['Query-Data/Fill','Fill Null Value'],
+							['Query-Data/Pagination','Pagination'],
+							['Query-Data/Select-Into','Select Into'],
+							['Query-Data/Continuous-Query','Continuous Query'],
 						]
 					},
 					{
-						title: 'Process Data',
+						title: 'Operators and Functions',
 						sidebarDepth: 1,
 						children: [
-							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
-							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
-							['Process-Data/Triggers','Triggers'],
+							['Operators-Functions/Overview','Overview'],
+							['Operators-Functions/User-Defined-Function','UDF (User Defined Function)'],
+							['Operators-Functions/Aggregation','Aggregation'],
+							['Operators-Functions/Mathematical','Mathematical'],
+							['Operators-Functions/Comparison','Comparison'],
+							['Operators-Functions/Logical','Logical'],
+							['Operators-Functions/String','Conversion'],
+							['Operators-Functions/Conversion','Conversion'],
+							['Operators-Functions/Constant','Constant'],
+							['Operators-Functions/Selection','Selection'],
+							['Operators-Functions/Continuous-Interval','Continuous Interval'],
+							['Operators-Functions/Variation-Trend','Variation Trend'],
+							['Operators-Functions/Sample','Sample'],
+							['Operators-Functions/Time-Series','Time-Series'],
+							['Operators-Functions/Lambda','Lambda'],
+
+							// IoTDB-Quality
+							['Operators-Functions/Data-Profiling','Data Profiling'],
+							['Operators-Functions/Anomaly-Detection','Anomaly Detection'],
+							['Operators-Functions/Data-Matching','Data Matching'],
+							['Operators-Functions/Frequency-Domain','Frequency Domain'],
+							['Operators-Functions/Data-Quality','Data Quality'],
+							['Operators-Functions/Data-Repairing','Data Repairing'],
+							['Operators-Functions/Series-Discovery','Series Discovery']
+						]
+					},
+					{
+						title: 'Trigger',
+						sidebarDepth: 1,
+						children: [
+							['Trigger/Instructions','Instructions'],
+							['Trigger/Implement-Trigger','How to implement a trigger'],
+							['Trigger/Trigger-Management','Trigger Management'],
+							['Trigger/Notes','Notes'],
+							['Trigger/Configuration-Parameters','Configuration-Parameters'],
 						]
 					},
 					{
@@ -961,9 +998,13 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/NodeTool','Node Tool'],
-							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
+							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
+							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
+							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
 					{
@@ -996,23 +1037,6 @@ var config = {
 						]
 					},
 					{
-					    title: 'UDF Library',
-					    sidebarDepth: 1,
-					    children: [
-					        ['UDF-Library/Quick-Start', 'Quick Start'],
-					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
-					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
-					        ['UDF-Library/Data-Matching', 'Data Matching'],
-					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
-					        ['UDF-Library/Data-Quality', 'Data Quality'],
-					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
-					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
-					        ['UDF-Library/Series-Processing', 'Series Processing'],
-                            ['UDF-Library/String-Processing', 'String Processing'],
-                            ['UDF-Library/M4', 'M4']
-					    ]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
@@ -1023,6 +1047,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
+							['Reference/Status-Codes','Status Codes'],
 							['Reference/Keywords','Keywords'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
 						]
@@ -1595,7 +1620,7 @@ var config = {
 				],
 				'/zh/UserGuide/V0.13.x/': [
 					{
-						title: 'IoTDB用户手册 (In progress)',
+						title: 'IoTDB用户手册 (V0.13.x)',
 						collapsable: false,
 					},
 					{
@@ -1812,7 +1837,13 @@ var config = {
 						title: '语法约定',
 						sidebarDepth: 1,
 						children: [
-							['Reference/Syntax-Conventions', '语法约定'],
+							['Syntax-Conventions/Literal-Values', '字面值常量'],
+							['Syntax-Conventions/Identifier', '标识符'],
+							['Syntax-Conventions/NodeName-In-Path', '路径结点名'],
+							['Syntax-Conventions/KeyValue-Pair', '键值对'],
+							['Syntax-Conventions/Keywords-And-Reserved-Words', '关键字'],
+							['Syntax-Conventions/Session-And-TsFile-API', 'Session And TsFile API'],
+							['Syntax-Conventions/Detailed-Grammar', '词法和文法详细定义'],
 						]
 					},
 					{
@@ -1827,7 +1858,6 @@ var config = {
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器'],
-							['API/Status-Codes','状态码'],
 							['API/Interface-Comparison', '原生接口对比']
 						]
 					},
@@ -1835,7 +1865,7 @@ var config = {
 						title: '元数据操作',
 						sidebarDepth: 1,
 						children: [
-							['Operate-Metadata/Storage-Group','存储组操作'],
+							['Operate-Metadata/Database','数据库操作'],
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
@@ -1843,15 +1873,14 @@ var config = {
 						]
 					},
 					{
-						title: '数据写入（更新）',
+						title: '数据写入（数据更新）',
 						sidebarDepth: 1,
 						children: [
 							['Write-Data/Write-Data','CLI 工具写入'],
 							['Write-Data/Session','原生接口写入'],
 							['Write-Data/REST-API','REST 服务'],
 							['Write-Data/MQTT','MQTT写入'],
-							['Write-Data/Load-External-Tsfile','加载 TsFile'],
-							['Write-Data/CSV-Tool','导入导出 CSV']
+							['Write-Data/Batch-Load-Tool','批量数据导入']
 						]
 					},
 					{
@@ -1866,26 +1895,59 @@ var config = {
 						title: '数据查询',
 						sidebarDepth: 1,
 						children: [
-							['Query-Data/Overview.md','概述'],
-							['Query-Data/Select-Expression.md','选择表达式'],
-							['Query-Data/Query-Filter.md','查询过滤条件'],
-							['Query-Data/Pagination.md','查询结果分页'],
-							['Query-Data/Result-Format.md','查询结果对齐格式'],
-							['Query-Data/Aggregate-Query.md','聚合查询'],
-							['Query-Data/Last-Query.md','最新点查询'],
-							['Query-Data/Fill-Null-Value.md','空值填充'],
-							['Query-Data/Without-Null.md','空值过滤'],
-							['Query-Data/Tracing-Tool.md','查询性能追踪']
+							['Query-Data/Overview','概述'],
+							['Query-Data/Select-Expression','选择表达式'],
+							['Query-Data/Last-Query','最新点查询'],
+							['Query-Data/Align-By','查询对齐模式'],
+							['Query-Data/Where-Condition','查询过滤条件'],
+							['Query-Data/Group-By','分段分组聚合'],
+							['Query-Data/Having-Condition','聚合结果过滤'],
+							// ['Query-Data/Order-By','结果集排序'],
+							['Query-Data/Fill','结果集补空值'],
+							['Query-Data/Pagination','结果集分页'],
+							['Query-Data/Select-Into','查询写回'],
+							['Query-Data/Continuous-Query','连续查询'],
 						]
 					},
 					{
-						title: '数据处理',
+						title: '运算符和函数',
 						sidebarDepth: 1,
 						children: [
-							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
-							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
-							['Process-Data/Continuous-Query','连续查询(CQ)'],
-							['Process-Data/Triggers','触发器'],
+							['Operators-Functions/Overview','概述'],
+							['Operators-Functions/User-Defined-Function','用户自定义函数'],
+							['Operators-Functions/Aggregation','聚合函数'],
+							['Operators-Functions/Mathematical','算数运算符和函数'],
+							['Operators-Functions/Comparison','比较运算符和函数'],
+							['Operators-Functions/Logical','逻辑运算符'],
+							['Operators-Functions/String','字符串处理'],
+							['Operators-Functions/Conversion','数据类型转换'],
+							['Operators-Functions/Constant','常序列生成'],
+							['Operators-Functions/Selection','选择函数'],
+							['Operators-Functions/Continuous-Interval','区间查询'],
+							['Operators-Functions/Variation-Trend','趋势计算'],
+							['Operators-Functions/Sample','采样函数'],
+							['Operators-Functions/Time-Series','时间序列处理'],
+							['Operators-Functions/Lambda','Lambda 表达式'],
+
+							// IoTDB-Quality
+							['Operators-Functions/Data-Profiling','数据画像'],
+							['Operators-Functions/Anomaly-Detection','异常检测'],
+							['Operators-Functions/Data-Matching','数据匹配'],
+							['Operators-Functions/Frequency-Domain','频域分析'],
+							['Operators-Functions/Data-Quality','数据质量'],
+							['Operators-Functions/Data-Repairing','数据修复'],
+							['Operators-Functions/Series-Discovery','序列发现']
+						]
+					},
+					{
+						title: '触发器',
+						sidebarDepth: 1,
+						children: [
+							['Trigger/Instructions','使用说明'],
+							['Trigger/Implement-Trigger','编写触发器'],
+							['Trigger/Trigger-Management','管理触发器'],
+							['Trigger/Notes','重要注意事项'],
+							['Trigger/Configuration-Parameters','配置参数'],
 						]
 					},
 					{
@@ -1909,9 +1971,13 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/NodeTool','节点工具'],
-							['Maintenance-Tools/Watermark-Tool','水印工具'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
+							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
+              ['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
+              ['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
 					{
@@ -1944,23 +2010,6 @@ var config = {
 						]
 					},
 					{
-                        title: 'UDF 资料库',
-                        sidebarDepth: 1,
-                        children: [
-                            ['UDF-Library/Quick-Start', '快速开始'],
-                            ['UDF-Library/Data-Profiling', '数据画像'],
-                            ['UDF-Library/Anomaly-Detection', '异常检测'],
-                            ['UDF-Library/Data-Matching', '数据匹配'],
-                            ['UDF-Library/Frequency-Domain', '频域分析'],
-                            ['UDF-Library/Data-Quality', '数据质量'],
-                            ['UDF-Library/Data-Repairing', '数据修复'],
-                            ['UDF-Library/Series-Discovery', '序列发现'],
-                            ['UDF-Library/Series-Processing', '序列处理'],
-                            ['UDF-Library/String-Processing', '字符串处理'],
-                            ['UDF-Library/M4', 'M4']
-                        ]
-                    },
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
@@ -1971,6 +2020,7 @@ var config = {
 						children: [
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
+							['Reference/Status-Codes','状态码'],
 							['Reference/Keywords','关键字'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']
 						]

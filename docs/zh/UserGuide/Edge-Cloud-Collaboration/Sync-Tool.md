@@ -114,9 +114,9 @@ IoTDB> DROP PIPE my_pipe
 
 | **参数名** | **ip_white_list**                                            |
 | ---------- | ------------------------------------------------------------ |
-| 描述       | 设置同步功能发送端 IP 地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端 IP 地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端接受全部 IP 的同步请求。 对该参数进行配置时，需要保证发送端所有 DataNode 地址均被覆盖。 |
+| 描述       | 设置同步功能发送端 IP 地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端 IP 地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端拒绝除了本地以外的全部 IP 的同步请求。 对该参数进行配置时，需要保证发送端所有 DataNode 地址均被覆盖。 |
 | 类型       | String                                                       |
-| 默认值     | 0.0.0.0/0                                                    |
+| 默认值     | 127.0.0.1/32                                                    |
 
 ## 6.SQL
 
@@ -222,9 +222,10 @@ IoTDB> DROP PIPE <PipeName>
     - 当 role 为 sender 时，这一字段值为 Pipe 的同步起始时间和是否同步删除操作
     - 当 role 为 receiver 时，这一字段值为当前 DataNode 上创建的同步连接对应的存储组名称
 
-  - `message`：Pipe运行信息，当 Pipe 正常运行时，这一字段通常为空，当出现异常时，可能出现两种状态：
+  - `message`：Pipe运行信息，当 Pipe 正常运行时，这一字段通常为NORMAL，当出现异常时，可能出现两种状态：
     - WARN 状态，这表明发生了数据丢失或者其他错误，但是 Pipe 会保持运行
-    - ERROR 状态，这表明发生了网络长时间中断或者接收端出现问题，Pipe 被停止，置为 STOP 状态
+    - ERROR 状态，这表明出现了网络连接正常但数据无法传输的问题，例如发送端 IP 不在接收端白名单中，或是发送端与接收端版本不兼容
+    - 当出现 ERROR 状态时，建议 STOP PIPE 后查看 DataNode 日志，检查接收端配置或网络情况后重新 START PIPE
 
 ```Plain%20Text
 IoTDB> SHOW PIPES
@@ -232,9 +233,9 @@ IoTDB>
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 |            create time|   name |    role|       remote|   status|                          attributes|message|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
-|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0|       |
+|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0| NORMAL|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+ 
-|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'|       |
+|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'| NORMAL|
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 ```
 
@@ -356,3 +357,6 @@ It costs 0.134s
 - 执行 `DROP PIPE p` 提示 `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}. Please execute [DROP PIPE p] later to retry.`
   - 原因：存在状态为 Running 的 DataNode 无法连通，Pipe 已在部分节点上被删除，状态被置为 ***DROP***。
   - 解决方案：执行 `SHOW DATANODES` 语句，检查无法连通的 DataNode 网络，或等待其状态变为 Unknown 后重新执行语句。
+- 运行时日志提示 `org.apache.iotdb.commons.exception.IoTDBException: root.** already been created as database`
+  - 原因：同步工具试图在接收端自动创建发送端的Database，属于正常现象
+  - 解决方案：无需干预

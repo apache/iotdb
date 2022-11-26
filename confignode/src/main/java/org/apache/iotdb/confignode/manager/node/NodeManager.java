@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -61,7 +60,6 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -198,8 +196,10 @@ public class NodeManager {
     ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
     ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
 
+    ratisConfig.setDataMaxRetryAttempts(conf.getDataRegionRatisMaxRetryAttempts());
     ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
     ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
@@ -244,13 +244,14 @@ public class NodeManager {
       getConsensusManager().write(registerDataNodePlan);
 
       // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupCount();
+      getClusterSchemaManager().adjustMaxRegionGroupNum();
 
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REGISTER_REMOVED_DATANODE.getStatusCode());
-      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
+      status.setCode(TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode());
+      status.setMessage(
+          "Cannot register datanode with wrong id. Maybe it's already removed, or it has another datanode's run-time properties.");
     }
 
     dataSet.setStatus(status);
@@ -545,10 +546,6 @@ public class NodeManager {
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
-  }
-
-  public void addMetrics() {
-    MetricService.getInstance().addMetricSet(new NodeInfoMetrics(nodeInfo));
   }
 
   /**
@@ -926,6 +923,18 @@ public class NodeManager {
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
+  }
+
+  /**
+   * Get the free disk space of the specified DataNode
+   *
+   * @param dataNodeId The index of the specified DataNode
+   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
+   */
+  public long getFreeDiskSpace(int dataNodeId) {
+    DataNodeHeartbeatCache dataNodeHeartbeatCache =
+        (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
+    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
   }
 
   /**
