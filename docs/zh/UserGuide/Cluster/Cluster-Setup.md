@@ -192,7 +192,7 @@ sbin\start-standalone.bat
 ```
 Linux 启动方式:
 ```
-bash sbin\start-standalone.sh
+bash sbin/start-standalone.sh
 ```
 这里建议使用 sudo，因为后台日志的写入可能需要 root 权限。
 
