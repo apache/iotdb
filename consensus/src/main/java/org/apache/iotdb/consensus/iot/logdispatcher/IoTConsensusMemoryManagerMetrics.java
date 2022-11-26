@@ -41,12 +41,12 @@ public class IoTConsensusMemoryManagerMetrics implements IMetricSet {
         iotConsensusMemoryManager,
         IoTConsensusMemoryManager::getMemorySizeInByte,
         Tag.NAME.toString(),
-        "MultiLeaderConsensus");
+        "IoTConsensus");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "MultiLeaderConsensus");
+        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensus");
   }
 }

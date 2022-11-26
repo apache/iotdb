@@ -67,7 +67,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
   protected static boolean originalEnableRatisLeaderBalance;
-  protected static boolean originalEnableMultiLeaderLeaderBalance;
+  protected static boolean originalEnableIoTConsensusLeaderBalance;
 
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
@@ -85,8 +85,8 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   public static void setUp() {
     originalEnableRatisLeaderBalance = CONF.isEnableRatisLeaderBalance();
     CONF.setEnableRatisLeaderBalance(true);
-    originalEnableMultiLeaderLeaderBalance = CONF.isEnableMultiLeaderLeaderBalance();
-    CONF.setEnableMultiLeaderLeaderBalance(true);
+    originalEnableIoTConsensusLeaderBalance = CONF.isEnableIoTConsensusLeaderBalance();
+    CONF.setEnableIoTConsensusLeaderBalance(true);
 
     originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
     CONF.setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
@@ -103,7 +103,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   @AfterClass
   public static void tearDown() {
     CONF.setEnableRatisLeaderBalance(originalEnableRatisLeaderBalance);
-    CONF.setEnableMultiLeaderLeaderBalance(originalEnableMultiLeaderLeaderBalance);
+    CONF.setEnableIoTConsensusLeaderBalance(originalEnableIoTConsensusLeaderBalance);
 
     CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);

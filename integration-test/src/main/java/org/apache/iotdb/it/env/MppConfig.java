@@ -335,10 +335,10 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableMultiLeaderLeaderBalance(boolean enableMultiLeaderLeaderBalance) {
+  public BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
     confignodeProperties.setProperty(
-        "enable_auto_leader_balance_for_multileader",
-        String.valueOf(enableMultiLeaderLeaderBalance));
+        "enable_auto_leader_balance_for_iot_consensus",
+        String.valueOf(enableIoTConsensusLeaderBalance));
     return this;
   }
 
