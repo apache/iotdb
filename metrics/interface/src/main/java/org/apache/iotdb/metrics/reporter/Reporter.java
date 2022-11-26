@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 public interface Reporter {
@@ -31,7 +30,4 @@ public interface Reporter {
 
   /** Get the type of reporter */
   ReporterType getReporterType();
-
-  /** Set metric manager into reporter */
-  void setMetricManager(AbstractMetricManager metricManager);
 }

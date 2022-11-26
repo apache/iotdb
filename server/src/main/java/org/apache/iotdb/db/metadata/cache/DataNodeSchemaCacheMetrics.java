@@ -49,7 +49,7 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "schemaCache");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "schemaCache");
   }
 
   @Override

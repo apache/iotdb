@@ -48,8 +48,8 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -900,12 +900,6 @@ public class IoTDBDescriptor {
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
-    conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "insert_multi_tablet_enable_multithreading_column_threshold",
-                String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1544,12 +1538,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalReporter internalReporter;
+      InternalIoTDBReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
         internalReporter = new IoTDBInternalReporter();
       } else {
-        internalReporter = new MemoryInternalReporter();
+        internalReporter = new MemoryInternalIoTDBReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
@@ -1833,24 +1827,10 @@ public class IoTDBDescriptor {
       conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
     }
 
-    conf.setMaxPendingContinuousQueryTasks(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_pending_continuous_query_tasks",
-                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
-    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
-      conf.setMaxPendingContinuousQueryTasks(64);
-    }
-
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
-
-    conf.setCqlogBufferSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   public void loadClusterProps(Properties properties) {

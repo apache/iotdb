@@ -66,7 +66,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
             "ioTConsensusServerImpl",
@@ -76,7 +76,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             "searchIndex");
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.IOT_CONSENSUS.toString(),
             Tag.NAME.toString(),
             "ioTConsensusServerImpl",

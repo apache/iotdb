@@ -76,10 +76,10 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeProcessCPUInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
 
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
   }
 
   private void collectProcessMemInfo(AbstractMetricService metricService) {
@@ -124,15 +124,15 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeProcessMemInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
   }
 
   private void collectThreadInfo(AbstractMetricService metricService) {
@@ -148,7 +148,10 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeThreadInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_THREADS_COUNT.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_THREADS_COUNT.toString(),
+        Tag.NAME.toString(),
+        "process");
   }
 
   private void collectProcessStatusInfo(AbstractMetricService metricService) {
@@ -163,7 +166,7 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeProcessStatusInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
   }
 
   private long getProcessUsedMemory() {

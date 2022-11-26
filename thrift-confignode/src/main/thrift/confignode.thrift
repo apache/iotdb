@@ -504,6 +504,11 @@ struct TGetPathsSetTemplatesResp {
 }
 
 // SYNC
+struct TRecordPipeMessageReq{
+  1: required string pipeName
+  2: required binary message
+}
+
 struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
@@ -1040,6 +1045,9 @@ service IConfigNodeRPCService {
 
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   // ======================================================
   // TestTools
