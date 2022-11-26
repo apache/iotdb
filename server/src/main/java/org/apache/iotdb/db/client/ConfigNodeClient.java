@@ -1643,7 +1643,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
