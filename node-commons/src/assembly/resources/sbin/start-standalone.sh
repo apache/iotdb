@@ -19,5 +19,5 @@
 #
 
 nohup bash start-confignode.sh > confignode1.log 2>&1 &
-sleep 6s
+sleep 6
 nohup bash start-datanode.sh > datanode1.log 2>&1 &
