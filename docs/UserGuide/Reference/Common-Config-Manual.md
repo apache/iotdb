@@ -200,12 +200,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * primitive\_array\_size
 
-|Name| primitive\_array\_size |
-|:---:|:---|
-|Description| primitive array size (length of each array) in array pool|
-|Type| Int32 |
-|Default| 32 |
-|Effective|After restart system|
+|    Name     | primitive\_array\_size                                    |
+|:-----------:|:----------------------------------------------------------|
+| Description | primitive array size (length of each array) in array pool |
+|    Type     | Int32                                                     |
+|   Default   | 64                                                        |
+|  Effective  | After restart system                                      |
 
 * chunk\_metadata\_size\_proportion
 
@@ -603,21 +603,21 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * enable\_timed\_flush\_seq\_memtable
 
-|Name| enable\_timed\_flush\_seq\_memtable |
-|:---:|:---|
-|Description| whether to enable timed flush sequence memtable |
-|Type|Boolean|
-|Default| false |
-|Effective| hot-load |
+|    Name     | enable\_timed\_flush\_seq\_memtable             |
+|:-----------:|:------------------------------------------------|
+| Description | whether to enable timed flush sequence memtable |
+|    Type     | Boolean                                         |
+|   Default   | true                                            |
+|  Effective  | hot-load                                        |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
-|Name| seq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| hot-load |
+|    Name     | seq\_memtable\_flush\_interval\_in\_ms                                                                   |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -639,12 +639,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
-|Name| unseq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| hot-load |
+|    Name     | unseq\_memtable\_flush\_interval\_in\_ms                                                                 |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
