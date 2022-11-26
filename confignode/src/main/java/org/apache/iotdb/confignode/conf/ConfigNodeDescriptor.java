@@ -324,12 +324,12 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isEnableAutoLeaderBalanceForRatis()))
                 .trim()));
 
-    conf.setEnableAutoLeaderBalanceForMultiLeader(
+    conf.setEnableAutoLeaderBalanceForIoTConsensus(
         Boolean.parseBoolean(
             properties
                 .getProperty(
-                    "enable_auto_leader_balance_for_multileader",
-                    String.valueOf(conf.isEnableAutoLeaderBalanceForMultiLeader()))
+                    "enable_auto_leader_balance_for_iot_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))
                 .trim()));
 
     String routePriorityPolicy =

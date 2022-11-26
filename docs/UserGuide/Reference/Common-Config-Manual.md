@@ -891,15 +891,6 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |Default| 30000 |
 |Effective|After restart system|
 
-* cross\_compaction\_memory\_budget
-
-|Name| cross\_compaction\_memory\_budget |
-|:---:|:---|
-|Description| Memory budget for a cross space compaction |
-|Type| int32 |
-|Default| 2147483648 |
-|Effective|After restart system|
-
 * compaction\_thread\_count
 
 |Name| compaction\_thread\_count |
