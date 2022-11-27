@@ -243,5 +243,9 @@ public class Utils {
         properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
 
     GrpcConfigKeys.Server.setHeartbeatChannel(properties, true);
+    RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMin(
+        properties, config.getRpc().getFirstElectionTimeoutMin());
+    RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
+        properties, config.getRpc().getFirstElectionTimeoutMax());
   }
 }
