@@ -363,19 +363,21 @@ public interface BaseConfig {
     return 10000;
   }
 
-  default BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
+  default BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     return this;
   }
 
-  default boolean isEnableRatisLeaderBalance() {
+  default boolean isEnableAutoLeaderBalanceForRatisConsensus() {
     return false;
   }
 
-  default BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
+  default BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
     return this;
   }
 
-  default boolean isEnableIoTConsensusLeaderBalance() {
+  default boolean isEnableAutoLeaderBalanceForIoTConsensus() {
     return true;
   }
 
