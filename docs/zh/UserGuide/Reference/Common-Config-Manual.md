@@ -870,7 +870,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 |名字| cross\_performer |
 |:---:|:-----------------|
-|描述| 跨空间合并任务执行器的类型    |
+|描述| 跨空间合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中   |
 |类型| String           |
 |默认值| read\_point      |
 |改后生效方式| 重启服务生效           |
@@ -886,12 +886,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_seq\_performer
 
-|名字| inner\_seq\_performer |
-|:---:|:----------------------|
-|描述| 顺序空间内合并任务执行器的类型       |
-|类型| String                |
-|默认值| read\_chunk           |
-|改后生效方式| 重启服务生效                |
+|名字| inner\_seq\_performer                                       |
+|:---:|:------------------------------------------------------------|
+|描述| 顺序空间内合并任务执行器的类型，可选项是read_chunk和fast，默认是read_chunk，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_chunk                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * inner\_unseq\_selector
 
@@ -904,12 +904,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_unseq\_performer
 
-|名字| inner\_unseq\_performer |
-|:---:|:------------------------|
-|描述| 乱序空间内合并任务执行器的类型         |
-|类型| String                  |
-|默认值| read\_point             |
-|改后生效方式| 重启服务生效                  |
+|名字| inner\_unseq\_performer                                     |
+|:---:|:------------------------------------------------------------|
+|描述| 乱序空间内合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_point                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * compaction\_priority
 
@@ -949,21 +949,21 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * chunk\_size\_lower\_bound\_in\_compaction
 
-|     名字     | chunk\_size\_lower\_bound\_in\_compaction             |
-| :----------: | :---------------------------------------------------- |
-|     描述     | 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并 |
-|     类型     | Int64                                                 |
-|    默认值    | 128                                                   |
-| 改后生效方式 | 重启服务生效                                          |
+|     名字     | chunk\_size\_lower\_bound\_in\_compaction |
+| :----------: |:------------------------------------------|
+|     描述     | 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并            |
+|     类型     | Int64                                     |
+|    默认值    | 10240                                     |
+| 改后生效方式 | 重启服务生效                                    |
 
 * chunk\_point\_num\_lower\_bound\_in\_compaction
 
 |名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
-|:---:|:---|
-|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
-|类型| int32 |
-|默认值| 100 |
-|改后生效方式|重启服务生效|
+|:---:|:------------------------------------------------|
+|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并                  |
+|类型| int32                                           |
+|默认值| 1000                                            |
+|改后生效方式| 重启服务生效                                          |
 
 * max\_inner\_compaction\_candidate\_file\_num
 
@@ -1161,11 +1161,11 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 * max\_number\_of\_points\_in\_page
 
 |名字| max\_number\_of\_points\_in\_page |
-|:---:|:---|
-|描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量 |
-|类型| int32 |
-|默认值| 1048576 |
-|改后生效方式|热加载|
+|:---:|:----------------------------------|
+|描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量         |
+|类型| int32                             |
+|默认值| 10000                             |
+|改后生效方式| 热加载                              |
 
 * max\_string\_length
 
