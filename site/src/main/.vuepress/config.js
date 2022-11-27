@@ -1045,6 +1045,7 @@ var config = {
 					{
 						title: 'Reference',
 						children: [
+							['Reference/Common-Config-Manual','Common Config Manual'],
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Status-Codes','Status Codes'],
@@ -2018,6 +2019,7 @@ var config = {
 					{
 						title: '参考',
 						children: [
+							['Reference/Common-Config-Manual','公共配置参数'],
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Status-Codes','状态码'],
