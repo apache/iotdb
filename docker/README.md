@@ -45,6 +45,33 @@ docker build -t my-iotdb:<version> -f Dockerfile-<version>
 
 # How to run IoTDB server 
 
+## 1.0.0
+
+### 1c1d
+```shell
+docker run -d -p 6667:6667 apache/iotdb:<version>
+```
+
+### Confignode and Datanode
+```shell
+# confignode
+docker run --name confignode \
+  -p 22277:22277 \
+  -p 22278:22278 \
+  --network=host \
+  apache-iotdb:confignode \
+  -itd
+# datanode
+docker run --name datanode \
+  -p 6667:6667 \
+  -p 9003:9003 \
+  -p 8777:8777 \
+  --network=host \
+  apache-iotdb:datanode \
+  -itd
+```
+
+## History version
 Actually, we maintain a repo on dockerhub, so that you can get the docker image directly.
 
 For example,

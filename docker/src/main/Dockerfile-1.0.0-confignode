@@ -22,29 +22,26 @@
 FROM openjdk:11-jre-slim
 
 ADD distribution/target/apache-iotdb-*-all-bin.zip /
-ADD docker/src/main/DockerCompose/start-1c1d.sh /
+ADD docker/src/main/DockerCompose/start-confignode.sh /
 
 RUN apt update \
   && apt install lsof dos2unix procps unzip -y \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && mv /start-1c1d.sh /iotdb/sbin \
-  && sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
+  && mv /start-confignode.sh /iotdb \
+  && chmod +x /iotdb/start-confignode.sh \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y \
-RUN dos2unix /iotdb/sbin/start-1c1d.sh
+RUN dos2unix /iotdb/start-confignode.sh
 RUN dos2unix /iotdb/sbin/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
-RUN dos2unix /iotdb/sbin/start-datanode.sh
-RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
-EXPOSE 6667
+EXPOSE 22277
+EXPOSE 22278
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-1c1d.sh"]
+ENTRYPOINT ["/iotdb/start-confignode.sh"]
