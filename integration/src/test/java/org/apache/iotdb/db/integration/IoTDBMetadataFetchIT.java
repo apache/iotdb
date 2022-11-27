@@ -730,8 +730,8 @@ public class IoTDBMetadataFetchIT {
           new HashSet<>(
               Arrays.asList(
                   "root.sg1.d0.s0,null,root.sg1,INT32,RLE,SNAPPY,null,null,null,null,\n",
-                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,sdt,{compdev=2},\n",
-                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,sdt,{compdev=0.01, compmintime=2, compmaxtime=15},\n"));
+                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=2},\n",
+                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},\n"));
       try {
         boolean hasResultSet = statement.execute("SHOW TIMESERIES root.sg1.d0.*");
         if (hasResultSet) {
