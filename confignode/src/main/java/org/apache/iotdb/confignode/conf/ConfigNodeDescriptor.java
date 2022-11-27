@@ -171,8 +171,7 @@ public class ConfigNodeDescriptor {
     conf.setSeriesSlotNum(
         Integer.parseInt(
             properties
-                .getProperty(
-                    "series_slot_num", String.valueOf(conf.getSeriesSlotNum()))
+                .getProperty("series_slot_num", String.valueOf(conf.getSeriesSlotNum()))
                 .trim()));
 
     conf.setSeriesPartitionExecutorClass(
