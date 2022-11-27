@@ -426,7 +426,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  public synchronized TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setStorageGroup(setStorageGroupPlan);
@@ -436,7 +436,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(List<String> deletedPaths) {
+  public synchronized TSStatus deleteStorageGroups(List<String> deletedPaths) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
@@ -485,26 +485,30 @@ public class ConfigManager implements IManager {
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<PartialPath> allStorageGroupPaths = new ArrayList<>();
+    for (String storageGroup : allStorageGroups) {
+      try {
+        allStorageGroupPaths.add(new PartialPath(storageGroup));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
     Map<String, Boolean> scanAllRegions = new HashMap<>();
     for (PartialPath path : relatedPaths) {
-      for (String storageGroup : allStorageGroups) {
-        try {
-          PartialPath storageGroupPath = new PartialPath(storageGroup);
-          if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-              && !scanAllRegions.containsKey(storageGroup)) {
-            List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
-            if (relatedSlot.isEmpty()) {
-              scanAllRegions.put(storageGroup, true);
-              partitionSlotsMap.put(storageGroup, new HashSet<>());
-            } else {
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                  .addAll(relatedSlot);
-            }
+      for (int i = 0; i < allStorageGroups.size(); i++) {
+        String storageGroup = allStorageGroups.get(i);
+        PartialPath storageGroupPath = allStorageGroupPaths.get(i);
+        if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            && !scanAllRegions.containsKey(storageGroup)) {
+          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+          if (relatedSlot.isEmpty()) {
+            scanAllRegions.put(storageGroup, true);
+            partitionSlotsMap.put(storageGroup, new HashSet<>());
+          } else {
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                .addAll(relatedSlot);
           }
-        } catch (IllegalPathException e) {
-          // this line won't be reached in general
-          throw new RuntimeException(e);
         }
       }
     }
@@ -750,7 +754,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(
           errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
-    if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
+    if (req.getSeriesPartitionSlotNum() != conf.getSeriesSlotNum()) {
       return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
     if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {

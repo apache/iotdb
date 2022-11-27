@@ -50,7 +50,7 @@ public class RegionBalancer {
   public RegionBalancer(IManager configManager) {
     this.configManager = configManager;
 
-    switch (ConfigNodeDescriptor.getInstance().getConf().getRegionAllocateStrategy()) {
+    switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
       case COPY_SET:
         this.regionGroupAllocator = new CopySetRegionGroupAllocator();
         break;
@@ -145,7 +145,7 @@ public class RegionBalancer {
     return configManager.getPartitionManager();
   }
 
-  public enum RegionGroupAllocateStrategy {
+  public enum RegionGroupAllocatePolicy {
     COPY_SET,
     GREEDY
   }

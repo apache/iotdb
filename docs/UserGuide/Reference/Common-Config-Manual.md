@@ -26,12 +26,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 * `iotdb-common.properties`：IoTDB common configurations.
 
 
-## Hot Modification Configuration
+## Effective
+Different configuration parameters take effect in the following three ways:
 
-For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately.
-In the parameters described below, these parameters whose way of `Effective` is `hot-load` support hot modification.
-
-Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
++ **Only allowed to be modified in first start up:** Can't be modified after first start, otherwise the ConfigNode/DataNode cannot start.
++ **After restarting system:** Can be modified after the ConfigNode/DataNode first start, but take effect after restart.
++ **hot-load:** Can be modified while the ConfigNode/DataNode is running, and trigger through sending the command(sql) `load configuration` to the IoTDB server by client or session.
 
 ## Configuration File
 
@@ -40,7 +40,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * config\_node\_consensus\_protocol\_class
 
 |    Name     | config\_node\_consensus\_protocol\_class                               |
-| :---------: | :--------------------------------------------------------------------- |
+|:-----------:|:-----------------------------------------------------------------------|
 | Description | Consensus protocol of ConfigNode replicas, only support RatisConsensus |
 |    Type     | String                                                                 |
 |   Default   | org.apache.iotdb.consensus.ratis.RatisConsensus                        |
@@ -48,68 +48,140 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * schema\_replication\_factor
 
-|Name| schema\_replication\_factor |
-|:---:|:---|
-|Description| Schema replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | schema\_replication\_factor                                      |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Schema replication num                                           |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * schema\_region\_consensus\_protocol\_class
 
-|    Name     | schema\_region\_consensus\_protocol\_class                                                                                                   |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus |  |
-|    Type     | String                                                                                                                                       |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                            |
-|  Effective  | Only allowed to be modified in first start up                                                                                                |
+|    Name     |                                                  schema\_region\_consensus\_protocol\_class                                                  |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------:|
+| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus  |
+|    Type     |                                                                    String                                                                    |
+|   Default   |                                               org.apache.iotdb.consensus.ratis.RatisConsensus                                                |
+|  Effective  |                                                Only allowed to be modified in first start up                                                 |
 
 * data\_replication\_factor
 
-|Name| data\_replication\_factor |
-|:---:|:---|
-|Description| Data replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | data\_replication\_factor                                        |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Data replication num                                             |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * data\_region\_consensus\_protocol\_class
 
-|    Name     | data\_region\_consensus\_protocol\_class                                                                                                                      |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|    Type     | String                                                                                                                                                        |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                             |
-|  Effective  | Only allowed to be modified in first start up                                                                                                                 |
+|    Name     | data\_region\_consensus\_protocol\_class                                                                                                             |
+|:-----------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use IoTConsensus or RatisConsensus |
+|    Type     | String                                                                                                                                               |
+|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                    |
+|  Effective  | Only allowed to be modified in first start up                                                                                                        |
 
-### Partition (Load balancing) Configuration
+### Load balancing Configuration
 
 * series\_partition\_slot\_num
 
-|Name| series\_partition\_slot\_num |
-|:---:|:---|
-|Description| Slot num of series partition |
-|Type| int32 |
-|Default| 10000 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | series\_slot\_num                             |
+|:-----------:|:----------------------------------------------|
+| Description | Slot num of series partition                  |
+|    Type     | int32                                         |
+|   Default   | 10000                                         |
+|  Effective  | Only allowed to be modified in first start up |
 
 * series\_partition\_executor\_class
 
 |    Name     | series\_partition\_executor\_class                                |
-| :---------: | :---------------------------------------------------------------- |
+|:-----------:|:------------------------------------------------------------------|
 | Description | Series partition hash function                                    |
 |    Type     | String                                                            |
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |  Effective  | Only allowed to be modified in first start up                     |
 
-* region\_allocate\_strategy
+* schema\_region\_per\_data\_node
 
-|    Name     | region\_allocate\_strategy                                                                               |
-| :---------: | :------------------------------------------------------------------------------------------------------- |
-| Description | Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters |
-|    Type     | String                                                                                                   |
-|   Default   | GREEDY                                                                                                   |
-|  Effective  | After restarting system                                                                                  |
+|    Name     | schema\_region\_per\_data\_node                                            |
+|:-----------:|:---------------------------------------------------------------------------|
+| Description | The maximum number of SchemaRegion expected to be managed by each DataNode |
+|    Type     | double                                                                     |
+|   Default   | 1.0                                                                        |
+|  Effective  | After restarting system                                                    |
+
+* data\_region\_group\_extension\_policy
+
+|    Name     | data\_region\_group\_extension\_policy  |
+|:-----------:|:----------------------------------------|
+| Description | The extension policy of DataRegionGroup |
+|    Type     | string                                  |
+|   Default   | AUTO                                    |
+|  Effective  | After restarting system                 |
+
+* data\_region\_group\_per\_database
+
+|    Name     | data\_region\_group\_per\_database                                                                           |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------|
+| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy |
+|    Type     | int                                                                                                          |
+|   Default   | 1                                                                                                            |
+|  Effective  | After restarting system                                                                                      |
+
+* data\_region\_per\_processor
+
+|    Name     | data\_region\_per\_processor                                              |
+|:-----------:|:--------------------------------------------------------------------------|
+| Description | The maximum number of DataRegion expected to be managed by each processor |
+|    Type     | double                                                                    |
+|   Default   | 1.0                                                                       |
+|  Effective  | After restarting system                                                   |
+
+* least\_data\_region\_group\_num
+
+|    Name     | least\_data\_region\_group\_num                       |
+|:-----------:|:------------------------------------------------------|
+| Description | The least number of DataRegionGroup for each Database |
+|    Type     | int                                                   |
+|   Default   | 5                                                     |
+|  Effective  | After restarting system                               |
+
+* enable\_data\_partition\_inherit\_policy
+
+|    Name     | enable\_data\_partition\_inherit\_policy           |
+|:-----------:|:---------------------------------------------------|
+| Description | Whether to enable the DataPartition inherit policy |
+|    Type     | Boolean                                            |
+|   Default   | false                                              |
+|  Effective  | After restarting system                            |
+
+* leader\_distribution\_policy
+
+|    Name     | leader\_distribution\_policy                            |
+|:-----------:|:--------------------------------------------------------|
+| Description | The policy of cluster RegionGroups' leader distribution |
+|    Type     | String                                                  |
+|   Default   | MIN_COST_FLOW                                           |
+|  Effective  | After restarting system                                 |
+
+* enable\_auto\_leader\_balance\_for\_ratis
+
+|    Name     | enable\_auto\_leader\_balance\_for\_ratis\_consensus               |
+|:-----------:|:-------------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for Ratis consensus protocol |
+|    Type     | Boolean                                                            |
+|   Default   | false                                                              |
+|  Effective  | After restarting system                                            |
+
+* enable\_auto\_leader\_balance\_for\_iot\_consensus
+
+|    Name     | enable\_auto\_leader\_balance\_for\_iot\_consensus              |
+|:-----------:|:----------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for IoTConsensus protocol |
+|    Type     | Boolean                                                         |
+|   Default   | true                                                            |
+|  Effective  | After restarting system                                         |
 
 ### Cluster Management
 
@@ -200,12 +272,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * primitive\_array\_size
 
-|Name| primitive\_array\_size |
-|:---:|:---|
-|Description| primitive array size (length of each array) in array pool|
-|Type| Int32 |
-|Default| 32 |
-|Effective|After restart system|
+|    Name     | primitive\_array\_size                                    |
+|:-----------:|:----------------------------------------------------------|
+| Description | primitive array size (length of each array) in array pool |
+|    Type     | Int32                                                     |
+|   Default   | 64                                                        |
+|  Effective  | After restart system                                      |
 
 * chunk\_metadata\_size\_proportion
 
@@ -603,21 +675,21 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * enable\_timed\_flush\_seq\_memtable
 
-|Name| enable\_timed\_flush\_seq\_memtable |
-|:---:|:---|
-|Description| whether to enable timed flush sequence memtable |
-|Type|Boolean|
-|Default| false |
-|Effective| hot-load |
+|    Name     | enable\_timed\_flush\_seq\_memtable             |
+|:-----------:|:------------------------------------------------|
+| Description | whether to enable timed flush sequence memtable |
+|    Type     | Boolean                                         |
+|   Default   | true                                            |
+|  Effective  | hot-load                                        |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
-|Name| seq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| hot-load |
+|    Name     | seq\_memtable\_flush\_interval\_in\_ms                                                                   |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -639,12 +711,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
-|Name| unseq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| hot-load |
+|    Name     | unseq\_memtable\_flush\_interval\_in\_ms                                                                 |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -758,12 +830,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * cross\_performer
 
-|Name| cross\_performer                                  |
-|:---:|:--------------------------------------------------|
-|Description| the task performer type of cross space compaction |
-|Type| String                                            |
-|Default| read\_point                                       |
-|Effective| After restart system                              |
+|Name| cross\_performer                                   |
+|:---:|:---------------------------------------------------|
+|Description| the task performer type of cross space compaction. The options are read_point and fast, read_point is the default and fast is still under test |
+|Type| String                                             |
+|Default| read\_point                                        |
+|Effective| After restart system                               |
 
 * inner\_seq\_selector
 
@@ -776,12 +848,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * inner\_seq\_performer
 
-|Name| inner\_seq\_peformer                                       |
-|:---:|:-----------------------------------------------------------|
-|Description| the task performer type of inner sequence space compaction |
-|Type| String                                                     |
-|Default| read\_chunk                                                |
-|Effective| After restart system                                       |
+|Name| inner\_seq\_peformer                                                                                                                                    |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| the task performer type of inner sequence space compaction. The options are read_chunk and fast, read_chunk is the default and fast is still under test |
+|Type| String                                                                                                                                                  |
+|Default| read\_chunk                                                                                                                                             |
+|Effective| After restart system                                                                                                                                    |
 
 * inner\_unseq\_selector
 
@@ -794,12 +866,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * inner\_unseq\_performer
 
-|Name| inner\_unseq\_peformer                                       |
-|:---:|:-------------------------------------------------------------|
-|Description| the task performer type of inner unsequence space compaction |
-|Type| String                                                       |
-|Default| read\_point                                                  |
-|Effective| After restart system                                         |
+|Name| inner\_unseq\_peformer                                        |
+|:---:|:--------------------------------------------------------------|
+|Description| the task performer type of inner unsequence space compaction. The options are read_point and fast, read_point is the default and fast is still under test |
+|Type| String                                                        |
+|Default| read\_point                                                   |
+|Effective| After restart system                                          |
 
 * compaction\_priority
 
@@ -840,20 +912,20 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * chunk\_size\_lower\_bound\_in\_compaction
 
 |    Name     | chunk\_size\_lower\_bound\_in\_compaction                                               |
-| :---------: | :-------------------------------------------------------------------------------------- |
+| :---------: |:----------------------------------------------------------------------------------------|
 | Description | A source chunk will be deserialized in compaction when its size is less than this value |
 |    Type     | Int64                                                                                   |
-|   Default   | 128                                                                                     |
+|   Default   | 10240                                                                                   |
 |  Effective  | After restart system                                                                    |
 
 * chunk\_point\_num\_lower\_bound\_in\_compaction
 
-|Name| chunk\_size\_lower\_bound\_in\_compaction |
-|:---:|:---|
+|Name| chunk\_point\_num\_lower\_bound\_in\_compaction                                              |
+|:---:|:---------------------------------------------------------------------------------------------|
 |Description| A source chunk will be deserialized in compaction when its point num is less than this value |
-|Type| int32 |
-|Default| 100 |
-|Effective|After restart system|
+|Type| int32                                                                                        |
+|Default| 1000                                                                                         |
+|Effective| After restart system                                                                         |
 
 * max\_inner\_compaction\_candidate\_file\_num
 
@@ -1050,12 +1122,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * max\_number\_of\_points\_in\_page
 
-|Name| max\_number\_of\_points\_in\_page |
-|:---:|:---|
-|Description|The maximum number of data points (timestamps - valued groups) contained in a page|
-|Type|int32|
-|Default| 1048576 |
-|Effective|hot-load|
+|Name| max\_number\_of\_points\_in\_page                                                  |
+|:---:|:-----------------------------------------------------------------------------------|
+|Description| The maximum number of data points (timestamps - valued groups) contained in a page |
+|Type| int32                                                                              |
+|Default| 10000                                                                              |
+|Effective| hot-load                                                                            |
 
 * max\_degree\_of\_index\_node
 

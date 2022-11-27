@@ -222,6 +222,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "data_region_group_extension_policy", dataRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
   public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     confignodeProperties.setProperty(
         "schema_replication_factor", String.valueOf(schemaReplicationFactor));

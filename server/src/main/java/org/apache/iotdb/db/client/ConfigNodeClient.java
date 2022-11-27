@@ -183,7 +183,13 @@ public class ConfigNodeClient
   }
 
   public void init() throws TException {
-    waitAndReconnect();
+    try {
+      tryToConnect();
+    } catch (TException e) {
+      // can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect();
+    }
   }
 
   public void connect(TEndPoint endpoint) throws TException {

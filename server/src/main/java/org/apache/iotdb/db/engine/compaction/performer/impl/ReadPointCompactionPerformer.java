@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.ReadPointPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
@@ -34,23 +35,19 @@ import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.ReadPointCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.ReadPointInnerCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,9 +65,10 @@ import java.util.stream.Collectors;
 
 public class ReadPointCompactionPerformer
     implements ICrossCompactionPerformer, IUnseqCompactionPerformer {
-  private Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResource> seqFiles = Collections.emptyList();
   private List<TsFileResource> unseqFiles = Collections.emptyList();
+
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
@@ -96,9 +94,7 @@ public class ReadPointCompactionPerformer
   public ReadPointCompactionPerformer() {}
 
   @Override
-  public void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException,
-          ExecutionException {
+  public void perform() throws Exception {
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
@@ -106,7 +102,6 @@ public class ReadPointCompactionPerformer
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
-
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -129,7 +124,8 @@ public class ReadPointCompactionPerformer
       }
 
       compactionWriter.endFile();
-      updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
+      CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
+
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
     }
@@ -178,6 +174,7 @@ public class ReadPointCompactionPerformer
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
+      // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
@@ -223,31 +220,9 @@ public class ReadPointCompactionPerformer
       for (Future<Void> future : futures) {
         future.get();
       }
-      compactionWriter.checkAndMayFlushChunkMetadata();
       compactionWriter.endChunkGroup();
-    }
-  }
-
-  private static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
-    List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource fileResource = targetResources.get(i);
-      // The tmp target file may does not have any data points written due to the existence of the
-      // mods file, and it will be deleted after compaction. So skip the target file that has been
-      // deleted.
-      if (!fileResource.getTsFile().exists()) {
-        continue;
-      }
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
-          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
+      // check whether to flush chunk metadata or not
+      compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
 
@@ -295,26 +270,12 @@ public class ReadPointCompactionPerformer
         writer.write(
             tsBlock.getTimeColumn(),
             tsBlock.getValueColumns(),
-            device,
             subTaskId,
             tsBlock.getPositionCount());
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
-        TimeValuePair timeValuePair = null;
-        boolean updateFirstTime = false;
         while (pointReader.hasNextTimeValuePair()) {
-          timeValuePair = pointReader.nextTimeValuePair();
-          if (!updateFirstTime) {
-            // update start time
-            writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
-            updateFirstTime = true;
-          }
-          writer.write(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
-        }
-        // update end time
-        if (timeValuePair != null) {
-          writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
+          writer.write(pointReader.nextTimeValuePair(), subTaskId);
         }
       }
     }
@@ -327,36 +288,10 @@ public class ReadPointCompactionPerformer
       throws IOException {
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
+      return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new InnerSpaceCompactionWriter(targetFileResources.get(0));
-    }
-  }
-
-  private static void updatePlanIndexes(
-      List<TsFileResource> targetResources,
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources) {
-    // as the new file contains data of other files, track their plan indexes in the new file
-    // so that we will be able to compare data across different IoTDBs that share the same index
-    // generation policy
-    // however, since the data of unseq files are mixed together, we won't be able to know
-    // which files are exactly contained in the new file, so we have to record all unseq files
-    // in the new file
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
-      // remove the target file been deleted from list
-      if (!targetResource.getTsFile().exists()) {
-        targetResources.remove(i--);
-        continue;
-      }
-      for (TsFileResource unseqResource : unseqResources) {
-        targetResource.updatePlanIndexes(unseqResource);
-      }
-      for (TsFileResource seqResource : seqResources) {
-        targetResource.updatePlanIndexes(seqResource);
-      }
+      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
     }
   }
 

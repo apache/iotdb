@@ -502,13 +502,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
     logger.debug("[StartForceReleaseFIDataExchangeResource]");
-    if (sinkHandles.containsKey(fragmentInstanceId)) {
-      ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
+    ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
+    if (sinkHandle != null) {
       sinkHandle.abort();
       sinkHandles.remove(fragmentInstanceId);
     }
-    if (sourceHandles.containsKey(fragmentInstanceId)) {
-      Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+    Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+    if (planNodeIdToSourceHandle != null) {
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
         logger.debug("[CloseSourceHandle] {}", entry.getKey());
         entry.getValue().abort();
