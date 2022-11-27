@@ -53,14 +53,14 @@ public class ConfigNodeConfig {
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = 1.0;
 
-  /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Data region consensus protocol */
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /** The maximum number of DataRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;

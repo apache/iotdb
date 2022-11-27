@@ -426,7 +426,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  public synchronized TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setStorageGroup(setStorageGroupPlan);
@@ -436,7 +436,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(List<String> deletedPaths) {
+  public synchronized TSStatus deleteStorageGroups(List<String> deletedPaths) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
