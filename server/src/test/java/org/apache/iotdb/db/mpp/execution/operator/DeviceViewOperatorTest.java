@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -113,6 +115,9 @@ public class DeviceViewOperatorTest {
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
@@ -127,6 +132,9 @@ public class DeviceViewOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<String> devices = new ArrayList<>();
       devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
@@ -156,12 +164,11 @@ public class DeviceViewOperatorTest {
           continue;
         }
         assertEquals(3, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count % 500;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
-              count < 25
+              count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
@@ -190,9 +197,8 @@ public class DeviceViewOperatorTest {
             }
           }
         }
-        count++;
       }
-      assertEquals(50, count);
+      assertEquals(1000, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

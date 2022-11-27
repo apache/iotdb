@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,6 +56,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -119,6 +121,9 @@ public class LimitOperatorTest {
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
@@ -133,6 +138,9 @@ public class LimitOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -154,30 +162,24 @@ public class LimitOperatorTest {
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        if (count < 12) {
-          assertEquals(20, tsBlock.getPositionCount());
-        } else {
-          assertEquals(10, tsBlock.getPositionCount());
-        }
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(i));
+
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
+          if ((long) count < 200) {
+            assertEquals(20000 + (long) count, tsBlock.getColumn(0).getInt(i));
+            assertEquals(20000 + (long) count, tsBlock.getColumn(1).getInt(i));
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
+            assertEquals(10000 + (long) count, tsBlock.getColumn(0).getInt(i));
+            assertEquals(10000 + (long) count, tsBlock.getColumn(1).getInt(i));
           } else {
-            assertEquals(expectedTime, tsBlock.getColumn(0).getInt(i));
-            assertEquals(expectedTime, tsBlock.getColumn(1).getInt(i));
+            assertEquals(count, tsBlock.getColumn(0).getInt(i));
+            assertEquals(count, tsBlock.getColumn(1).getInt(i));
           }
         }
-        count++;
       }
-      assertEquals(13, count);
+      assertEquals(250, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
