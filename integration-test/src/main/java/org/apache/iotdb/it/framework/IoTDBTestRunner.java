@@ -45,14 +45,18 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
-    Description description = describeChild(method);
-    logger.info("Run {}", description.getMethodName());
-    long currentTime = System.currentTimeMillis();
-    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
-    super.runChild(method, notifier);
-    double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
-    String testName = description.getClassName() + "." + description.getMethodName();
-    logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
-    listener.addTestStat(new IoTDBTestStat(testName, timeCost));
+    if (method.getName().contains("IoTDBPartitionGetterIT")
+        || method.getName().contains("IoTDBPartitionDurableIT")
+        || method.getName().contains("IoTDBClusterRegionLeaderBalancingIT")) {
+      Description description = describeChild(method);
+      logger.info("Run {}", description.getMethodName());
+      long currentTime = System.currentTimeMillis();
+      EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+      super.runChild(method, notifier);
+      double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
+      String testName = description.getClassName() + "." + description.getMethodName();
+      logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
+      listener.addTestStat(new IoTDBTestStat(testName, timeCost));
+    }
   }
 }
