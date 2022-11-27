@@ -342,17 +342,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
+  public BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     confignodeProperties.setProperty(
-        "enable_auto_leader_balance_for_ratis", String.valueOf(enableRatisLeaderBalance));
+        "enable_auto_leader_balance_for_ratis_consensus",
+        String.valueOf(enableAutoLeaderBalanceForRatisConsensus));
     return this;
   }
 
   @Override
-  public BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
+  public BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
     confignodeProperties.setProperty(
         "enable_auto_leader_balance_for_iot_consensus",
-        String.valueOf(enableIoTConsensusLeaderBalance));
+        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
     return this;
   }
 
