@@ -1035,6 +1035,9 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMinMs = 50L;
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
+  private long dataRatisLogMaxMB = 20480;
+  private long schemaRatisLogMaxMB = 20480;
+
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -3557,5 +3560,21 @@ public class IoTDBConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public long getDataRatisLogMaxMB() {
+    return dataRatisLogMaxMB;
+  }
+
+  public void setDataRatisLogMaxMB(long dataRatisLogMaxMB) {
+    this.dataRatisLogMaxMB = dataRatisLogMaxMB;
+  }
+
+  public long getSchemaRatisLogMaxMB() {
+    return schemaRatisLogMaxMB;
+  }
+
+  public void setSchemaRatisLogMaxMB(long schemaRatisLogMaxMB) {
+    this.schemaRatisLogMaxMB = schemaRatisLogMaxMB;
   }
 }

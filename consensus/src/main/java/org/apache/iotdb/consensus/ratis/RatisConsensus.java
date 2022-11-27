@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -83,6 +84,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -119,6 +121,7 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final ExecutorService addExecutor;
+  private final ScheduledExecutorService diskGuardian;
 
   private final RatisConfig config;
 
@@ -133,6 +136,8 @@ class RatisConsensus implements IConsensus {
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool("ratis-add");
+    diskGuardian =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("ratis-bg-disk-guardian");
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
@@ -154,13 +159,16 @@ class RatisConsensus implements IConsensus {
   @Override
   public void start() throws IOException {
     server.start();
+    startSnapshotGuardian();
   }
 
   @Override
   public void stop() throws IOException {
     addExecutor.shutdown();
+    diskGuardian.shutdown();
     try {
       addExecutor.awaitTermination(5, TimeUnit.SECONDS);
+      diskGuardian.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
       Thread.currentThread().interrupt();
@@ -670,6 +678,42 @@ class RatisConsensus implements IConsensus {
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+  }
+
+  private void triggerSnapshotByCustomize() {
+
+    Iterable<RaftGroupId> groupIds = server.getGroupIds();
+
+    for (RaftGroupId raftGroupId : groupIds) {
+      File currentDir = null;
+
+      try {
+        currentDir =
+            server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
+      } catch (IOException e) {
+        logger.warn("Get division failed: ", e);
+      }
+
+      final long currentDirLength =
+          org.apache.iotdb.consensus.common.Utils.getTotalFolderSize(currentDir);
+      final long triggerSnapshotFileSize = config.getRatisConsensus().getTriggerSnapshotFileSize();
+
+      if (currentDirLength >= triggerSnapshotFileSize) {
+        ConsensusGenericResponse consensusGenericResponse =
+            triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        if (consensusGenericResponse.isSuccess()) {
+          logger.info("Raft group " + raftGroupId + " took snapshot successfully");
+        } else {
+          logger.warn("Raft group " + raftGroupId + " failed to take snapshot");
+        }
+      }
+    }
+  }
+
+  private void startSnapshotGuardian() {
+    final long delay = config.getRatisConsensus().getTriggerSnapshotTime();
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

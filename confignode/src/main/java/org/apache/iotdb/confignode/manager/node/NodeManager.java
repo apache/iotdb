@@ -209,6 +209,9 @@ public class NodeManager {
     ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
     ratisConfig.setFirstElectionTimeoutMax(conf.getRatisFirstElectionTimeoutMaxMs());
 
+    ratisConfig.setSchemaRatisLogMax(conf.getSchemaRegionRatisLogMaxMB());
+    ratisConfig.setDataRatisLogMax(conf.getDataRegionRatisLogMaxMB());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 

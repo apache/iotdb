@@ -1975,6 +1975,9 @@ public class IoTDBDescriptor {
 
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
+
+    conf.setSchemaRatisLogMaxMB(ratisConfig.getSchemaRatisLogMax());
+    conf.setDataRatisLogMaxMB(ratisConfig.getDataRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

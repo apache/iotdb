@@ -247,6 +247,10 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
+  private long configNodeRatisLogMaxMB = 20480;
+  private long schemaRegionRatisLogMaxMB = 20480;
+  private long dataRegionRatisLogMaxMB = 20480;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -968,5 +972,29 @@ public class ConfigNodeConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public long getConfigNodeRatisLogMaxMB() {
+    return configNodeRatisLogMaxMB;
+  }
+
+  public void setConfigNodeRatisLogMaxMB(long configNodeRatisLogMaxMB) {
+    this.configNodeRatisLogMaxMB = configNodeRatisLogMaxMB;
+  }
+
+  public long getSchemaRegionRatisLogMaxMB() {
+    return schemaRegionRatisLogMaxMB;
+  }
+
+  public void setSchemaRegionRatisLogMaxMB(long schemaRegionRatisLogMaxMB) {
+    this.schemaRegionRatisLogMaxMB = schemaRegionRatisLogMaxMB;
+  }
+
+  public long getDataRegionRatisLogMaxMB() {
+    return dataRegionRatisLogMaxMB;
+  }
+
+  public void setDataRegionRatisLogMaxMB(long dataRegionRatisLogMaxMB) {
+    this.dataRegionRatisLogMaxMB = dataRegionRatisLogMaxMB;
   }
 }

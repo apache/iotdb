@@ -74,4 +74,10 @@ public class Utils {
     }
     return allFiles;
   }
+
+  public static long getTotalFolderSize(File rootDir) {
+    return listAllRegularFilesRecursively(rootDir).stream()
+        .mapToLong(f -> f.toFile().length())
+        .sum();
+  }
 }

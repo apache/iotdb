@@ -691,6 +691,30 @@ public class ConfigNodeDescriptor {
                     "ratis_first_election_timeout_max_ms",
                     String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
                 .trim()));
+
+    conf.setConfigNodeRatisLogMaxMB(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_max_size_MB",
+                    String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogMaxMB(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_max_size_MB",
+                    String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
+                .trim()));
+
+    conf.setDataRegionRatisLogMaxMB(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_max_size_MB",
+                    String.valueOf(conf.getDataRegionRatisLogMaxMB()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {

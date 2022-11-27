@@ -164,6 +164,8 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
+                                      .setTriggerSnapshotFileSize(
+                                          CONF.getSchemaRegionRatisLogMaxMB() * 1024 * 1024)
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
