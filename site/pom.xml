@@ -35,7 +35,7 @@
     <distributionManagement>
         <site>
             <id>apache.website</id>
-            <url>scm:git:https://github.com/apache/iotdb-website.git</url>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
     <profiles>
