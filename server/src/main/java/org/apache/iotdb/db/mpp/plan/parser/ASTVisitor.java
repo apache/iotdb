@@ -3029,7 +3029,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
     if (ctx.timeSlot != null) {
       getRegionIdStatement.setTimeSlotId(
-          new TTimePartitionSlot(Integer.parseInt(ctx.timeSlot.getText())));
+          new TTimePartitionSlot(Long.parseLong(ctx.timeSlot.getText())));
     }
     return getRegionIdStatement;
   }
