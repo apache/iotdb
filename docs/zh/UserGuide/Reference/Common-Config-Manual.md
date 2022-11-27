@@ -38,49 +38,49 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * config\_node\_consensus\_protocol\_class
 
-|     名字     | config\_node\_consensus\_protocol\_class         |
-| :----------: | :----------------------------------------------- |
-|     描述     | ConfigNode 副本的共识协议，仅支持 RatisConsensus |
-|     类型     | String                                           |
-|    默认值    | org.apache.iotdb.consensus.ratis.RatisConsensus  |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                     |
+|   名字   | config\_node\_consensus\_protocol\_class        |
+|:------:|:------------------------------------------------|
+|   描述   | ConfigNode 副本的共识协议，仅支持 RatisConsensus           |
+|   类型   | String                                          |
+|  默认值   | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                  |
 
 * schema\_replication\_factor
 
-|名字| schema\_replication\_factor |
-|:---:|:----------------------------|
-|描述| Database 的默认元数据副本数          |
-|类型| int32                       |
-|默认值| 1                           |
-|改后生效方式| 重启服务后对**新的 Database** 生效    |
+|   名字   | schema\_replication\_factor |
+|:------:|:----------------------------|
+|   描述   | Database 的默认元数据副本数          |
+|   类型   | int32                       |
+|  默认值   | 1                           |
+| 改后生效方式 | 重启服务后对**新的 Database** 生效    |
 
 
 * schema\_region\_consensus\_protocol\_class
 
-|     名字     | schema\_region\_consensus\_protocol\_class                                                   |
-| :----------: | :------------------------------------------------------------------------------------------- |
-|     描述     | 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
-|     类型     | String                                                                                       |
-|    默认值    | org.apache.iotdb.consensus.ratis.RatisConsensus                                            |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                 |
+|   名字   | schema\_region\_consensus\_protocol\_class                      |
+|:------:|:----------------------------------------------------------------|
+|   描述   | 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
+|   类型   | String                                                          |
+|  默认值   | org.apache.iotdb.consensus.ratis.RatisConsensus                 |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                  |
 
 * data\_replication\_factor
 
-|名字| data\_replication\_factor |
-|:---:|:---|
-|描述| Database 的默认数据副本数|
-|类型| int32 |
-|默认值| 1 |
-|改后生效方式|重启服务后对**新的 Database** 生效|
+|   名字   | data\_replication\_factor |
+|:------:|:--------------------------|
+|   描述   | Database 的默认数据副本数         |
+|   类型   | int32                     |
+|  默认值   | 1                         |
+| 改后生效方式 | 重启服务后对**新的 Database** 生效  |
 
 * data\_region\_consensus\_protocol\_class
 
-|     名字     | data\_region\_consensus\_protocol\_class                                                                           |
-| :----------: | :----------------------------------------------------------------------------------------------------------------- |
-|     描述     | 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 IoTConsensus 或 RatisConsensus |
-|     类型     | String                                                                                                             |
-|    默认值    | org.apache.iotdb.consensus.iot.IoTConsensus                                                                  |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                       |
+|   名字   | data\_region\_consensus\_protocol\_class                                      |
+|:------:|:------------------------------------------------------------------------------|
+|   描述   | 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 IoTConsensus 或 RatisConsensus |
+|   类型   | String                                                                        |
+|  默认值   | org.apache.iotdb.consensus.iot.IoTConsensus                                   |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                |
 
 ### 负载均衡配置
 
@@ -149,12 +149,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * enable\_data\_partition\_inherit\_policy
 
-|     名字     | enable\_data\_partition\_inherit\_policy                         |
-| :----------: |:-----------------------------------------------------------------|
-|     描述     | 开启 DataPartition 继承策略后，同一个序列分区槽内的 DataPartition 会继承之前时间分区槽的分配结果 |
-|     类型     | Boolean                                                          |
-|    默认值    | false                                                            |
-| 改后生效方式 | 重启服务生效                                                           |
+|   名字   | enable\_data\_partition\_inherit\_policy                        |
+|:------:|:----------------------------------------------------------------|
+|   描述   | 开启 DataPartition 继承策略后，同一个序列分区槽内的 DataPartition 会继承之前时间分区槽的分配结果 |
+|   类型   | Boolean                                                         |
+|  默认值   | false                                                           |
+| 改后生效方式 | 重启服务生效                                                          |
 
 * leader\_distribution\_policy
 
@@ -176,12 +176,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * enable\_auto\_leader\_balance\_for\_iot\_consensus
 
-|     名字     | enable\_auto\_leader\_balance\_for\_iot\_consensus |
-| :----------: |:---------------------------------------------------|
-|     描述     | 是否为 IoT 共识协议开启自动均衡 leader 策略                       |
-|     类型     | Boolean                                            |
-|    默认值    | true                                               |
-| 改后生效方式 | 重启服务生效                                     |
+|   名字   | enable\_auto\_leader\_balance\_for\_iot\_consensus |
+|:------:|:---------------------------------------------------|
+|   描述   | 是否为 IoT 共识协议开启自动均衡 leader 策略                       |
+|   类型   | Boolean                                            |
+|  默认值   | true                                               |
+| 改后生效方式 | 重启服务生效                                             |
 
 ### 集群管理
 
