@@ -875,10 +875,14 @@ public class IoTDBConfig {
   private int archivingThreadNum = 2;
 
   // determines whether audit logs are written to log files or IoTDB
-  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_NONE;
+  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_LOGGER;
 
   // determines whether audit logs record IoTDB write operation
-  private boolean enableAuditLogWrite = false;
+  private boolean enableAuditLogWrite = true;
+
+  private int remoteConfigPort = 8667;
+
+  private boolean enableExternalService = false;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -2842,5 +2846,21 @@ public class IoTDBConfig {
 
   public void setEnableAuditLogWrite(boolean enableAuditLogWrite) {
     this.enableAuditLogWrite = enableAuditLogWrite;
+  }
+
+  public int getRemoteConfigPort() {
+    return remoteConfigPort;
+  }
+
+  public void setRemoteConfigPort(int remoteConfigPort) {
+    this.remoteConfigPort = remoteConfigPort;
+  }
+
+  public boolean isEnableExternalService() {
+    return enableExternalService;
+  }
+
+  public void setEnableExternalService(boolean enableExternalService) {
+    this.enableExternalService = enableExternalService;
   }
 }
