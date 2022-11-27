@@ -816,7 +816,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 |名字| cross\_performer |
 |:---:|:-----------------|
-|描述| 跨空间合并任务执行器的类型    |
+|描述| 跨空间合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中   |
 |类型| String           |
 |默认值| read\_point      |
 |改后生效方式| 重启服务生效           |
@@ -832,12 +832,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_seq\_performer
 
-|名字| inner\_seq\_performer |
-|:---:|:----------------------|
-|描述| 顺序空间内合并任务执行器的类型       |
-|类型| String                |
-|默认值| read\_chunk           |
-|改后生效方式| 重启服务生效                |
+|名字| inner\_seq\_performer                                       |
+|:---:|:------------------------------------------------------------|
+|描述| 顺序空间内合并任务执行器的类型，可选项是read_chunk和fast，默认是read_chunk，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_chunk                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * inner\_unseq\_selector
 
@@ -850,12 +850,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_unseq\_performer
 
-|名字| inner\_unseq\_performer |
-|:---:|:------------------------|
-|描述| 乱序空间内合并任务执行器的类型         |
-|类型| String                  |
-|默认值| read\_point             |
-|改后生效方式| 重启服务生效                  |
+|名字| inner\_unseq\_performer                                     |
+|:---:|:------------------------------------------------------------|
+|描述| 乱序空间内合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_point                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * compaction\_priority
 
