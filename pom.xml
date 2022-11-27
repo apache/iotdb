@@ -84,7 +84,7 @@
         <module>thrift</module>
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
-        <module>thrift-multi-leader-consensus</module>
+        <module>thrift-iot-consensus</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
@@ -832,7 +832,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-multi-leader-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>

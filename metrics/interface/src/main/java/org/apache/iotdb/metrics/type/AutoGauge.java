@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
+
 public interface AutoGauge extends IMetric {
   /** get value according to the state of obj */
   long value();
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("value", value());
+  }
 }

@@ -62,14 +62,14 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
         Tag.STATUS.toString(),
         "running");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),

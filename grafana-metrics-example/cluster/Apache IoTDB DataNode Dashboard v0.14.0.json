@@ -334,7 +334,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "mem{instance=~\"$instance\", name!=\"MultiLeaderConsensus\"}",
+          "expr": "mem{instance=~\"$instance\", name!=\"IoTConsensus\"}",
           "interval": "",
           "legendFormat": "{{name}}",
           "range": true,
@@ -975,7 +975,7 @@
           "refId": "A"
         }
       ],
-      "title": "MultiLeader",
+      "title": "IoTConsensus",
       "type": "row"
     },
     {
@@ -1057,14 +1057,14 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "mem{name=\"MultiLeaderConsensus\"}",
+          "expr": "mem{name=\"IoTConsensus\"}",
           "interval": "",
           "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Used Memory",
+      "title": "IoTConsensus Used Memory",
       "type": "timeseries"
     },
     {
@@ -1146,7 +1146,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"safeIndex\"}",
+          "expr": "iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"safeIndex\"}",
           "interval": "",
           "legendFormat": "{{region}}-safeIndex",
           "range": true,
@@ -1159,7 +1159,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"searchIndex\"}",
+          "expr": "iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"searchIndex\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{region}}-searchIndex",
@@ -1167,7 +1167,7 @@
           "refId": "B"
         }
       ],
-      "title": "MultiLeader Sync Index",
+      "title": "IoTConsensus Sync Index",
       "type": "timeseries"
     },
     {
@@ -1250,7 +1250,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(multi_leader{name=\"multiLeaderServerImpl\", type=\"searchIndex\"}) by (instance) - sum(multi_leader{name=\"multiLeaderServerImpl\", type=\"safeIndex\"}) by (instance)",
+          "expr": "sum(iot_consensus{name=\"ioTConsensusServerImpl\", type=\"searchIndex\"}) by (instance) - sum(iot_consensus{name=\"ioTConsensusServerImpl\", type=\"safeIndex\"}) by (instance)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{instance}} Total Sync Lag",
@@ -1264,7 +1264,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(multi_leader{type=~\"cachedRequestInMemoryQueue\"}) by (instance)",
+          "expr": "sum(iot_consensus{type=~\"cachedRequestInMemoryQueue\"}) by (instance)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{instance}} Cached Request",
@@ -1272,7 +1272,7 @@
           "refId": "B"
         }
       ],
-      "title": "MultiLeader Overview",
+      "title": "IoTConsensus Overview",
       "type": "timeseries"
     },
     {
@@ -1627,13 +1627,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "irate(multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"searchIndex\"}[1m])",
+          "expr": "irate(iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"searchIndex\"}[1m])",
           "interval": "",
           "legendFormat": "{{region}}",
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Search Index Rate",
+      "title": "IoTConsensus Search Index Rate",
       "type": "timeseries"
     },
     {
@@ -1719,14 +1719,14 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "irate(multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"safeIndex\"}[1m])",
+          "expr": "irate(iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"safeIndex\"}[1m])",
           "interval": "",
           "legendFormat": "{{region}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Safe Index Rate",
+      "title": "IoTConsensus Safe Index Rate",
       "type": "timeseries"
     },
     {
@@ -1807,13 +1807,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(multi_leader{instance=~\"$instance\", type=~\"cachedRequestInMemoryQueue\"}) by (region, name)",
+          "expr": "sum(iot_consensus{instance=~\"$instance\", type=~\"cachedRequestInMemoryQueue\"}) by (region, name)",
           "interval": "",
           "legendFormat": "{{region}} {{name}}",
           "refId": "A"
         }
       ],
-      "title": "MultiLeader LogDispatcher Request Size",
+      "title": "IoTConsensus LogDispatcher Request Size",
       "type": "timeseries"
     },
     {
@@ -1895,7 +1895,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"searchIndex\"}) by (region) - sum(multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"safeIndex\"}) by (region)",
+          "expr": "sum(iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"searchIndex\"}) by (region) - sum(iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"safeIndex\"}) by (region)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{region}}",
@@ -1985,7 +1985,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(multi_leader{instance=~\"$instance\", name=\"multiLeaderServerImpl\", type=\"searchIndex\"}) by (region) - max(multi_leader{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region)",
+          "expr": "sum(iot_consensus{instance=~\"$instance\", name=\"ioTConsensusServerImpl\", type=\"searchIndex\"}) by (region) - max(iot_consensus{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region)",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2077,7 +2077,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "max(multi_leader{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region) - min(multi_leader{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region)",
+          "expr": "max(iot_consensus{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region) - min(iot_consensus{instance=~\"$instance\", name=~\"logDispatcher.*\", type=\"currentSyncIndex\"}) by (region)",
           "format": "time_series",
           "instant": false,
           "interval": "",

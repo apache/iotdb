@@ -45,16 +45,16 @@ public class DataRegionMetrics implements IMetricSet {
         dataRegion,
         DataRegion::getMemCost,
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -53,33 +54,17 @@ public class ConfigNodeConfig {
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = 1.0;
+  /** Default number of SchemaRegion replicas */
+  private int schemaReplicationFactor = 1;
 
-  /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Data region consensus protocol */
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
-  /** The maximum number of DataRegion expected to be managed by each DataNode. */
-  private double dataRegionPerProcessor = 0.5;
-
-  /** The least number of SchemaRegionGroup for each StorageGroup. */
-  private int leastSchemaRegionGroupNum = 1;
-
-  /** The least number of DataRegionGroup for each StorageGroup. */
-  private int leastDataRegionGroupNum = 5;
-
-  /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
-      RegionBalancer.RegionAllocateStrategy.GREEDY;
-
-  /**
-   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * previous TimePartitionSlot if set true
-   */
-  private boolean enableDataPartitionInheritPolicy = false;
+  /** Default number of DataRegion replicas */
+  private int dataReplicationFactor = 1;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
@@ -87,6 +72,35 @@ public class ConfigNodeConfig {
   /** SeriesPartitionSlot executor class */
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+
+  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = schemaReplicationFactor;
+
+  /** The policy of extension DataRegionGroup for each Database. */
+  private DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+      DataRegionGroupExtensionPolicy.AUTO;
+
+  /** The number of DataRegionGroups for each Database */
+  private int dataRegionGroupPerDatabase = 10;
+
+  /** The maximum number of DataRegions expected to be managed by each DataNode. */
+  private double dataRegionPerProcessor = 1.0;
+
+  /** The least number of SchemaRegionGroup for each Database. */
+  private int leastSchemaRegionGroupNum = 1;
+
+  /** The least number of DataRegionGroup for each Database. */
+  private int leastDataRegionGroupNum = 5;
+
+  /** RegionGroup allocate policy. */
+  private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
+      RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
+
+  /**
+   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
+   * previous TimePartitionSlot if set true
+   */
+  private boolean enableDataPartitionInheritPolicy = false;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -132,12 +146,6 @@ public class ConfigNodeConfig {
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
 
-  /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 1;
-
-  /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 1;
-
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;
 
@@ -156,6 +164,12 @@ public class ConfigNodeConfig {
 
   /** The policy of cluster RegionGroups' leader distribution */
   private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
+
+  /** Whether to enable auto leader balance for Ratis consensus protocol */
+  private boolean enableAutoLeaderBalanceForRatisConsensus = false;
+
+  /** Whether to enable auto leader balance for IoTConsensus protocol */
+  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
 
   /** The route priority policy of cluster read/write requests */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
@@ -399,6 +413,23 @@ public class ConfigNodeConfig {
     this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
+  public DataRegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
+    return dataRegionGroupExtensionPolicy;
+  }
+
+  public void setDataRegionGroupExtensionPolicy(
+      DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
+    this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
+  }
+
+  public int getDataRegionGroupPerDatabase() {
+    return dataRegionGroupPerDatabase;
+  }
+
+  public void setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    this.dataRegionGroupPerDatabase = dataRegionGroupPerDatabase;
+  }
+
   public double getSchemaRegionPerDataNode() {
     return schemaRegionPerDataNode;
   }
@@ -439,13 +470,13 @@ public class ConfigNodeConfig {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
   }
 
-  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
-    return regionAllocateStrategy;
+  public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {
+    return regionGroupAllocatePolicy;
   }
 
   public void setRegionAllocateStrategy(
-      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
-    this.regionAllocateStrategy = regionAllocateStrategy;
+      RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
+    this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
   }
 
   public boolean isEnableDataPartitionInheritPolicy() {
@@ -576,6 +607,24 @@ public class ConfigNodeConfig {
 
   public void setLeaderDistributionPolicy(String leaderDistributionPolicy) {
     this.leaderDistributionPolicy = leaderDistributionPolicy;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForRatisConsensus() {
+    return enableAutoLeaderBalanceForRatisConsensus;
+  }
+
+  public void setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
+    this.enableAutoLeaderBalanceForRatisConsensus = enableAutoLeaderBalanceForRatisConsensus;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return enableAutoLeaderBalanceForIoTConsensus;
+  }
+
+  public void setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
   }
 
   public String getRoutePriorityPolicy() {

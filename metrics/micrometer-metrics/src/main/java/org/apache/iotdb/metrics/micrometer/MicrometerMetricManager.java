@@ -117,6 +117,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     switch (type) {
       case COUNTER:
         return Meter.Type.COUNTER;
+      case AUTO_GAUGE:
       case GAUGE:
       case RATE:
         return Meter.Type.GAUGE;

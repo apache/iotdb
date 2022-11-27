@@ -106,13 +106,13 @@ public class SystemMetrics implements IMetricSet {
 
     metricService
         .getOrCreateGauge(
-            Metric.SYS_CPU_CORES.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "system")
+            Metric.SYS_CPU_CORES.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
         .set(osMXBean.getAvailableProcessors());
   }
 
   private void removeSystemCpuInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.SYS_CPU_LOAD.toString(), Tag.NAME.toString(), "system");
+        MetricType.AUTO_GAUGE, Metric.SYS_CPU_LOAD.toString(), Tag.NAME.toString(), "system");
 
     metricService.remove(
         MetricType.GAUGE, Metric.SYS_CPU_CORES.toString(), Tag.NAME.toString(), "system");
@@ -163,22 +163,25 @@ public class SystemMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "system");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
     metricService.remove(
-        MetricType.GAUGE, Metric.SYS_COMMITTED_VM_SIZE.toString(), Tag.NAME.toString(), "system");
+        MetricType.AUTO_GAUGE,
+        Metric.SYS_COMMITTED_VM_SIZE.toString(),
+        Tag.NAME.toString(),
+        "system");
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
@@ -221,9 +224,15 @@ public class SystemMetrics implements IMetricSet {
   private void removeSystemDiskInfo(AbstractMetricService metricService) {
     fileStores.clear();
     metricService.remove(
-        MetricType.GAUGE, Metric.SYS_DISK_TOTAL_SPACE.toString(), Tag.NAME.toString(), "system");
+        MetricType.AUTO_GAUGE,
+        Metric.SYS_DISK_TOTAL_SPACE.toString(),
+        Tag.NAME.toString(),
+        "system");
     metricService.remove(
-        MetricType.GAUGE, Metric.SYS_DISK_FREE_SPACE.toString(), Tag.NAME.toString(), "system");
+        MetricType.AUTO_GAUGE,
+        Metric.SYS_DISK_FREE_SPACE.toString(),
+        Tag.NAME.toString(),
+        "system");
   }
 
   private void collectDiskMetrics() {

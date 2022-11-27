@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -192,12 +193,11 @@ public class ConfigNodeDescriptor {
                 conf.getSchemaRegionConsensusProtocolClass())
             .trim());
 
-    conf.setSchemaRegionPerDataNode(
-        Double.parseDouble(
+    conf.setSchemaReplicationFactor(
+        Integer.parseInt(
             properties
                 .getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode()))
+                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
     conf.setDataRegionConsensusProtocolClass(
@@ -205,6 +205,33 @@ public class ConfigNodeDescriptor {
             .getProperty(
                 "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass())
             .trim());
+
+    conf.setDataReplicationFactor(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
+                .trim()));
+
+    conf.setSchemaRegionPerDataNode(
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "schema_region_per_data_node",
+                    String.valueOf(conf.getSchemaReplicationFactor()))
+                .trim()));
+
+    conf.setDataRegionGroupExtensionPolicy(
+        DataRegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "data_region_group_extension_policy",
+                conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDataRegionGroupPerDatabase(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_group_per_database",
+                String.valueOf(conf.getDataRegionGroupPerDatabase()).trim())));
 
     conf.setDataRegionPerProcessor(
         Double.parseDouble(
@@ -220,9 +247,10 @@ public class ConfigNodeDescriptor {
 
     try {
       conf.setRegionAllocateStrategy(
-          RegionBalancer.RegionAllocateStrategy.valueOf(
+          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
               properties
-                  .getProperty("region_allocate_strategy", conf.getRegionAllocateStrategy().name())
+                  .getProperty(
+                      "region_group_allocate_policy", conf.getRegionGroupAllocatePolicy().name())
                   .trim()));
     } catch (IllegalArgumentException e) {
       LOGGER.warn(
@@ -281,20 +309,6 @@ public class ConfigNodeDescriptor {
                     "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
                 .trim()));
 
-    conf.setSchemaReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
-                .trim()));
-
-    conf.setDataReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
-                .trim()));
-
     conf.setHeartbeatIntervalInMs(
         Long.parseLong(
             properties
@@ -315,6 +329,22 @@ public class ConfigNodeDescriptor {
               "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
               leaderDistributionPolicy));
     }
+
+    conf.setEnableAutoLeaderBalanceForRatisConsensus(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_ratis_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForRatisConsensus()))
+                .trim()));
+
+    conf.setEnableAutoLeaderBalanceForIoTConsensus(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_iot_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))
+                .trim()));
 
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
