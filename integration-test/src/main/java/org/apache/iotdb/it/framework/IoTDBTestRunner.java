@@ -45,9 +45,9 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
-    if (method.getName().contains("IoTDBPartitionGetterIT")
-        || method.getName().contains("IoTDBPartitionDurableIT")
-        || method.getName().contains("IoTDBClusterRegionLeaderBalancingIT")) {
+    if (method.getName().contains("testMCFLeaderDistribution")
+        || method.getName().contains("testRemovingDataNode")
+        || method.getName().contains("testGetSlots")) {
       Description description = describeChild(method);
       logger.info("Run {}", description.getMethodName());
       long currentTime = System.currentTimeMillis();
