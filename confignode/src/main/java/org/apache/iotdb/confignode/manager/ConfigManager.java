@@ -485,26 +485,30 @@ public class ConfigManager implements IManager {
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<PartialPath> allStorageGroupPaths = new ArrayList<>();
+    for (String storageGroup : allStorageGroups) {
+      try {
+        allStorageGroupPaths.add(new PartialPath(storageGroup));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
     Map<String, Boolean> scanAllRegions = new HashMap<>();
     for (PartialPath path : relatedPaths) {
-      for (String storageGroup : allStorageGroups) {
-        try {
-          PartialPath storageGroupPath = new PartialPath(storageGroup);
-          if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-              && !scanAllRegions.containsKey(storageGroup)) {
-            List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
-            if (relatedSlot.isEmpty()) {
-              scanAllRegions.put(storageGroup, true);
-              partitionSlotsMap.put(storageGroup, new HashSet<>());
-            } else {
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                  .addAll(relatedSlot);
-            }
+      for (int i = 0; i < allStorageGroups.size(); i++) {
+        String storageGroup = allStorageGroups.get(i);
+        PartialPath storageGroupPath = allStorageGroupPaths.get(i);
+        if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            && !scanAllRegions.containsKey(storageGroup)) {
+          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+          if (relatedSlot.isEmpty()) {
+            scanAllRegions.put(storageGroup, true);
+            partitionSlotsMap.put(storageGroup, new HashSet<>());
+          } else {
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                .addAll(relatedSlot);
           }
-        } catch (IllegalPathException e) {
-          // this line won't be reached in general
-          throw new RuntimeException(e);
         }
       }
     }
