@@ -94,9 +94,7 @@ public class ConsensusManager {
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(
-                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              SIMPLE_CONSENSUS)));
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, SIMPLE_CONSENSUS)));
     } else {
       // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
