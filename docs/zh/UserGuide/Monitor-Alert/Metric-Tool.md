@@ -88,19 +88,19 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
 
 ### 4.1.2. IoTDB 进程运行状态
-| Metric            | Tags          | Type      | Description                         |
-| ----------------- | ------------- | --------- | ----------------------------------- |
-| process_cpu_load  | name="cpu"    | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
-| process_cpu_time  | name="cpu"    | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
-| process_max_mem   | name="memory" | AutoGauge | IoTDB 进程最大可用内存              |
-| process_total_mem | name="memory" | AutoGauge | IoTDB 进程当前已申请内存            |
-| process_free_mem  | name="memory" | AutoGauge | IoTDB 进程当前剩余可用内存          |
+| Metric            | Tags           | Type      | Description                         |
+| ----------------- | -------------- | --------- | ----------------------------------- |
+| process_cpu_load  | name="process" | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
+| process_cpu_time  | name="process" | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
+| process_max_mem   | name="memory"  | AutoGauge | IoTDB 进程最大可用内存              |
+| process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存            |
+| process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
 ### 4.1.3. 系统运行状态
 | Metric                         | Tags          | Type      | Description                              |
 | ------------------------------ | ------------- | --------- | ---------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | AutoGauge | 系统的 CPU 占用率，单位为%               |
-| sys_cpu_cores                  | name="cpu"    | Gauge     | 系统的可用处理器数                       |
+| sys_cpu_load                   | name="system" | AutoGauge | 系统的 CPU 占用率，单位为%               |
+| sys_cpu_cores                  | name="system" | Gauge     | 系统的可用处理器数                       |
 | sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存                       |
 | sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存                       |
 | sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间                     |
@@ -120,11 +120,11 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 ### 4.2.2. 节点统计
-| Metric   | Tags                                       | Type      | Description                        |
-| -------- | ------------------------------------------ | --------- | ---------------------------------- |
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                     |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                   |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                   |
+| Metric   | Tags                                       | Type      | Description                          |
+| -------- | ------------------------------------------ | --------- | ------------------------------------ |
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                     |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
 | region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
@@ -189,7 +189,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
 | queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
 
-
 ### 4.2.8. 合并统计
 | Metric                | Tags                                                | Type    | Description        |
 | --------------------- | --------------------------------------------------- | ------- | ------------------ |
@@ -221,7 +220,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | Metric         | Tags                                | Type    | Description        |
 | -------------- | ----------------------------------- | ------- | ------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
-
 
 ### 4.2.12. JVM 线程统计
 
