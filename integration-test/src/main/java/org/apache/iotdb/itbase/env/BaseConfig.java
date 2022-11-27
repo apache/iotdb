@@ -231,6 +231,14 @@ public interface BaseConfig {
     return false;
   }
 
+  default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getDataRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
