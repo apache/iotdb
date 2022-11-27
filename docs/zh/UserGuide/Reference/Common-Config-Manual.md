@@ -97,20 +97,74 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 * series\_partition\_executor\_class
 
 |     名字     | series\_partition\_executor\_class                                |
-| :----------: | :---------------------------------------------------------------- |
-|     描述     | 序列分区槽数                                                      |
+| :----------: |:------------------------------------------------------------------|
+|     描述     | 序列分区哈希函数                                                          |
 |     类型     | String                                                            |
 |    默认值    | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                      |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                    |
 
-* region\_allocate\_strategy
+* schema\_region\_per\_data\_node
 
-|     名字     | region\_allocate\_strategy                          |
-| :----------: |:----------------------------------------------------|
-|     描述     | 元数据和数据的节点分配策略，COPY\_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳 |
-|     类型     | String                                              |
-|    默认值    | GREEDY                                              |
-| 改后生效方式 | 重启服务生效                                              |
+|     名字     | schema\_region\_per\_data\_node      |
+| :----------: |:-------------------------------------|
+|     描述     | 每个 DataNode 可管理的 schema region 的最大数量 |
+|     类型     | double                               |
+|    默认值    | 1.0                                  |
+| 改后生效方式 | 重启服务生效                       |
+
+* data\_region\_per\_processor
+
+|     名字     | data\_region\_per\_processor |
+| :----------: |:-----------------------------|
+|     描述     | 每个处理器可管理的 data region 的最大数量  |
+|     类型     | double                       |
+|    默认值    | 0.5                          |
+| 改后生效方式 | 重启服务生效               |
+
+* least\_data\_region\_group\_num
+
+|     名字     | least\_data\_region\_group\_num            |
+| :----------: |:-------------------------------------------|
+|     描述     | 每个 storage group 的 data region group 的最少数量 |
+|     类型     | int                                        |
+|    默认值    | 5                                          |
+| 改后生效方式 | 重启服务生效                             |
+
+* enable\_data\_partition\_inherit\_policy
+
+|     名字     | enable\_data\_partition\_inherit\_policy                          |
+| :----------: |:------------------------------------------------------------------|
+|     描述     | 开启 data partition 继承策略后，同一个序列分区槽内的 data partition 会继承之前时间分区槽的分配结果 |
+|     类型     | Boolean                                                           |
+|    默认值    | false                                                             |
+| 改后生效方式 | 重启服务生效                                                    |
+
+* leader\_distribution\_policy
+
+|     名字     | leader\_distribution\_policy  |
+| :----------: |:------------------------------|
+|     描述     | 集群 region group 的 leader 分配策略 |
+|     类型     | String                        |
+|    默认值    | MIN_COST_FLOW                 |
+| 改后生效方式 | 重启服务生效                |
+
+* enable\_auto\_leader\_balance\_for\_ratis
+
+|     名字     | enable\_auto\_leader\_balance\_for\_ratis |
+| :----------: |:------------------------------------------|
+|     描述     | 是否为 Ratis 共识协议开启自动均衡 leader 策略            |
+|     类型     | Boolean                                   |
+|    默认值    | false                                     |
+| 改后生效方式 | 重启服务生效                            |
+
+* enable\_auto\_leader\_balance\_for\_iot\_consensus
+
+|     名字     | enable\_auto\_leader\_balance\_for\_iot\_consensus |
+| :----------: |:---------------------------------------------------|
+|     描述     | 是否为 IoT 共识协议开启自动均衡 leader 策略                       |
+|     类型     | Boolean                                            |
+|    默认值    | true                                               |
+| 改后生效方式 | 重启服务生效                                     |
 
 ### 集群管理
 
