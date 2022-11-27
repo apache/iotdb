@@ -87,19 +87,19 @@ Core-level metrics are enabled by default during system operation. The addition 
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
 
 ### 4.1.2. IoTDB process
-| Metric            | Tags          | Type      | Description                                            |
-| ----------------- | ------------- | --------- | ------------------------------------------------------ |
-| process_cpu_load  | name="cpu"    | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
-| process_cpu_time  | name="cpu"    | AutoGauge | The total CPU time occupied of IoTDB process, Unit: ns |
-| process_max_mem   | name="memory" | AutoGauge | The maximum available memory of IoTDB process          |
-| process_total_mem | name="memory" | AutoGauge | The current requested memory for IoTDB process         |
-| process_free_mem  | name="memory" | AutoGauge | The free available memory of IoTDB process             |
+| Metric            | Tags           | Type      | Description                                            |
+| ----------------- | -------------- | --------- | ------------------------------------------------------ |
+| process_cpu_load  | name="process" | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
+| process_cpu_time  | name="process" | AutoGauge | The total CPU time occupied of IoTDB process, Unit: ns |
+| process_max_mem   | name="memory"  | AutoGauge | The maximum available memory of IoTDB process          |
+| process_total_mem | name="memory"  | AutoGauge | The current requested memory for IoTDB process         |
+| process_free_mem  | name="memory"  | AutoGauge | The free available memory of IoTDB process             |
 
 ### 4.1.3. System
 | Metric                         | Tags          | Type      | Description                                                |
 | ------------------------------ | ------------- | --------- | ---------------------------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | AutoGauge | The current CPU usage of system, Unit: %                   |
-| sys_cpu_cores                  | name="cpu"    | Gauge     | The available number of CPU cores                          |
+| sys_cpu_load                   | name="system" | AutoGauge | The current CPU usage of system, Unit: %                   |
+| sys_cpu_cores                  | name="system" | Gauge     | The available number of CPU cores                          |
 | sys_total_physical_memory_size | name="memory" | Gauge     | The maximum physical memory of system                      |
 | sys_free_physical_memory_size  | name="memory" | AutoGauge | The current available memory of system                     |
 | sys_total_swap_space_size      | name="memory" | AutoGauge | The maximum swap space of system                           |
@@ -134,13 +134,13 @@ Core-level metrics are enabled by default during system operation. The addition 
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | The write process of main process in replica group                    |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | The sync index of replica group                                       |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | The time consumed to get statemachine lock in main process            |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | The time consumed to precheck before write in main process            |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | The time consumed to write statemachine in main process               |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | The time consumed to try to offer request to queue in main process    |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | The time consumed to the whole write in main process                  |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | The time consumed to construct batch in synchronization thread        |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | The time consumed to sync log in asynchronous callback process        |
+| stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                         | Histogram | The time consumed to get statemachine lock in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | The time consumed to precheck before write in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="writeStateMachine"                           | Histogram | The time consumed to write statemachine in main process               |
+| stage        | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                         | Histogram | The time consumed to try to offer request to queue in main process    |
+| stage        | name="iot_consensus", region="{{region}}", type="consensusWrite"                              | Histogram | The time consumed to the whole write in main process                  |
+| stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                              | Histogram | The time consumed to construct batch in synchronization thread        |
+| stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | The time consumed to sync log in asynchronous callback process        |
 
 ### 4.2.4. Cache
 | Metric    | Tags                               | Type      | Description                                                              |
