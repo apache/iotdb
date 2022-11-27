@@ -26,12 +26,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 * `iotdb-common.properties`：IoTDB common configurations.
 
 
-## Hot Modification Configuration
+## Effective
+Different configuration parameters take effect in the following three ways:
 
-For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` and `iotdb-common.properties` during the system operation and applying them to the system immediately.
-In the parameters described below, these parameters whose way of `Effective` is `hot-load` support hot modification.
-
-Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
++ **Only allowed to be modified in first start up:** Can't be modified after first start, otherwise the ConfigNode/DataNode cannot start.
++ **After restarting system:** Can be modified after the ConfigNode/DataNode first start, but take effect after restart.
++ **hot-load:** Can be modified while the ConfigNode/DataNode is running, and trigger through sending the command(sql) `load configuration` to the IoTDB server by client or session.
 
 ## Configuration File
 
@@ -40,7 +40,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * config\_node\_consensus\_protocol\_class
 
 |    Name     | config\_node\_consensus\_protocol\_class                               |
-| :---------: | :--------------------------------------------------------------------- |
+|:-----------:|:-----------------------------------------------------------------------|
 | Description | Consensus protocol of ConfigNode replicas, only support RatisConsensus |
 |    Type     | String                                                                 |
 |   Default   | org.apache.iotdb.consensus.ratis.RatisConsensus                        |
@@ -48,55 +48,55 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * schema\_replication\_factor
 
-|Name| schema\_replication\_factor |
-|:---:|:---|
-|Description| Schema replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | schema\_replication\_factor                                      |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Schema replication num                                           |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * schema\_region\_consensus\_protocol\_class
 
-|    Name     | schema\_region\_consensus\_protocol\_class             |
-| :---------: | :--------------------------------------: |
-| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus |  |
-|    Type     | String                                                 |
-|   Default   | org.apache.iotdb.consensus.ratis.RatisConsensus      |
-|  Effective  | Only allowed to be modified in first start up         |
+|    Name     |                                                  schema\_region\_consensus\_protocol\_class                                                  |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------:|
+| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus  |
+|    Type     |                                                                    String                                                                    |
+|   Default   |                                               org.apache.iotdb.consensus.ratis.RatisConsensus                                                |
+|  Effective  |                                                Only allowed to be modified in first start up                                                 |
 
 * data\_replication\_factor
 
-|Name| data\_replication\_factor |
-|:---:|:---|
-|Description| Data replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | data\_replication\_factor                                        |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Data replication num                                             |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * data\_region\_consensus\_protocol\_class
 
-|    Name     | data\_region\_consensus\_protocol\_class                                                                                                                      |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|    Name     | data\_region\_consensus\_protocol\_class                                                                                                             |
+|:-----------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use IoTConsensus or RatisConsensus |
-|    Type     | String                                                                                                                                                        |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                             |
-|  Effective  | Only allowed to be modified in first start up                                                                                                                 |
+|    Type     | String                                                                                                                                               |
+|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                    |
+|  Effective  | Only allowed to be modified in first start up                                                                                                        |
 
-### Partition (Load balancing) Configuration
+### Load balancing Configuration
 
 * series\_partition\_slot\_num
 
-|Name| series\_partition\_slot\_num |
-|:---:|:---|
-|Description| Slot num of series partition |
-|Type| int32 |
-|Default| 10000 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | series\_slot\_num                             |
+|:-----------:|:----------------------------------------------|
+| Description | Slot num of series partition                  |
+|    Type     | int32                                         |
+|   Default   | 10000                                         |
+|  Effective  | Only allowed to be modified in first start up |
 
 * series\_partition\_executor\_class
 
 |    Name     | series\_partition\_executor\_class                                |
-| :---------: | :---------------------------------------------------------------- |
+|:-----------:|:------------------------------------------------------------------|
 | Description | Series partition hash function                                    |
 |    Type     | String                                                            |
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
@@ -105,16 +105,34 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * schema\_region\_per\_data\_node
 
 |    Name     | schema\_region\_per\_data\_node                                            |
-| :---------: |:---------------------------------------------------------------------------|
+|:-----------:|:---------------------------------------------------------------------------|
 | Description | The maximum number of SchemaRegion expected to be managed by each DataNode |
 |    Type     | double                                                                     |
 |   Default   | 1.0                                                                        |
 |  Effective  | After restarting system                                                    |
 
+* data\_region\_group\_extension\_policy
+
+|    Name     | data\_region\_group\_extension\_policy  |
+|:-----------:|:----------------------------------------|
+| Description | The extension policy of DataRegionGroup |
+|    Type     | string                                  |
+|   Default   | AUTO                                    |
+|  Effective  | After restarting system                 |
+
+* data\_region\_group\_per\_database
+
+|    Name     | data\_region\_group\_per\_database                                                                           |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------|
+| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy |
+|    Type     | int                                                                                                          |
+|   Default   | 1                                                                                                            |
+|  Effective  | After restarting system                                                                                      |
+
 * data\_region\_per\_processor
 
 |    Name     | data\_region\_per\_processor                                              |
-| :---------: |:--------------------------------------------------------------------------|
+|:-----------:|:--------------------------------------------------------------------------|
 | Description | The maximum number of DataRegion expected to be managed by each processor |
 |    Type     | double                                                                    |
 |   Default   | 1.0                                                                       |
@@ -122,17 +140,17 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * least\_data\_region\_group\_num
 
-|    Name     | least\_data\_region\_group\_num                           |
-| :---------: |:----------------------------------------------------------|
-| Description | The least number of DataRegionGroup for each StorageGroup |
-|    Type     | int                                                       |
-|   Default   | 5                                                         |
-|  Effective  | After restarting system                                   |
+|    Name     | least\_data\_region\_group\_num                       |
+|:-----------:|:------------------------------------------------------|
+| Description | The least number of DataRegionGroup for each Database |
+|    Type     | int                                                   |
+|   Default   | 5                                                     |
+|  Effective  | After restarting system                               |
 
 * enable\_data\_partition\_inherit\_policy
 
 |    Name     | enable\_data\_partition\_inherit\_policy           |
-| :---------: |:---------------------------------------------------|
+|:-----------:|:---------------------------------------------------|
 | Description | Whether to enable the DataPartition inherit policy |
 |    Type     | Boolean                                            |
 |   Default   | false                                              |
@@ -141,7 +159,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * leader\_distribution\_policy
 
 |    Name     | leader\_distribution\_policy                            |
-| :---------: |:--------------------------------------------------------|
+|:-----------:|:--------------------------------------------------------|
 | Description | The policy of cluster RegionGroups' leader distribution |
 |    Type     | String                                                  |
 |   Default   | MIN_COST_FLOW                                           |
@@ -149,8 +167,8 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * enable\_auto\_leader\_balance\_for\_ratis
 
-|    Name     | enable\_auto\_leader\_balance\_for\_ratis                               |
-| :---------: |:-------------------------------------------------------------------|
+|    Name     | enable\_auto\_leader\_balance\_for\_ratis\_consensus               |
+|:-----------:|:-------------------------------------------------------------------|
 | Description | Whether to enable auto leader balance for Ratis consensus protocol |
 |    Type     | Boolean                                                            |
 |   Default   | false                                                              |
@@ -159,7 +177,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 * enable\_auto\_leader\_balance\_for\_iot\_consensus
 
 |    Name     | enable\_auto\_leader\_balance\_for\_iot\_consensus              |
-| :---------: |:----------------------------------------------------------------|
+|:-----------:|:----------------------------------------------------------------|
 | Description | Whether to enable auto leader balance for IoTConsensus protocol |
 |    Type     | Boolean                                                         |
 |   Default   | true                                                            |

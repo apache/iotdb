@@ -136,7 +136,7 @@ public class PartitionManager {
   private void setSeriesPartitionExecutor() {
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            CONF.getSeriesPartitionExecutorClass(), CONF.getSeriesPartitionSlotNum());
+            CONF.getSeriesPartitionExecutorClass(), CONF.getSeriesSlotNum());
   }
 
   // ======================================================
@@ -405,7 +405,7 @@ public class PartitionManager {
               + unassignedPartitionSlotsCount;
       float maxRegionGroupCount =
           getClusterSchemaManager().getMaxRegionGroupNum(storageGroup, consensusGroupType);
-      float maxSlotCount = CONF.getSeriesPartitionSlotNum();
+      float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
       // 1. The number of current RegionGroup of the StorageGroup is less than the least number
