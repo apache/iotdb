@@ -72,7 +72,7 @@ public enum ServiceType {
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
   MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
   INTERNAL_SERVICE("Internal Service", "InternalService"),
-  IOT_CONSENSUS_SERVICE("Multi Leader consensus Service", "IoTConsensusRPCService");
+  IOT_CONSENSUS_SERVICE("IoTConsensus Service", "IoTConsensusRPCService");
 
   private final String name;
   private final String jmxName;
