@@ -180,15 +180,24 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
       builder.declarePosition();
-      ;
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
         columnIndex++) {
       ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
       Column column = tsBlock.getColumn(columnIndex);
-      for (int i = 0; i < size; i++) {
-        columnBuilder.write(column, i);
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < size; i++) {
+          if (column.isNull(i)) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.write(column, i);
+          }
+        }
+      } else {
+        for (int i = 0; i < size; i++) {
+          columnBuilder.write(column, i);
+        }
       }
     }
   }
