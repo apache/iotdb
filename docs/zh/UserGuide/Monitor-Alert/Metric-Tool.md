@@ -131,19 +131,19 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
 ### 4.2.3. IoT共识协议统计
-| Metric       | Tags                                                                                         | Type      | Description                      |
-| ------------ | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | 副本组主流程写入进度             |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | 副本组同步进度                   |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | 主流程获取状态机锁耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | 主流程写入状态机检查耗时         |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | 主流程写入状态机耗时             |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | 主流程尝试添加队列耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | 主流程全写入耗时                 |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | 同步线程构造 Batch 耗时          |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | 异步回调流程同步日志耗时         |
+| Metric        | Tags                                                                                         | Type      | Description                      |
+| ------------- | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时         |
+| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时             |
+| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时                 |
+| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时          |
+| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时         |
 
 ### 4.2.4. 缓存统计
 | Metric    | Tags                               | Type      | Description                                             |
@@ -178,7 +178,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ------ | ----------------------------- | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"   | AutoGauge | IoT共识协议的内存占用，单位为byte            |
+| mem    | name="IoTConsensus"           | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
 
 ### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |
