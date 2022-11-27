@@ -102,14 +102,68 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |  Effective  | Only allowed to be modified in first start up                     |
 
-* region\_allocate\_strategy
+* schema\_region\_per\_data\_node
 
-|    Name     | region\_allocate\_strategy                                                                               |
-| :---------: | :------------------------------------------------------------------------------------------------------- |
-| Description | Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters |
-|    Type     | String                                                                                                   |
-|   Default   | GREEDY                                                                                                   |
-|  Effective  | After restarting system                                                                                  |
+|    Name     | schema\_region\_per\_data\_node                                            |
+| :---------: |:---------------------------------------------------------------------------|
+| Description | The maximum number of SchemaRegion expected to be managed by each DataNode |
+|    Type     | double                                                                     |
+|   Default   | 1.0                                                                        |
+|  Effective  | After restarting system                                                    |
+
+* data\_region\_per\_processor
+
+|    Name     | data\_region\_per\_processor                                              |
+| :---------: |:--------------------------------------------------------------------------|
+| Description | The maximum number of DataRegion expected to be managed by each processor |
+|    Type     | double                                                                    |
+|   Default   | 1.0                                                                       |
+|  Effective  | After restarting system                                                   |
+
+* least\_data\_region\_group\_num
+
+|    Name     | least\_data\_region\_group\_num                           |
+| :---------: |:----------------------------------------------------------|
+| Description | The least number of DataRegionGroup for each StorageGroup |
+|    Type     | int                                                       |
+|   Default   | 5                                                         |
+|  Effective  | After restarting system                                   |
+
+* enable\_data\_partition\_inherit\_policy
+
+|    Name     | enable\_data\_partition\_inherit\_policy           |
+| :---------: |:---------------------------------------------------|
+| Description | Whether to enable the DataPartition inherit policy |
+|    Type     | Boolean                                            |
+|   Default   | false                                              |
+|  Effective  | After restarting system                            |
+
+* leader\_distribution\_policy
+
+|    Name     | leader\_distribution\_policy                            |
+| :---------: |:--------------------------------------------------------|
+| Description | The policy of cluster RegionGroups' leader distribution |
+|    Type     | String                                                  |
+|   Default   | MIN_COST_FLOW                                           |
+|  Effective  | After restarting system                                 |
+
+* enable\_auto\_leader\_balance\_for\_ratis
+
+|    Name     | enable\_auto\_leader\_balance\_for\_ratis                               |
+| :---------: |:-------------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for Ratis consensus protocol |
+|    Type     | Boolean                                                            |
+|   Default   | false                                                              |
+|  Effective  | After restarting system                                            |
+
+* enable\_auto\_leader\_balance\_for\_iot\_consensus
+
+|    Name     | enable\_auto\_leader\_balance\_for\_iot\_consensus              |
+| :---------: |:----------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for IoTConsensus protocol |
+|    Type     | Boolean                                                         |
+|   Default   | true                                                            |
+|  Effective  | After restarting system                                         |
 
 ### Cluster Management
 
