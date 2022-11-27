@@ -57,12 +57,12 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 * schema\_region\_consensus\_protocol\_class
 
-|    Name     | schema\_region\_consensus\_protocol\_class                                                                                                   |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------- |
+|    Name     | schema\_region\_consensus\_protocol\_class             |
+| :---------: | :--------------------------------------: |
 | Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus |  |
-|    Type     | String                                                                                                                                       |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                            |
-|  Effective  | Only allowed to be modified in first start up                                                                                                |
+|    Type     | String                                                 |
+|   Default   | org.apache.iotdb.consensus.ratis.RatisConsensus      |
+|  Effective  | Only allowed to be modified in first start up         |
 
 * data\_replication\_factor
 
@@ -77,7 +77,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 |    Name     | data\_region\_consensus\_protocol\_class                                                                                                                      |
 | :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
+| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use IoTConsensus or RatisConsensus |
 |    Type     | String                                                                                                                                                        |
 |   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                             |
 |  Effective  | Only allowed to be modified in first start up                                                                                                                 |

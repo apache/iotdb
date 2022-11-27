@@ -334,7 +334,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "mem{instance=~\"$instance\", name!=\"MultiLeaderConsensus\"}",
+          "expr": "mem{instance=~\"$instance\", name!=\"IoTConsensus\"}",
           "interval": "",
           "legendFormat": "{{name}}",
           "range": true,
@@ -975,7 +975,7 @@
           "refId": "A"
         }
       ],
-      "title": "MultiLeader",
+      "title": "IoTConsensus",
       "type": "row"
     },
     {
@@ -1057,14 +1057,14 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "mem{name=\"MultiLeaderConsensus\"}",
+          "expr": "mem{name=\"IoTConsensus\"}",
           "interval": "",
           "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Used Memory",
+      "title": "IoTConsensus Used Memory",
       "type": "timeseries"
     },
     {
@@ -1167,7 +1167,7 @@
           "refId": "B"
         }
       ],
-      "title": "MultiLeader Sync Index",
+      "title": "IoTConsensus Sync Index",
       "type": "timeseries"
     },
     {
@@ -1272,7 +1272,7 @@
           "refId": "B"
         }
       ],
-      "title": "MultiLeader Overview",
+      "title": "IoTConsensus Overview",
       "type": "timeseries"
     },
     {
@@ -1633,7 +1633,7 @@
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Search Index Rate",
+      "title": "IoTConsensus Search Index Rate",
       "type": "timeseries"
     },
     {
@@ -1726,7 +1726,7 @@
           "refId": "A"
         }
       ],
-      "title": "MultiLeader Safe Index Rate",
+      "title": "IoTConsensus Safe Index Rate",
       "type": "timeseries"
     },
     {
@@ -1813,7 +1813,7 @@
           "refId": "A"
         }
       ],
-      "title": "MultiLeader LogDispatcher Request Size",
+      "title": "IoTConsensus LogDispatcher Request Size",
       "type": "timeseries"
     },
     {
