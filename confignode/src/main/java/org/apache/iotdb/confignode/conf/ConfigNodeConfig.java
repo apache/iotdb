@@ -67,7 +67,7 @@ public class ConfigNodeConfig {
   private int dataReplicationFactor = 1;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
-  private int seriesPartitionSlotNum = 10000;
+  private int seriesSlotNum = 10000;
 
   /** SeriesPartitionSlot executor class */
   private String seriesPartitionExecutorClass =
@@ -333,12 +333,12 @@ public class ConfigNodeConfig {
     this.configNodeRegionId = configNodeRegionId;
   }
 
-  public int getSeriesPartitionSlotNum() {
-    return seriesPartitionSlotNum;
+  public int getSeriesSlotNum() {
+    return seriesSlotNum;
   }
 
-  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+  public void setSeriesSlotNum(int seriesSlotNum) {
+    this.seriesSlotNum = seriesSlotNum;
   }
 
   public String getSeriesPartitionExecutorClass() {

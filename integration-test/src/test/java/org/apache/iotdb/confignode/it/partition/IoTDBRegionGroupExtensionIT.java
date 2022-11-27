@@ -63,6 +63,9 @@ public class IoTDBRegionGroupExtensionIT {
   private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
+  private static int originalDataRegionGroupPerDatabase;
+  private static final int testDataRegionGroupPerDatabase = 5;
+
   private static int originalSchemaReplicationFactor;
   private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
@@ -70,6 +73,7 @@ public class IoTDBRegionGroupExtensionIT {
   private static long originalTimePartitionInterval;
 
   private static final String sg = "root.sg";
+  private static final int testSgNum = 5;
 
   @Before
   public void setUp() throws Exception {
@@ -88,6 +92,9 @@ public class IoTDBRegionGroupExtensionIT {
     originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
     CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
 
+    originalDataRegionGroupPerDatabase = CONF.getDataRegionGroupPerDatabase();
+    CONF.setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase);
+
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
@@ -101,6 +108,7 @@ public class IoTDBRegionGroupExtensionIT {
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
     CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
+    CONF.setDataRegionGroupPerDatabase(originalDataRegionGroupPerDatabase);
   }
 
   @Test
@@ -109,28 +117,40 @@ public class IoTDBRegionGroupExtensionIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      /* Set StorageGroup */
-      TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
-      TSStatus status = client.setStorageGroup(setReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      for (int i = 0; i < testSgNum; i++) {
+        String curSg = sg + i;
 
-      /* Insert a DataPartition to create DataRegionGroups */
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-          ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg, 0, 10, 0, 10, originalTimePartitionInterval);
-      TDataPartitionTableResp dataPartitionTableResp =
-          client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
+        /* Set StorageGroup */
+        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(curSg));
+        TSStatus status = client.setStorageGroup(setReq);
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      /* Check the number of DataRegionGroups */
-      TShowRegionResp showRegionReq = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
-      AtomicInteger regionCount = new AtomicInteger(0);
-      showRegionReq.getRegionInfoList().forEach(regionInfo -> regionCount.getAndIncrement());
-      Assert.assertEquals(10 * testReplicationFactor, regionCount.get());
+        /* Insert a DataPartition to create DataRegionGroups */
+        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+            ConfigNodeTestUtils.constructPartitionSlotsMap(
+                curSg, 0, 10, 0, 10, originalTimePartitionInterval);
+        TDataPartitionTableResp dataPartitionTableResp =
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            dataPartitionTableResp.getStatus().getCode());
+
+        /* Check the number of DataRegionGroups */
+        TShowRegionResp showRegionReq = client.showRegion(new TShowRegionReq());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+        AtomicInteger regionCount = new AtomicInteger(0);
+        showRegionReq
+            .getRegionInfoList()
+            .forEach(
+                regionInfo -> {
+                  if (regionInfo.getStorageGroup().equals(curSg)) {
+                    regionCount.getAndIncrement();
+                  }
+                });
+        Assert.assertEquals(
+            testDataRegionGroupPerDatabase * testReplicationFactor, regionCount.get());
+      }
     }
   }
 }

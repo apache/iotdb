@@ -239,6 +239,14 @@ public interface BaseConfig {
     return "AUTO";
   }
 
+  default BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getDataRegionGroupPerDatabase() {
+    return 1;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }

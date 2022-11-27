@@ -168,11 +168,11 @@ public class ConfigNodeDescriptor {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
     }
 
-    conf.setSeriesPartitionSlotNum(
+    conf.setSeriesSlotNum(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))
+                    "series_slot_num", String.valueOf(conf.getSeriesSlotNum()))
                 .trim()));
 
     conf.setSeriesPartitionExecutorClass(
