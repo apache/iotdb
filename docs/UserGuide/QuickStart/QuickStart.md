@@ -67,8 +67,6 @@ Users can start IoTDB standalone mode by the start-standalone script under the s
 # Unix/OS X
 > bash sbin/start-standalone.sh
 ```
-It's recommended to use sudo here, because you may need root permission to write backstage logs.
-
 ```
 # Windows
 > sbin\start-standalone.bat

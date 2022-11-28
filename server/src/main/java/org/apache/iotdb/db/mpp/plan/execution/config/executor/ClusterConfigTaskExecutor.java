@@ -305,9 +305,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
-        jarFileName = new File(createFunctionStatement.getUriString()).getName();
+        jarFileName = new File(uriString).getName();
         try {
-          if (!new URI(uriString).getScheme().equals("file")) {
+          URI uri = new URI(uriString);
+          if (uri.getScheme() == null) {
+            future.setException(
+                new IoTDBException(
+                    "The scheme of URI is not set, please specify the scheme of URI.",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+          if (!uri.getScheme().equals("file")) {
             // download executable
             ExecutableResource resource =
                 UDFExecutableManager.getInstance().request(Collections.singletonList(uriString));
@@ -468,9 +476,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
-        jarFileName = new File(createTriggerStatement.getUriString()).getName();
+        jarFileName = new File(uriString).getName();
         try {
-          if (!new URI(uriString).getScheme().equals("file")) {
+          URI uri = new URI(uriString);
+          if (uri.getScheme() == null) {
+            future.setException(
+                new IoTDBException(
+                    "The scheme of URI is not set, please specify the scheme of URI.",
+                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+            return future;
+          }
+          if (!uri.getScheme().equals("file")) {
             // download executable
             ExecutableResource resource =
                 TriggerExecutableManager.getInstance()

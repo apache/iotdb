@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
@@ -327,6 +329,18 @@ public class IoTDBPartitionGetterIT {
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       Assert.assertEquals(0, dataPartitionTableResp.getDataPartitionTableSize());
 
+      // Re-calculate the least DataRegionGroup num based on the test resource
+      int totalCpuCoreNum = 0;
+      TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+      for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+        totalCpuCoreNum += dataNodeInfo.getCpuCoreNum();
+      }
+      int leastDataRegionGroupNum =
+          (int)
+              Math.ceil(
+                  (double) totalCpuCoreNum / (double) (storageGroupNum * testReplicationFactor));
+      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testLeastDataRegionGroupNum);
+
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
@@ -359,12 +373,12 @@ public class IoTDBPartitionGetterIT {
         }
 
         // Check the number of DataRegionGroup.
-        // And this number should be greater than or equal to testLeastDataRegionGroupNum
+        // And this number should be greater than or equal to leastDataRegionGroupNum
         TShowStorageGroupResp showStorageGroupResp =
             client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
         Assert.assertTrue(
             showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
-                >= testLeastDataRegionGroupNum);
+                >= leastDataRegionGroupNum);
       }
     }
   }
