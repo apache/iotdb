@@ -247,9 +247,9 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
-  private long configNodeRatisLogMaxMB = 20480;
-  private long schemaRegionRatisLogMaxMB = 20480;
-  private long dataRegionRatisLogMaxMB = 20480;
+  private long configNodeRatisLogMaxMB = 2 * 1024;
+  private long schemaRegionRatisLogMaxMB = 2 * 1024;
+  private long dataRegionRatisLogMaxMB = 20 * 1024;
 
   public ConfigNodeConfig() {
     // empty constructor

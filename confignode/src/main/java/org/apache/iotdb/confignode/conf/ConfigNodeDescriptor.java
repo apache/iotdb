@@ -694,27 +694,33 @@ public class ConfigNodeDescriptor {
 
     conf.setConfigNodeRatisLogMaxMB(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "config_node_ratis_log_max_size_MB",
-                    String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
-                .trim()));
+                properties
+                    .getProperty(
+                        "config_node_ratis_log_max_size_mb",
+                        String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
 
     conf.setSchemaRegionRatisLogMaxMB(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "schema_region_ratis_log_max_size_MB",
-                    String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
-                .trim()));
+                properties
+                    .getProperty(
+                        "schema_region_ratis_log_max_size_mb",
+                        String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
 
     conf.setDataRegionRatisLogMaxMB(
         Long.parseLong(
-            properties
-                .getProperty(
-                    "data_region_ratis_log_max_size_MB",
-                    String.valueOf(conf.getDataRegionRatisLogMaxMB()))
-                .trim()));
+                properties
+                    .getProperty(
+                        "data_region_ratis_log_max_size_mb",
+                        String.valueOf(conf.getDataRegionRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
   }
 
   private void loadCQConfig(Properties properties) {

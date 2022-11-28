@@ -35,6 +35,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.Utils.MemorizedFileSizeCalc;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -124,6 +125,8 @@ class RatisConsensus implements IConsensus {
   private final ScheduledExecutorService diskGuardian;
 
   private final RatisConfig config;
+
+  private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -692,10 +695,11 @@ class RatisConsensus implements IConsensus {
             server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
       } catch (IOException e) {
         logger.warn("Get division failed: ", e);
+        continue;
       }
 
       final long currentDirLength =
-          org.apache.iotdb.consensus.common.Utils.getTotalFolderSize(currentDir);
+          calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
       final long triggerSnapshotFileSize = config.getRatisConsensus().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {

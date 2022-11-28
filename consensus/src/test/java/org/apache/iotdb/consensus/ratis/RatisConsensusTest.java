@@ -44,7 +44,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -79,7 +78,7 @@ public class RatisConsensusTest {
               .setRatisConsensus(
                   RatisConfig.RatisConsensus.newBuilder()
                       .setTriggerSnapshotFileSize(1)
-                      .setTriggerSnapshotTime(2)
+                      .setTriggerSnapshotTime(4)
                       .build())
               .build();
       int finalI = i;
@@ -232,25 +231,6 @@ public class RatisConsensusTest {
 
     int newLeaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
     Assert.assertEquals((leaderIndex + 1) % 3, newLeaderIndex);
-  }
-
-  @Test
-  public void triggerSnapshotByCustomizeTest() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
-    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
-    Thread.sleep(5000); // ensure the snapshot is taken
-    RatisConsensus consensus = (RatisConsensus) servers.get(0);
-    Assert.assertTrue(
-        Objects.requireNonNull(
-                    consensus
-                        .getServer()
-                        .getDivision(Utils.fromConsensusGroupIdToRaftGroupId(gid))
-                        .getRaftStorage()
-                        .getStorageDir()
-                        .getStateMachineDir()
-                        .list())
-                .length
-            != 0);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
