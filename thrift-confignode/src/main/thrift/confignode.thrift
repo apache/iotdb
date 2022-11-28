@@ -406,7 +406,7 @@ struct TDataNodeInfo {
   4: required i32 rpcPort
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
-  7: required i32 cpuCoreNum
+  7: optional i32 cpuCoreNum
 }
 
 struct TShowDataNodesResp {
