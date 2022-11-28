@@ -48,6 +48,7 @@ public class SnapshotStorage implements StateMachineStorage {
 
   private final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
+  private File snapshotStorageRoot;
 
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
@@ -59,6 +60,10 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
     this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
+    this.snapshotStorageRoot = Optional.ofNullable(getSnapshotDir()).orElse(stateMachineDir);
+    if (!snapshotStorageRoot.exists()) {
+      FileUtils.createDirectories(snapshotStorageRoot);
+    }
     updateSnapshotCache();
   }
 
@@ -168,7 +173,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getStateMachineDir() {
-    return Optional.ofNullable(getSnapshotDir()).orElse(stateMachineDir);
+    return snapshotStorageRoot;
   }
 
   public File getSnapshotDir(String snapshotMetadata) {
