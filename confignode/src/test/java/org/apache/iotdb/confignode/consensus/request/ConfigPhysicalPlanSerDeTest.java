@@ -464,7 +464,11 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
         new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new TTimePartitionSlotList());
+    partitionSlotsMap
+        .get(storageGroup)
+        .put(
+            seriesPartitionSlot,
+            new TTimePartitionSlotList().setTimePartitionSlots(new ArrayList<>()));
     partitionSlotsMap
         .get(storageGroup)
         .get(seriesPartitionSlot)
