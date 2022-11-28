@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.14.0-SNAPSHOT|
+|1.0.0|
 +---------------+
 Total line number = 1
 It costs 0.417s
