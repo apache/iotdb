@@ -1184,6 +1184,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 10000                             |
 |改后生效方式| 热加载                              |
 
+* pattern\_matching\_threshold
+
+|名字| pattern\_matching\_threshold |
+|:---:|:-----------------------------|
+|描述| 正则表达式匹配时最大的匹配次数              |
+|类型| int32                        |
+|默认值| 1000000                        |
+|改后生效方式| 热加载                          |
+
 * max\_string\_length
 
 |名字| max\_string\_length |

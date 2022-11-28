@@ -88,7 +88,7 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  /** WAL node will be registered only when using multi-leader consensus protocol */
+  /** WAL node will be registered only when using iot consensus protocol */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
@@ -101,7 +101,7 @@ public class WALManager implements IService {
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
   }
 
-  /** WAL node will be deleted only when using multi-leader consensus protocol */
+  /** WAL node will be deleted only when using iot consensus protocol */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()

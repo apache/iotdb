@@ -1129,6 +1129,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 10000                                                                              |
 |Effective| hot-load                                                                            |
 
+* pattern\_matching\_threshold
+
+|Name| pattern\_matching\_threshold       |
+|:---:|:-----------------------------------|
+|Description| Max matching time of regex pattern |
+|Type| int32                              |
+|Default| 1000000                              |
+|Effective| hot-load                           |
+
 * max\_degree\_of\_index\_node
 
 |Name| max\_degree\_of\_index\_node |

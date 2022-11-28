@@ -79,7 +79,7 @@ import java.util.regex.Pattern;
 public class WALNode implements IWALNode {
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  /** no iot consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /** timeout threshold when waiting for next wal entry */
@@ -266,7 +266,7 @@ public class WALNode implements IWALNode {
       }
       // delete files whose content's search index are all <= safelyDeletedSearchIndex
       WALFileUtils.ascSortByVersionId(filesToDelete);
-      // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for multi-leader
+      // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for iot
       int endFileIndex =
           safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
               ? filesToDelete.length
