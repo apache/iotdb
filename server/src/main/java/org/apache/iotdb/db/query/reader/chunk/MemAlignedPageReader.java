@@ -88,7 +88,12 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
+    writeDataToBuilder(builder);
+    return builder.build();
+  }
 
+  @Override
+  public void writeDataToBuilder(TsBlockBuilder builder) {
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
@@ -130,8 +135,6 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         }
       }
     }
-
-    return builder.build();
   }
 
   @Override
