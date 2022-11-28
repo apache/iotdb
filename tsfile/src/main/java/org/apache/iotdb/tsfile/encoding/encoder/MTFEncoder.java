@@ -62,6 +62,9 @@ public class MTFEncoder extends Encoder {
       myhuffman.encode(new Binary(res), out);
     }
     myhuffman.flush(out);
+    maxRecordLength = 0;
+    n = 0;
+    records.clear();
   }
 
   @Override

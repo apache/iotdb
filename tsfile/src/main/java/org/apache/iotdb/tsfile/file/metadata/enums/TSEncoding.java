@@ -29,7 +29,8 @@ public enum TSEncoding {
   REGULAR((byte) 7),
   GORILLA((byte) 8),
   HUFFMAN((byte) 9),
-  MTF((byte) 10);
+  MTF((byte) 10),
+  BW((byte) 11);
 
   private final byte type;
 
@@ -71,6 +72,8 @@ public enum TSEncoding {
         return TSEncoding.HUFFMAN;
       case 10:
         return TSEncoding.MTF;
+      case 11:
+        return TSEncoding.BW;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

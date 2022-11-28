@@ -118,6 +118,8 @@ public abstract class Decoder {
         return new HuffmanDecoder();
       case MTF:
         return new MTFDecoder();
+      case BW:
+        return new BWDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

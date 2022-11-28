@@ -86,6 +86,7 @@ public class SchemaUtils {
     textSet.add(TSEncoding.HUFFMAN);
     textSet.add(TSEncoding.RLE);
     textSet.add(TSEncoding.MTF);
+    textSet.add(TSEncoding.BW);
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 

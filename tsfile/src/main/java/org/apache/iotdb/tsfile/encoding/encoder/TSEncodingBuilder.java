@@ -74,6 +74,8 @@ public abstract class TSEncodingBuilder {
         return new Huffman();
       case MTF:
         return new Mtf();
+      case BW:
+        return new Bw();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -343,6 +345,22 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       if (type == TSDataType.TEXT) {
         return new MTFEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Bw extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new BWEncoder();
       }
       throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }
