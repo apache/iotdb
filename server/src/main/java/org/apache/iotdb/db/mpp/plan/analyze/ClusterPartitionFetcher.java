@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartionSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -59,7 +60,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
@@ -323,19 +323,21 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private TDataPartitionReq constructDataPartitionReq(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+    Map<String, Map<TSeriesPartitionSlot, TTimePartionSlotList>> partitionSlotsMap =
         new HashMap<>();
     for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
       // for each sg
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> deviceToTimePartitionMap =
-          new HashMap<>();
+      Map<TSeriesPartitionSlot, TTimePartionSlotList> deviceToTimePartitionMap = new HashMap<>();
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
+        TTimePartionSlotList timePartitionSlotList =
+            new TTimePartionSlotList(
+                queryParam.getTimePartitionSlotList(),
+                queryParam.isNeedLeftAll(),
+                queryParam.isNeedRightAll());
         deviceToTimePartitionMap.put(
             partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
-            queryParam.getTimePartitionSlotList().stream()
-                .map(timePartitionSlot -> new TTimePartitionSlot(timePartitionSlot.getStartTime()))
-                .collect(Collectors.toList()));
+            timePartitionSlotList);
       }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }

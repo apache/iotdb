@@ -198,7 +198,7 @@ struct TSchemaNodeManagementResp {
   3: optional set<common.TSchemaNode> matchedNode
 }
 
-struct TTimePartionSlotList {
+struct TTimePartitionSlotList {
   1: required list<common.TTimePartitionSlot> timePartitionSlots
   2: required bool needLeftAll
   3: required bool needRightAll
@@ -207,7 +207,7 @@ struct TTimePartionSlotList {
 // Data
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
-  1: required map<string, map<common.TSeriesPartitionSlot, TTimePartionSlotList>> partitionSlotsMap
+  1: required map<string, map<common.TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
