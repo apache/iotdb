@@ -97,7 +97,12 @@ public class DataPartition extends Partition {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
         dataBasePartitionMap.get(seriesPartitionSlot);
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
-      dataRegionReplicaSets.addAll(slotReplicaSetMap.get(timePartitionSlot));
+      List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
+      if (targetRegionList == null || targetRegionList.size() == 0) {
+        throw new RuntimeException("targetRegionList is empty");
+      } else {
+        dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
+      }
     }
     return dataRegionReplicaSets;
   }
