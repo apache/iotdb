@@ -70,7 +70,7 @@ public class SeriesScanUtil {
   protected final TSDataType dataType;
 
   // inner class of SeriesReader for order purpose
-  private TimeOrderUtils orderUtils;
+  private final TimeOrderUtils orderUtils;
 
   /*
    * There is at most one is not null between timeFilter and valueFilter
@@ -121,6 +121,8 @@ public class SeriesScanUtil {
   protected boolean hasCachedNextOverlappedPage;
   protected TsBlock cachedTsBlock;
 
+  protected TsBlockBuilder cachedTsBlockBuilder;
+
   public SeriesScanUtil(
       PartialPath seriesPath,
       Set<String> allSensors,
@@ -156,6 +158,10 @@ public class SeriesScanUtil {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+
+    if (dataType != TSDataType.VECTOR) {
+      this.cachedTsBlockBuilder = new TsBlockBuilder(Collections.singletonList(dataType));
+    }
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
@@ -448,6 +454,259 @@ public class SeriesScanUtil {
       }
     }
     return firstPageReader != null;
+  }
+
+  public boolean tryToFetchDataFromPage() throws IOException {
+
+    /*
+     * has overlapped data
+     */
+    if (mergeReader.hasNextTimeValuePair() || firstPageOverlapped()) {
+      if (tryToBuildFromMergeReader()) {
+        return true;
+      }
+    }
+
+    if (firstPageReader != null) {
+      buildFromPageReader();
+      return true;
+    }
+
+    /*
+     * construct first page reader
+     */
+    if (firstChunkMetadata != null) {
+      /*
+       * try to unpack all overlapped ChunkMetadata to cachedPageReaders
+       */
+      unpackAllOverlappedChunkMetadataToPageReaders(
+          orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), true);
+    } else {
+      /*
+       * first chunk metadata is already unpacked, consume cached pages
+       */
+      initFirstPageReader();
+    }
+
+    if (tryToBuildFromOverlappedPage()) {
+      return true;
+    }
+
+    // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
+    // readers
+    while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
+
+      initFirstPageReader();
+
+      if (tryToBuildFromOverlappedPage()) {
+        return true;
+      }
+    }
+
+    if (firstPageReader != null) {
+      buildFromPageReader();
+      return true;
+    }
+    return false;
+  }
+
+  private boolean tryToBuildFromOverlappedPage() throws IOException {
+    if (firstPageOverlapped()) {
+      // next page is overlapped, read overlapped data and cache it
+      return tryToBuildFromMergeReader();
+    }
+    return false;
+  }
+
+  public void buildFromPageReader() throws IOException {
+    /*
+     * next page is not overlapped, push down value filter if it exists
+     */
+    if (valueFilter != null) {
+      firstPageReader.setFilter(valueFilter);
+    }
+    firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending(), cachedTsBlockBuilder);
+    firstPageReader = null;
+  }
+
+  private boolean tryToBuildFromMergeReader() throws IOException {
+    int rawSize = cachedTsBlockBuilder.getPositionCount();
+
+    tryToPutAllDirectlyOverlappedUnseqPageReadersIntoMergeReader();
+
+    while (true) {
+
+      // may has overlapped data
+      if (mergeReader.hasNextTimeValuePair()) {
+
+        // TODO we still need to consider data type, ascending and descending here
+        TimeColumnBuilder timeBuilder = cachedTsBlockBuilder.getTimeColumnBuilder();
+        long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
+        while (mergeReader.hasNextTimeValuePair()) {
+
+          /*
+           * get current first point in mergeReader, this maybe overlapped later
+           */
+          TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
+
+          if (orderUtils.isExcessEndpoint(timeValuePair.getTimestamp(), currentPageEndPointTime)) {
+            /*
+             * when the merged point excesses the currentPageEndPointTime, we have read all overlapped data before currentPageEndPointTime
+             * 1. has cached batch data, we don't need to read more data, just use the cached data later
+             * 2. has first page reader, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * we could just use the first page reader later
+             * 3. sequence page reader is not empty, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * we could use the first sequence page reader later
+             */
+            if (cachedTsBlockBuilder.getPositionCount() > rawSize
+                || firstPageReader != null
+                || !seqPageReaders.isEmpty()) {
+              break;
+            }
+            // so, we don't have other data except mergeReader
+            currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
+          }
+
+          // unpack all overlapped data for the first timeValuePair
+          unpackAllOverlappedTsFilesToTimeSeriesMetadata(timeValuePair.getTimestamp());
+          unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
+              timeValuePair.getTimestamp(), false);
+          unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
+          unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          // update if there are unpacked unSeqPageReaders
+          timeValuePair = mergeReader.currentTimeValuePair();
+
+          // from now, the unsequence reader is all unpacked, so we don't need to consider it
+          // we has first page reader now
+          if (firstPageReader != null) {
+            // if current timeValuePair excesses the first page reader's end time, we just use the
+            // cached data
+            if ((orderUtils.getAscending()
+                    && timeValuePair.getTimestamp() > firstPageReader.getStatistics().getEndTime())
+                || (!orderUtils.getAscending()
+                    && timeValuePair.getTimestamp()
+                        < firstPageReader.getStatistics().getStartTime())) {
+              return cachedTsBlockBuilder.getPositionCount() > rawSize;
+            } else if (orderUtils.isOverlapped(
+                timeValuePair.getTimestamp(), firstPageReader.getStatistics())) {
+              // current timeValuePair is overlapped with firstPageReader, add it to merged reader
+              // and update endTime to the max end time
+              mergeReader.addReader(
+                  getPointReader(
+                      firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
+                  firstPageReader.version,
+                  orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
+                  context);
+              currentPageEndPointTime =
+                  updateEndPointTime(currentPageEndPointTime, firstPageReader);
+              firstPageReader = null;
+            }
+          }
+
+          // the seq page readers is not empty, just like first page reader
+          if (!seqPageReaders.isEmpty()) {
+            if ((orderUtils.getAscending()
+                    && timeValuePair.getTimestamp()
+                        > seqPageReaders.get(0).getStatistics().getEndTime())
+                || (!orderUtils.getAscending()
+                    && timeValuePair.getTimestamp()
+                        < seqPageReaders.get(0).getStatistics().getStartTime())) {
+              return cachedTsBlockBuilder.getPositionCount() > rawSize;
+            } else if (orderUtils.isOverlapped(
+                timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
+              VersionPageReader pageReader = seqPageReaders.remove(0);
+              mergeReader.addReader(
+                  getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
+                  pageReader.version,
+                  orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
+                  context);
+              currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
+            }
+          }
+
+          /*
+           * get the latest first point in mergeReader
+           */
+          timeValuePair = mergeReader.nextTimeValuePair();
+
+          Object valueForFilter = timeValuePair.getValue().getValue();
+
+          // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
+          // only accept AlignedPath with only one sub sensor
+          if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+            for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+              if (tsPrimitiveType != null) {
+                valueForFilter = tsPrimitiveType.getValue();
+                break;
+              }
+            }
+          }
+
+          if (valueFilter == null
+              || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
+            timeBuilder.writeLong(timeValuePair.getTimestamp());
+            switch (dataType) {
+              case BOOLEAN:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeBoolean(timeValuePair.getValue().getBoolean());
+                break;
+              case INT32:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeInt(timeValuePair.getValue().getInt());
+                break;
+              case INT64:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeLong(timeValuePair.getValue().getLong());
+                break;
+              case FLOAT:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeFloat(timeValuePair.getValue().getFloat());
+                break;
+              case DOUBLE:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeDouble(timeValuePair.getValue().getDouble());
+                break;
+              case TEXT:
+                cachedTsBlockBuilder
+                    .getColumnBuilder(0)
+                    .writeBinary(timeValuePair.getValue().getBinary());
+                break;
+              case VECTOR:
+                TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+                for (int i = 0; i < values.length; i++) {
+                  if (values[i] == null) {
+                    cachedTsBlockBuilder.getColumnBuilder(i).appendNull();
+                  } else {
+                    cachedTsBlockBuilder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+                  }
+                }
+                break;
+              default:
+                throw new UnSupportedDataTypeException(String.valueOf(dataType));
+            }
+            cachedTsBlockBuilder.declarePosition();
+          }
+        }
+
+        /*
+         * if current overlapped page has valid data, return, otherwise read next overlapped page
+         */
+        if (cachedTsBlockBuilder.getPositionCount() > rawSize) {
+          return true;
+        } else if (mergeReader.hasNextTimeValuePair()) {
+          // condition: seqPage.endTime < mergeReader.currentTime
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
   }
 
   private boolean isExistOverlappedPage() throws IOException {
@@ -1088,6 +1347,10 @@ public class SeriesScanUtil {
     return orderUtils;
   }
 
+  public TsBlockBuilder getCachedTsBlockBuilder() {
+    return cachedTsBlockBuilder;
+  }
+
   protected class VersionPageReader {
 
     protected PriorityMergeReader.MergeReaderPriority version;
@@ -1129,6 +1392,10 @@ public class SeriesScanUtil {
         tsBlock.reverse();
       }
       return tsBlock;
+    }
+
+    void getAllSatisfiedPageData(boolean ascending, TsBlockBuilder builder) throws IOException {
+      data.getAllSatisfiedData(ascending, builder);
     }
 
     void setFilter(Filter filter) {
