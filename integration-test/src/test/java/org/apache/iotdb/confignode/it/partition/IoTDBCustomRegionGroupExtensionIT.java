@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBRegionGroupExtensionIT {
+public class IoTDBCustomRegionGroupExtensionIT {
 
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
