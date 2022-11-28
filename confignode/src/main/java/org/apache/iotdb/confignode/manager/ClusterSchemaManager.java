@@ -321,7 +321,7 @@ public class ClusterSchemaManager {
 
     // Adjust least_data_region_group_num
     // TODO: The least_data_region_group_num should be maintained separately by different
-    // StorageGroup
+    // TODO: StorageGroup
     int leastDataRegionGroupNum =
         (int)
             Math.ceil(
