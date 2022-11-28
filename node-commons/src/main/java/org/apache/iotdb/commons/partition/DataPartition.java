@@ -99,7 +99,10 @@ public class DataPartition extends Partition {
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.size() == 0) {
-        throw new RuntimeException("targetRegionList is empty");
+        throw new RuntimeException(
+            String.format(
+                "targetRegionList is empty. device: %s, timeSlot: %s",
+                deviceName, timePartitionSlot));
       } else {
         dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
       }
