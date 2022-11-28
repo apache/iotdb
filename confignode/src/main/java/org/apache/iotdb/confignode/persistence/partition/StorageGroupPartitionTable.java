@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -194,7 +195,7 @@ public class StorageGroupPartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> partitionSlots,
       DataPartitionTable dataPartition) {
     return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }

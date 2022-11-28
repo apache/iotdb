@@ -19,19 +19,17 @@
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -41,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GetDataPartitionPlan extends ConfigPhysicalPlan {
 
   // Map<StorageGroup, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-  protected Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+  protected Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap;
 
   public GetDataPartitionPlan() {
     super(ConfigPhysicalPlanType.GetDataPartition);
@@ -52,12 +50,12 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
   }
 
   public GetDataPartitionPlan(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
+      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap) {
     this();
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
-  public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> getPartitionSlotsMap() {
+  public Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> getPartitionSlotsMap() {
     return partitionSlotsMap;
   }
 
@@ -76,22 +74,19 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
 
     stream.writeInt(partitionSlotsMap.size());
-    for (Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> entry :
+    for (Entry<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> entry :
         partitionSlotsMap.entrySet()) {
       String storageGroup = entry.getKey();
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionTimePartitionSlots =
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> seriesPartitionTimePartitionSlots =
           entry.getValue();
       BasicStructureSerDeUtil.write(storageGroup, stream);
       stream.writeInt(seriesPartitionTimePartitionSlots.size());
-      for (Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> e :
+      for (Entry<TSeriesPartitionSlot, TTimePartitionSlotList> e :
           seriesPartitionTimePartitionSlots.entrySet()) {
         TSeriesPartitionSlot seriesPartitionSlot = e.getKey();
-        List<TTimePartitionSlot> timePartitionSlots = e.getValue();
+        TTimePartitionSlotList timePartitionSlotList = e.getValue();
         ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream);
-        stream.writeInt(timePartitionSlots.size());
-        timePartitionSlots.forEach(
-            timePartitionSlot ->
-                ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timePartitionSlot, stream));
+        ThriftCommonsSerDeUtils.serializeTTimePartitionSlotList(timePartitionSlotList, stream);
       }
     }
   }
@@ -107,13 +102,9 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         TSeriesPartitionSlot seriesPartitionSlot =
             ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-        partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-        int timePartitionSlotNum = buffer.getInt();
-        for (int k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot =
-              ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
-          partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
-        }
+        TTimePartitionSlotList timePartitionSlotList =
+            ThriftCommonsSerDeUtils.deserializeTTimePartitionSlotList(buffer);
+        partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, timePartitionSlotList);
       }
     }
   }

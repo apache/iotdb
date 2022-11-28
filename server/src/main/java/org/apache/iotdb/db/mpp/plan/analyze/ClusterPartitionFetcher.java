@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -323,15 +323,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private TDataPartitionReq constructDataPartitionReq(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    Map<String, Map<TSeriesPartitionSlot, TTimePartionSlotList>> partitionSlotsMap =
+    Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
         new HashMap<>();
     for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
       // for each sg
-      Map<TSeriesPartitionSlot, TTimePartionSlotList> deviceToTimePartitionMap = new HashMap<>();
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> deviceToTimePartitionMap = new HashMap<>();
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
-        TTimePartionSlotList timePartitionSlotList =
-            new TTimePartionSlotList(
+        TTimePartitionSlotList timePartitionSlotList =
+            new TTimePartitionSlotList(
                 queryParam.getTimePartitionSlotList(),
                 queryParam.isNeedLeftAll(),
                 queryParam.isNeedRightAll());

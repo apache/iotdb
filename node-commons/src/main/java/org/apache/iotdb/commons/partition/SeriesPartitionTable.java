@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -63,20 +64,41 @@ public class SeriesPartitionTable {
   /**
    * Thread-safely get DataPartition within the specific StorageGroup
    *
-   * @param partitionSlots TimePartitionSlots
+   * @param partitionSlotList TimePartitionSlotList
    * @param seriesPartitionTable Store the matched SeriesPartitions
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      List<TTimePartitionSlot> partitionSlots, SeriesPartitionTable seriesPartitionTable) {
+      TTimePartitionSlotList partitionSlotList, SeriesPartitionTable seriesPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
+    List<TTimePartitionSlot> partitionSlots = partitionSlotList.getTimePartitionSlots();
 
     if (partitionSlots.isEmpty()) {
       // Return all DataPartitions in one SeriesPartitionSlot
       // when the queried TimePartitionSlots are empty
       seriesPartitionTable.getSeriesPartitionMap().putAll(seriesPartitionMap);
     } else {
-      // Return the DataPartition for each TimePartitionSlot
+      boolean isNeedLeftAll = partitionSlotList.isNeedLeftAll(),
+          isNeedRightAll = partitionSlotList.isNeedRightAll();
+      if (isNeedLeftAll || isNeedRightAll) {
+        long leftMargin = isNeedLeftAll ? partitionSlots.get(0).getStartTime() : Long.MIN_VALUE,
+            rightMargin =
+                isNeedRightAll
+                    ? partitionSlots.get(partitionSlots.size() - 1).getStartTime()
+                    : Long.MAX_VALUE;
+        seriesPartitionTable
+            .getSeriesPartitionMap()
+            .putAll(
+                seriesPartitionMap.entrySet().stream()
+                    .filter(
+                        entry -> {
+                          long startTime = entry.getKey().getStartTime();
+                          return startTime < leftMargin || startTime > rightMargin;
+                        })
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+      }
+
+      // Return the DataPartition for each match TimePartitionSlot
       partitionSlots.forEach(
           timePartitionSlot -> {
             if (seriesPartitionMap.containsKey(timePartitionSlot)) {

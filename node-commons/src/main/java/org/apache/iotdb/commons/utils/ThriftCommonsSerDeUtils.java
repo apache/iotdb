@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -155,6 +156,25 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TSeriesPartitionSlot failed: ", e);
     }
     return seriesPartitionSlot;
+  }
+
+  public static void serializeTTimePartitionSlotList(
+      TTimePartitionSlotList timePartitionSlotList, DataOutputStream stream) {
+    try {
+      timePartitionSlotList.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TTimePartitionSlotList failed: ", e);
+    }
+  }
+
+  public static TTimePartitionSlotList deserializeTTimePartitionSlotList(ByteBuffer buffer) {
+    TTimePartitionSlotList timePartitionSlotList = new TTimePartitionSlotList();
+    try {
+      timePartitionSlotList.read(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TTimePartitionSlotList failed: ", e);
+    }
+    return timePartitionSlotList;
   }
 
   public static void serializeTTimePartitionSlot(
