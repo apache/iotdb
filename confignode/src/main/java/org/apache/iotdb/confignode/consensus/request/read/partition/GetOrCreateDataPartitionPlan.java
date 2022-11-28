@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.read.partition;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +33,7 @@ public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
   }
 
   public GetOrCreateDataPartitionPlan(
-      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap) {
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
     this();
     this.partitionSlotsMap = partitionSlotsMap;
   }

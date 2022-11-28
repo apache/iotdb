@@ -112,7 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -435,17 +435,11 @@ public class ConfigPhysicalPlanSerDeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
 
-    Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
     partitionSlotsMap
         .get(storageGroup)
-        .put(
-            seriesPartitionSlot,
-            new TTimePartitionSlotList()
-                .setTimePartitionSlots(new ArrayList<>())
-                .setNeedLeftAll(true)
-                .setNeedRightAll(true));
+        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
     partitionSlotsMap
         .get(storageGroup)
         .get(seriesPartitionSlot)
@@ -464,17 +458,11 @@ public class ConfigPhysicalPlanSerDeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
 
-    Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
     partitionSlotsMap
         .get(storageGroup)
-        .put(
-            seriesPartitionSlot,
-            new TTimePartitionSlotList()
-                .setTimePartitionSlots(new ArrayList<>())
-                .setNeedLeftAll(true)
-                .setNeedRightAll(true));
+        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
     partitionSlotsMap
         .get(storageGroup)
         .get(seriesPartitionSlot)

@@ -29,11 +29,11 @@ public class DataPartitionQueryParam {
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
   // it will be set to true in query when there exist filter like: time <= XXX
-  // (-oo, timePartitionSlotList.get(0)]
+  // (-oo, timePartitionSlotList.get(0))
   private boolean needLeftAll = false;
 
   // it will be set to true query when there exist filter like: time >= XXX
-  // [timePartitionSlotList.get(timePartitionSlotList.size() - 1), +oo)
+  // (timePartitionSlotList.get(timePartitionSlotList.size() - 1), +oo)
   private boolean needRightAll = false;
 
   public DataPartitionQueryParam(

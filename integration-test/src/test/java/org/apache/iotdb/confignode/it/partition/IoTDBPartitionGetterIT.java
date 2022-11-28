@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -178,7 +178,7 @@ public class IoTDBPartitionGetterIT {
         String storageGroup = sg + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
-            Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
+            Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
                     j,
@@ -314,7 +314,7 @@ public class IoTDBPartitionGetterIT {
       TDataPartitionTableResp dataPartitionTableResp;
 
       // Prepare partitionSlotsMap
-      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg + 10, 0, 10, 0, 10, testTimePartitionInterval);
 

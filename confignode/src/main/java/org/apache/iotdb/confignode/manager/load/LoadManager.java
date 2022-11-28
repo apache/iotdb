@@ -51,7 +51,7 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.slf4j.Logger;
@@ -134,8 +134,7 @@ public class LoadManager {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>>
-          unassignedDataPartitionSlotsMap)
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }

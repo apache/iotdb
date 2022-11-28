@@ -42,7 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -164,14 +164,14 @@ public class IoTDBConfigNodeSnapshotIT {
                 new TTimePartitionSlot(testTimePartitionInterval * k);
 
             // Create DataPartition
-            Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> partitionSlotsMap =
+            Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 new HashMap<>();
             partitionSlotsMap.put(storageGroup, new HashMap<>());
             partitionSlotsMap
                 .get(storageGroup)
                 .put(
                     seriesPartitionSlot,
-                    new TTimePartitionSlotList()
+                    new TTimeSlotList()
                         .setTimePartitionSlots(Collections.singletonList(timePartitionSlot)));
             TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
             TDataPartitionTableResp dataPartitionTableResp =

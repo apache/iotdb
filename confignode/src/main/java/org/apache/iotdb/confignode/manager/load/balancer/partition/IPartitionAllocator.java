@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
@@ -50,7 +50,6 @@ public interface IPartitionAllocator {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>>
-          unassignedDataPartitionSlotsMap)
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException;
 }

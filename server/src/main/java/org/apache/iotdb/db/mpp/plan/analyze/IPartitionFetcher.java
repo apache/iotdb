@@ -47,7 +47,7 @@ public interface IPartitionFetcher {
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * Get data partition, used in query scenarios which contains time filter like: time < XX and time
+   * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
    *
    * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams

@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -69,7 +69,7 @@ public class SeriesPartitionTable {
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      TTimePartitionSlotList partitionSlotList, SeriesPartitionTable seriesPartitionTable) {
+      TTimeSlotList partitionSlotList, SeriesPartitionTable seriesPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
     List<TTimePartitionSlot> partitionSlots = partitionSlotList.getTimePartitionSlots();
 
@@ -81,6 +81,12 @@ public class SeriesPartitionTable {
       boolean isNeedLeftAll = partitionSlotList.isNeedLeftAll(),
           isNeedRightAll = partitionSlotList.isNeedRightAll();
       if (isNeedLeftAll || isNeedRightAll) {
+        // we need to calculate the leftMargin which contains all the time partition on the unclosed
+        // left side: (-oo, leftMargin)
+        // and the rightMargin which contains all the time partition on the unclosed right side:
+        // (rightMargin, +oo)
+        // all the remaining closed time range which locates in [leftMargin, rightMargin] will be
+        // calculated outside if block
         long leftMargin = isNeedLeftAll ? partitionSlots.get(0).getStartTime() : Long.MIN_VALUE,
             rightMargin =
                 isNeedRightAll
