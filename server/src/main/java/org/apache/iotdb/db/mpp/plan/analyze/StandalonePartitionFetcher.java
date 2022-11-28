@@ -147,6 +147,13 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    throw new UnsupportedOperationException(
+        "getDataPartitionWithUnclosedTimeRange is not supported");
+  }
+
+  @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try {

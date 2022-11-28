@@ -47,6 +47,15 @@ public interface IPartitionFetcher {
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
+   * Get data partition, used in query scenarios which contains time filter like: time < XX and time
+   * > XX
+   *
+   * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   */
+  DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  /**
    * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is
    * true and database/series/time slots not exists, then automatically create.
    *
