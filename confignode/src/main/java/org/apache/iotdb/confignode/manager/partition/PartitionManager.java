@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -157,7 +158,7 @@ public class PartitionManager {
    * Thread-safely get DataPartition
    *
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
+   *     TTimePartitionSlotList>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
   public DataSet getDataPartition(GetDataPartitionPlan req) {
@@ -263,7 +264,7 @@ public class PartitionManager {
     // the number of serialized CreateDataPartitionReqs is acceptable.
     synchronized (this) {
       // Filter unassigned DataPartitionSlots
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>>
           unassignedDataPartitionSlotsMap =
               partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
 

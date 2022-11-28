@@ -286,8 +286,8 @@ public class StorageGroupPartitionTable {
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
    */
-  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
+  public Map<TSeriesPartitionSlot, TTimePartitionSlotList> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> partitionSlots) {
     return dataPartitionTable.filterUnassignedDataPartitionSlots(partitionSlots);
   }
 

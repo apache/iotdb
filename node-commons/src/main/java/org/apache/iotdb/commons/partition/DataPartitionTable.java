@@ -147,17 +147,21 @@ public class DataPartitionTable {
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @return Unassigned PartitionSlots
    */
-  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
-    Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> result = new ConcurrentHashMap<>();
+  public Map<TSeriesPartitionSlot, TTimePartitionSlotList> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> partitionSlots) {
+    Map<TSeriesPartitionSlot, TTimePartitionSlotList> result = new ConcurrentHashMap<>();
 
     partitionSlots.forEach(
         (seriesPartitionSlot, timePartitionSlots) ->
             result.put(
                 seriesPartitionSlot,
-                dataPartitionMap
-                    .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .filterUnassignedDataPartitionSlots(timePartitionSlots)));
+                new TTimePartitionSlotList(
+                    dataPartitionMap
+                        .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
+                        .filterUnassignedDataPartitionSlots(
+                            timePartitionSlots.getTimePartitionSlots()),
+                    false,
+                    false)));
 
     return result;
   }

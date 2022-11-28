@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -120,7 +121,7 @@ public class ConfigNodeTestUtils {
     return ByteBuffer.wrap(baos.toByteArray());
   }
 
-  public static Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+  public static Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>>
       constructPartitionSlotsMap(
           String storageGroup,
           int seriesSlotStart,
@@ -128,15 +129,23 @@ public class ConfigNodeTestUtils {
           long timeSlotStart,
           long timeSlotEnd,
           long timePartitionInterval) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result = new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> result = new HashMap<>();
     result.put(storageGroup, new HashMap<>());
 
     for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
-      result.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
+      result
+          .get(storageGroup)
+          .put(
+              seriesPartitionSlot,
+              new TTimePartitionSlotList().setTimePartitionSlots(new ArrayList<>()));
       for (long j = timeSlotStart; j < timeSlotEnd; j++) {
         TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(j * timePartitionInterval);
-        result.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
+        result
+            .get(storageGroup)
+            .get(seriesPartitionSlot)
+            .getTimePartitionSlots()
+            .add(timePartitionSlot);
       }
     }
 

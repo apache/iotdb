@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;
@@ -84,15 +85,15 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
 
   @Override
   public Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+      Map<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>>
           unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     Map<String, DataPartitionTable> result = new ConcurrentHashMap<>();
 
-    for (Map.Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> slotsMapEntry :
+    for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimePartitionSlotList>> slotsMapEntry :
         unassignedDataPartitionSlotsMap.entrySet()) {
       final String storageGroup = slotsMapEntry.getKey();
-      final Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> unassignedPartitionSlotsMap =
+      final Map<TSeriesPartitionSlot, TTimePartitionSlotList> unassignedPartitionSlotsMap =
           slotsMapEntry.getValue();
 
       // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
@@ -103,12 +104,13 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
 
       // Enumerate SeriesPartitionSlot
-      for (Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionEntry :
+      for (Map.Entry<TSeriesPartitionSlot, TTimePartitionSlotList> seriesPartitionEntry :
           unassignedPartitionSlotsMap.entrySet()) {
         SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
 
         // Enumerate TimePartitionSlot in ascending order
-        List<TTimePartitionSlot> timePartitionSlots = seriesPartitionEntry.getValue();
+        List<TTimePartitionSlot> timePartitionSlots =
+            seriesPartitionEntry.getValue().getTimePartitionSlots();
         timePartitionSlots.sort(Comparator.comparingLong(TTimePartitionSlot::getStartTime));
         for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
 
