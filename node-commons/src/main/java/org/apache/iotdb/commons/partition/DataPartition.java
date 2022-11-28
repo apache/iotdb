@@ -91,10 +91,15 @@ public class DataPartition extends Partition {
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-        .filter(entry -> timePartitionSlotList.contains(entry.getKey()))
-        .flatMap(entry -> entry.getValue().stream())
-        .collect(Collectors.toList());
+    List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        dataBasePartitionMap = dataPartitionMap.get(storageGroup);
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
+        dataBasePartitionMap.get(seriesPartitionSlot);
+    for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+      dataRegionReplicaSets.addAll(slotReplicaSetMap.get(timePartitionSlot));
+    }
+    return dataRegionReplicaSets;
   }
 
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
