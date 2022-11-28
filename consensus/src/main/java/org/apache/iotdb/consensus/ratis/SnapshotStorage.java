@@ -62,7 +62,7 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
     this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
-    if (getStateMachineDir() != null) {
+    if (getSnapshotDir() != null) {
       snapshotStorageRoot = new File(getSnapshotDir(), groupId.toString());
     } else {
       snapshotStorageRoot = stateMachineDir;
