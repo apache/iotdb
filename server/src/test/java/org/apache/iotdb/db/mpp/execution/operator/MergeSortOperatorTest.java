@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,6 +63,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -179,6 +181,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               planNodeId2,
@@ -190,6 +195,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               planNodeId3,
@@ -201,6 +209,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               planNodeId4,
@@ -212,6 +223,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               planNodeId5,
@@ -223,6 +237,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(
@@ -593,6 +610,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               planNodeId2,
@@ -604,6 +624,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               planNodeId3,
@@ -615,6 +638,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               planNodeId4,
@@ -626,6 +652,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               planNodeId5,
@@ -637,6 +666,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               planNodeId6,
@@ -648,6 +680,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator6
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               planNodeId7,
@@ -659,6 +694,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator7
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
@@ -1042,6 +1080,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               planNodeId2,
@@ -1053,6 +1094,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               planNodeId3,
@@ -1064,6 +1108,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               planNodeId4,
@@ -1075,6 +1122,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               planNodeId5,
@@ -1086,6 +1136,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               planNodeId6,
@@ -1097,6 +1150,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator6
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               planNodeId7,
@@ -1108,6 +1164,9 @@ public class MergeSortOperatorTest {
               null,
               timeOrdering == Ordering.ASC);
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator7
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));

@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,6 +54,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -130,6 +132,9 @@ public class SingleDeviceViewOperatorTest {
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
@@ -142,6 +147,9 @@ public class SingleDeviceViewOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -161,10 +169,11 @@ public class SingleDeviceViewOperatorTest {
               Arrays.asList(1, 2),
               Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
       int count = 0;
+      int total = 0;
       while (singleDeviceViewOperator.hasNext()) {
         TsBlock tsBlock = singleDeviceViewOperator.next();
         assertEquals(4, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
+        total += tsBlock.getPositionCount();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long expectedTime = i + 20L * (count % 25);
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
@@ -189,7 +198,7 @@ public class SingleDeviceViewOperatorTest {
         }
         count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, total);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
