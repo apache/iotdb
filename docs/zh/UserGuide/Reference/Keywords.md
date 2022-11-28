@@ -21,11 +21,16 @@
 
 # 关键字
 
-保留字：
+保留字（不能用于作为标识符）：
 
 - ROOT
 - TIME
 - TIMESTAMP
+- AND
+- OR
+- NOT
+- NULL
+- CONTAINS
 
 一般关键字：
 

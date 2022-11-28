@@ -37,13 +37,6 @@
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
     </properties>
-    <repositories>
-        <repository>
-            <id>ratis-241-rc2</id>
-            <name>Apache Ratis 2.4.1 rc2</name>
-            <url>https://repository.apache.org/content/repositories/orgapacheratis-1134</url>
-        </repository>
-    </repositories>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.apache.ratis/ratis-server -->
         <dependency>

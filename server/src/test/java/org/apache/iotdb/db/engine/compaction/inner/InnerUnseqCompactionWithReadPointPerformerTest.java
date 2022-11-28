@@ -38,7 +38,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -59,12 +58,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
 
-public class InnerUnseqCompactionTest {
-  private static final Logger LOG = LoggerFactory.getLogger(InnerUnseqCompactionTest.class);
+public class InnerUnseqCompactionWithReadPointPerformerTest {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(InnerUnseqCompactionWithReadPointPerformerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
@@ -134,9 +133,7 @@ public class InnerUnseqCompactionTest {
 
   // unseq space only do deserialize page
   @Test
-  public void test()
-      throws MetadataException, IOException, StorageEngineException, WriteProcessException,
-          InterruptedException, ExecutionException {
+  public void test() throws Exception {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {

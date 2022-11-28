@@ -232,13 +232,9 @@ public class StatementGenerator {
     // construct insert statement
     InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    Map<String, PartialPath> devicePathMap = new HashMap<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
       insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
-      insertTabletStatement.setDevicePath(
-          devicePathMap.putIfAbsent(
-              req.getPrefixPaths().get(i), new PartialPath(req.getPrefixPaths().get(i))));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       insertTabletStatement.setTimes(
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));

@@ -191,10 +191,22 @@ public class SeriesScanOperator implements DataSourceOperator {
     ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
     Column column = tsBlock.getColumn(0);
 
-    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
-      timeColumnBuilder.writeLong(timeColumn.getLong(i));
-      columnBuilder.write(column, i);
-      builder.declarePosition();
+    if (column.mayHaveNull()) {
+      for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+        timeColumnBuilder.writeLong(timeColumn.getLong(i));
+        if (column.isNull(i)) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.write(column, i);
+        }
+        builder.declarePosition();
+      }
+    } else {
+      for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+        timeColumnBuilder.writeLong(timeColumn.getLong(i));
+        columnBuilder.write(column, i);
+        builder.declarePosition();
+      }
     }
   }
 

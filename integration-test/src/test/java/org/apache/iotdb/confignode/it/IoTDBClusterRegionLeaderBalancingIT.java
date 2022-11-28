@@ -66,8 +66,8 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
-  protected static boolean originalEnableRatisLeaderBalance;
-  protected static boolean originalEnableIoTConsensusLeaderBalance;
+  protected static boolean originalEnableAutoLeaderBalanceForRatisConsensus;
+  protected static boolean originalEnableAutoLeaderBalancerForIoTConsensus;
 
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
@@ -83,10 +83,12 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @BeforeClass
   public static void setUp() {
-    originalEnableRatisLeaderBalance = CONF.isEnableRatisLeaderBalance();
-    CONF.setEnableRatisLeaderBalance(true);
-    originalEnableIoTConsensusLeaderBalance = CONF.isEnableIoTConsensusLeaderBalance();
-    CONF.setEnableIoTConsensusLeaderBalance(true);
+    originalEnableAutoLeaderBalanceForRatisConsensus =
+        CONF.isEnableAutoLeaderBalanceForRatisConsensus();
+    CONF.setEnableAutoLeaderBalanceForRatisConsensus(true);
+    originalEnableAutoLeaderBalancerForIoTConsensus =
+        CONF.isEnableAutoLeaderBalanceForIoTConsensus();
+    CONF.setEnableAutoLeaderBalanceForIoTConsensus(true);
 
     originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
     CONF.setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
@@ -102,8 +104,9 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @AfterClass
   public static void tearDown() {
-    CONF.setEnableRatisLeaderBalance(originalEnableRatisLeaderBalance);
-    CONF.setEnableIoTConsensusLeaderBalance(originalEnableIoTConsensusLeaderBalance);
+    CONF.setEnableAutoLeaderBalanceForRatisConsensus(
+        originalEnableAutoLeaderBalanceForRatisConsensus);
+    CONF.setEnableAutoLeaderBalanceForIoTConsensus(originalEnableAutoLeaderBalancerForIoTConsensus);
 
     CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);

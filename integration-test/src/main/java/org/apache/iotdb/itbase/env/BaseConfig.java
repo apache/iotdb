@@ -231,6 +231,22 @@ public interface BaseConfig {
     return false;
   }
 
+  default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getDataRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getDataRegionGroupPerDatabase() {
+    return 1;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
@@ -347,19 +363,21 @@ public interface BaseConfig {
     return 10000;
   }
 
-  default BaseConfig setEnableRatisLeaderBalance(boolean enableRatisLeaderBalance) {
+  default BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     return this;
   }
 
-  default boolean isEnableRatisLeaderBalance() {
+  default boolean isEnableAutoLeaderBalanceForRatisConsensus() {
     return false;
   }
 
-  default BaseConfig setEnableIoTConsensusLeaderBalance(boolean enableIoTConsensusLeaderBalance) {
+  default BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
     return this;
   }
 
-  default boolean isEnableIoTConsensusLeaderBalance() {
+  default boolean isEnableAutoLeaderBalanceForIoTConsensus() {
     return true;
   }
 

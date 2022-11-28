@@ -220,13 +220,13 @@ public class IoTDBPartitionDurableIT {
         TimeUnit.SECONDS.sleep(1);
       }
 
-      /* Test getOrCreateSchemaPartition, the result should be NO_AVAILABLE_REGION_GROUP */
+      /* Test getOrCreateSchemaPartition, the result should be NO_ENOUGH_DATANODE */
       schemaPartitionReq =
           new TSchemaPartitionReq()
               .setPathPatternTree(ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d1}));
       schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode(),
+          TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode(),
           schemaPartitionTableResp.getStatus().getCode());
 
       /* Register a new DataNode */

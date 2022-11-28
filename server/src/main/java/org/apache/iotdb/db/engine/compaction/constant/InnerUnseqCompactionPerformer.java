@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 
 public enum InnerUnseqCompactionPerformer {
-  READ_POINT;
+  READ_POINT,
+  FAST;
 
   public static InnerUnseqCompactionPerformer getInnerUnseqCompactionPerformer(String name) {
     if (READ_POINT.toString().equalsIgnoreCase(name)) {
       return READ_POINT;
+    } else if (FAST.toString().equalsIgnoreCase(name)) {
+      return FAST;
     }
     throw new RuntimeException("Illegal compaction performer for unseq inner compaction " + name);
   }
@@ -34,8 +38,12 @@ public enum InnerUnseqCompactionPerformer {
   public IUnseqCompactionPerformer createInstance() {
     switch (this) {
       case READ_POINT:
-      default:
         return new ReadPointCompactionPerformer();
+      case FAST:
+        return new FastCompactionPerformer(false);
+      default:
+        throw new RuntimeException(
+            "Illegal compaction performer for unseq inner compaction " + this);
     }
   }
 }

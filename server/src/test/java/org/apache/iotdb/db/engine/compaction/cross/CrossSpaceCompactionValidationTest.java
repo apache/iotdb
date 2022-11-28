@@ -40,9 +40,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -79,7 +77,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
   public void test1() throws MetadataException, IOException, WriteProcessException, MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
-    createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
+    createFiles(2, 10, 10, 1001, 2100, 2100, 100, 100, true, false);
     createFiles(1, 10, 10, 1000, 4200, 4200, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 5300, 5300, 100, 100, true, true);
     tsFileManager.addAll(seqResources, true);
@@ -110,7 +108,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -158,7 +156,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -206,7 +204,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -262,7 +260,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -315,7 +313,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -366,7 +364,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -420,7 +418,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -473,7 +471,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -526,7 +524,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -580,7 +578,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -634,7 +632,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -688,7 +686,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -743,7 +741,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -799,7 +797,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -855,7 +853,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -912,7 +910,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -970,7 +968,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1028,7 +1026,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1086,7 +1084,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1144,7 +1142,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1201,7 +1199,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1254,7 +1252,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1308,7 +1306,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1362,7 +1360,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1416,7 +1414,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1471,7 +1469,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1489,12 +1487,12 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
       throws MetadataException, IOException, WriteProcessException, MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
-    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
-    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
     createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
     createFiles(1, 5, 10, 1000, 5300, 5300, 100, 100, false, true);
     createFiles(1, 10, 7, 1000, 6400, 6400, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 7500, 7500, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -1527,7 +1525,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1535,7 +1533,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
    * 2 Unseq files: 1500 ~ 3000, 3100 ~ 4100<br>
    * [DeviceNum, SensorNum]:<br>
-   * seq files: [10,10], [5,5], [5,5], [5,10], [10,10], [10,10]<br>
+   * seq files: [10,10], [5,5], [5,5], [10,10], [10,10]<br>
    * unseq files: [10,10], [10,10]<br>
    * Selected seq file index: 2, 3, 4<br>
    * Selected unseq file index: 1, 2
@@ -1583,7 +1581,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1640,7 +1638,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1698,7 +1696,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1756,7 +1754,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1814,7 +1812,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1872,7 +1870,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1929,7 +1927,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -1984,7 +1982,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -2035,7 +2033,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -2091,7 +2089,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -2148,7 +2146,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
+    validateSeqFiles(true);
   }
 
   /**
@@ -2205,16 +2203,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
-    validateSeqFiles();
-  }
-
-  private void validateSeqFiles() {
-    List<File> files = new ArrayList<>();
-    for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
-      files.add(resource.getTsFile());
-    }
-    TsFileValidationTool.findUncorrectFiles(files);
-    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
-    TsFileValidationTool.clearMap();
+    validateSeqFiles(true);
   }
 }

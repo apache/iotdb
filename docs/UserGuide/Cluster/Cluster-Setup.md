@@ -94,7 +94,7 @@ iotdb-confignode.properties:
 | cn\_internal\_address          | Internal rpc service address of ConfigNode                                                   |
 | cn\_internal\_port             | Internal rpc service port of ConfigNode                                                      |
 | cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                 |
-| cn\_target\_config\_node\_list | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
+| cn\_target\_config\_node\_list | Target ConfigNode address, if the current ConfigNode is the first one, then set its own address:port |
 
 iotdb-common.properties:
 
@@ -108,10 +108,10 @@ iotdb-common.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-confignode.sh
+bash ./sbin/start-confignode.sh
 
 # Background
-nohup ./sbin/start-confignode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -147,10 +147,10 @@ Please set the important parameters in iotdb-datanode.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-datanode.sh
+bash ./sbin/start-datanode.sh
 
 # Background
-nohup ./sbin/start-datanode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -158,9 +158,63 @@ Start on Windows:
 sbin\start-datanode.bat
 ```
 
-More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+More details are in [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
 
-### Start Cli
+### Stop IoTDB
+When you meet problem, and want to stop IoTDB ConfigNode and DataNode directly, our shells can help you do this.
+
+In Windows:
+
+```
+sbin\stop-datanode.bat
+```
+```
+sbin\stop-confignode.bat
+```
+In Linux:
+```
+bash sbin/stop-datanode.sh
+```
+```
+bash sbin/stop-confignode.sh
+```
+Be careful not to miss the "sudo" label, because some port info's acquisition may require root authority. If you can't sudo, just
+use "jps" or "ps aux | grep iotdb" to get the process's id, then use "kill -9 <process-id>" to stop the process.  
+
+## Start StandAlone
+If you just want to setup your IoTDB locally, 
+You can quickly init 1C1D (i.e. 1 Confignode and 1 Datanode) environment by our shells.
+
+This will work well if you don't change our default settings.
+
+Start on Windows:
+```
+sbin\start-standalone.bat
+```
+Start on Linux:
+```
+bash sbin/start-standalone.sh
+```
+It's recommended to use sudo here, for that the backstage logs may need sudo permission.
+
+Besides, with our shell, you can also directly kill these processes.
+
+Stop on Windows:
+```
+sbin\stop-standalone.bat
+```
+Stop on Linux:
+```
+bash sbin/stop-standalone.sh
+```
+
+Note: On Linux, the 1C1D processes both launches in the background, and you can see the logs for details. 
+
+The stop-standalone.sh may not work well without sudo, since IoTDB's port numbers may be invisible without permission. 
+If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
+and use "sudo kill -9 <process-id>" to manually stop the processes.
+
+## Start Cli
 
 Cli shell is in sbin folder.
 
