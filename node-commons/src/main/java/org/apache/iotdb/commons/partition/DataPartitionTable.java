@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TTimePartitionSlotList;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -63,7 +64,7 @@ public class DataPartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> partitionSlots,
       DataPartitionTable dataPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
     if (partitionSlots.isEmpty()) {
@@ -72,12 +73,12 @@ public class DataPartitionTable {
     } else {
       // Return the DataPartition for each SeriesPartitionSlot
       partitionSlots.forEach(
-          (seriesPartitionSlot, timePartitionSlots) -> {
+          (seriesPartitionSlot, timePartitionSlotList) -> {
             if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
               SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
               if (!dataPartitionMap
                   .get(seriesPartitionSlot)
-                  .getDataPartition(timePartitionSlots, seriesPartitionTable)) {
+                  .getDataPartition(timePartitionSlotList, seriesPartitionTable)) {
                 result.set(false);
               }
 
@@ -146,17 +147,21 @@ public class DataPartitionTable {
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @return Unassigned PartitionSlots
    */
-  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
-    Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> result = new ConcurrentHashMap<>();
+  public Map<TSeriesPartitionSlot, TTimePartitionSlotList> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, TTimePartitionSlotList> partitionSlots) {
+    Map<TSeriesPartitionSlot, TTimePartitionSlotList> result = new ConcurrentHashMap<>();
 
     partitionSlots.forEach(
         (seriesPartitionSlot, timePartitionSlots) ->
             result.put(
                 seriesPartitionSlot,
-                dataPartitionMap
-                    .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .filterUnassignedDataPartitionSlots(timePartitionSlots)));
+                new TTimePartitionSlotList(
+                    dataPartitionMap
+                        .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
+                        .filterUnassignedDataPartitionSlots(
+                            timePartitionSlots.getTimePartitionSlots()),
+                    false,
+                    false)));
 
     return result;
   }
