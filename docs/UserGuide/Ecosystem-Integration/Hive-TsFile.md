@@ -35,7 +35,7 @@ With this connector, you can
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `1.0.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.14.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
@@ -60,10 +60,10 @@ After downloading the code of iotdb from <https://github.com/apache/iotdb>, you 
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 
 ```
-hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-1.0.0-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar;
 
-Added [/Users/hive/iotdb/hive-connector/target/hive-connector-1.0.0-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-1.0.0-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.14.0-SNAPSHOT-jar-with-dependencies.jar]
 ```
 
 

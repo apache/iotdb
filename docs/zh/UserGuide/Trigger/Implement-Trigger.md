@@ -32,7 +32,7 @@
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>1.0.0</version>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
