@@ -64,7 +64,7 @@ public class IoTDBRegionGroupExtensionIT {
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static int originalDataRegionGroupPerDatabase;
-  private static final int testDataRegionGroupPerDatabase = 3;
+  private static final int testDataRegionGroupPerDatabase = 2;
 
   private static int originalSchemaReplicationFactor;
   private static int originalDataReplicationFactor;
@@ -73,7 +73,7 @@ public class IoTDBRegionGroupExtensionIT {
   private static long originalTimePartitionInterval;
 
   private static final String sg = "root.sg";
-  private static final int testSgNum = 3;
+  private static final int testSgNum = 2;
 
   @Before
   public void setUp() throws Exception {
