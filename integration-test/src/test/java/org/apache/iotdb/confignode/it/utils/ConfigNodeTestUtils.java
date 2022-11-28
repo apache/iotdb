@@ -138,7 +138,10 @@ public class ConfigNodeTestUtils {
           .get(storageGroup)
           .put(
               seriesPartitionSlot,
-              new TTimePartitionSlotList().setTimePartitionSlots(new ArrayList<>()));
+              new TTimePartitionSlotList()
+                  .setTimePartitionSlots(new ArrayList<>())
+                  .setNeedLeftAll(true)
+                  .setNeedRightAll(true));
       for (long j = timeSlotStart; j < timeSlotEnd; j++) {
         TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(j * timePartitionInterval);
         result

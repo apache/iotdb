@@ -1381,7 +1381,12 @@ public class ConfigManager implements IManager {
     schemaPartitionTable.forEach(
         (key, value) -> {
           Map<TSeriesPartitionSlot, TTimePartitionSlotList> slotListMap = new HashMap<>();
-          value.keySet().forEach(slot -> slotListMap.put(slot, new TTimePartitionSlotList()));
+          value
+              .keySet()
+              .forEach(
+                  slot ->
+                      slotListMap.put(
+                          slot, new TTimePartitionSlotList(Collections.emptyList(), true, true)));
           partitionSlotsMap.put(key, slotListMap);
         });
 

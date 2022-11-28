@@ -442,7 +442,10 @@ public class ConfigPhysicalPlanSerDeTest {
         .get(storageGroup)
         .put(
             seriesPartitionSlot,
-            new TTimePartitionSlotList().setTimePartitionSlots(new ArrayList<>()));
+            new TTimePartitionSlotList()
+                .setTimePartitionSlots(new ArrayList<>())
+                .setNeedLeftAll(true)
+                .setNeedRightAll(true));
     partitionSlotsMap
         .get(storageGroup)
         .get(seriesPartitionSlot)
@@ -468,7 +471,10 @@ public class ConfigPhysicalPlanSerDeTest {
         .get(storageGroup)
         .put(
             seriesPartitionSlot,
-            new TTimePartitionSlotList().setTimePartitionSlots(new ArrayList<>()));
+            new TTimePartitionSlotList()
+                .setTimePartitionSlots(new ArrayList<>())
+                .setNeedLeftAll(true)
+                .setNeedRightAll(true));
     partitionSlotsMap
         .get(storageGroup)
         .get(seriesPartitionSlot)
