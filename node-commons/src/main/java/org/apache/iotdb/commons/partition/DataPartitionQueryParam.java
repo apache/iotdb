@@ -42,6 +42,17 @@ public class DataPartitionQueryParam {
     this.timePartitionSlotList = timePartitionSlotList;
   }
 
+  public DataPartitionQueryParam(
+      String devicePath,
+      List<TTimePartitionSlot> timePartitionSlotList,
+      boolean needLeftAll,
+      boolean needRightAll) {
+    this.devicePath = devicePath;
+    this.timePartitionSlotList = timePartitionSlotList;
+    this.needLeftAll = needLeftAll;
+    this.needRightAll = needRightAll;
+  }
+
   public DataPartitionQueryParam() {}
 
   public String getDevicePath() {
