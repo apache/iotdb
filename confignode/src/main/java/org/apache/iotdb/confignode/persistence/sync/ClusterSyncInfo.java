@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
@@ -150,6 +151,12 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  public TSStatus recordPipeMessage(RecordPipeMessagePlan physicalPlan) {
+    syncMetadata.changePipeMessage(
+        physicalPlan.getPipeName(), physicalPlan.getPipeMessage().getType());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   public PipeResp showPipe(ShowPipePlan plan) {
     PipeResp resp = new PipeResp();
     if (StringUtils.isEmpty(plan.getPipeName())) {
@@ -184,7 +191,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   // endregion
 
   // ======================================================
-  // region Implement of Snapshot
+  // region Implement of Lock and Unlock
   // ======================================================
 
   public void lockSyncMetadata() {

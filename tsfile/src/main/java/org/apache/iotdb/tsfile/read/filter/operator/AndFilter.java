@@ -19,9 +19,13 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Both the left and right operators of AndExpression must satisfy the condition. */
 public class AndFilter extends BinaryFilter {
@@ -69,5 +73,41 @@ public class AndFilter extends BinaryFilter {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.AND;
+  }
+
+  @Override
+  public List<TimeRange> getTimeRanges() {
+    List<TimeRange> result = new ArrayList<>();
+    List<TimeRange> leftTimeRanges = left.getTimeRanges();
+    List<TimeRange> rightTimeRanges = right.getTimeRanges();
+
+    int leftIndex = 0,
+        rightIndex = 0,
+        leftSize = leftTimeRanges.size(),
+        rightSize = rightTimeRanges.size();
+    while (leftIndex < leftSize && rightIndex < rightSize) {
+      TimeRange leftRange = leftTimeRanges.get(leftIndex);
+      TimeRange rightRange = rightTimeRanges.get(rightIndex);
+
+      if (leftRange.getMax() < rightRange.getMin()) {
+        leftIndex++;
+      } else if (rightRange.getMax() < leftRange.getMin()) {
+        rightIndex++;
+      } else {
+        TimeRange intersection =
+            new TimeRange(
+                Math.max(leftRange.getMin(), rightRange.getMin()),
+                Math.min(leftRange.getMax(), rightRange.getMax()));
+        result.add(intersection);
+        if (leftRange.getMax() <= intersection.getMax()) {
+          leftIndex++;
+        }
+        if (rightRange.getMax() <= intersection.getMax()) {
+          rightIndex++;
+        }
+      }
+    }
+
+    return result;
   }
 }

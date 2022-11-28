@@ -30,10 +30,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
-
-  /** Is the statistic of operation performance enabled */
-  private Boolean enablePerformanceStat = false;
-
   /** The type of the implementation of metric framework */
   private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
@@ -59,14 +55,6 @@ public class MetricConfig {
   private String rpcAddress = "0.0.0.0";
   /** The port of iotdb instance that is monitored */
   private Integer rpcPort = 6667;
-
-  public Boolean getEnablePerformanceStat() {
-    return enablePerformanceStat;
-  }
-
-  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
-    this.enablePerformanceStat = enablePerformanceStat;
-  }
 
   public MetricFrameType getMetricFrameType() {
     return metricFrameType;
@@ -145,7 +133,6 @@ public class MetricConfig {
 
   /** Copy properties from another metric config */
   public void copy(MetricConfig newMetricConfig) {
-    enablePerformanceStat = newMetricConfig.getEnablePerformanceStat();
     metricFrameType = newMetricConfig.getMetricFrameType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
@@ -170,8 +157,7 @@ public class MetricConfig {
       return false;
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
-    return enablePerformanceStat.equals(anotherMetricConfig.getEnablePerformanceStat())
-        && metricFrameType.equals(anotherMetricConfig.getMetricFrameType())
+    return metricFrameType.equals(anotherMetricConfig.getMetricFrameType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())

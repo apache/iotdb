@@ -176,22 +176,32 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void startConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void startDataNode(int index) {
-    getDataNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownDataNode(int index) {
-    getDataNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
   }
 
   @Override

@@ -153,7 +153,7 @@ public class NodeManager {
         configNodeConfig.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
         configNodeConfig.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         configNodeConfig.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
@@ -923,6 +923,18 @@ public class NodeManager {
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
+  }
+
+  /**
+   * Get the free disk space of the specified DataNode
+   *
+   * @param dataNodeId The index of the specified DataNode
+   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
+   */
+  public long getFreeDiskSpace(int dataNodeId) {
+    DataNodeHeartbeatCache dataNodeHeartbeatCache =
+        (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
+    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
   }
 
   /**

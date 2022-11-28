@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** only used for multi-leader consensus. */
+/** only used for iot consensus. */
 public class IndexedConsensusRequest implements IConsensusRequest {
 
   /** we do not need to serialize these two fields as they are useless in other nodes. */

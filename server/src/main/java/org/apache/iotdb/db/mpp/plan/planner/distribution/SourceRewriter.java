@@ -442,7 +442,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             node.getGroupByTimeParameter(),
             node.getScanOrder());
     for (TRegionReplicaSet dataRegion : dataDistribution) {
-      SeriesAggregationScanNode split = (SeriesAggregationScanNode) node.clone();
+      SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) node.clone();
       split.setAggregationDescriptorList(leafAggDescriptorList);
       split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
       split.setRegionReplicaSet(dataRegion);

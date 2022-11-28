@@ -185,22 +185,32 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void startConfigNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownConfigNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void startDataNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownDataNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
   }
 
   @Override

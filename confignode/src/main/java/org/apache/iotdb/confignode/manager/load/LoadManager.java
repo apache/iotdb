@@ -112,7 +112,7 @@ public class LoadManager {
   public CreateRegionGroupsPlan allocateRegionGroups(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    return regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
+    return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
   /**

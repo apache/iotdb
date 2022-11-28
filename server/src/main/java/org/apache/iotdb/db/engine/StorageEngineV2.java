@@ -651,7 +651,7 @@ public class StorageEngineV2 implements IService {
         if (config.isClusterMode()
             && config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+                .equals(ConsensusFactory.IOT_CONSENSUS)) {
           WALManager.getInstance()
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());

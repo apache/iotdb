@@ -31,9 +31,7 @@ public class NodeHeartbeatSample {
   private NodeStatus status;
   private String statusReason;
 
-  private short cpuUsageRate;
-  private double memoryUsageRate;
-  private double diskUsageRate;
+  private TLoadSample loadSample = null;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -50,10 +48,7 @@ public class NodeHeartbeatSample {
     this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
 
     if (heartbeatResp.isSetLoadSample()) {
-      TLoadSample loadSample = heartbeatResp.getLoadSample();
-      this.cpuUsageRate = loadSample.getCpuUsageRate();
-      this.memoryUsageRate = loadSample.getMemoryUsageRate();
-      this.diskUsageRate = loadSample.getDiskUsageRate();
+      this.loadSample = heartbeatResp.getLoadSample();
     }
   }
 
@@ -73,15 +68,11 @@ public class NodeHeartbeatSample {
     return statusReason;
   }
 
-  public short getCpuUsageRate() {
-    return cpuUsageRate;
+  public boolean isSetLoadSample() {
+    return loadSample != null;
   }
 
-  public double getMemoryUsageRate() {
-    return memoryUsageRate;
-  }
-
-  public double getDiskUsageRate() {
-    return diskUsageRate;
+  public TLoadSample getLoadSample() {
+    return loadSample;
   }
 }

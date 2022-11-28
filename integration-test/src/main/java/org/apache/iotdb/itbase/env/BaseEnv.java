@@ -189,12 +189,22 @@ public interface BaseEnv {
   /** @return The index of ConfigNode-Leader in configNodeWrapperList */
   int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
 
+  /** Start an existed ConfigNode */
   void startConfigNode(int index);
 
+  /** Shutdown an existed ConfigNode */
   void shutdownConfigNode(int index);
 
+  /** @return The TDataNodeLocation of the specified DataNode */
+  DataNodeWrapper getDataNodeWrapper(int index);
+
+  /** Register a new DataNode */
+  void registerNewDataNode();
+
+  /** Start an existed DataNode */
   void startDataNode(int index);
 
+  /** Shutdown an existed DataNode */
   void shutdownDataNode(int index);
 
   int getMqttPort();

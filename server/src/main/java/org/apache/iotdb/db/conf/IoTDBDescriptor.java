@@ -900,12 +900,6 @@ public class IoTDBDescriptor {
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
-    conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "insert_multi_tablet_enable_multithreading_column_threshold",
-                String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1146,7 +1140,7 @@ public class IoTDBDescriptor {
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_throttle_threshold_in_byte",
+                "iot_consensus_throttle_threshold_in_byte",
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
@@ -1155,7 +1149,7 @@ public class IoTDBDescriptor {
     long cacheWindowInMs =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_cache_window_time_in_ms",
+                "iot_consensus_cache_window_time_in_ms",
                 Long.toString(conf.getCacheWindowTimeInMs())));
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
@@ -1833,24 +1827,10 @@ public class IoTDBDescriptor {
       conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
     }
 
-    conf.setMaxPendingContinuousQueryTasks(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_pending_continuous_query_tasks",
-                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
-    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
-      conf.setMaxPendingContinuousQueryTasks(64);
-    }
-
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
-
-    conf.setCqlogBufferSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   public void loadClusterProps(Properties properties) {

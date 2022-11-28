@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -229,7 +229,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
@@ -467,7 +467,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
@@ -615,7 +615,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
@@ -736,7 +736,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
