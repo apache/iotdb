@@ -324,7 +324,7 @@ public class Counter implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) {
     if (rowWindow.windowSize() != 0) {
-      collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
+      collector.putInt(rowWindow.windowStartTime(), rowWindow.windowSize());
     }
   }
 }
@@ -366,6 +366,9 @@ public class Max implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) {
+    if (row.isNull(0)) {
+      return;
+    }
     int candidateValue = row.getInt(0);
     if (time == null || value < candidateValue) {
       time = row.getTime();
@@ -406,7 +409,7 @@ The process of registering a UDF in IoTDB is as follows:
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Optional. You can place the JAR package in the directory `iotdb-server-1.0.0-all-bin/ext/udf`.
    **Note that if you choose to place the JAR in advance when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
-The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-1.0.0-all-bin/ext/udf/install`.
+   The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-1.0.0-all-bin/ext/udf/install`.
    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
