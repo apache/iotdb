@@ -23,12 +23,12 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.List;
+
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.appendTsBlockToBuilder;
 
 public interface IPageReader {
 
@@ -46,19 +46,9 @@ public interface IPageReader {
     if (ascending) {
       writeDataToBuilder(builder);
     } else {
-      TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
-      ColumnBuilder[] valueColumnBuilders = builder.getValueColumnBuilders();
-      int columnNum = valueColumnBuilders.length;
-
       TsBlock tsBlock = getAllSatisfiedData();
       tsBlock.reverse();
-      for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
-        timeColumnBuilder.write(tsBlock.getTimeColumn(), i);
-        for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
-          valueColumnBuilders[columnIndex].write(tsBlock.getColumn(columnIndex), i);
-        }
-        builder.declarePosition();
-      }
+      appendTsBlockToBuilder(tsBlock, builder);
     }
   }
 
