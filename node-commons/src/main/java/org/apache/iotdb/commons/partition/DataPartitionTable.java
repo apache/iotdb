@@ -32,12 +32,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class DataPartitionTable {
 
@@ -188,7 +190,9 @@ public class DataPartitionTable {
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList() {
-    return new ArrayList<>(dataPartitionMap.keySet());
+    return dataPartitionMap.keySet().stream()
+        .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
+        .collect(Collectors.toList());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

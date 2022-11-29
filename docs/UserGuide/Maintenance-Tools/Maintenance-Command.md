@@ -259,7 +259,7 @@ It costs 0.012s
 
 A cluster uses a Region as a unit for data replication and data management . The Region status and distribution is helpful for system operation and maintenance testing , as shown in the following scenario ：
 
--  Check which Datanodes are allocated to each Region in the cluster and whether the balance is correct.
+-  Check which DataNodes are allocated to each Region in the cluster and whether the balance is correct.
 
 Currently, IoTDB supports Region query using the following SQL：
 
@@ -403,6 +403,12 @@ A cluster uses partitions for data and metadata arrangement, with a database's m
 
 Trace the assigned regions of a data partition (or data partitions under the same series slot):
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+
+Without the "TIMESLOTID" filter, the sql will return all the regions under the seriesSlot.
+
+The "SERIESSLOTID=s0" can be substituted by "DEVICEID=xxx.xx.xx". Using this, the sql will calculate the seriesSlot corresponding to that deviceId.
+
+Also, the "TIMESLOTID" can be replaced by "TIMESTAMP=t1". In this case, the sql will calculate the timeSlot the timestamp belongs to, which starts before the timeStamp and (implicitly) ends after it.
 
 SQL Examples:
 ```

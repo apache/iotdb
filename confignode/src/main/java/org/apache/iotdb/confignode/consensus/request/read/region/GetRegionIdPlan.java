@@ -54,8 +54,8 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     this();
     this.partitionType = partitionType;
     this.storageGroup = storageGroup;
-    this.seriesSlotId = seriesSlotId;
     this.timeSlotId = timeSlotId;
+    this.seriesSlotId = seriesSlotId;
   }
 
   public String getStorageGroup() {

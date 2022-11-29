@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -675,7 +676,20 @@ public class PartitionManager {
     return getConsensusManager().write(req).getStatus();
   }
 
-  public GetRegionIdResp getRegionId(GetRegionIdPlan plan) {
+  public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
+    GetRegionIdPlan plan =
+        new GetRegionIdPlan(
+            req.getStorageGroup(),
+            req.getType(),
+            req.isSetSeriesSlotId()
+                ? req.getSeriesSlotId()
+                : executor.getSeriesPartitionSlot(req.getDeviceId()),
+            req.isSetTimeSlotId()
+                ? req.getTimeSlotId()
+                : (req.isSetTimeStamp()
+                    ? new TTimePartitionSlot(
+                        req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval())
+                    : null));
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }
 

@@ -526,6 +526,10 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+DEVICEID
+    : D E V I C E I D
+    ;
+
 SET
     : S E T
     ;
