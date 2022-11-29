@@ -78,12 +78,12 @@ public class RouteBalancer {
       CONF.getDataRegionConsensusProtocolClass();
 
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
-      (CONF.isEnableAutoLeaderBalanceForRatis()
+      (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS));
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
-      (CONF.isEnableAutoLeaderBalanceForRatis()
+      (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
@@ -401,7 +401,7 @@ public class RouteBalancer {
     return regionRouteMap.getRegionPriorityMap();
   }
 
-  public RegionRouteMap getLatestRegionRouteMap() {
+  public RegionRouteMap getRegionRouteMap() {
     return regionRouteMap;
   }
 

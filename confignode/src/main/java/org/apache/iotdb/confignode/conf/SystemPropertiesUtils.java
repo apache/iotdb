@@ -143,10 +143,10 @@ public class SystemPropertiesUtils {
     } else {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
-      if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
+      if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
         throw new ConfigurationException(
             "series_partition_slot_num",
-            String.valueOf(conf.getSeriesPartitionSlotNum()),
+            String.valueOf(conf.getSeriesSlotNum()),
             String.valueOf(seriesPartitionSlotNum));
       }
     }
@@ -213,7 +213,7 @@ public class SystemPropertiesUtils {
 
     // PartitionSlot configuration
     systemProperties.setProperty(
-        "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
+        "series_partition_slot_num", String.valueOf(conf.getSeriesSlotNum()));
     systemProperties.setProperty(
         "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
 

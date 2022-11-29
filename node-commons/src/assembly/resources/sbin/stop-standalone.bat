@@ -36,5 +36,5 @@ IF EXIST "%IOTDB_HOME%\sbin\stop-datanode.bat" (
 )
 
 start cmd /c %CONFIGNODE_STOP_PATH%
-TIMEOUT /T 5 /NOBREAK
+TIMEOUT /T 3 /NOBREAK
 start cmd /c %DATANODE_STOP_PATH%

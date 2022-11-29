@@ -24,12 +24,12 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>thrift-iot-consensus</artifactId>
-    <name>rpc-thrift-multi-leader-consensus</name>
-    <description>Rpc modules for multi leader consensus algorithm</description>
+    <name>rpc-thrift-iot-consensus</name>
+    <description>Rpc modules for iot consensus algorithm</description>
     <dependencies>
         <dependency>
             <groupId>org.apache.thrift</groupId>

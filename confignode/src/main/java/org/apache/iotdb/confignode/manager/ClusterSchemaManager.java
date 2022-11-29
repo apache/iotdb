@@ -319,6 +319,23 @@ public class ClusterSchemaManager {
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
+    // Adjust least_data_region_group_num
+    // TODO: The least_data_region_group_num should be maintained separately by different
+    // TODO: StorageGroup
+    int leastDataRegionGroupNum =
+        (int)
+            Math.ceil(
+                (double) totalCpuCoreNum
+                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
+    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
+      // The leastDataRegionGroupNum should be the maximum integer that satisfy:
+      // 1 <= leastDataRegionGroupNum <= 5(default)
+      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+      LOGGER.info(
+          "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
+          leastDataRegionGroupNum);
+    }
+
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
@@ -349,6 +366,10 @@ public class ClusterSchemaManager {
                                     (storageGroupNum
                                         * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            storageGroupSchema.getName(),
+            maxSchemaRegionGroupNum);
 
         // Adjust maxDataRegionGroupNum for each StorageGroup.
         // All StorageGroups divide the total cpu cores equally.
@@ -376,6 +397,10 @@ public class ClusterSchemaManager {
                                     (storageGroupNum
                                         * storageGroupSchema.getDataReplicationFactor())),
                     allocatedDataRegionGroupCount));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            storageGroupSchema.getName(),
+            maxDataRegionGroupNum);
 
         adjustMaxRegionGroupNumPlan.putEntry(
             storageGroupSchema.getName(),

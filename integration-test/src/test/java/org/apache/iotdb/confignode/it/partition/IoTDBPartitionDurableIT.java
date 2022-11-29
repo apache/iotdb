@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
@@ -42,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.DataNodeWrapper;
@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -220,13 +219,13 @@ public class IoTDBPartitionDurableIT {
         TimeUnit.SECONDS.sleep(1);
       }
 
-      /* Test getOrCreateSchemaPartition, the result should be NO_AVAILABLE_REGION_GROUP */
+      /* Test getOrCreateSchemaPartition, the result should be NO_ENOUGH_DATANODE */
       schemaPartitionReq =
           new TSchemaPartitionReq()
               .setPathPatternTree(ConfigNodeTestUtils.generatePatternTreeBuffer(new String[] {d1}));
       schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
-          TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode(),
+          TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode(),
           schemaPartitionTableResp.getStatus().getCode());
 
       /* Register a new DataNode */
@@ -289,7 +288,7 @@ public class IoTDBPartitionDurableIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       /* Test getOrCreateDataPartition, ConfigNode should create DataPartition and return */
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg,
               0,
@@ -442,7 +441,7 @@ public class IoTDBPartitionDurableIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg,
               0,

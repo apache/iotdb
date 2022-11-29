@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -51,6 +52,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
+
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
 
@@ -78,10 +81,10 @@ public class ConsensusManager {
     // There is only one ConfigNodeGroup
     consensusGroupId = new ConfigNodeRegionId(CONF.getConfigNodeRegionId());
 
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.SIMPLE_CONSENSUS,
+                  SIMPLE_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
@@ -91,9 +94,7 @@ public class ConsensusManager {
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(
-                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.SIMPLE_CONSENSUS)));
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, SIMPLE_CONSENSUS)));
     } else {
       // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
@@ -181,6 +182,16 @@ public class ConsensusManager {
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
       // TODO: Check and notify if current ConfigNode's ip or port has changed
+
+      if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+        // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
+        // but RATIS_CONSENSUS doesn't need it
+        try {
+          createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
+        } catch (BadNodeUrlException e) {
+          throw new IOException(e);
+        }
+      }
       LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself

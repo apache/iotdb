@@ -71,7 +71,6 @@ public class TimeColumn implements Column {
 
   @Override
   public long getLong(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
@@ -142,11 +141,5 @@ public class TimeColumn implements Column {
 
   public long[] getTimes() {
     return values;
-  }
-
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
-    }
   }
 }

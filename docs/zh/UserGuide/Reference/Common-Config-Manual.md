@@ -19,19 +19,18 @@
 
 -->
 
-# 通用配置参数
+# 公共配置参数
 
-IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
+IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
-* `iotdb-common.properties`：IoTDB 的通用配置文件。
+* `iotdb-common.properties`：IoTDB 集群的公共配置。
 
-## 热修改配置项
+## 改后生效方式
+不同的配置参数有不同的生效方式，分为以下三种：
 
-为方便用户使用，IoTDB 为用户提供了热修改功能，即在系统运行过程中修改 `iotdb-datanode.properties` 和 `iotdb-common.properties` 中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`热加载`
-的均为支持热修改的配置参数。
-
-通过 Session 或 Cli 发送 ```load configuration``` 命令（SQL）至 IoTDB 可触发配置热加载。
-
++ **仅允许在第一次启动服务前修改：** 在第一次启动 ConfigNode/DataNode 后即禁止修改，修改会导致 ConfigNode/DataNode 无法启动。
++ **重启服务生效：** ConfigNode/DataNode 启动后仍可修改，但需要重启 ConfigNode/DataNode 后才生效。
++ **热加载：** 可在 ConfigNode/DataNode 运行时修改，修改后通过 Session 或 Cli 发送 ```load configuration``` 命令（SQL）至 IoTDB 使配置生效。
 
 ## 系统配置项
 
@@ -39,78 +38,150 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * config\_node\_consensus\_protocol\_class
 
-|     名字     | config\_node\_consensus\_protocol\_class         |
-| :----------: | :----------------------------------------------- |
-|     描述     | ConfigNode 副本的共识协议，仅支持 RatisConsensus |
-|     类型     | String                                           |
-|    默认值    | org.apache.iotdb.consensus.ratis.RatisConsensus  |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                     |
+|   名字   | config\_node\_consensus\_protocol\_class        |
+|:------:|:------------------------------------------------|
+|   描述   | ConfigNode 副本的共识协议，仅支持 RatisConsensus           |
+|   类型   | String                                          |
+|  默认值   | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                  |
 
 * schema\_replication\_factor
 
-|名字| schema\_replication\_factor |
-|:---:|:---|
-|描述| Database 的默认元数据副本数 |
-|类型| int32 |
-|默认值| 1 |
-|改后生效方式|重启服务生效|
+|   名字   | schema\_replication\_factor |
+|:------:|:----------------------------|
+|   描述   | Database 的默认元数据副本数          |
+|   类型   | int32                       |
+|  默认值   | 1                           |
+| 改后生效方式 | 重启服务后对**新的 Database** 生效    |
 
 
 * schema\_region\_consensus\_protocol\_class
 
-|     名字     | schema\_region\_consensus\_protocol\_class                                                   |
-| :----------: | :------------------------------------------------------------------------------------------- |
-|     描述     | 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
-|     类型     | String                                                                                       |
-|    默认值    | org.apache.iotdb.consensus.ratis.RatisConsensus                                            |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                 |
+|   名字   | schema\_region\_consensus\_protocol\_class                      |
+|:------:|:----------------------------------------------------------------|
+|   描述   | 元数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时只能使用 RatisConsensus |
+|   类型   | String                                                          |
+|  默认值   | org.apache.iotdb.consensus.ratis.RatisConsensus                 |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                  |
 
 * data\_replication\_factor
 
-|名字| data\_replication\_factor |
-|:---:|:---|
-|描述| Database 的默认数据副本数|
-|类型| int32 |
-|默认值| 1 |
-|改后生效方式|重启服务生效|
+|   名字   | data\_replication\_factor |
+|:------:|:--------------------------|
+|   描述   | Database 的默认数据副本数         |
+|   类型   | int32                     |
+|  默认值   | 1                         |
+| 改后生效方式 | 重启服务后对**新的 Database** 生效  |
 
 * data\_region\_consensus\_protocol\_class
 
-|     名字     | data\_region\_consensus\_protocol\_class                                                                           |
-| :----------: | :----------------------------------------------------------------------------------------------------------------- |
-|     描述     | 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 IoTConsensus 或 RatisConsensus |
-|     类型     | String                                                                                                             |
-|    默认值    | org.apache.iotdb.consensus.iot.IoTConsensus                                                                  |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                       |
+|   名字   | data\_region\_consensus\_protocol\_class                                      |
+|:------:|:------------------------------------------------------------------------------|
+|   描述   | 数据副本的共识协议，1 副本时可以使用 SimpleConsensus 协议，多副本时可以使用 IoTConsensus 或 RatisConsensus |
+|   类型   | String                                                                        |
+|  默认值   | org.apache.iotdb.consensus.iot.IoTConsensus                                   |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                |
 
-### 分区（负载均衡）配置
+### 负载均衡配置
 
 * series\_partition\_slot\_num
 
-|名字| series\_partition\_slot\_num |
-|:---:|:---|
-|描述| 序列分区槽数 |
-|类型| int32 |
-|默认值| 10000 |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|   名字   | series\_slot\_num |
+|:------:|:------------------|
+|   描述   | 序列分区槽数            |
+|   类型   | int32             |
+|  默认值   | 10000             |
+| 改后生效方式 | 仅允许在第一次启动服务前修改    |
 
 * series\_partition\_executor\_class
 
-|     名字     | series\_partition\_executor\_class                                |
-| :----------: | :---------------------------------------------------------------- |
-|     描述     | 序列分区槽数                                                      |
-|     类型     | String                                                            |
-|    默认值    | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
-| 改后生效方式 | 仅允许在第一次启动服务前修改                                      |
+|   名字   | series\_partition\_executor\_class                                |
+|:------:|:------------------------------------------------------------------|
+|   描述   | 序列分区哈希函数                                                          |
+|   类型   | String                                                            |
+|  默认值   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                    |
 
-* region\_allocate\_strategy
+* schema\_region\_per\_data\_node
 
-|     名字     | region\_allocate\_strategy                          |
-| :----------: |:----------------------------------------------------|
-|     描述     | 元数据和数据的节点分配策略，COPY\_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳 |
-|     类型     | String                                              |
-|    默认值    | GREEDY                                              |
-| 改后生效方式 | 重启服务生效                                              |
+|   名字   | schema\_region\_per\_data\_node       |
+|:------:|:--------------------------------------|
+|   描述   | 期望每个 DataNode 可管理的 SchemaRegion 的最大数量 |
+|   类型   | double                                |
+|  默认值   | 与 schema_replication_factor 相同        |
+| 改后生效方式 | 重启服务生效                                |
+
+* data\_region\_group\_extension\_policy
+
+|   名字   | data\_region\_group\_extension\_policy |
+|:------:|:---------------------------------------|
+|   描述   | DataRegionGroup 的扩容策略                  |
+|   类型   | string                                 |
+|  默认值   | AUTO                                   |
+| 改后生效方式 | 重启服务生效                                 |
+
+* data\_region\_group\_per\_database
+
+|   名字   | data\_region\_group\_per\_database                                  |
+|:------:|:--------------------------------------------------------------------|
+|   描述   | 当选用 CUSTOM-DataRegionGroup 扩容策略时，每个 Database 拥有的 DataRegionGroup 数量 |
+|   类型   | int                                                                 |
+|  默认值   | 1                                                                   |
+| 改后生效方式 | 重启服务生效                                                              |
+
+* data\_region\_per\_processor
+
+|   名字   | data\_region\_per\_processor |
+|:------:|:-----------------------------|
+|   描述   | 期望每个处理器可管理的 DataRegion 的最大数量 |
+|   类型   | double                       |
+|  默认值   | 1.0                          |
+| 改后生效方式 | 重启服务生效                       |
+
+* least\_data\_region\_group\_num
+
+|   名字   | least\_data\_region\_group\_num     |
+|:------:|:------------------------------------|
+|   描述   | 每个 Database 的 DataRegionGroup 的最少数量 |
+|   类型   | int                                 |
+|  默认值   | 5                                   |
+| 改后生效方式 | 重启服务生效                              |
+
+* enable\_data\_partition\_inherit\_policy
+
+|   名字   | enable\_data\_partition\_inherit\_policy                        |
+|:------:|:----------------------------------------------------------------|
+|   描述   | 开启 DataPartition 继承策略后，同一个序列分区槽内的 DataPartition 会继承之前时间分区槽的分配结果 |
+|   类型   | Boolean                                                         |
+|  默认值   | false                                                           |
+| 改后生效方式 | 重启服务生效                                                          |
+
+* leader\_distribution\_policy
+
+|   名字   | leader\_distribution\_policy |
+|:------:|:-----------------------------|
+|   描述   | 集群 RegionGroup 的 leader 分配策略 |
+|   类型   | String                       |
+|  默认值   | MIN_COST_FLOW                |
+| 改后生效方式 | 重启服务生效                       |
+
+* enable\_auto\_leader\_balance\_for\_ratis\_consensus
+
+|   名字   | enable\_auto\_leader\_balance\_for\_ratis\_consensus |
+|:------:|:-----------------------------------------------------|
+|   描述   | 是否为 Ratis 共识协议开启自动均衡 leader 策略                       |
+|   类型   | Boolean                                              |
+|  默认值   | false                                                |
+| 改后生效方式 | 重启服务生效                                               |
+
+* enable\_auto\_leader\_balance\_for\_iot\_consensus
+
+|   名字   | enable\_auto\_leader\_balance\_for\_iot\_consensus |
+|:------:|:---------------------------------------------------|
+|   描述   | 是否为 IoT 共识协议开启自动均衡 leader 策略                       |
+|   类型   | Boolean                                            |
+|  默认值   | true                                               |
+| 改后生效方式 | 重启服务生效                                             |
 
 ### 集群管理
 
@@ -816,7 +887,7 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 |名字| cross\_performer |
 |:---:|:-----------------|
-|描述| 跨空间合并任务执行器的类型    |
+|描述| 跨空间合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中   |
 |类型| String           |
 |默认值| read\_point      |
 |改后生效方式| 重启服务生效           |
@@ -832,12 +903,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_seq\_performer
 
-|名字| inner\_seq\_performer |
-|:---:|:----------------------|
-|描述| 顺序空间内合并任务执行器的类型       |
-|类型| String                |
-|默认值| read\_chunk           |
-|改后生效方式| 重启服务生效                |
+|名字| inner\_seq\_performer                                       |
+|:---:|:------------------------------------------------------------|
+|描述| 顺序空间内合并任务执行器的类型，可选项是read_chunk和fast，默认是read_chunk，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_chunk                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * inner\_unseq\_selector
 
@@ -850,12 +921,12 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * inner\_unseq\_performer
 
-|名字| inner\_unseq\_performer |
-|:---:|:------------------------|
-|描述| 乱序空间内合并任务执行器的类型         |
-|类型| String                  |
-|默认值| read\_point             |
-|改后生效方式| 重启服务生效                  |
+|名字| inner\_unseq\_performer                                     |
+|:---:|:------------------------------------------------------------|
+|描述| 乱序空间内合并任务执行器的类型，可选项是read_point和fast，默认是read_point，fast还在测试中 |
+|类型| String                                                      |
+|默认值| read\_point                                                 |
+|改后生效方式| 重启服务生效                                                      |
 
 * compaction\_priority
 
@@ -895,21 +966,21 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 
 * chunk\_size\_lower\_bound\_in\_compaction
 
-|     名字     | chunk\_size\_lower\_bound\_in\_compaction             |
-| :----------: | :---------------------------------------------------- |
-|     描述     | 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并 |
-|     类型     | Int64                                                 |
-|    默认值    | 128                                                   |
-| 改后生效方式 | 重启服务生效                                          |
+|     名字     | chunk\_size\_lower\_bound\_in\_compaction |
+| :----------: |:------------------------------------------|
+|     描述     | 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并            |
+|     类型     | Int64                                     |
+|    默认值    | 10240                                     |
+| 改后生效方式 | 重启服务生效                                    |
 
 * chunk\_point\_num\_lower\_bound\_in\_compaction
 
 |名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
-|:---:|:---|
-|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
-|类型| int32 |
-|默认值| 100 |
-|改后生效方式|重启服务生效|
+|:---:|:------------------------------------------------|
+|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并                  |
+|类型| int32                                           |
+|默认值| 1000                                            |
+|改后生效方式| 重启服务生效                                          |
 
 * max\_inner\_compaction\_candidate\_file\_num
 
@@ -1107,11 +1178,20 @@ IoTDB ConfigNode 和 DataNode 的通用配置参数位于 `conf` 目录下。
 * max\_number\_of\_points\_in\_page
 
 |名字| max\_number\_of\_points\_in\_page |
-|:---:|:---|
-|描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量 |
-|类型| int32 |
-|默认值| 1048576 |
-|改后生效方式|热加载|
+|:---:|:----------------------------------|
+|描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量         |
+|类型| int32                             |
+|默认值| 10000                             |
+|改后生效方式| 热加载                              |
+
+* pattern\_matching\_threshold
+
+|名字| pattern\_matching\_threshold |
+|:---:|:-----------------------------|
+|描述| 正则表达式匹配时最大的匹配次数              |
+|类型| int32                        |
+|默认值| 1000000                        |
+|改后生效方式| 热加载                          |
 
 * max\_string\_length
 

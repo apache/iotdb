@@ -16,24 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.confignode.manager.partition;
 
-public enum CreateRegionGroupsState {
+import java.io.IOException;
 
-  // Create RegionGroups on remote DataNodes
-  CREATE_REGION_GROUPS,
+public enum DataRegionGroupExtensionPolicy {
+  CUSTOM("CUSTOM"),
 
-  // Shunt the RegionReplicas, including:
-  // 1. Persist successfully created RegionGroups' record
-  // 2. Add recreate RegionReplicas task in RegionMaintainer
-  // for those RegionReplicas that failed to create, when
-  // there are more than half of RegionReplicas created successfully on the same RegionGroup
-  // 3. Delete redundant RegionReplicas in contrast to case 2.
-  SHUNT_REGION_REPLICAS,
+  AUTO("AUTO");
 
-  // Mark RegionGroupCache as available for those RegionGroups that created successfully.
-  // For DataRegionGroups that use iot consensus protocol, select leader by the way
-  ACTIVATE_REGION_GROUPS,
+  private final String policy;
 
-  CREATE_REGION_GROUPS_FINISH
+  DataRegionGroupExtensionPolicy(String policy) {
+    this.policy = policy;
+  }
+
+  public String getPolicy() {
+    return policy;
+  }
+
+  public static DataRegionGroupExtensionPolicy parse(String policy) throws IOException {
+    for (DataRegionGroupExtensionPolicy extensionPolicy : DataRegionGroupExtensionPolicy.values()) {
+      if (extensionPolicy.policy.equals(policy)) {
+        return extensionPolicy;
+      }
+    }
+    throw new IOException(
+        String.format("DataRegionGroupExtensionPolicy %s doesn't exist.", policy));
+  }
 }

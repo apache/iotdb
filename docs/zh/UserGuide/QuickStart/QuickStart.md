@@ -60,7 +60,6 @@ Linux 系统与 MacOS 系统启动命令如下：
 ```
 > bash sbin/start-standalone.sh
 ```
-这里最好使用sudo，如果不使用 sudo，可能会提示后台日志无权限写入。
 
 Windows 系统启动命令如下：
 

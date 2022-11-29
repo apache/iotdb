@@ -429,7 +429,6 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(0, tsFileManager.getTsFileList(false).size());
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {

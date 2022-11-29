@@ -28,38 +28,40 @@ IoTDB provides Cli/shell tools for users to interact with IoTDB server in comman
 
 ## Installation
 
-Under the root path of iotdb:
+If you use the source code version of IoTDB, then under the root path of IoTDB, execute:
 
 ```shell
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB cli will be in the folder "cli/target/iotdb-cli-{project.version}".
+After build, the IoTDB Cli will be in the folder "cli/target/iotdb-cli-{project.version}".
+
+If you download the binary version, then the Cli can be used directly in sbin folder.
 
 ## Running 
 
 ### Running Cli
 
 After installation, there is a default user in IoTDB: `root`, and the
-default password is `root`. Users can use this username to try IoTDB Cli/Shell tool. The cli startup script is the `start-cli` file under the \$IOTDB\_HOME/bin folder. When starting the script, you need to specify the IP and PORT. (Make sure the IoTDB server is running properly when you use Cli/Shell tool to connect it.)
+default password is `root`. Users can use this username to try IoTDB Cli/Shell tool. The cli startup script is the `start-cli` file under the \$IOTDB\_HOME/bin folder. When starting the script, you need to specify the IP and PORT. (Make sure the IoTDB cluster is running properly when you use Cli/Shell tool to connect to it.)
 
-Here is an example where the server is started locally and the user has not changed the running port. The default rpc port is
+Here is an example where the cluster is started locally and the user has not changed the running port. The default rpc port is
 6667 </br>
-If you need to connect to the remote server or changes
-the rpc port number of the server running, set the specific IP and RPC PORT at -h and -p.</br>
+If you need to connect to the remote DataNode or changes
+the rpc port number of the DataNode running, set the specific IP and RPC PORT at -h and -p.</br>
 You also can set your own environment variable at the front of the start script ("/sbin/start-cli.sh" for linux and "/sbin/start-cli.bat" for windows)
 
 The Linux and MacOS system startup commands are as follows:
 
 ```shell
-Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+Shell > bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 The Windows system startup commands are as follows:
 
 ```shell
 Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
-After using these commands, the cli can be started successfully. The successful status will be as follows:
+After operating these commands, the cli can be started successfully. The successful status will be as follows:
 
 ```
  _____       _________  ______   ______
@@ -70,10 +72,10 @@ After using these commands, the cli can be started successfully. The successful 
 |_____|'.__.' |_____|  |______.'|_______/  version <version>
 
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 IoTDB>
 ```
-Enter ```quit``` or `exit` can exit Cli. The cli will shows `quit normally` 
+Enter ```quit``` or `exit` can exit Cli.
 
 ### Cli Parameters
 
@@ -95,7 +97,7 @@ Following is a cli command which connects the host with IP
 The Linux and MacOS system startup commands are as follows:
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
@@ -105,6 +107,7 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 
 ### CLI Special Command
 Special commands of Cli are below.
+
 | Command | Description / Example |
 |:---|:---|
 | `set time_display_type=xxx` | eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
@@ -121,7 +124,7 @@ Special commands of Cli are below.
 
 Openid connect (oidc) uses keycloack as the authority authentication service of oidc service
 
-#### configuration
+#### Configuration
 The configuration is located in iotdb-datanode.properties(iotdb-confignode.properties) , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
 
 ```
@@ -138,7 +141,7 @@ openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
 
 ```shell
 Shell >cd bin
-Shell >./standalone.sh
+Shell >bash ./standalone.sh
 ```
 2、use url(https://ip:port/auth) login keycloack, the first login needs to create a user
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
@@ -193,7 +196,7 @@ If OIDC is enabled on server side then no username / passwort is needed but a va
 So as username you use the token and the password has to be empty, e.g.
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
 Among them, you need to replace {my access token} (note, including {}) with your token, that is, the value corresponding to access_token.
@@ -224,14 +227,14 @@ This has to be passed as username (with parameter `-u`) and empty password to th
 
 -e parameter is designed for the Cli/shell tool in the situation where you would like to manipulate IoTDB in batches through scripts. By using the -e parameter, you can operate IoTDB without entering the cli's input mode.
 
-In order to avoid confusion between statements and other parameters, the current situation only supports the -e parameter as the last parameter.
+In order to avoid confusion between statements and other parameters, the current version only supports the -e parameter as the last parameter.
 
 The usage of -e parameter for Cli/shell is as follows:
 
 The Linux and MacOS system commands:
 
 ```shell
-Shell > sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
+Shell > bash sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 The Windows system commands:
@@ -254,18 +257,18 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create database root.demo"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create database root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
-The print results are shown in the figure, which are consistent with the cli and jdbc operations.
+The results are shown in the figure, which are consistent with the Cli and jdbc operations.
 
 ```shell
- Shell > ./shell.sh 
+ Shell > bash ./shell.sh 
 +-----------------------------+------------+
 |                         Time|root.demo.s1|
 +-----------------------------+------------+
