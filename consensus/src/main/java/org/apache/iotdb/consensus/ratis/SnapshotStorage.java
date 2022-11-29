@@ -200,6 +200,8 @@ public class SnapshotStorage implements StateMachineStorage {
 
   @Override
   public File getTmpDir() {
-    return new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
+    return getSnapshotDir() == null
+        ? null
+        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 }
