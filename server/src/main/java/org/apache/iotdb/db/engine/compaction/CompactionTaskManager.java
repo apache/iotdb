@@ -49,6 +49,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
@@ -79,6 +80,7 @@ public class CompactionTaskManager implements IService {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private volatile boolean init = false;
+  public static final AtomicLong compactionId = new AtomicLong(0);
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;

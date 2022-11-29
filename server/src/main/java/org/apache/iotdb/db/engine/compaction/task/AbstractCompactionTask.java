@@ -48,6 +48,7 @@ public abstract class AbstractCompactionTask {
   protected int hashCode = -1;
   protected CompactionTaskSummary summary = new CompactionTaskSummary();
   protected long serialId;
+  protected long compactionId;
 
   public AbstractCompactionTask(
       String storageGroupName,
@@ -62,6 +63,7 @@ public abstract class AbstractCompactionTask {
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
     this.serialId = serialId;
+    this.compactionId = CompactionTaskManager.compactionId.getAndIncrement();
   }
 
   public abstract void setSourceFilesToCompactionCandidate();

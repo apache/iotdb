@@ -124,9 +124,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files : {}, unsequence files : {} . Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
+          "{}-{} [Compaction] [Task-id: {}] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files : {}, unsequence files : {} . Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
           storageGroupName,
           dataRegionId,
+          compactionId,
           selectedSequenceFiles.size(),
           selectedUnsequenceFiles.size(),
           selectedSequenceFiles,
@@ -150,6 +151,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // indicates that the cross compaction is complete and the result can be reused during a
         // restart recovery
         compactionLogger.close();
+
+        CompactionUtils.takeSnapshot(
+            tsFileManager, storageGroupName + "-" + dataRegionId, timePartition, compactionId);
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
@@ -205,9 +209,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
-            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",
+            "{}-{} [Compaction] [Task-id: {}] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",
             storageGroupName,
             dataRegionId,
+            compactionId,
             costTime,
             (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime);
       }
@@ -215,12 +220,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
-            "{}-{} [Compaction] Meet errors in cross space compaction.",
+            "{}-{} [Compaction] [Task-id: {}] Meet errors in cross space compaction.",
             storageGroupName,
             dataRegionId,
+            compactionId,
             throwable);
       } else {
-        LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
+        LOGGER.warn(
+            "{}-{} [Compaction] [Task-id: {}] Compaction interrupted",
+            storageGroupName,
+            dataRegionId,
+            compactionId);
         // clean the interrupted flag
         Thread.interrupted();
       }

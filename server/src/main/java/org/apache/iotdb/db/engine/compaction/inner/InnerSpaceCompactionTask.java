@@ -106,9 +106,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] InnerSpaceCompaction task starts with {} files",
+        "{}-{} [Compaction] [Task-id: {}] InnerSpaceCompaction task starts with {} files",
         storageGroupName,
         dataRegionId,
+        compactionId,
         selectedTsFileResourceList.size());
     try {
       targetTsFileResource =
@@ -133,11 +134,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           "{}-{} [InnerSpaceCompactionTask] Close the logger", storageGroupName, dataRegionId);
       compactionLogger.close();
       LOGGER.info(
-          "{}-{} [Compaction] compaction with {}",
+          "{}-{} [Compaction] [Task-id: {}] compaction with {}",
           storageGroupName,
           dataRegionId,
+          compactionId,
           selectedTsFileResourceList);
 
+      // take a snapshot for all tsfile in this time partition
+      CompactionUtils.takeSnapshot(
+          tsFileManager, storageGroupName + "-" + dataRegionId, timePartition, compactionId);
       // carry out the compaction
       performer.setSourceFiles(selectedTsFileResourceList);
       // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use a
@@ -149,15 +154,18 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
 
       LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+          "{}-{} [InnerSpaceCompactionTask] [Task-id: {}] start to rename mods file",
           storageGroupName,
-          dataRegionId);
+          dataRegionId,
+          compactionId);
       CompactionUtils.combineModsInInnerCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
       if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
         throw new InterruptedException(
-            String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+            String.format(
+                "%s-%s [Compaction] [Task-id: %d] abort",
+                storageGroupName, dataRegionId, compactionId));
       }
 
       // replace the old files with new file, the new is in same position as the old
@@ -178,9 +186,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
+          "{}-{} [Compaction] [Task-id: {}] Compacted target files, try to get the write lock of source files",
           storageGroupName,
-          dataRegionId);
+          dataRegionId,
+          compactionId);
 
       // release the read lock of all source files, and get the write lock of them to delete them
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -201,9 +210,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] compaction finish, start to delete old files",
+          "{}-{} [Compaction] [Task-id: {}] compaction finish, start to delete old files",
           storageGroupName,
-          dataRegionId);
+          dataRegionId,
+          compactionId);
       // delete the old files
       long totalSizeOfDeletedFile = 0L;
       for (TsFileResource resource : selectedTsFileResourceList) {
@@ -237,10 +247,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
-          "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
+          "{}-{} [Compaction] [Task-id: {}] InnerSpaceCompaction task finishes successfully, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s",
           storageGroupName,
           dataRegionId,
+          compactionId,
           targetTsFileResource.getTsFile().getName(),
           costTime,
           ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
@@ -252,13 +263,18 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
-            "{}-{} [Compaction] Meet errors in inner space compaction.",
+            "{}-{} [Compaction] [Task-id: {}] Meet errors in inner space compaction.",
             storageGroupName,
             dataRegionId,
+            compactionId,
             throwable);
       } else {
         // clean the interrupt flag
-        LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
+        LOGGER.warn(
+            "{}-{} [Compaction] [Task-id: {}] Compaction interrupted",
+            storageGroupName,
+            dataRegionId,
+            compactionId);
         Thread.interrupted();
       }
 

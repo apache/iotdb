@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -254,6 +257,85 @@ public class CompactionUtils {
       for (TsFileResource seqResource : seqResources) {
         targetResource.updatePlanIndexes(seqResource);
       }
+    }
+  }
+
+  public static void takeSnapshot(
+      TsFileManager tsFileManager, String storageGroupName, long timePartition, long compactionId)
+      throws IOException {
+    File targetBaseDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                + File.separator
+                + IoTDBConstant.COMPACTION_BACKUP_FOLDER_NAME
+                + File.separator
+                + compactionId
+                + File.separator
+                + storageGroupName
+                + File.separator
+                + timePartition);
+    if (!targetBaseDir.exists() && !targetBaseDir.mkdirs()) {
+      throw new IOException("Failed to create " + targetBaseDir.getAbsolutePath());
+    }
+    tsFileManager.readLock();
+    try {
+      List<TsFileResource> sequenceFiles =
+          tsFileManager.getSequenceListByTimePartition(timePartition);
+      for (TsFileResource resource : sequenceFiles) {
+        File targetFile =
+            new File(
+                targetBaseDir
+                    + File.separator
+                    + IoTDBConstant.SEQUENCE_FLODER_NAME
+                    + File.separator
+                    + resource.getTsFile().getName());
+        File targetResource =
+            new File(
+                targetBaseDir
+                    + File.separator
+                    + IoTDBConstant.SEQUENCE_FLODER_NAME
+                    + File.separator
+                    + resource.getTsFile().getName()
+                    + TsFileResource.RESOURCE_SUFFIX);
+        if (!targetFile.getParentFile().exists()) {
+          targetFile.getParentFile().mkdirs();
+        }
+        Files.createLink(targetFile.toPath(), resource.getTsFile().toPath());
+        Files.createLink(
+            targetResource.toPath(),
+            new File(resource.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+                .toPath());
+      }
+
+      List<TsFileResource> unsequenceFiles =
+          tsFileManager.getUnsequenceListByTimePartition(timePartition);
+      for (TsFileResource resource : unsequenceFiles) {
+        File targetFile =
+            new File(
+                targetBaseDir
+                    + File.separator
+                    + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                    + File.separator
+                    + resource.getTsFile().getName());
+        File targetResource =
+            new File(
+                targetBaseDir
+                    + File.separator
+                    + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                    + File.separator
+                    + resource.getTsFile().getName()
+                    + TsFileResource.RESOURCE_SUFFIX);
+        if (!targetFile.getParentFile().exists()) {
+          targetFile.getParentFile().mkdirs();
+        }
+        Files.createLink(targetFile.toPath(), resource.getTsFile().toPath());
+        Files.createLink(
+            targetResource.toPath(),
+            new File(resource.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+                .toPath());
+      }
+    } finally {
+      tsFileManager.readUnlock();
     }
   }
 }
