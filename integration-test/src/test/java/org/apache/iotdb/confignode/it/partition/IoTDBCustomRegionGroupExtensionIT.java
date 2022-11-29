@@ -51,7 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBRegionGroupExtensionIT {
+public class IoTDBCustomRegionGroupExtensionIT {
 
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
@@ -63,7 +63,7 @@ public class IoTDBRegionGroupExtensionIT {
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static int originalDataRegionGroupPerDatabase;
-  private static final int testDataRegionGroupPerDatabase = 5;
+  private static final int testDataRegionGroupPerDatabase = 2;
 
   private static int originalSchemaReplicationFactor;
   private static int originalDataReplicationFactor;
@@ -72,7 +72,7 @@ public class IoTDBRegionGroupExtensionIT {
   private static long originalTimePartitionInterval;
 
   private static final String sg = "root.sg";
-  private static final int testSgNum = 5;
+  private static final int testSgNum = 2;
 
   @Before
   public void setUp() throws Exception {

@@ -207,7 +207,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.setStorageGroup(req);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute create database {} in config node, status is {}.",
             setStorageGroupStatement.getStorageGroupPath(),
             tsStatus);
@@ -269,7 +269,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = client.deleteStorageGroups(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
             deleteStorageGroupStatement.getPrefixPath(),
             tsStatus);
@@ -390,7 +390,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final TSStatus executionStatus = client.createFunction(tCreateFunctionReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to create function {}({}) because {}",
             udfName,
             className,
@@ -413,7 +413,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus = client.dropFunction(new TDropFunctionReq(udfName));
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error("[{}] Failed to drop function {}.", executionStatus, udfName);
+        LOGGER.warn("[{}] Failed to drop function {}.", executionStatus, udfName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -565,7 +565,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "[{}] Failed to create trigger {}. TSStatus is {}",
             executionStatus,
             createTriggerStatement.getTriggerName(),
@@ -587,7 +587,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropTrigger(new TDropTriggerReq(triggerName));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error("[{}] Failed to drop trigger {}.", executionStatus, triggerName);
+        LOGGER.warn("[{}] Failed to drop trigger {}.", executionStatus, triggerName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -632,7 +632,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.setTTL(setTTLReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
             setTTLStatement.getStorageGroupPath(),
@@ -909,7 +909,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute create schema template {} in config node, status is {}.",
             createSchemaTemplateStatement.getName(),
             tsStatus);
@@ -1021,7 +1021,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute deactivate schema template {} from {} in config node, status is {}.",
             deactivateTemplateStatement.getTemplateName(),
             deactivateTemplateStatement.getPathPatternList(),
@@ -1047,7 +1047,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.dropSchemaTemplate(dropSchemaTemplateStatement.getTemplateName());
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute drop schema template {} in config node, status is {}.",
             dropSchemaTemplateStatement.getTemplateName(),
             tsStatus);
@@ -1105,7 +1105,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute unset schema template {} from {} in config node, status is {}.",
             unsetSchemaTemplateStatement.getTemplateName(),
             unsetSchemaTemplateStatement.getPath(),
@@ -1132,7 +1132,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       pipeSinkInfo.setAttributes(createPipeSinkStatement.getAttributes());
       TSStatus tsStatus = configNodeClient.createPipeSink(pipeSinkInfo);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to create PIPESINK {} with type {} in config node, status is {}.",
             createPipeSinkStatement.getPipeSinkName(),
             createPipeSinkStatement.getPipeSinkType(),
@@ -1157,7 +1157,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       req.setPipeSinkName(dropPipeSinkStatement.getPipeSinkName());
       TSStatus tsStatus = configNodeClient.dropPipeSink(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to drop PIPESINK {} in config node, status is {}.",
             dropPipeSinkStatement.getPipeSinkName(),
             tsStatus);
@@ -1202,7 +1202,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setAttributes(createPipeStatement.getPipeAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to create PIPE {} in config node, status is {}.",
             createPipeStatement.getPipeName(),
             tsStatus);
@@ -1223,7 +1223,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to start PIPE {}, status is {}.", startPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -1242,7 +1242,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.dropPipe(dropPipeStatement.getPipeName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to drop PIPE {}, status is {}.", dropPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -1261,7 +1261,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TSStatus tsStatus = configNodeClient.stopPipe(stopPipeStatement.getPipeName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to stop PIPE {}, status is {}.", stopPipeStatement.getPipeName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -1321,7 +1321,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "Failed to execute delete timeseries {} in config node, status is {}.",
             deleteTimeSeriesStatement.getPathPatternList(),
             tsStatus);
@@ -1440,7 +1440,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               username);
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error(
+        LOGGER.warn(
             "[{}] Failed to create continuous query {}. TSStatus is {}",
             executionStatus,
             createContinuousQueryStatement.getCqId(),
@@ -1462,7 +1462,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropCQ(new TDropCQReq(cqId));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error("[{}] Failed to drop continuous query {}.", executionStatus, cqId);
+        LOGGER.warn("[{}] Failed to drop continuous query {}.", executionStatus, cqId);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
