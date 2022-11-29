@@ -54,6 +54,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,6 +67,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread.EXECUTION_TIME_SLICE;
@@ -132,6 +134,10 @@ public class DataDriverTest {
               null,
               true);
 
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       MeasurementPath measurementPath2 =
           new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
@@ -144,6 +150,10 @@ public class DataDriverTest {
               null,
               null,
               true);
+
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -193,36 +203,32 @@ public class DataDriverTest {
         assertEquals(FragmentInstanceState.FLUSHING, stateMachine.getState());
 
         List<TsBlock> result = sinkHandle.getTsBlocks();
-        assertEquals(13, result.size());
 
-        for (int i = 0; i < 13; i++) {
-          TsBlock tsBlock = result.get(i);
+        int row = 0;
+        for (TsBlock tsBlock : result) {
           assertEquals(2, tsBlock.getValueColumnCount());
           assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
           assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
 
-          if (i < 12) {
-            assertEquals(20, tsBlock.getPositionCount());
-          } else {
-            assertEquals(10, tsBlock.getPositionCount());
-          }
-          for (int j = 0; j < tsBlock.getPositionCount(); j++) {
-            long expectedTime = j + 20L * i;
-            assertEquals(expectedTime, tsBlock.getTimeByIndex(j));
-            if (expectedTime < 200) {
-              assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(j));
-            } else if (expectedTime < 260
-                || (expectedTime >= 300 && expectedTime < 380)
-                || expectedTime >= 400) {
-              assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(j));
+          for (int j = 0; j < tsBlock.getPositionCount(); j++, row++) {
+            assertEquals(row, tsBlock.getTimeByIndex(j));
+            if ((long) row < 200) {
+              assertEquals(20000 + (long) row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(20000 + (long) row, tsBlock.getColumn(1).getInt(j));
+            } else if ((long) row < 260
+                || ((long) row >= 300 && (long) row < 380)
+                || (long) row >= 400) {
+              assertEquals(10000 + (long) row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(10000 + (long) row, tsBlock.getColumn(1).getInt(j));
             } else {
-              assertEquals(expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(expectedTime, tsBlock.getColumn(1).getInt(j));
+              assertEquals(row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(row, tsBlock.getColumn(1).getInt(j));
             }
           }
         }
+
+        assertEquals(250, row);
+
       } finally {
         if (dataDriver != null) {
           dataDriver.close();

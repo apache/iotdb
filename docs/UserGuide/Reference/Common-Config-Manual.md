@@ -25,6 +25,14 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * `iotdb-common.properties`：IoTDB common configurations.
 
+
+## Effective
+Different configuration parameters take effect in the following three ways:
+
++ **Only allowed to be modified in first start up:** Can't be modified after first start, otherwise the ConfigNode/DataNode cannot start.
++ **After restarting system:** Can be modified after the ConfigNode/DataNode first start, but take effect after restart.
++ **hot-load:** Can be modified while the ConfigNode/DataNode is running, and trigger through sending the command(sql) `load configuration` to the IoTDB server by client or session.
+
 ## Configuration File
 
 ### Replication Configuration
@@ -32,7 +40,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 * config\_node\_consensus\_protocol\_class
 
 |    Name     | config\_node\_consensus\_protocol\_class                               |
-| :---------: | :--------------------------------------------------------------------- |
+|:-----------:|:-----------------------------------------------------------------------|
 | Description | Consensus protocol of ConfigNode replicas, only support RatisConsensus |
 |    Type     | String                                                                 |
 |   Default   | org.apache.iotdb.consensus.ratis.RatisConsensus                        |
@@ -40,68 +48,140 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * schema\_replication\_factor
 
-|Name| schema\_replication\_factor |
-|:---:|:---|
-|Description| Schema replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | schema\_replication\_factor                                      |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Schema replication num                                           |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * schema\_region\_consensus\_protocol\_class
 
-|    Name     | schema\_region\_consensus\_protocol\_class                                                                                                   |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus |  |
-|    Type     | String                                                                                                                                       |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                            |
-|  Effective  | Only allowed to be modified in first start up                                                                                                |
+|    Name     |                                                  schema\_region\_consensus\_protocol\_class                                                  |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------:|
+| Description | Consensus protocol of schema replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could only use RatisConsensus  |
+|    Type     |                                                                    String                                                                    |
+|   Default   |                                               org.apache.iotdb.consensus.ratis.RatisConsensus                                                |
+|  Effective  |                                                Only allowed to be modified in first start up                                                 |
 
 * data\_replication\_factor
 
-|Name| data\_replication\_factor |
-|:---:|:---|
-|Description| Data replication num|
-|Type| int32 |
-|Default| 1 |
-|Effective|After restarting system|
+|    Name     | data\_replication\_factor                                        |
+|:-----------:|:-----------------------------------------------------------------|
+| Description | Data replication num                                             |
+|    Type     | int32                                                            |
+|   Default   | 1                                                                |
+|  Effective  | Take effect on **new created Databases** after restarting system |
 
 * data\_region\_consensus\_protocol\_class
 
-|    Name     | data\_region\_consensus\_protocol\_class                                                                                                                      |
-| :---------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use MultiLeaderConsensus or RatisConsensus |
-|    Type     | String                                                                                                                                                        |
-|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                             |
-|  Effective  | Only allowed to be modified in first start up                                                                                                                 |
+|    Name     | data\_region\_consensus\_protocol\_class                                                                                                             |
+|:-----------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | Consensus protocol of data replicas, SimpleConsensus could only be used in 1 replica，larger than 1 replicas could use IoTConsensus or RatisConsensus |
+|    Type     | String                                                                                                                                               |
+|   Default   | org.apache.iotdb.consensus.simple.SimpleConsensus                                                                                                    |
+|  Effective  | Only allowed to be modified in first start up                                                                                                        |
 
-### Partition (Load balancing) Configuration
+### Load balancing Configuration
 
 * series\_partition\_slot\_num
 
-|Name| series\_partition\_slot\_num |
-|:---:|:---|
-|Description| Slot num of series partition |
-|Type| int32 |
-|Default| 10000 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | series\_slot\_num                             |
+|:-----------:|:----------------------------------------------|
+| Description | Slot num of series partition                  |
+|    Type     | int32                                         |
+|   Default   | 10000                                         |
+|  Effective  | Only allowed to be modified in first start up |
 
 * series\_partition\_executor\_class
 
 |    Name     | series\_partition\_executor\_class                                |
-| :---------: | :---------------------------------------------------------------- |
+|:-----------:|:------------------------------------------------------------------|
 | Description | Series partition hash function                                    |
 |    Type     | String                                                            |
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |  Effective  | Only allowed to be modified in first start up                     |
 
-* region\_allocate\_strategy
+* schema\_region\_per\_data\_node
 
-|    Name     | region\_allocate\_strategy                                                                               |
-| :---------: | :------------------------------------------------------------------------------------------------------- |
-| Description | Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters |
-|    Type     | String                                                                                                   |
-|   Default   | GREEDY                                                                                                   |
-|  Effective  | After restarting system                                                                                  |
+|    Name     | schema\_region\_per\_data\_node                                            |
+|:-----------:|:---------------------------------------------------------------------------|
+| Description | The maximum number of SchemaRegion expected to be managed by each DataNode |
+|    Type     | double                                                                     |
+|   Default   | 1.0                                                                        |
+|  Effective  | After restarting system                                                    |
+
+* data\_region\_group\_extension\_policy
+
+|    Name     | data\_region\_group\_extension\_policy  |
+|:-----------:|:----------------------------------------|
+| Description | The extension policy of DataRegionGroup |
+|    Type     | string                                  |
+|   Default   | AUTO                                    |
+|  Effective  | After restarting system                 |
+
+* data\_region\_group\_per\_database
+
+|    Name     | data\_region\_group\_per\_database                                                                           |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------|
+| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy |
+|    Type     | int                                                                                                          |
+|   Default   | 1                                                                                                            |
+|  Effective  | After restarting system                                                                                      |
+
+* data\_region\_per\_processor
+
+|    Name     | data\_region\_per\_processor                                              |
+|:-----------:|:--------------------------------------------------------------------------|
+| Description | The maximum number of DataRegion expected to be managed by each processor |
+|    Type     | double                                                                    |
+|   Default   | 1.0                                                                       |
+|  Effective  | After restarting system                                                   |
+
+* least\_data\_region\_group\_num
+
+|    Name     | least\_data\_region\_group\_num                       |
+|:-----------:|:------------------------------------------------------|
+| Description | The least number of DataRegionGroup for each Database |
+|    Type     | int                                                   |
+|   Default   | 5                                                     |
+|  Effective  | After restarting system                               |
+
+* enable\_data\_partition\_inherit\_policy
+
+|    Name     | enable\_data\_partition\_inherit\_policy           |
+|:-----------:|:---------------------------------------------------|
+| Description | Whether to enable the DataPartition inherit policy |
+|    Type     | Boolean                                            |
+|   Default   | false                                              |
+|  Effective  | After restarting system                            |
+
+* leader\_distribution\_policy
+
+|    Name     | leader\_distribution\_policy                            |
+|:-----------:|:--------------------------------------------------------|
+| Description | The policy of cluster RegionGroups' leader distribution |
+|    Type     | String                                                  |
+|   Default   | MIN_COST_FLOW                                           |
+|  Effective  | After restarting system                                 |
+
+* enable\_auto\_leader\_balance\_for\_ratis
+
+|    Name     | enable\_auto\_leader\_balance\_for\_ratis\_consensus               |
+|:-----------:|:-------------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for Ratis consensus protocol |
+|    Type     | Boolean                                                            |
+|   Default   | false                                                              |
+|  Effective  | After restarting system                                            |
+
+* enable\_auto\_leader\_balance\_for\_iot\_consensus
+
+|    Name     | enable\_auto\_leader\_balance\_for\_iot\_consensus              |
+|:-----------:|:----------------------------------------------------------------|
+| Description | Whether to enable auto leader balance for IoTConsensus protocol |
+|    Type     | Boolean                                                         |
+|   Default   | true                                                            |
+|  Effective  | After restarting system                                         |
 
 ### Cluster Management
 
@@ -192,12 +272,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * primitive\_array\_size
 
-|Name| primitive\_array\_size |
-|:---:|:---|
-|Description| primitive array size (length of each array) in array pool|
-|Type| Int32 |
-|Default| 32 |
-|Effective|After restart system|
+|    Name     | primitive\_array\_size                                    |
+|:-----------:|:----------------------------------------------------------|
+| Description | primitive array size (length of each array) in array pool |
+|    Type     | Int32                                                     |
+|   Default   | 64                                                        |
+|  Effective  | After restart system                                      |
 
 * chunk\_metadata\_size\_proportion
 
@@ -269,7 +349,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| If true, we will estimate each query's possible memory footprint before executing it and deny it if its estimated memory exceeds current free memory |
 |Type| bool                              |
 |Default| true                              |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * partition\_cache\_size
 
@@ -394,10 +474,54 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Query Configurations
 
+* read\_consistency\_level
+
+|    Name     | mpp\_data\_exchange\_core\_pool\_size        |
+|:-----------:|:---------------------------------------------|
+| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+|    Type     | string                                          |
+|   Default   | strong                                           |
+|  Effective  | After restarting system                      |
+
+* meta\_data\_cache\_enable
+
+|Name| meta\_data\_cache\_enable |
+|:---:|:---|
+|Description| Whether to cache meta data(BloomFilter, ChunkMetadata and TimeSeriesMetadata) or not.|
+|Type|Boolean|
+|Default| true |
+|Effective| After restarting system|
+
+* chunk\_timeseriesmeta\_free\_memory\_proportion
+
+|Name| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Read memory Allocation Ratio: BloomFilterCache : ChunkCache : TimeSeriesMetadataCache : Coordinator : Operators : DataExchange : timeIndex in TsFileResourceList : others. |
+|Default| 1 : 100 : 200 : 300 : 400   |
+|Effective| After restarting system |
+
+* enable\_last\_cache
+
+|Name| enable\_last\_cache |
+|:---:|:---|
+|Description| Whether to enable LAST cache. |
+|Type| Boolean |
+|Default| true |
+|Effective|After restarting system|
+
+* max\_deduplicated\_path\_num
+
+|Name| max\_deduplicated\_path\_num |
+|:---:|:---|
+|Description| allowed max numbers of deduplicated path in one query. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
-| :---------: | :------------------------------------------- |
+|:-----------:|:---------------------------------------------|
 | Description | Core size of ThreadPool of MPP data exchange |
 |    Type     | int32                                          |
 |   Default   | 10                                           |
@@ -414,12 +538,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
-|    Name     | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
-| :---------: | :--------------------------------------------- |
-| Description | Max waiting time for MPP data exchange         |
-|    Type     | long                                           |
-|   Default   | 1000                                           |
-|  Effective  | After restarting system                        |
+|Name| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:---:|:---|
+|Description| Max waiting time for MPP data exchange |
+|Type| long |
+|Default| 1000 |
+|Effective|After restarting system|
 
 * driver\_task\_execution\_time\_slice\_in\_ms
 
@@ -448,41 +572,50 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | 1000                                        |
 |  Effective  | After restarting system                     |
 
-* default\_fill\_interval
+* slow\_query\_threshold
 
-|    Name     | default\_fill\_interval                         |
-| :---------: | :---------------------------------------------- |
-| Description | Default interval of `group by fill` query in ms |
-|    Type     | int32                                           |
-|   Default   | -1                                              |
-|  Effective  | After restarting system                         |
-
-* group\_by\_fill\_cache\_size\_in\_mb
-
-|    Name     | group\_by\_fill\_cache\_size\_in\_mb      |
-| :---------: | :---------------------------------- |
-| Description | Cache size of `group by fill` query |
-|    Type     | Float                               |
-|   Default   | 1.0                                 |
-|  Effective  | After restarting system             |
-
-* coordinator\_read\_executor\_size
-
-|Name| coordinator\_read\_executor\_size |
+|Name| slow\_query\_threshold |
 |:---:|:---|
-|Description| The num of thread used in coordinator for query operation |
+|Description| Time cost(ms) threshold for slow query. |
 |Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Default| 5000 |
+|Effective|Trigger|
 
-* coordinator\_write\_executor\_size
+* query\_timeout\_threshold
 
-|Name| coordinator\_write\_executor\_size |
+|Name| query\_timeout\_threshold |
 |:---:|:---|
-|Description| The num of thread used in coordinator for write operation |
+|Description| The max executing time of query. unit: ms |
 |Type| Int32 |
-|Default| 50 |
-|  Effective  | After restarting system             |
+|Default| 60000 |
+|Effective| After restarting system|
+
+* max\_allowed\_concurrent\_queries
+
+|Name| max\_allowed\_concurrent\_queries |
+|:---:|:---|
+|Description| The maximum allowed concurrently executing queries. |
+|Type| Int32 |
+|Default| 1000 |
+|Effective|After restarting system|
+
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| How many threads can concurrently execute query statement. When <= 0, use CPU core number. |
+|Type| Int32                                                               |
+|Default | CPU core number                                                    |
+|Effective| After restarting system |
+
+* batch\_size
+
+|Name| batch\_size |
+|:---:|:---|
+|Description| The amount of data iterate each time in server (the number of data strips, that is, the number of different timestamps.) |
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restarting system|
 
 ### Storage Engine Configuration
 
@@ -495,6 +628,33 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Default   | Infinity                               |
 |  Effective  | After restarting system                |
 
+* max\_waiting\_time\_when\_insert\_blocked
+
+|    Name     | max\_waiting\_time\_when\_insert\_blocked                                     |
+| :---------: |:------------------------------------------------------------------------------|
+| Description | When the waiting time(in ms) of an inserting exceeds this, throw an exception |
+|    Type     | Int32                                                                         |
+|   Default   | 10000                                                                         |
+|  Effective  | After restarting system                                                       |
+
+* enable\_discard\_out\_of\_order\_data
+
+|    Name     | enable\_discard\_out\_of\_order\_data |
+| :---------: |:--------------------------------------|
+| Description | whether to discard out of order data  |
+|    Type     | Boolean                               |
+|   Default   | false                                 |
+|  Effective  | After restarting system               |
+
+* handle\_system\_error
+
+|    Name     | handle\_system\_error                                  |
+| :---------: |:-------------------------------------------------------|
+| Description | What will the system do when unrecoverable error occurs|
+|    Type     | String                                                 |
+|   Default   | CHANGE\_TO\_READ\_ONLY                                 |
+|  Effective  | After restarting system                                |
+
 * memtable\_size\_threshold
 
 |    Name     | memtable\_size\_threshold                                    |
@@ -503,7 +663,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |    Type     | Long                                                         |
 |   Default   | 1073741824                                                   |
 |  Effective  | when enable\_mem\_control is false & After restarting system |
-
 
 * write\_memory\_variation\_report\_proportion
 
@@ -516,21 +675,21 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * enable\_timed\_flush\_seq\_memtable
 
-|Name| enable\_timed\_flush\_seq\_memtable |
-|:---:|:---|
-|Description| whether to enable timed flush sequence memtable |
-|Type|Boolean|
-|Default| false |
-|Effective| Trigger |
+|    Name     | enable\_timed\_flush\_seq\_memtable             |
+|:-----------:|:------------------------------------------------|
+| Description | whether to enable timed flush sequence memtable |
+|    Type     | Boolean                                         |
+|   Default   | true                                            |
+|  Effective  | hot-load                                        |
 
 * seq\_memtable\_flush\_interval\_in\_ms
 
-|Name| seq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| Trigger |
+|    Name     | seq\_memtable\_flush\_interval\_in\_ms                                                                   |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -539,7 +698,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| the interval to check whether sequence memtables need flushing |
 |Type|int32|
 |Default| 600000 |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * enable\_timed\_flush\_unseq\_memtable
 
@@ -548,16 +707,16 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| whether to enable timed flush unsequence memtable |
 |Type|Boolean|
 |Default| false |
-|Effective| Trigger |
+|Effective| hot-load |
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
-|Name| unseq\_memtable\_flush\_interval\_in\_ms |
-|:---:|:---|
-|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
-|Type|int32|
-|Default| 3600000 |
-|Effective| Trigger |
+|    Name     | unseq\_memtable\_flush\_interval\_in\_ms                                                                 |
+|:-----------:|:---------------------------------------------------------------------------------------------------------|
+| Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|    Type     | int32                                                                                                    |
+|   Default   | 10800000                                                                                                 |
+|  Effective  | hot-load                                                                                                 |
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -566,7 +725,16 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| the interval to check whether unsequence memtables need flushing |
 |Type|int32|
 |Default| 600000 |
-|Effective| Trigger |
+|Effective| hot-load |
+
+* tvlist\_sort\_algorithm
+
+|Name| tvlist\_sort\_algorithm                           |
+|:---:|:--------------------------------------------------|
+|Description| the sort algorithm used in the memtable's TVList  |
+|Type| String                                            |
+|Default| TIM                                               |
+|Effective| After restarting system                           |
 
 * avg\_series\_point\_number\_threshold
 
@@ -586,24 +754,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Default| 0 |
 |Effective|After restarting system|
 
-* query\_thread\_count
-
-|Name| query\_thread\_count                                                                                            |
-|:---:|:---------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
-|Type| int32                                                                                                                |
-|Default| 16                                                                                                                   |
-|Effective| After restarting system                                                                                              |
-
-* sub\_rawQuery\_thread\_count
-
-|Name| sub\_rawQuery\_thread\_count                                                                                        |
-|:---:|:-------------------------------------------------------------------------------------------------------------------------|
-|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
-|Type| int32                                                                                                                    |
-|Default| 8                                                                                                                        |
-|Effective| After restarting system                                                                                                  |
-
 * enable\_partial\_insert
 
 |Name| enable\_partial\_insert |
@@ -612,6 +762,24 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Type| Boolean |
 |Default| true |
 |Effective|After restarting system|
+
+* recovery\_log\_interval\_in\_ms
+
+|Name| recovery\_log\_interval\_in\_ms                                         |
+|:---:|:------------------------------------------------------------------------|
+|Description| the interval to log recover progress of each region when starting iotdb |
+|Type| Int32                                                                   |
+|Default| 5000                                                                    |
+|Effective| After restarting system                                                 |
+
+* upgrade\_thread\_count
+
+|   Name    | upgrade\_thread\_count                                                                            |
+|:---------:|:--------------------------------------------------------------------------------------------------|
+|Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
+|   Type    | Int32                                                                                             |
+|  Default  | 1                                                                                                 |
+| Effective | After restarting system                                                                           |                                                                        |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -662,12 +830,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * cross\_performer
 
-|Name| cross\_performer                                  |
-|:---:|:--------------------------------------------------|
-|Description| the task performer type of cross space compaction |
-|Type| String                                            |
-|Default| read\_point                                       |
-|Effective| After restart system                              |
+|Name| cross\_performer                                   |
+|:---:|:---------------------------------------------------|
+|Description| the task performer type of cross space compaction. The options are read_point and fast, read_point is the default and fast is still under test |
+|Type| String                                             |
+|Default| read\_point                                        |
+|Effective| After restart system                               |
 
 * inner\_seq\_selector
 
@@ -680,12 +848,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * inner\_seq\_performer
 
-|Name| inner\_seq\_peformer                                       |
-|:---:|:-----------------------------------------------------------|
-|Description| the task performer type of inner sequence space compaction |
-|Type| String                                                     |
-|Default| read\_chunk                                                |
-|Effective| After restart system                                       |
+|Name| inner\_seq\_peformer                                                                                                                                    |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| the task performer type of inner sequence space compaction. The options are read_chunk and fast, read_chunk is the default and fast is still under test |
+|Type| String                                                                                                                                                  |
+|Default| read\_chunk                                                                                                                                             |
+|Effective| After restart system                                                                                                                                    |
 
 * inner\_unseq\_selector
 
@@ -698,12 +866,12 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 * inner\_unseq\_performer
 
-|Name| inner\_unseq\_peformer                                       |
-|:---:|:-------------------------------------------------------------|
-|Description| the task performer type of inner unsequence space compaction |
-|Type| String                                                       |
-|Default| read\_point                                                  |
-|Effective| After restart system                                         |
+|Name| inner\_unseq\_peformer                                        |
+|:---:|:--------------------------------------------------------------|
+|Description| the task performer type of inner unsequence space compaction. The options are read_point and fast, read_point is the default and fast is still under test |
+|Type| String                                                        |
+|Default| read\_point                                                   |
+|Effective| After restart system                                          |
 
 * compaction\_priority
 
@@ -744,20 +912,20 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 * chunk\_size\_lower\_bound\_in\_compaction
 
 |    Name     | chunk\_size\_lower\_bound\_in\_compaction                                               |
-| :---------: | :-------------------------------------------------------------------------------------- |
+| :---------: |:----------------------------------------------------------------------------------------|
 | Description | A source chunk will be deserialized in compaction when its size is less than this value |
 |    Type     | Int64                                                                                   |
-|   Default   | 128                                                                                     |
+|   Default   | 10240                                                                                   |
 |  Effective  | After restart system                                                                    |
 
 * chunk\_point\_num\_lower\_bound\_in\_compaction
 
-|Name| chunk\_size\_lower\_bound\_in\_compaction |
-|:---:|:---|
+|Name| chunk\_point\_num\_lower\_bound\_in\_compaction                                              |
+|:---:|:---------------------------------------------------------------------------------------------|
 |Description| A source chunk will be deserialized in compaction when its point num is less than this value |
-|Type| int32 |
-|Default| 100 |
-|Effective|After restart system|
+|Type| int32                                                                                        |
+|Default| 1000                                                                                         |
+|Effective| After restart system                                                                         |
 
 * max\_inner\_compaction\_candidate\_file\_num
 
@@ -793,15 +961,6 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| Time budget for cross space compaction file selection |
 |Type| int32 |
 |Default| 30000 |
-|Effective|After restart system|
-
-* cross\_compaction\_memory\_budget
-
-|Name| cross\_compaction\_memory\_budget |
-|:---:|:---|
-|Description| Memory budget for a cross space compaction |
-|Type| int32 |
-|Default| 2147483648 |
 |Effective|After restart system|
 
 * compaction\_thread\_count
@@ -851,6 +1010,96 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 
 ### Write Ahead Log Configuration
 
+* wal\_mode
+
+|    Name     | wal\_mode                                                                                                                                                                                                                                                                                                                                                               |
+|:-----------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The write mode of wal. For DISABLE mode, the system will disable wal. For SYNC mode, the system will submit wal synchronously, write request will not return until its wal is fsynced to the disk successfully. For ASYNC mode, the system will submit wal asynchronously, write request will return immediately no matter its wal is fsynced to the disk successfully. |
+|    Type     | String                                                                                                                                                                                                                                                                                                                                                                  |
+|   Default   | ASYNC                                                                                                                                                                                                                                                                                                                                                                   |
+|  Effective  | After restart system                                                                                                                                                                                                                                                                                                                                                    |
+
+* max\_wal\_nodes\_num
+
+|    Name     | max\_wal\_nodes\_num                                                                                                                   |
+|:-----------:|:---------------------------------------------------------------------------------------------------------------------------------------|
+| Description | Max number of wal nodes, each node corresponds to one wal directory. The default value 0 means the number is determined by the system. |
+|    Type     | int32                                                                                                                                  |
+|   Default   | 0                                                                                                                                      |
+|  Effective  | After restart system                                                                                                                   |
+
+* fsync\_wal\_delay\_in\_ms
+
+|    Name     | fsync\_wal\_delay\_in\_ms                                     |
+|:-----------:|:--------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync |
+|    Type     | int32                                                         |
+|   Default   | 3                                                             |
+|  Effective  | hot-load                                                      |
+
+* wal\_buffer\_size\_in\_byte
+
+|    Name     | wal\_buffer\_size\_in\_byte  |
+|:-----------:|:-----------------------------|
+| Description | Buffer size of each wal node |
+|    Type     | int32                        |
+|   Default   | 16777216                     |
+|  Effective  | After restart system         |
+
+* wal\_buffer\_queue\_capacity
+
+|    Name     | wal\_buffer\_queue\_capacity               |
+|:-----------:|:-------------------------------------------|
+| Description | Blocking queue capacity of each wal buffer |
+|    Type     | int32                                      |
+|   Default   | 50                                         |
+|  Effective  | After restart system                       |
+
+* wal\_file\_size\_threshold\_in\_byte
+
+|    Name     | wal\_file\_size\_threshold\_in\_byte |
+|:-----------:|:-------------------------------------|
+| Description | Size threshold of each wal file      |
+|    Type     | int32                                |
+|   Default   | 10485760                             |
+|  Effective  | hot-load                             |
+
+* wal\_min\_effective\_info\_ratio
+
+|    Name     | wal\_min\_effective\_info\_ratio                    |
+|:-----------:|:----------------------------------------------------|
+| Description | Minimum ratio of effective information in wal files |
+|    Type     | double                                              |
+|   Default   | 0.1                                                 |
+|  Effective  | hot-load                                            |
+
+* wal\_memtable\_snapshot\_threshold\_in\_byte
+
+|    Name     | wal\_memtable\_snapshot\_threshold\_in\_byte                    |
+|:-----------:|:----------------------------------------------------------------|
+| Description | MemTable size threshold for triggering MemTable snapshot in wal |
+|    Type     | int64                                                           |
+|   Default   | 8388608                                                         |
+|  Effective  | hot-load                                                        |
+
+* max\_wal\_memtable\_snapshot\_num
+
+|    Name     | max\_wal\_memtable\_snapshot\_num     |
+|:-----------:|:--------------------------------------|
+| Description | MemTable's max snapshot number in wal |
+|    Type     | int32                                 |
+|   Default   | 1                                     |
+|  Effective  | hot-load                              |
+
+* delete\_wal\_files\_period\_in\_ms
+
+|    Name     | delete\_wal\_files\_period\_in\_ms                          |
+|:-----------:|:------------------------------------------------------------|
+| Description | The period when outdated wal files are periodically deleted |
+|    Type     | int64                                                       |
+|   Default   | 20000                                                       |
+|  Effective  | hot-load                                                    |
+
 ### TsFile Configurations
 
 * group\_size\_in\_byte
@@ -860,7 +1109,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The data size written to the disk per time|
 |Type|int32|
 |Default| 134217728 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * page\_size\_in\_byte
 
@@ -869,16 +1118,25 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|int32|
 |Default| 65536 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * max\_number\_of\_points\_in\_page
 
-|Name| max\_number\_of\_points\_in\_page |
-|:---:|:---|
-|Description|The maximum number of data points (timestamps - valued groups) contained in a page|
-|Type|int32|
-|Default| 1048576 |
-|Effective|Trigger|
+|Name| max\_number\_of\_points\_in\_page                                                  |
+|:---:|:-----------------------------------------------------------------------------------|
+|Description| The maximum number of data points (timestamps - valued groups) contained in a page |
+|Type| int32                                                                              |
+|Default| 10000                                                                              |
+|Effective| hot-load                                                                            |
+
+* pattern\_matching\_threshold
+
+|Name| pattern\_matching\_threshold       |
+|:---:|:-----------------------------------|
+|Description| Max matching time of regex pattern |
+|Type| int32                              |
+|Default| 1000000                              |
+|Effective| hot-load                           |
 
 * max\_degree\_of\_index\_node
 
@@ -896,7 +1154,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description|The maximum length of a single string (number of character)|
 |Type|int32|
 |Default| 128 |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * time\_encoder
 
@@ -905,7 +1163,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Encoding type of time column          |
 |    Type     | Enum String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |   Default   | TS_2DIFF                              |
-|  Effective  | Trigger                               |
+|  Effective  | hot-load                               |
 
 * value\_encoder
 
@@ -914,7 +1172,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Encoding type of value column         |
 |    Type     | Enum String: “TS_2DIFF”,“PLAIN”,“RLE” |
 |   Default   | PLAIN                                 |
-|  Effective  | Trigger                               |
+|  Effective  | hot-load                               |
 
 * float\_precision
 
@@ -923,7 +1181,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| The precision of the floating point number.(The number of digits after the decimal point) |
 |Type|int32|
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
-|Effective|Trigger|
+|Effective|hot-load|
 
 * compressor
 
@@ -932,7 +1190,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Data compression method                       |
 |    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
 |   Default   | SNAPPY                                        |
-|  Effective  | Trigger                                       |
+|  Effective  | hot-load                                       |
 
 * bloomFilterErrorRate
 
@@ -950,7 +1208,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
 |    Type     | Double                                          |
 |   Default   | 40.0                                            |
-|  Effective  | Trigger                                         |
+|  Effective  | hot-load                                         |
 
 * freq\_block\_size
 
@@ -959,9 +1217,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
 |Type|int32|
 |Default| 1024 |
-|Effective|Trigger|
-
-### Watermark Configuration
+|Effective|hot-load|
 
 ### Authorization Configuration
 
@@ -1116,7 +1372,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The maximum number of rows that can be processed in insert-tablet-plan when executing select-into statements. When <= 0, use 10000. |
 |    Type     | int32                                                        |
 |   Default   | 10000                                                        |
-|  Effective  | Trigger                                                      |
+|  Effective  | hot-load                                                      |
 
 ### Continuous Query
 
@@ -1147,7 +1403,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |     Description     | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
 |     Type     | String                                                                                                             |
 |    Default    | 127.0.0.1/32                                                                                                          |
-| Effective | Trigger                                                                                                      |
+| Effective | hot-load                                                                                                      |
 
 * max\_number\_of\_sync\_file\_retry
 
@@ -1156,9 +1412,334 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |     Description     | The maximum number of retries when the sender fails to synchronize files to the receiver.          |
 |     Type     | int32                           |
 |    Default    | 5                             |
-| Effective | Trigger                  |
+| Effective | hot-load                  |
 
 ### RatisConsensus Configuration
+
+* config\_node\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | config\_node\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   Description   | confignode max payload size for a single log-sync-RPC from leader to follower                  |
+|   Type   | int32                                          |
+|  Default   | 4MB                                            |
+| Effective | After restarting system                                           |
+
+
+* schema\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | schema\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-------------------------------------------------|
+|   Description   | schema region max payload size for a single log-sync-RPC from leader to follower                |
+|   Type   | int32                                            |
+|  Default   | 4MB                                              |
+| Effective | After restarting system                                             |
+
+* data\_region\_ratis\_log\_appender\_buffer\_size\_max
+
+|   Name   | data\_region\_ratis\_log\_appender\_buffer\_size\_max |
+|:------:|:-----------------------------------------------|
+|   Description   | data region max payload size for a single log-sync-RPC from leader to follower                 |
+|   Type   | int32                                          |
+|  Default   | 4MB                                            |
+| Effective | After restarting system                                           |
+
+* config\_node\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | config\_node\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   Description   | confignode trigger a snapshot when snapshot_trigger_threshold logs are written                 |
+|   Type   | int32                                        |
+|  Default   | 400,000                                      |
+| Effective | After restarting system                                         |
+
+* schema\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | schema\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:-----------------------------------------------|
+|   Description   | schema region trigger a snapshot when snapshot_trigger_threshold logs are written                |
+|   Type   | int32                                          |
+|  Default   | 400,000                                        |
+| Effective | After restarting system                                           |
+
+* data\_region\_ratis\_snapshot\_trigger\_threshold
+
+|   Name   | data\_region\_ratis\_snapshot\_trigger\_threshold |
+|:------:|:---------------------------------------------|
+|   Description   | data region trigger a snapshot when snapshot_trigger_threshold logs are written                |
+|   Type   | int32                                        |
+|  Default   | 400,000                                      |
+| Effective | After restarting system                                         |
+
+* config\_node\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | config\_node\_ratis\_log\_unsafe\_flush\_enable    |
+|:------:|:---------------------------------------------------|
+|   Description   | confignode allows flushing Raft Log asynchronously |
+|   Type   | boolean                                            |
+|  Default   | false                                              |
+| Effective | After restarting system                            |
+
+* schema\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | schema\_region\_ratis\_log\_unsafe\_flush\_enable     |
+|:------:|:------------------------------------------------------|
+|   Description   | schema region allows flushing Raft Log asynchronously |
+|   Type   | boolean                                               |
+|  Default   | false                                                 |
+| Effective | After restarting system                               |
+
+* data\_region\_ratis\_log\_unsafe\_flush\_enable
+
+|   Name   | data\_region\_ratis\_log\_unsafe\_flush\_enable     |
+|:------:|:----------------------------------------------------|
+|   Description   | data region allows flushing Raft Log asynchronously |
+|   Type   | boolean                                             |
+|  Default   | false                                               |
+| Effective | After restarting system                             |
+
+* config\_node\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | config\_node\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   Description   | confignode max capacity of a single Log segment file                   |
+|   Type   | int32                                          |
+|  Default   | 24MB                                           |
+| Effective | After restarting system                                           |
+
+* schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | schema\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-------------------------------------------------|
+|   Description   | schema region max capacity of a single Log segment file              |
+|   Type   | int32                                            |
+|  Default   | 24MB                                             |
+| Effective | After restarting system                                             |
+
+* data\_region\_ratis\_log\_segment\_size\_max\_in\_byte
+
+|   Name   | data\_region\_ratis\_log\_segment\_size\_max\_in\_byte |
+|:------:|:-----------------------------------------------|
+|   Description   | data region max capacity of a single Log segment file                |
+|   Type   | int32                                          |
+|  Default   | 24MB                                           |
+| Effective | After restarting system                                           |
+
+* config\_node\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | config\_node\_ratis\_grpc\_flow\_control\_window                             |
+|:------:|:-----------------------------------------------------------------------------|
+|   Description   | confignode flow control window for ratis grpc log appender                   |
+|   Type   | int32                                                                        |
+|  Default   | 4MB                                                                          |
+| Effective | After restarting system                                                      |
+
+* schema\_region\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | schema\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:---------------------------------------------|
+|   Description   | schema region flow control window for ratis grpc log appender                  |
+|   Type   | int32                                        |
+|  Default   | 4MB                                          |
+| Effective | After restarting system                                         |
+
+* data\_region\_ratis\_grpc\_flow\_control\_window
+
+|   Name   | data\_region\_ratis\_grpc\_flow\_control\_window |
+|:------:|:-------------------------------------------|
+|   Description   | data region flow control window for ratis grpc log appender                  |
+|   Type   | int32                                      |
+|  Default   | 4MB                                        |
+| Effective | After restarting system                                       |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | confignode min election timeout for leader election                            |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-------------------------------------------------------|
+|   Description   | schema region min election timeout for leader election                           |
+|   Type   | int32                                                  |
+|  Default   | 2000ms                                                 |
+| Effective | After restarting system                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
+
+|   Name   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_min\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | data region min election timeout for leader election                           |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | config\_node\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | confignode max election timeout for leader election                            |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | schema\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-------------------------------------------------------|
+|   Description   | schema region max election timeout for leader election                           |
+|   Type   | int32                                                  |
+|  Default   | 2000ms                                                 |
+| Effective | After restarting system                                                   |
+
+* data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms
+
+|   Name   | data\_region\_ratis\_rpc\_leader\_election\_timeout\_max\_ms |
+|:------:|:-----------------------------------------------------|
+|   Description   | data region max election timeout for leader election                           |
+|   Type   | int32                                                |
+|  Default   | 2000ms                                               |
+| Effective | After restarting system                                                 |
+
+* config\_node\_ratis\_request\_timeout\_ms
+
+|   Name   | config\_node\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   Description   | confignode ratis client retry threshold              |
+|   Type   | int32                                |
+|  Default   | 10s                                  |
+| Effective | After restarting system                                 |
+
+* schema\_region\_ratis\_request\_timeout\_ms
+
+|   Name   | schema\_region\_ratis\_request\_timeout\_ms |
+|:------:|:---------------------------------------|
+|   Description   | schema region ratis client retry threshold             |
+|   Type   | int32                                  |
+|  Default   | 10s                                    |
+| Effective | After restarting system                                   |
+
+* data\_region\_ratis\_request\_timeout\_ms
+
+|   Name   | data\_region\_ratis\_request\_timeout\_ms |
+|:------:|:-------------------------------------|
+|   Description   | data region ratis client retry threshold             |
+|   Type   | int32                                |
+|  Default   | 10s                                  |
+| Effective | After restarting system                                 |
+
+* config\_node\_ratis\_max\_retry\_attempts
+
+|   Name   | config\_node\_ratis\_max\_retry\_attempts  |
+|:------:|:-------------------------------------------|
+|   Description   | confignode ratis client max retry attempts |
+|   Type   | int32                                      |
+|  Default   | 10                                         |
+| Effective | After restarting system                    |
+
+* config\_node\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | config\_node\_ratis\_initial\_sleep\_time\_ms    |
+|:------:|:-------------------------------------------------|
+|   Description   | confignode ratis client retry initial sleep time |
+|   Type   | int32                                            |
+|  Default   | 100ms                                            |
+| Effective | After restarting system                          |
+
+* config\_node\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | config\_node\_ratis\_max\_sleep\_time\_ms    |
+|:------:|:---------------------------------------------|
+|   Description   | confignode ratis client retry max sleep time |
+|   Type   | int32                                        |
+|  Default   | 10s                                          |
+| Effective | After restarting system                      |
+
+* schema\_region\_ratis\_max\_retry\_attempts
+
+|   Name   | schema\_region\_ratis\_max\_retry\_attempts |
+|:------:|:---------------------------------------|
+|   Description   | schema region ratis client max retry attempts            |
+|   Type   | int32                                  |
+|  Default   | 10                                     |
+| Effective | After restarting system                                   |
+
+* schema\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | schema\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:------------------------------------------|
+|   Description   | schema region ratis client retry initial sleep time             |
+|   Type   | int32                                     |
+|  Default   | 100ms                                     |
+| Effective | After restarting system                                      |
+
+* schema\_region\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | schema\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:--------------------------------------|
+|   Description   | schema region ratis client retry max sleep time         |
+|   Type   | int32                                 |
+|  Default   | 10s                                   |
+| Effective | After restarting system                                  |
+
+* data\_region\_ratis\_max\_retry\_attempts
+
+|   Name   | data\_region\_ratis\_max\_retry\_attempts |
+|:------:|:-------------------------------------|
+|   Description   | data region ratis client max retry attempts            |
+|   Type   | int32                                |
+|  Default   | 10                                   |
+| Effective | After restarting system                                 |
+
+* data\_region\_ratis\_initial\_sleep\_time\_ms
+
+|   Name   | data\_region\_ratis\_initial\_sleep\_time\_ms |
+|:------:|:----------------------------------------|
+|   Description   | data region ratis client retry initial sleep time             |
+|   Type   | int32                                   |
+|  Default   | 100ms                                   |
+| Effective | After restarting system                                    |
+
+* data\_region\_ratis\_max\_sleep\_time\_ms
+
+|   Name   | data\_region\_ratis\_max\_sleep\_time\_ms |
+|:------:|:------------------------------------|
+|   Description   | data region ratis client retry max sleep time         |
+|   Type   | int32                               |
+|  Default   | 10s                                 |
+| Effective | After restarting system                                |
+
+* config\_node\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | config\_node\_ratis\_preserve\_logs\_num\_when\_purge          |
+|:------:|:---------------------------------------------------------------|
+|   Description   | confignode preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                          |
+|  Default   | 1000                                                           |
+| Effective | After restarting system                                        |
+
+* schema\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | schema\_region\_ratis\_preserve\_logs\_num\_when\_purge           |
+|:------:|:------------------------------------------------------------------|
+|   Description   | schema region preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                             |
+|  Default   | 1000                                                              |
+| Effective | After restarting system                                           |
+
+* data\_region\_ratis\_preserve\_logs\_num\_when\_purge
+
+|   Name   | data\_region\_ratis\_preserve\_logs\_num\_when\_purge           |
+|:------:|:----------------------------------------------------------------|
+|   Description   | data region preserves certain logs when take snapshot and purge |
+|   Type   | int32                                                           |
+|  Default   | 1000                                                            |
+| Effective | After restarting system                                         |
 
 ### Procedure Configuration
 
@@ -1200,7 +1781,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | Whether to enable the MQTT service  |
 |    Type     | Boolean                             |
 |   Default   | False                               |
-|  Effective  | Trigger                             |
+|  Effective  | hot-load                             |
 
 * mqtt\_host
 
@@ -1209,7 +1790,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The host to which the MQTT service is bound  |
 |    Type     | String                                       |
 |   Default   | 0.0.0.0                                      |
-|   Effective    | Trigger                                      |
+|   Effective    | hot-load                                      |
 
 * mqtt\_port
 
@@ -1218,7 +1799,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | The port to which the MQTT service is bound |
 |    Type     | int32                                       |
 |   Default   | 1883                                        |
-|   Effective    | Trigger                                     |
+|   Effective    | hot-load                                     |
 
 * mqtt\_handler\_pool\_size
 
@@ -1227,7 +1808,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |Description| The size of the handler pool used to process MQTT messages  |
 |Type| int32                                                       |
 |Default| 1                                                           |
-|Effective| Trigger                                                     |
+|Effective| hot-load                                                     |
 
 * mqtt\_payload\_formatter
 
@@ -1236,7 +1817,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 | Description | MQTT message payload formatter |
 |    Type     | String                         |
 |   Default   | JSON                           |
-|   Effective    | Trigger                        |
+|   Effective    | hot-load                        |
 
 * mqtt\_max\_message\_size
 
@@ -1245,7 +1826,7 @@ IoTDB common files for ConfigNode and DataNode are under `conf`.
 |   Description   | Maximum length of MQTT message in bytes  |
 |   Type   | int32                                    |
 |  Default   | 1048576                                  |
-| Effective | Trigger                                  |
+| Effective | hot-load                                  |
 
 ### REST Service Configuration
 

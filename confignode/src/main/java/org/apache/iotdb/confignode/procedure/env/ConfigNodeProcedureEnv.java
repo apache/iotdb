@@ -546,9 +546,9 @@ public class ConfigNodeProcedureEnv {
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
         .forceUpdate(heartbeatSampleMap);
 
-    // Select leader greedily for multi-leader consensus protocol
+    // Select leader greedily for iot consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.MULTI_LEADER_CONSENSUS.equals(
+        && ConsensusFactory.IOT_CONSENSUS.equals(
             ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
       List<Integer> availableDataNodes = new ArrayList<>();
       for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {

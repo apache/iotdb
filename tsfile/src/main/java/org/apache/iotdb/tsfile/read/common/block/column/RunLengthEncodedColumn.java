@@ -76,43 +76,36 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public boolean getBoolean(int position) {
-    checkReadablePosition(position);
     return value.getBoolean(0);
   }
 
   @Override
   public int getInt(int position) {
-    checkReadablePosition(position);
     return value.getInt(0);
   }
 
   @Override
   public long getLong(int position) {
-    checkReadablePosition(position);
     return value.getLong(0);
   }
 
   @Override
   public float getFloat(int position) {
-    checkReadablePosition(position);
     return value.getFloat(0);
   }
 
   @Override
   public double getDouble(int position) {
-    checkReadablePosition(position);
     return value.getDouble(0);
   }
 
   @Override
   public Binary getBinary(int position) {
-    checkReadablePosition(position);
     return value.getBinary(0);
   }
 
   @Override
   public Object getObject(int position) {
-    checkReadablePosition(position);
     return value.getObject(0);
   }
 
@@ -167,7 +160,6 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return value.getTsPrimitiveType(0);
   }
 
@@ -178,7 +170,6 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return value.isNull(0);
   }
 
@@ -216,11 +207,5 @@ public class RunLengthEncodedColumn implements Column {
   @Override
   public void reverse() {
     // do nothing because the underlying column has only one value
-  }
-
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= positionCount) {
-      throw new IllegalArgumentException("position is not valid");
-    }
   }
 }

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode {
 
-  /** this insert node doesn't need to participate in multi-leader consensus */
+  /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
   /**

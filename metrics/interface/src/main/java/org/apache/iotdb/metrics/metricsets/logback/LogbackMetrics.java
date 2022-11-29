@@ -91,11 +91,11 @@ public class LogbackMetrics implements IMetricSet {
         for (MetricsTurboFilter addMetricsTurboFilter : metricsTurboFilters.values()) {
           loggerContext.getTurboFilterList().remove(addMetricsTurboFilter);
         }
-        metricService.remove(MetricType.COUNTER, "logback.events", "level", "error");
-        metricService.remove(MetricType.COUNTER, "logback.events", "level", "warn");
-        metricService.remove(MetricType.COUNTER, "logback.events", "level", "info");
-        metricService.remove(MetricType.COUNTER, "logback.events", "level", "debug");
-        metricService.remove(MetricType.COUNTER, "logback.events", "level", "trace");
+        metricService.remove(MetricType.COUNTER, "logback_events", "level", "error");
+        metricService.remove(MetricType.COUNTER, "logback_events", "level", "warn");
+        metricService.remove(MetricType.COUNTER, "logback_events", "level", "info");
+        metricService.remove(MetricType.COUNTER, "logback_events", "level", "debug");
+        metricService.remove(MetricType.COUNTER, "logback_events", "level", "trace");
       }
     } catch (Exception e) {
       logger.error("Failed to remove LogBackMetrics.");

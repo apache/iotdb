@@ -46,7 +46,7 @@ public class PartitionInfoMetrics implements IMetricSet {
         partitionInfo,
         PartitionInfo::getStorageGroupPartitionTableSize,
         Tag.NAME.toString(),
-        "storageGroup");
+        "database");
     metricService.createAutoGauge(
         Metric.REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -70,7 +70,7 @@ public class PartitionInfoMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "storageGroup");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "database");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.REGION.toString(),

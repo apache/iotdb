@@ -367,13 +367,13 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
-  private boolean enableTimedFlushSeqMemtable = false;
+  private boolean enableTimedFlushSeqMemtable = true;
 
   /**
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
   private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -385,7 +385,7 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -450,15 +450,15 @@ public class IoTDBConfig {
 
   /**
    * If the chunk size is lower than this threshold, it will be deserialized into points, default is
-   * 1 KB
+   * 10 KB
    */
-  private long chunkSizeLowerBoundInCompaction = 1024L;
+  private long chunkSizeLowerBoundInCompaction = 10240L;
 
   /**
    * If the chunk point num is lower than this threshold, it will be deserialized into points,
-   * default is 100
+   * default is 1000
    */
-  private long chunkPointNumLowerBoundInCompaction = 100;
+  private long chunkPointNumLowerBoundInCompaction = 1000;
 
   /**
    * If compaction thread cannot acquire the write lock within this timeout, the compaction task
@@ -544,7 +544,7 @@ public class IoTDBConfig {
   private int externalSortThreshold = 1000;
 
   /** White list for sync */
-  private String ipWhiteList = "0.0.0.0/0";
+  private String ipWhiteList = "127.0.0.1/32";
 
   /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
   private int maxNumberOfSyncFileRetry = 5;
@@ -730,7 +730,7 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 32;
+  private int primitiveArraySize = 64;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
@@ -989,10 +989,10 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
-  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
+  /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
-  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 60 * 1000;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;

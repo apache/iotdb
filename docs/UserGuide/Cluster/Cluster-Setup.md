@@ -94,7 +94,7 @@ iotdb-confignode.properties:
 | cn\_internal\_address          | Internal rpc service address of ConfigNode                                                   |
 | cn\_internal\_port             | Internal rpc service port of ConfigNode                                                      |
 | cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                 |
-| cn\_target\_config\_node\_list | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port |
+| cn\_target\_config\_node\_list | Target ConfigNode address, if the current ConfigNode is the first one, then set its own address:port |
 
 iotdb-common.properties:
 
@@ -108,10 +108,10 @@ iotdb-common.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-confignode.sh
+bash ./sbin/start-confignode.sh
 
 # Background
-nohup ./sbin/start-confignode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -147,10 +147,10 @@ Please set the important parameters in iotdb-datanode.properties:
 Start on Linux:
 ```
 # Foreground
-./sbin/start-datanode.sh
+bash ./sbin/start-datanode.sh
 
 # Background
-nohup ./sbin/start-datanode.sh >/dev/null 2>&1 &
+nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
 ```
 
 Start on Windows:
@@ -158,9 +158,62 @@ Start on Windows:
 sbin\start-datanode.bat
 ```
 
-More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+More details are in [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
 
-### Start Cli
+### Stop IoTDB
+When you meet problem, and want to stop IoTDB ConfigNode and DataNode directly, our shells can help you do this.
+
+In Windows:
+
+```
+sbin\stop-datanode.bat
+```
+```
+sbin\stop-confignode.bat
+```
+In Linux:
+```
+bash sbin/stop-datanode.sh
+```
+```
+bash sbin/stop-confignode.sh
+```
+Be careful not to miss the "sudo" label, because some port info's acquisition may require root authority. If you can't sudo, just
+use "jps" or "ps aux | grep iotdb" to get the process's id, then use "kill -9 <process-id>" to stop the process.  
+
+## Start StandAlone
+If you just want to setup your IoTDB locally, 
+You can quickly init 1C1D (i.e. 1 Confignode and 1 Datanode) environment by our shells.
+
+This will work well if you don't change our default settings.
+
+Start on Windows:
+```
+sbin\start-standalone.bat
+```
+Start on Linux:
+```
+bash sbin/start-standalone.sh
+```
+
+Besides, with our shell, you can also directly kill these processes.
+
+Stop on Windows:
+```
+sbin\stop-standalone.bat
+```
+Stop on Linux:
+```
+bash sbin/stop-standalone.sh
+```
+
+Note: On Linux, the 1C1D processes both launches in the background, and you can see the logs for details. 
+
+The stop-standalone.sh may not work well without sudo, since IoTDB's port numbers may be invisible without permission. 
+If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
+and use "sudo kill -9 <process-id>" to manually stop the processes.
+
+## Start Cli
 
 Cli shell is in sbin folder.
 
@@ -200,15 +253,15 @@ confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 
 ### Remove DataNode
 
-Execute the remove-datanode shell on an active, and make sure that there are no less than the number of data/schema_replication_factor DataNodes in Cluster after removing.
+Execute the remove-datanode shell on an active DataNode, and make sure that the number of active DataNodes are no less than the number of data/schema_replication_factor in Cluster after removing.
 
 Remove on Linux:
 ```
 # Remove the DataNode with datanode_id
-./datanode/sbin/remove-datanode.sh <datanode_id>
+bash ./datanode/sbin/remove-datanode.sh <datanode_id>
 
 # Remove the DataNode with rpc address:port
-./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
+bash ./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
 Remove on Windows:
@@ -229,10 +282,10 @@ illustrate how to start, expand, and shrink a IoTDB Cluster.
 
 Unzip the apache-iotdb-1.0.0-all-bin.zip file to cluster0 folder.
 
-### 2. Starting a Minimum Cluster
+### 2. Start a Minimum Cluster
 
-Starting the Cluster version with one ConfigNode and one DataNode(1C1D),
-the default number of replica is one.
+Start the Cluster version with one ConfigNode and one DataNode(1C1D), and
+the default number of replicas is one.
 ```
 ./cluster0/sbin/start-confignode.sh
 ./cluster0/sbin/start-datanode.sh
@@ -240,7 +293,7 @@ the default number of replica is one.
 
 ### 3. Verify the Minimum Cluster
 
-+ The minimum cluster is successfully started. Start the Cli for verification.
++ If everything goes well, the minimum cluster will start successfully. Then, we can start the Cli for verification.
 ```
 ./cluster0/sbin/start-cli.sh
 ```
@@ -316,7 +369,7 @@ For folder cluster2:
 ### 6. Expanding the Cluster
 
 Expanding the Cluster to three ConfigNode and three DataNode(3C3D).
-The following commands can be executed in no particular order.
+The following commands can be executed in arbitrary order.
 
 ```
 ./cluster1/sbin/start-confignode.sh
@@ -327,7 +380,7 @@ The following commands can be executed in no particular order.
 
 ### 7. Verify Cluster expansion
 
-Execute the show cluster command, the result is shown below:
+Execute the show cluster command, then the result is shown below:
 ```
 IoTDB> show cluster
 +------+----------+-------+---------------+------------+
@@ -358,7 +411,7 @@ It costs 0.012s
 
 ### 9. Verify Cluster shrinkage
 
-Execute the show cluster command, the result is shown below:
+Execute the show cluster command, then the result is shown below:
 ```
 IoTDB> show cluster
 +------+----------+-------+---------------+------------+

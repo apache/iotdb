@@ -45,7 +45,7 @@ public class DataRegionMetrics implements IMetricSet {
         dataRegion,
         DataRegion::getMemCost,
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override
@@ -54,7 +54,7 @@ public class DataRegionMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override

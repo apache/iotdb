@@ -37,7 +37,7 @@ To use IoTDB, you need to have:
 
 >Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw' or 'mvnw.cmd'.
 >
->### Installation from  binary files
+>### Installation from binary files
 
 You can download the binary file from:
 [Download page](https://iotdb.apache.org/Download/)
@@ -135,16 +135,16 @@ $ docker exec -it <C_ID> /bin/bash
 $ (now you have enter the container): /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 
-Or,  if you have a iotdb-cli locally, execute the following command: 
+Or, if you have an iotdb-cli locally, execute the following command: 
 ```shell
 $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
-5. If you want to write codes to insert data and query data, please add the following dependence:
+5. If you want to write codes to insert data and query data, please add the following dependencies:
 ```xml
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
 ```
 Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

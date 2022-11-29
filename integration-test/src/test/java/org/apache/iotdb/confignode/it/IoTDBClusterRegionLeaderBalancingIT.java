@@ -35,11 +35,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -53,7 +55,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -63,14 +64,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Category({ClusterIT.class})
 public class IoTDBClusterRegionLeaderBalancingIT {
 
-  protected static boolean originalEnableLeaderBalancing;
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
+
+  protected static boolean originalEnableAutoLeaderBalanceForRatisConsensus;
+  protected static boolean originalEnableAutoLeaderBalancerForIoTConsensus;
 
   protected static String originalSchemaRegionConsensusProtocolClass;
   private static final String testSchemaRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
   protected static String originalDataRegionConsensusProtocolClass;
-  private static final String testDataRegionConsensusProtocolClass =
-      ConsensusFactory.MULTI_LEADER_CONSENSUS;
+  private static final String testDataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   protected static int originalSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
@@ -80,36 +83,36 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
   @BeforeClass
   public static void setUp() {
-    originalEnableLeaderBalancing = ConfigFactory.getConfig().isEnableLeaderBalancing();
-    ConfigFactory.getConfig().setEnableLeaderBalancing(true);
+    originalEnableAutoLeaderBalanceForRatisConsensus =
+        CONF.isEnableAutoLeaderBalanceForRatisConsensus();
+    CONF.setEnableAutoLeaderBalanceForRatisConsensus(true);
+    originalEnableAutoLeaderBalancerForIoTConsensus =
+        CONF.isEnableAutoLeaderBalanceForIoTConsensus();
+    CONF.setEnableAutoLeaderBalanceForIoTConsensus(true);
 
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
+    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
+    CONF.setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass);
 
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass);
+    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    CONF.setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass);
 
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
+    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
+    originalDataReplicationFactor = CONF.getDataReplicationFactor();
+    CONF.setSchemaReplicationFactor(testReplicationFactor);
+    CONF.setDataReplicationFactor(testReplicationFactor);
   }
 
   @AfterClass
   public static void tearDown() {
-    ConfigFactory.getConfig().setEnableLeaderBalancing(originalEnableLeaderBalancing);
+    CONF.setEnableAutoLeaderBalanceForRatisConsensus(
+        originalEnableAutoLeaderBalanceForRatisConsensus);
+    CONF.setEnableAutoLeaderBalanceForIoTConsensus(originalEnableAutoLeaderBalancerForIoTConsensus);
 
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
 
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
+    CONF.setDataReplicationFactor(originalDataReplicationFactor);
   }
 
   @Test
@@ -132,11 +135,12 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       // Create a DataRegionGroup for each StorageGroup through getOrCreateDataPartition
       for (int i = 0; i < storageGroupNum; i++) {
-        Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+        Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
-            new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap =
-            new HashMap<>();
+            new TSeriesPartitionSlot(1),
+            new TTimeSlotList()
+                .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
         sgSlotsMap.put(sg + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
@@ -169,7 +173,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       throws IOException, InterruptedException, TException, IllegalPathException {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
-    final int retryNum = 40;
+    final int retryNum = 100;
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
 
     TSStatus status;
@@ -194,11 +198,12 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             schemaPartitionTableResp.getStatus().getCode());
 
         // Create a DataRegionGroup for each StorageGroup
-        Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+        Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
-            new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap =
-            new HashMap<>();
+            new TSeriesPartitionSlot(1),
+            new TTimeSlotList()
+                .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
         sgSlotsMap.put(sg + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));

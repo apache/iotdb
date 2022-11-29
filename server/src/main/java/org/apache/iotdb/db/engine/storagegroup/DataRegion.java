@@ -3310,11 +3310,9 @@ public class DataRegion {
     return idTable;
   }
 
-  /** This method could only be used in multi-leader consensus */
+  /** This method could only be used in iot consensus */
   public IWALNode getWALNode() {
-    if (!config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

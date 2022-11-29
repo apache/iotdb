@@ -25,13 +25,15 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 > \$IOTDB\_HOME 表示 IoTDB 的安装目录所在路径。
 
 ## 安装
-在 iotdb 的根目录下执行
+如果使用源码版，可以在 iotdb 的根目录下执行
 
 ```shell
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-在生成完毕之后，IoTDB 的 cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
+在生成完毕之后，IoTDB 的 Cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
+
+如果你下载的是二进制版，那么 Cli 可以在 sbin 文件夹下直接找到。
 
 ## 运行
 
@@ -42,7 +44,7 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+Shell > bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows 系统启动命令如下：
 
@@ -59,7 +61,7 @@ Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
 |_____|'.__.' |_____|  |______.'|_______/  version <version>
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 ```
 输入`quit`或`exit`可退出 cli 结束本次会话，cli 输出`quit normally`表示退出成功。
 
@@ -82,7 +84,7 @@ IoTDB> login successfully
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 Windows 系统启动命令如下：
 
@@ -92,6 +94,7 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 
 ### CLI 特殊命令
 下面列举了一些CLI的特殊命令。
+
 | 命令 | 描述 / 例子 |
 |:---|:---|
 | `set time_display_type=xxx` | 例如： long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
@@ -124,8 +127,8 @@ openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
 1、下载 keycloack 程序，在 keycloack/bin 中启动 keycloack
 
 ```shell
-Shell >cd bin
-Shell >./standalone.sh
+Shell > cd bin
+Shell > bash ./standalone.sh
 ```
 2、使用 https://ip:port/auth 登陆 keycloack, 首次登陆需要创建用户
 
@@ -182,7 +185,7 @@ Shell >./standalone.sh
 此时，登录命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
 其中，需要将{my-access-token} （注意，包括{}）替换成你的 token，即 access_token 对应的值。
@@ -214,7 +217,7 @@ curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/o
 Linux 系统与 MacOS 指令：
 
 ```shell
-Shell > sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
+Shell > bash sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 Windows 系统指令
@@ -246,18 +249,18 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "CREATE DATABASE root.demo"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "CREATE DATABASE root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
 打印出来的结果显示如下，通过这种方式进行的操作与客户端的输入模式以及通过 JDBC 进行操作结果是一致的。
 
 ```shell
- Shell > ./shell.sh 
+ Shell > bash ./shell.sh 
 +-----------------------------+------------+
 |                         Time|root.demo.s1|
 +-----------------------------+------------+

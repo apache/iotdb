@@ -37,25 +37,6 @@ IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
 IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
-## MERGE
-
-Execute Level Compaction and unsequence Compaction task. Currently IoTDB supports the following two types of SQL to manually trigger the compaction process of data files:
-
-* `MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed very fast by rewriting the overlapped Chunks only, while there is some redundant data on the disk eventually.
-* `FULL MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed slow due to it takes more time to rewrite all data in overlapped files. However, there won't be any redundant data on the disk eventually.
-
-```sql
-IoTDB> MERGE
-IoTDB> FULL MERGE
-```
-At the same time, manually trigger the compaction process of data files are supported for local node or the entire cluster in cluster mode:
-```sql
-IoTDB> MERGE ON LOCAL
-IoTDB> MERGE ON CLUSTER
-IoTDB> FULL MERGE ON LOCAL
-IoTDB> FULL MERGE ON CLUSTER
-```
-
 ## CLEAR CACHE
 
 Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear local node cache and clear the cluster cache.

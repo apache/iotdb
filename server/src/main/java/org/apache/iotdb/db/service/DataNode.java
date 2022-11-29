@@ -257,10 +257,10 @@ public class DataNode implements DataNodeMBean {
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
 
-          // In current implementation, only MultiLeader need separated memory from Consensus
+          // In current implementation, only IoTConsensus need separated memory from Consensus
           if (!config
               .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+              .equals(ConsensusFactory.IOT_CONSENSUS)) {
             IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
 

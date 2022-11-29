@@ -198,10 +198,16 @@ struct TSchemaNodeManagementResp {
   3: optional set<common.TSchemaNode> matchedNode
 }
 
+struct TTimeSlotList {
+  1: required list<common.TTimePartitionSlot> timePartitionSlots
+  2: required bool needLeftAll
+  3: required bool needRightAll
+}
+
 // Data
 struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
+  1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
@@ -406,6 +412,7 @@ struct TDataNodeInfo {
   4: required i32 rpcPort
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
+  7: optional i32 cpuCoreNum
 }
 
 struct TShowDataNodesResp {
@@ -504,6 +511,11 @@ struct TGetPathsSetTemplatesResp {
 }
 
 // SYNC
+struct TRecordPipeMessageReq{
+  1: required string pipeName
+  2: required binary message
+}
+
 struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
@@ -1040,6 +1052,9 @@ service IConfigNodeRPCService {
 
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   // ======================================================
   // TestTools

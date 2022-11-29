@@ -323,7 +323,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
             }
           }
           if (!matchLeader) {
-            result.put(regionGroupId, regionLeaderMap.get(regionGroupId));
+            result.put(regionGroupId, regionLeaderMap.getOrDefault(regionGroupId, -1));
           }
         });
 
