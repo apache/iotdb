@@ -185,18 +185,17 @@ public class LoadTsFileScheduler implements IScheduler {
         // TODO: retry.
         logger.warn(
             String.format(
-                    "Dispatch one piece to ReplicaSet %s error, result status code %s.%n",
-                    replicaSet,
-                    TSStatusCode.representOf(result.getFailureStatus().getCode()).name())
-                + String.format(
-                    "Result status message %s.%n", result.getFailureStatus().getMessage())
-                + String.format("Dispatch piece node error:%n%s", pieceNode));
+                "Dispatch one piece to ReplicaSet %s error. Result status code %s. Result status message %s. Dispatch piece node error:%n%s",
+                replicaSet,
+                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+                result.getFailureStatus().getMessage(),
+                pieceNode));
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             logger.warn(
                 String.format(
-                        "Sub status code %s.%n", TSStatusCode.representOf(status.getCode()).name())
-                    + String.format("Sub status message %s.%n", status.getMessage()));
+                    "Sub status code %s. Sub status message %s.",
+                    TSStatusCode.representOf(status.getCode()).name(), status.getMessage()));
           }
         }
         TSStatus status = result.getFailureStatus();
@@ -237,11 +236,12 @@ public class LoadTsFileScheduler implements IScheduler {
         // TODO: retry.
         logger.warn(
             String.format(
-                    "Dispatch load command %s of TsFile %s error to replicaSets %s error.%n",
-                    loadCommandReq, tsFile, allReplicaSets)
-                + String.format("Result status code %s.%n", result.getFailureStatus().getCode())
-                + String.format(
-                    "Result status message %s.", result.getFailureStatus().getMessage()));
+                "Dispatch load command %s of TsFile %s error to replicaSets %s error. Result status code %s. Result status message %s.",
+                loadCommandReq,
+                tsFile,
+                allReplicaSets,
+                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+                result.getFailureStatus().getMessage()));
         TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
@@ -277,10 +277,10 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
           String.format(
-                  "Dispatch tsFile %s error to local error.%n",
-                  node.getTsFileResource().getTsFile())
-              + String.format("Result status code %s.%n", e.getFailureStatus().getCode())
-              + String.format("Result status message %s.", e.getFailureStatus().getMessage()));
+              "Dispatch tsFile %s error to local error. Result status code %s. Result status message %s.",
+              node.getTsFileResource().getTsFile(),
+              TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
+              e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
