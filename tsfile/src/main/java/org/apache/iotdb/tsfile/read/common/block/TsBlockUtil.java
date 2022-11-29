@@ -20,7 +20,10 @@
 package org.apache.iotdb.tsfile.read.common.block;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public class TsBlockUtil {
 
@@ -62,5 +65,34 @@ public class TsBlockUtil {
       }
     }
     return left;
+  }
+
+  public static void appendTsBlockToBuilder(TsBlock tsBlock, TsBlockBuilder builder) {
+    int size = tsBlock.getPositionCount();
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    for (int i = 0; i < size; i++) {
+      timeColumnBuilder.writeLong(timeColumn.getLong(i));
+      builder.declarePosition();
+    }
+    for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
+        columnIndex < columnSize;
+        columnIndex++) {
+      ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+      Column column = tsBlock.getColumn(columnIndex);
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < size; i++) {
+          if (column.isNull(i)) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.write(column, i);
+          }
+        }
+      } else {
+        for (int i = 0; i < size; i++) {
+          columnBuilder.write(column, i);
+        }
+      }
+    }
   }
 }
