@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
-import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -220,8 +220,20 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setSchemaRegionGroupPerDatabase(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_group_per_database",
+                String.valueOf(conf.getSchemaRegionGroupPerDatabase()).trim())));
+
     conf.setDataRegionGroupExtensionPolicy(
-        DataRegionGroupExtensionPolicy.parse(
+        RegionGroupExtensionPolicy.parse(
             properties.getProperty(
                 "data_region_group_extension_policy",
                 conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));

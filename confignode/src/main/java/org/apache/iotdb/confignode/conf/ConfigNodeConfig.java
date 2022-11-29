@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
-import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -76,12 +76,19 @@ public class ConfigNodeConfig {
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = schemaReplicationFactor;
 
-  /** The policy of extension DataRegionGroup for each Database. */
-  private DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      DataRegionGroupExtensionPolicy.AUTO;
+  /** The policy of extension SchemaRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of DataRegionGroups for each Database */
-  private int dataRegionGroupPerDatabase = 10;
+  /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
+  private int schemaRegionGroupPerDatabase = 1;
+
+  /** The policy of extension DataRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy dateRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
+
+  /** The number of DataRegionGroups for each Database when using CUSTOM extension policy */
+  private int dataRegionGroupPerDatabase = 1;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 1.0;
@@ -413,13 +420,30 @@ public class ConfigNodeConfig {
     this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
-  public DataRegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
-    return dataRegionGroupExtensionPolicy;
+  public RegionGroupExtensionPolicy getSchemaRegionGroupExtensionPolicy() {
+    return dateRegionGroupExtensionPolicy;
+  }
+
+  public void setSchemaRegionGroupExtensionPolicy(
+      RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy) {
+    this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
+  }
+
+  public int getSchemaRegionGroupPerDatabase() {
+    return schemaRegionGroupPerDatabase;
+  }
+
+  public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    this.dataRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+  }
+
+  public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
+    return dateRegionGroupExtensionPolicy;
   }
 
   public void setDataRegionGroupExtensionPolicy(
-      DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
-    this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
+      RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
+    this.dateRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
   }
 
   public int getDataRegionGroupPerDatabase() {

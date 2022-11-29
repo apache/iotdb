@@ -20,14 +20,14 @@ package org.apache.iotdb.confignode.manager.partition;
 
 import java.io.IOException;
 
-public enum DataRegionGroupExtensionPolicy {
+public enum RegionGroupExtensionPolicy {
   CUSTOM("CUSTOM"),
 
   AUTO("AUTO");
 
   private final String policy;
 
-  DataRegionGroupExtensionPolicy(String policy) {
+  RegionGroupExtensionPolicy(String policy) {
     this.policy = policy;
   }
 
@@ -35,8 +35,8 @@ public enum DataRegionGroupExtensionPolicy {
     return policy;
   }
 
-  public static DataRegionGroupExtensionPolicy parse(String policy) throws IOException {
-    for (DataRegionGroupExtensionPolicy extensionPolicy : DataRegionGroupExtensionPolicy.values()) {
+  public static RegionGroupExtensionPolicy parse(String policy) throws IOException {
+    for (RegionGroupExtensionPolicy extensionPolicy : RegionGroupExtensionPolicy.values()) {
       if (extensionPolicy.policy.equals(policy)) {
         return extensionPolicy;
       }
