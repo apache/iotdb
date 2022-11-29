@@ -932,6 +932,9 @@ public class DataRegion {
     }
     writeLock("insertTablet");
     try {
+      if (deleted) {
+        return;
+      }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
