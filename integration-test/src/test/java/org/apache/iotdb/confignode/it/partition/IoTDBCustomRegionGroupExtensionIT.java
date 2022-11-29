@@ -55,6 +55,8 @@ public class IoTDBCustomRegionGroupExtensionIT {
 
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
+  private static String originalSchemaRegionGroupExtensionPolicy;
+  private static final String testSchemaRegionGroupExtensionPolicy = "CUSTOM";
   private static String originalDataRegionGroupExtensionPolicy;
   private static final String testDataRegionGroupExtensionPolicy = "CUSTOM";
 
@@ -62,6 +64,8 @@ public class IoTDBCustomRegionGroupExtensionIT {
   private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
+  private static int originalSchemaRegionGroupPerDatabase;
+  private static final int testSchemaRegionGroupPerDatabase = 2;
   private static int originalDataRegionGroupPerDatabase;
   private static final int testDataRegionGroupPerDatabase = 2;
 
@@ -88,6 +92,12 @@ public class IoTDBCustomRegionGroupExtensionIT {
 
     originalTimePartitionInterval = CONF.getTimePartitionInterval();
 
+    originalSchemaRegionGroupExtensionPolicy = CONF.getSchemaRegionGroupExtensionPolicy();
+    CONF.setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy);
+
+    originalSchemaRegionGroupPerDatabase = CONF.getSchemaRegionGroupPerDatabase();
+    CONF.setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase);
+
     originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
     CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
 
@@ -106,6 +116,9 @@ public class IoTDBCustomRegionGroupExtensionIT {
     CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
+
+    CONF.setSchemaRegionGroupExtensionPolicy(originalSchemaRegionGroupExtensionPolicy);
+    CONF.setSchemaRegionGroupPerDatabase(originalSchemaRegionGroupPerDatabase);
     CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
     CONF.setDataRegionGroupPerDatabase(originalDataRegionGroupPerDatabase);
   }
