@@ -28,10 +28,29 @@ public class DataPartitionQueryParam {
   private String devicePath;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
+  // it will be set to true in query when there exist filter like: time <= XXX
+  // (-oo, timePartitionSlotList.get(0))
+  private boolean needLeftAll = false;
+
+  // it will be set to true query when there exist filter like: time >= XXX
+  // (timePartitionSlotList.get(timePartitionSlotList.size() - 1), +oo)
+  private boolean needRightAll = false;
+
   public DataPartitionQueryParam(
       String devicePath, List<TTimePartitionSlot> timePartitionSlotList) {
     this.devicePath = devicePath;
     this.timePartitionSlotList = timePartitionSlotList;
+  }
+
+  public DataPartitionQueryParam(
+      String devicePath,
+      List<TTimePartitionSlot> timePartitionSlotList,
+      boolean needLeftAll,
+      boolean needRightAll) {
+    this.devicePath = devicePath;
+    this.timePartitionSlotList = timePartitionSlotList;
+    this.needLeftAll = needLeftAll;
+    this.needRightAll = needRightAll;
   }
 
   public DataPartitionQueryParam() {}
@@ -50,5 +69,21 @@ public class DataPartitionQueryParam {
 
   public void setTimePartitionSlotList(List<TTimePartitionSlot> timePartitionSlotList) {
     this.timePartitionSlotList = timePartitionSlotList;
+  }
+
+  public boolean isNeedLeftAll() {
+    return needLeftAll;
+  }
+
+  public void setNeedLeftAll(boolean needLeftAll) {
+    this.needLeftAll = needLeftAll;
+  }
+
+  public boolean isNeedRightAll() {
+    return needRightAll;
+  }
+
+  public void setNeedRightAll(boolean needRightAll) {
+    this.needRightAll = needRightAll;
   }
 }

@@ -210,6 +210,12 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    return getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;

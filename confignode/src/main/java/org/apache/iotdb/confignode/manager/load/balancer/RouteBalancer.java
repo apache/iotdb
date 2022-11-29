@@ -401,7 +401,7 @@ public class RouteBalancer {
     return regionRouteMap.getRegionPriorityMap();
   }
 
-  public RegionRouteMap getLatestRegionRouteMap() {
+  public RegionRouteMap getRegionRouteMap() {
     return regionRouteMap;
   }
 
