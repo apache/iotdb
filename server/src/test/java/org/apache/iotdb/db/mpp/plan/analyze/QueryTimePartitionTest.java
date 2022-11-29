@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Test;
 
@@ -34,6 +35,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class QueryTimePartitionTest {
@@ -350,28 +352,46 @@ public class QueryTimePartitionTest {
   public void testGetTimePartitionSlotList() {
 
     // time >= 10 and time <= 9
-    List<TTimePartitionSlot> res =
+    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
         getTimePartitionSlotList(new AndFilter(TimeFilter.gtEq(10), TimeFilter.ltEq(9)));
-    assertTrue(res.isEmpty());
+    assertTrue(res.left.isEmpty());
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // time >= 10
     res = getTimePartitionSlotList(TimeFilter.gtEq(10));
-    assertTrue(res.isEmpty());
+    assertEquals(1, res.left.size());
+    List<TTimePartitionSlot> expected = Collections.singletonList(new TTimePartitionSlot(0));
+    assertEquals(expected.size(), res.left.size());
+    for (int i = 0; i < expected.size(); i++) {
+      assertEquals(expected.get(i), res.left.get(i));
+    }
+    assertFalse(res.right.left);
+    assertTrue(res.right.right);
 
     // time < 20
     res = getTimePartitionSlotList(TimeFilter.lt(20));
-    assertTrue(res.isEmpty());
+    assertEquals(1, res.left.size());
+    expected = Collections.singletonList(new TTimePartitionSlot(0));
+    assertEquals(expected.size(), res.left.size());
+    for (int i = 0; i < expected.size(); i++) {
+      assertEquals(expected.get(i), res.left.get(i));
+    }
+    assertTrue(res.right.left);
+    assertFalse(res.right.right);
 
     // time > 10 and time <= 20
     res = getTimePartitionSlotList(new AndFilter(TimeFilter.gt(10), TimeFilter.ltEq(20)));
-    List<TTimePartitionSlot> expected = Collections.singletonList(new TTimePartitionSlot(0));
-    assertEquals(expected.size(), res.size());
+    expected = Collections.singletonList(new TTimePartitionSlot(0));
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
-    // time > 0 and time <= IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
-    // + 1
+    // time > 0 and time <= IoTDBDescriptor.getInstance()
+    //                                     .getConfig().getTimePartitionInterval() * 3 + 1
     res =
         getTimePartitionSlotList(
             new AndFilter(
@@ -387,10 +407,12 @@ public class QueryTimePartitionTest {
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2),
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3));
-    assertEquals(expected.size(), res.size());
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // time >= IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1 and time <
     // IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1
@@ -406,10 +428,12 @@ public class QueryTimePartitionTest {
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
-    assertEquals(expected.size(), res.size());
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // time between IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1 and
     // time < IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()
@@ -424,10 +448,12 @@ public class QueryTimePartitionTest {
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
-    assertEquals(expected.size(), res.size());
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // time >= IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() and time <=
     // IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1
@@ -442,10 +468,12 @@ public class QueryTimePartitionTest {
         Collections.singletonList(
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
-    assertEquals(expected.size(), res.size());
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // time between IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() and time <=
     // IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1
@@ -459,10 +487,12 @@ public class QueryTimePartitionTest {
         Collections.singletonList(
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
-    assertEquals(expected.size(), res.size());
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
 
     // (time >= 10 and time < IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval())
     // or (time > IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() and time <
@@ -525,8 +555,11 @@ public class QueryTimePartitionTest {
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3),
             new TTimePartitionSlot(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5));
+    assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
-      assertEquals(expected.get(i), res.get(i));
+      assertEquals(expected.get(i), res.left.get(i));
     }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
   }
 }
