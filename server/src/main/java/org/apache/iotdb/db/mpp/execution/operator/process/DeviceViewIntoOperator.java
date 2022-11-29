@@ -76,7 +76,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   @Override
   public TsBlock next() {
-    if (!handleFuture()) {
+    if (!writeOperationDone()) {
       return null;
     }
 
@@ -86,7 +86,10 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     cachedTsBlock = null;
 
     if (child.hasNext()) {
-      processTsBlock(child.next());
+      TsBlock inputTsBlock = child.next();
+      processTsBlock(inputTsBlock);
+
+      // call child.next only once
       return null;
     } else {
       InsertMultiTabletsStatement insertMultiTabletsStatement =

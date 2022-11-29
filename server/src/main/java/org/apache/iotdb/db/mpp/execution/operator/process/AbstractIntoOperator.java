@@ -146,48 +146,40 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     isBlocked = SettableFuture.create();
     writeOperationFuture =
-        writeOperationExecutor.submit(
-            () -> {
-              LOGGER.info("");
-              return client.insertTablets(insertMultiTabletsStatement);
-            });
-
+        writeOperationExecutor.submit(() -> client.insertTablets(insertMultiTabletsStatement));
     writeOperationFuture.addListener(
-        () -> {
-          LOGGER.info("");
-          ((SettableFuture<Void>) isBlocked).set(null);
-        },
-        writeOperationExecutor);
+        () -> ((SettableFuture<Void>) isBlocked).set(null), writeOperationExecutor);
   }
 
-  protected boolean handleFuture() {
-    if (writeOperationFuture != null) {
-      if (writeOperationFuture.isDone()) {
-        try {
-          TSStatus executionStatus = writeOperationFuture.get();
-          if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-            String message =
-                String.format(
-                    "Error occurred while inserting tablets in SELECT INTO: %s",
-                    executionStatus.getMessage());
-            throw new IntoProcessException(message);
-          }
+  protected boolean writeOperationDone() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
 
-          for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-            generator.reset();
-          }
-
-          writeOperationFuture = null;
-          return true;
-        } catch (ExecutionException | InterruptedException e) {
-          throw new IntoProcessException(e.getMessage());
-        }
-      } else {
+    try {
+      if (!writeOperationFuture.isDone()) {
         return false;
       }
+
+      TSStatus executionStatus = writeOperationFuture.get();
+      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        String message =
+            String.format(
+                "Error occurred while inserting tablets in SELECT INTO: %s",
+                executionStatus.getMessage());
+        throw new IntoProcessException(message);
+      }
+
+      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+        generator.reset();
+      }
+
+      writeOperationFuture = null;
+      return true;
+    } catch (ExecutionException | InterruptedException e) {
+      throw new IntoProcessException(e.getMessage());
     }
-    return true;
   }
 
   private boolean existFullStatement(
