@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SnapshotStorage implements StateMachineStorage {
@@ -49,7 +50,6 @@ public class SnapshotStorage implements StateMachineStorage {
   private final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
-  private File snapshotStorageRoot;
 
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
@@ -61,14 +61,12 @@ public class SnapshotStorage implements StateMachineStorage {
 
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
-    this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
-    if (getSnapshotDir() != null) {
-      snapshotStorageRoot = new File(getSnapshotDir(), groupId.toString());
-    } else {
-      snapshotStorageRoot = stateMachineDir;
-    }
-    if (!snapshotStorageRoot.exists()) {
-      FileUtils.createDirectories(snapshotStorageRoot);
+    this.stateMachineDir =
+        Optional.ofNullable(getSnapshotDir())
+            .orElse(raftStorage.getStorageDir().getStateMachineDir());
+
+    if (!stateMachineDir.exists()) {
+      FileUtils.createDirectories(stateMachineDir);
     }
     updateSnapshotCache();
   }
@@ -179,7 +177,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getStateMachineDir() {
-    return snapshotStorageRoot;
+    return stateMachineDir;
   }
 
   public File getSnapshotDir(String snapshotMetadata) {
@@ -202,6 +200,8 @@ public class SnapshotStorage implements StateMachineStorage {
 
   @Override
   public File getTmpDir() {
-    return getSnapshotDir() == null ? null : new File(getSnapshotDir(), TMP_PREFIX);
+    return getSnapshotDir() == null
+        ? null
+        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 }
