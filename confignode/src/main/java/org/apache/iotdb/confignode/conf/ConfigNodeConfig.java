@@ -257,7 +257,7 @@ public class ConfigNodeConfig {
 
   private long configNodeRatisLogMaxMB = 2 * 1024;
   private long schemaRegionRatisLogMaxMB = 2 * 1024;
-  private long dataRegionRatisLogMaxMB = 20 * 1024;
+  private long dataRegionRatisLogMaxMB = 5 * 1024;
 
   public ConfigNodeConfig() {
     // empty constructor
