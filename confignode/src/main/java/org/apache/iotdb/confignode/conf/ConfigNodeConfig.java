@@ -78,7 +78,7 @@ public class ConfigNodeConfig {
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.CUSTOM;
 
   /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
   private int schemaRegionGroupPerDatabase = 1;
@@ -421,7 +421,7 @@ public class ConfigNodeConfig {
   }
 
   public RegionGroupExtensionPolicy getSchemaRegionGroupExtensionPolicy() {
-    return dateRegionGroupExtensionPolicy;
+    return schemaRegionGroupExtensionPolicy;
   }
 
   public void setSchemaRegionGroupExtensionPolicy(
@@ -434,7 +434,7 @@ public class ConfigNodeConfig {
   }
 
   public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    this.dataRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+    this.schemaRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
   }
 
   public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
