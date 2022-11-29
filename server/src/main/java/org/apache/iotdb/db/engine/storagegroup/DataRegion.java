@@ -36,7 +36,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
@@ -306,7 +306,7 @@ public class DataRegion {
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.isClusterMode()
         && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
-        && !StorageEngineV2.getInstance().isAllSgReady()) {
+        && !StorageEngine.getInstance().isAllSgReady()) {
       logger.debug(
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
           storageGroupName,
@@ -540,7 +540,7 @@ public class DataRegion {
     // recover and start timed compaction thread
     initCompaction();
 
-    if (StorageEngineV2.getInstance().isAllSgReady()) {
+    if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", storageGroupName, dataRegionId);
     } else {
       logger.info(
@@ -607,11 +607,11 @@ public class DataRegion {
     for (TsFileResource resource : upgradeSeqFileList) {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
-        long endTimePartitionId = StorageEngineV2.getTimePartition(endTime);
+        long endTimePartitionId = StorageEngine.getTimePartition(endTime);
         lastFlushTimeMap.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
-        long partitionId = StorageEngineV2.getTimePartition(resource.getStartTime(deviceId));
+        long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
           lastFlushTimeMap.setOneDeviceFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
@@ -879,12 +879,12 @@ public class DataRegion {
       throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
     }
     if (enableMemControl) {
-      StorageEngineV2.blockInsertionIfReject(null);
+      StorageEngine.blockInsertionIfReject(null);
     }
     writeLock("InsertRow");
     try {
       // init map
-      long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
+      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
         TimePartitionManager.getInstance()
@@ -925,7 +925,7 @@ public class DataRegion {
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     if (enableMemControl) {
-      StorageEngineV2.blockInsertionIfReject(null);
+      StorageEngine.blockInsertionIfReject(null);
     }
     writeLock("insertTablet");
     try {
@@ -965,7 +965,7 @@ public class DataRegion {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngineV2.getTimePartition(insertTabletNode.getTimes()[before]);
+          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
       // init map
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
@@ -1916,8 +1916,8 @@ public class DataRegion {
       long searchIndex,
       PartialPath path,
       TimePartitionFilter timePartitionFilter) {
-    long timePartitionStartId = StorageEngineV2.getTimePartition(startTime);
-    long timePartitionEndId = StorageEngineV2.getTimePartition(endTime);
+    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     if (config.getWalMode() == WALMode.DISABLE) {
       return walFlushListeners;
@@ -2581,7 +2581,7 @@ public class DataRegion {
   private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
-      long timePartitionId = StorageEngineV2.getTimePartition(endTime);
+      long timePartitionId = StorageEngine.getTimePartition(endTime);
       lastFlushTimeMap.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeMap.updateGlobalFlushedTime(device, endTime);
     }
@@ -3053,7 +3053,7 @@ public class DataRegion {
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
       throws WriteProcessException, BatchProcessException {
     if (enableMemControl) {
-      StorageEngineV2.blockInsertionIfReject(null);
+      StorageEngine.blockInsertionIfReject(null);
     }
     writeLock("InsertRowsOfOneDevice");
     try {
@@ -3077,7 +3077,7 @@ public class DataRegion {
           continue;
         }
         // init map
-        long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
+        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
 
         if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
           TimePartitionManager.getInstance()

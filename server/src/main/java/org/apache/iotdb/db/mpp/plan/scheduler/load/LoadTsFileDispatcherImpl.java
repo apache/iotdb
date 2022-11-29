@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -160,15 +160,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
       }
       TSStatus resultStatus =
-          StorageEngineV2.getInstance()
-              .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
+          StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need split
       try {
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
                 ((LoadSingleTsFileNode) planNode).getTsFileResource(),
@@ -235,7 +234,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
                 loadCommandReq.uuid);

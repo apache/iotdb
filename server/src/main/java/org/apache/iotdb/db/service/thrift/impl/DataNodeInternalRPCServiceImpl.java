@@ -56,7 +56,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -221,7 +221,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
 
@@ -352,7 +352,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
 
     return createTLoadResp(resultStatus);
@@ -362,7 +362,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
     return createTLoadResp(resultStatus);
