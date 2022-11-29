@@ -82,6 +82,10 @@ public class QueryStatistics {
   public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
   public static final String DISPATCHER = "Dispatcher";
 
+  public static final String WAIT_FOR_DISPATCH = "WaitForDispatch";
+
+  public static final String DISPATCH_READ = "DispatchRead";
+
   public static final String DRIVER_CLOSE = "CloseDriver";
 
   public static final String DRIVER_INTERNAL_PROCESS = "DriverInternalProcess";

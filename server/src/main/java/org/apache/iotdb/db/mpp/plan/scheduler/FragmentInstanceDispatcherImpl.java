@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -53,11 +54,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.DISPATCH_READ;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final Logger logger =
       LoggerFactory.getLogger(FragmentInstanceDispatcherImpl.class);
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
+
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
@@ -98,6 +103,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return executor.submit(
         () -> {
           for (FragmentInstance instance : instances) {
+            long startTime = System.nanoTime();
             try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
               dispatchOneInstance(instance);
             } catch (FragmentInstanceDispatchException e) {
@@ -107,6 +113,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+            } finally {
+              QUERY_STATISTICS.addCost(DISPATCH_READ, System.nanoTime() - startTime);
             }
           }
           return new FragInstanceDispatchResult(true);
