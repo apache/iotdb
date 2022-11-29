@@ -31,14 +31,20 @@
 * Support Cluster management sql: show cluster, show regions
 * Support administration in Cluster:  User, Permission, Role management
 * Support authorization when login and executing a command
-* Support MPP(massively parallel process) framework in cluster
-* Support insertion, deletion and all query types in Cluster
-* Support CSV import/export tools
-* Support TsFile import/export tools
 * Support create/show/count/delete database
 * Support show/count devices
 * Support create/show/count timeseries
 * Support schema template management
+* Support MPP(massively parallel process) framework in cluster
+* Support insertion, deletion and all query types in Cluster
+* Support CSV import/export tools
+* Support TsFile import/export tools
+* Support Sync TsFile from an IoTDB with one replica to another with any replica number
+* Support UDF framework in Cluster
+* Support new UDF 'change_points
+* Support stateful, stateless Trigger in Cluster
+* Support Select into in Cluster
+* Support Continuous Query in Cluster
 * Support flush on local/cluster
 * Support clear cache on local/cluster
 * Support metric for DataNode and ConfigNode with output to IoTDB, Prometheus, and JMX
@@ -47,10 +53,6 @@
 * Support having clause and between expression in query
 * Support order by timeseries in last query
 * Support hot configuration of data_dirs
-* Support stateful, stateless Trigger
-* Support UDF framework
-* Support new UDF 'change_points
-* Support Continuous Query
 
 # Apache IoTDB 0.13.3
 
