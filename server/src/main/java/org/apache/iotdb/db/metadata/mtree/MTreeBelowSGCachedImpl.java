@@ -133,9 +133,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // generate the ancestor nodes of storageGroupNode
   private IMNode generatePrefix(PartialPath storageGroupPath) {
     String[] nodes = storageGroupPath.getNodes();
-    IMNode cur = null;
-    for (int i = 0; i < nodes.length - 1; i++) {
-      cur = new InternalMNode(cur, nodes[i]);
+    // nodes[0] must be root
+    IMNode cur = new InternalMNode(null, nodes[0]);
+    IMNode child;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      child = new InternalMNode(cur, nodes[i]);
+      cur.addChild(nodes[i], child);
+      cur = child;
     }
     return cur;
   }
