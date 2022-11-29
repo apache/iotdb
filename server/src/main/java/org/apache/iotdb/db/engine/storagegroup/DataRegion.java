@@ -883,6 +883,9 @@ public class DataRegion {
     }
     writeLock("InsertRow");
     try {
+      if (deleted) {
+        return;
+      }
       // init map
       long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
@@ -3057,6 +3060,9 @@ public class DataRegion {
     }
     writeLock("InsertRowsOfOneDevice");
     try {
+      if (deleted) {
+        return;
+      }
       boolean isSequence = false;
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
