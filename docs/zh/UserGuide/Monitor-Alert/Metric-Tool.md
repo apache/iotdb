@@ -152,8 +152,8 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
 | cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="StorageGroup", type="hit"    | Counter   | StorageGroup Cache 的命中次数                           |
-| cache     | name="StorageGroup", type="all"    | Counter   | StorageGroup Cache 的访问次数                           |
+| cache     | name="Database", type="hit"    | Counter   | Database Cache 的命中次数                           |
+| cache     | name="Database", type="all"    | Counter   | Database Cache 的访问次数                           |
 | cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
 | cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |

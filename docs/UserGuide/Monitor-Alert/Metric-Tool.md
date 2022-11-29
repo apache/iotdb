@@ -144,13 +144,13 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 ### 4.2.4. Cache
 | Metric    | Tags                               | Type      | Description                                                              |
-| --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
+| --------- |------------------------------------| --------- | ------------------------------------------------------------------------ |
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
 | cache_hit | name="schema"                      | AutoGauge | The cache hit ratio of SchemaCache, Unit: %                              |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | The cache hit ratio of TimeseriesMetadataCache, Unit: %                  |
 | cache_hit | name="bloomFilter"                 | AutoGauge | The interception rate of bloomFilter in TimeseriesMetadataCache, Unit: % |
-| cache     | name="StorageGroup", type="hit"    | Counter   | The hit number of StorageGroup Cache                                     |
-| cache     | name="StorageGroup", type="all"    | Counter   | The access number of StorageGroup Cache                                  |
+| cache     | name="Database", type="hit"        | Counter   | The hit number of Database Cache                                     |
+| cache     | name="Database", type="all"    | Counter   | The access number of Database Cache                                  |
 | cache     | name="SchemaPartition", type="hit" | Counter   | The hit number of SchemaPartition Cache                                  |
 | cache     | name="SchemaPartition", type="all" | Counter   | The access number of SSchemaPartition Cache                              |
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
@@ -266,8 +266,8 @@ Core-level metrics are enabled by default during system operation. The addition 
 ### 4.3.1. Cluster
 | Metric | Tags                                                               | Type      | Description                                                        |
 | ------ | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------------ |
-| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
-| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
+| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
+| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
 ## 4.4. All Metric
 Currently there is no All level metrics, and it will continue to be added in the future.

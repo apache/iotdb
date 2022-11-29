@@ -73,7 +73,7 @@ public class PartitionCache {
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
-  private static final String STORAGE_GROUP_CACHE_NAME = "StorageGroup";
+  private static final String STORAGE_GROUP_CACHE_NAME = "DataBase";
   private static final String SCHEMA_PARTITION_CACHE_NAME = "SchemaPartition";
   private static final String DATA_PARTITION_CACHE_NAME = "DataPartition";
 

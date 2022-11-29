@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.2"
+      "version": "8.4.6"
     },
     {
       "type": "datasource",
@@ -63,7 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1669566440584,
+  "iteration": 1669686305293,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -182,6 +182,10 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -257,7 +261,7 @@
           "exemplar": true,
           "expr": "rate(quantity_total{instance=~\"$instance\"}[1m])",
           "interval": "1m",
-          "legendFormat": "{{instance}} write point per second",
+          "legendFormat": "write point per second",
           "range": true,
           "refId": "A"
         }
@@ -892,7 +896,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "pluginVersion": "8.4.2",
@@ -1196,7 +1200,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -1296,9 +1300,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(cost_task_seconds_sum{}[1m])/rate(cost_task_seconds_count{}[1m])",
+          "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[1m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[1m])",
           "interval": "",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
         }
@@ -2816,7 +2820,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -2905,7 +2909,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -3099,7 +3103,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -3214,7 +3218,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -3317,7 +3321,7 @@
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -4096,6 +4100,10 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -4179,6 +4187,10 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -4462,7 +4474,7 @@
   "tags": [
     "Apache-IoTDB",
     "DataNode",
-    "0.14.0"
+    "1.0"
   ],
   "templating": {
     "list": [
@@ -4528,7 +4540,7 @@
   },
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
-  "uid": "TbEVYRw7m",
-  "version": 1,
+  "uid": "TbEVYRw7A",
+  "version": 14,
   "weekStart": ""
 }

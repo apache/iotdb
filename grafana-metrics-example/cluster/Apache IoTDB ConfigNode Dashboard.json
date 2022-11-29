@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.2"
+      "version": "8.4.6"
     },
     {
       "type": "panel",
@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1669566467252,
+  "iteration": 1669686316422,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -134,7 +134,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -473,7 +473,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -551,7 +551,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -825,7 +825,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region in StorageGroup",
+      "title": "Region in Database",
       "type": "timeseries"
     },
     {
@@ -911,7 +911,7 @@
           "refId": "A"
         }
       ],
-      "title": "Slot In Storage Group",
+      "title": "Slot In Database",
       "type": "timeseries"
     },
     {
@@ -989,7 +989,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -1488,8 +1488,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "targets": [
@@ -2058,6 +2058,10 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2342,7 +2346,7 @@
   "tags": [
     "Apache-IoTDB",
     "ConfigNode",
-    "0.14.0"
+    "1.0"
   ],
   "templating": {
     "list": [
@@ -2408,7 +2412,7 @@
   },
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
-  "uid": "TbEVYRw7g",
-  "version": 1,
+  "uid": "TbEVYRw7T",
+  "version": 4,
   "weekStart": ""
 }
