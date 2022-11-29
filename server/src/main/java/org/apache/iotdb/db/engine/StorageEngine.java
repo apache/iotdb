@@ -644,6 +644,7 @@ public class StorageEngine implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      region.markDeleted();
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -665,7 +666,6 @@ public class StorageEngine implements IService {
             e);
       } finally {
         deletingDataRegionMap.remove(regionId);
-        region.markDeleted();
       }
     }
   }

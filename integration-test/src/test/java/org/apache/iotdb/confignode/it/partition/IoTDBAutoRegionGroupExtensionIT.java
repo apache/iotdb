@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -32,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -49,7 +49,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -130,7 +129,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
         client.deleteStorageGroup(new TDeleteStorageGroupReq(curSg));
       }
       boolean isAllRegionGroupDeleted = false;
-      for (int retry = 0; retry < 100; retry++) {
+      for (int retry = 0; retry < retryNum; retry++) {
         TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
         if (showRegionResp.getRegionInfoListSize() == 0) {
           isAllRegionGroupDeleted = true;
@@ -159,7 +158,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
       String curSg = sg + i;
 
       /* Insert a DataPartition to create DataRegionGroups */
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               curSg, 0, 10, 0, 10, originalTimePartitionInterval);
       TDataPartitionTableResp dataPartitionTableResp =

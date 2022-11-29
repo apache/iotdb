@@ -883,6 +883,9 @@ public class DataRegion {
     }
     writeLock("InsertRow");
     try {
+      if (deleted) {
+        return;
+      }
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
 
@@ -929,6 +932,9 @@ public class DataRegion {
     }
     writeLock("insertTablet");
     try {
+      if (deleted) {
+        return;
+      }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
@@ -3057,6 +3063,9 @@ public class DataRegion {
     }
     writeLock("InsertRowsOfOneDevice");
     try {
+      if (deleted) {
+        return;
+      }
       boolean isSequence = false;
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
@@ -3337,9 +3346,9 @@ public class DataRegion {
 
   /** Release all threads waiting for this data region successfully deleted */
   public void markDeleted() {
-    deleted = true;
     writeLock("markDeleted");
     try {
+      deleted = true;
       deletedCondition.signalAll();
     } finally {
       writeUnlock();

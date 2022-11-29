@@ -153,7 +153,8 @@ public class ClusterSchemaManager {
     return result;
   }
 
-  public TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
+  /** Delete StorageGroup synchronized to protect the safety of adjustMaxRegionGroupNum */
+  public synchronized TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
     TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
     // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
