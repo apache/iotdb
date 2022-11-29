@@ -152,8 +152,8 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
 | cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="Database", type="hit"    | Counter   | Database Cache 的命中次数                           |
-| cache     | name="Database", type="all"    | Counter   | Database Cache 的访问次数                           |
+| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                               |
+| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                               |
 | cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
 | cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
@@ -377,75 +377,59 @@ static_configs:
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
 
-#### 5.2.4.2. Apache IoTDB StandAlone Dashboard 说明
+#### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
-  - `The number of entity`：实体数量，目前包含时间序列的数量
-  - `write point per minute`：每分钟系统累计写入点数
-  - `database used memory`：每个 database 使用的内存大小
+  - `Registered Node`：注册的ConfigNode/DataNode个数
+  - `DataNode`：集群DataNode的存活状态，包括Online和Unknown两种。
+  - `ConfigNode`：集群ConfigNode的存活状态，包括Online和Unknown两种。
+  - `The Status Of Node`：集群具体节点运行状态，包括Online和Unkown两种。
+- `Region`：Region概述
+  - `Region Number`：Region个数，包括总个数，DataRegion 个数和 SchemaRegion 个数。
+  - `Leadership distribution`：集群 Leader 分布情况，指每个节点上对应 Region 的 Leader 的个数。
+  - `Total Region in Node`：不同 Node 的 Region 总数量。
+  - `Region in Node`：不同 Node 的 SchemaRegion/DataRegion 数量。
+  - `Region in Database`（Normal级别）：不同 Database 的 Region 数量，包括 SchemaRegion、DataRegion。
+  - `Slot in Database`(Normal级别)：不同 Database 的Slot数量，包括 DataSlot 数量和 SchemaSlot 数量。
+- `System`：系统 
+  - `CPU Core`：系统 CPU 核数情况。
+  - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
+  - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
+  - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
+  - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
+  - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
+  - `The Number of GC Per Minute`：平均每分钟 GC 次数。
+  - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
+  - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
+  - `Heap Memory`：IoTDB 进程的堆内存
+  - `Off Heap Memory`：IoTDB 进程的堆外内存
+  - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
+  - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
+  - `The Number Of Class`：JVM 加载和卸载的类数量
+
+#### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+- `Overview`：系统概述
+  - `The Number Of Entity`：实体数量，包含时间序列等
+  - `Write Point Per Minute`：每分钟系统平均写入点数
+  - `Database Used Memory`：每个 Database 使用的内存大小
 - `Interface`：接口
+  - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
+  - `The Time Consumed Of Operation(75%)`：不同客户端操作耗时的上四分位数
+  - `The Time Consumed Of Operation(100%)`：不同客户端操作耗时的最大值
   - `The QPS of Interface`：系统接口每秒钟访问次数
-  - `The time consumed of Interface`：系统接口的平均耗时
-  - `Cache hit rate`：缓存命中率
+  - `The Time Consumed Of Interface`：系统接口的平均耗时
+  - `Cache Hit Rate`：缓存命中率
+  - `Thrift Connection`：建立的 Thrift 连接个数
+  - `Thrift Active Thread`：建立的活跃的 Thrift 连接的个数
 - `Engine`：引擎
-  - `Task number(pending and active)`：系统中不同状态的任务个数
-  - `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
-- `System`：系统
-  - `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-  - `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-  - `Heap Memory`：IoTDB的堆内存
-  - `Off-heap Memory`：IoTDB的堆外内存
-  - `The number of Java Thread`：IoTDB的不同状态线程数
-
-#### 5.2.4.3. Apache IoTDB ConfigNode Dashboard 说明
-> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
-
-- `Overview`：系统概述
-  - `Online ConfigNode`：正常运行ConfigNode个数
-  - `Registered ConfigNode`：注册ConfigNode个数
-  - `Unknown ConfigNode`：状态未知ConfigNode个数
-  - `Online DataNode`：正常运行DataNode个数
-  - `Registered DataNode`：注册DataNode个数
-  - `Unknown DataNode`：状态未知DataNode个数
-  - `TotalRegion`：Region总数量
-  - `DataRegion`：DataRegion总数量
-  - `SchemaRegion`：SchemaRegion总数量
-- `Node Info`：节点信息
-  - `The status of cluster node`：集群节点状态
-  - `Leadership distribution`：Leader分布情况
-- `Region`：Region分布情况
-  - `Total Region in Node`：不同Node的Region总数量
-  - `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
-  - `Region in Database`(Normal级别)：不同数据库的Region数量，包括SchemaRegion、DataRegion
-  - `Slot in Database`(Normal级别)：不同数据库的Slot数量，包括DataSlot数量和SchemaSlot数量
-- `System`：系统
-  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-  - `Heap Memory`：IoTDB的堆内存
-  - `Off-heap Memory`：IoTDB的堆外内存
-  - `The number of Java Thread`：IoTDB的不同状态线程数
-  - `The time consumed of Interface`：系统接口的平均耗时
-  - `CPU Load`：当前处理器的总负载
-  - `Memory`：系统内存大小和已经使用的大小
-
-#### 5.2.4.4. Apache IoTDB DataNode Dashboard 说明
-> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
-
-- `Overview`：系统概述
-  - `The number of entity`：实体数量，目前包含时间序列的数量
-  - `write point per minute`：每分钟系统累计写入点数
-  - `database used memory`：每个 database 使用的内存大小
-  - `Memory`：系统内存大小和已经使用的大小
-- `Interface`：接口
-  - `The QPS of Interface`：系统接口每秒钟访问次数
-  - `The time consumed of Interface`：系统接口的平均耗时
-  - `Cache hit Rate`：缓存命中率
-- `Engine`：引擎
-  - `Task number(pending and active)`：系统中不同状态的任务个数
-  - `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
+  - `Task Number`：系统中不同状态的任务个数
+  - `The Time Consumed Of Tasking`：系统中不同状态的任务的耗时
+  - `Compaction Read And Write Per Minute`：平均每分钟合并读取和写入数据量
+  - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
+  - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
 - `IoTConsensus`：IoT共识协议
   - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
   - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
@@ -459,19 +443,24 @@ static_configs:
   - `Sync Lag`：每个region的同步index差距
   - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
   - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
-- `CPU`：处理器
-  - `CPU Load`：当前处理器的总负载
-  - `Process CPU Load`：IoTDB进程占用处理器的负载
-- `File System`：文件系统
-  - `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-  - `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-  - `Disk Space`：当前data目录所挂载的磁盘总大小和剩余大小
-- `JVM`：系统
-  - `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC
-  - `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC
-  - `Heap Memory`：IoTDB的堆内存
-  - `Off-heap Memory`：IoTDB的堆外内存
-  - `The number of Java Thread`：IoTDB的不同状态线程数
+- `System`：系统 
+  - `CPU Core`：系统 CPU 核数情况。
+  - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
+  - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
+  - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
+  - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
+  - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
+  - `The Size Of File`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
+  - `The Number Of File`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
+  - `The Space Of Disk`：当前data目录所挂载的磁盘总大小和剩余大小
+  - `The Number of GC Per Minute`：平均每分钟 GC 次数。
+  - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
+  - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
+  - `Heap Memory`：IoTDB 进程的堆内存
+  - `Off Heap Memory`：IoTDB 进程的堆外内存
+  - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
+  - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
+  - `The Number Of Class`：JVM 加载和卸载的类数量
 
 ## 5.3. 使用 IoTDB 方式
 

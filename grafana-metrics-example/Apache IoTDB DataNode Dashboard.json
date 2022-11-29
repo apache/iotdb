@@ -63,7 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1669686305293,
+  "iteration": 1669708594135,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1718,9 +1718,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "mem{name=\"IoTConsensus\"}",
+          "expr": "mem{instance=\"$instance\", name=\"IoTConsensus\"}",
           "interval": "",
-          "legendFormat": "{{instance}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
         }
@@ -2157,7 +2157,32 @@
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "checkingBeforeWrite"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -4236,7 +4261,53 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warn"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "trace"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -4468,13 +4539,13 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "15s",
+  "refresh": false,
   "schemaVersion": 35,
   "style": "dark",
   "tags": [
     "Apache-IoTDB",
     "DataNode",
-    "1.0"
+    "v1.0"
   ],
   "templating": {
     "list": [
@@ -4541,6 +4612,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7A",
-  "version": 14,
+  "version": 18,
   "weekStart": ""
 }
