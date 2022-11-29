@@ -45,6 +45,10 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.DRIVER_CLOSE;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.DRIVER_INTERNAL_PROCESS;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SEND_TSBLOCK;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SET_NO_MORE_TSBLOCK;
 
 public abstract class Driver implements IDriver {
 
@@ -173,6 +177,7 @@ public abstract class Driver implements IDriver {
   }
 
   private ListenableFuture<?> processInternal() {
+    long startTimeNanos = System.nanoTime();
     try {
       ListenableFuture<?> blocked = root.isBlocked();
       if (!blocked.isDone()) {
@@ -185,7 +190,11 @@ public abstract class Driver implements IDriver {
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
+          long startTime = System.nanoTime();
           sinkHandle.send(tsBlock);
+          driverContext
+              .getFragmentInstanceContext()
+              .addOperationTime(SEND_TSBLOCK, System.nanoTime() - startTime);
         }
       }
       return NOT_BLOCKED;
@@ -205,6 +214,10 @@ public abstract class Driver implements IDriver {
       newException.addSuppressed(t);
       driverContext.failed(newException);
       throw newException;
+    } finally {
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }
 
@@ -330,8 +343,17 @@ public abstract class Driver implements IDriver {
     Throwable inFlightException = null;
 
     try {
+      long startTime = System.nanoTime();
       root.close();
+      long endTime = System.nanoTime();
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(DRIVER_CLOSE, endTime - startTime);
+      startTime = endTime;
       sinkHandle.setNoMoreTsBlocks();
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(SET_NO_MORE_TSBLOCK, System.nanoTime() - startTime);
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

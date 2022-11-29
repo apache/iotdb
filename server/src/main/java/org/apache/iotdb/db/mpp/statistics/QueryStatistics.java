@@ -82,6 +82,14 @@ public class QueryStatistics {
   public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
   public static final String DISPATCHER = "Dispatcher";
 
+  public static final String DRIVER_CLOSE = "CloseDriver";
+
+  public static final String DRIVER_INTERNAL_PROCESS = "DriverInternalProcess";
+
+  public static final String SEND_TSBLOCK = "SendTsBlock";
+
+  public static final String SET_NO_MORE_TSBLOCK = "SetNoMoreTsBlock";
+
   public static final String SERVER_RPC_RT = "ServerRpcRT";
 
   private QueryStatistics() {
