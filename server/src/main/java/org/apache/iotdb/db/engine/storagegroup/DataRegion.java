@@ -3346,9 +3346,9 @@ public class DataRegion {
 
   /** Release all threads waiting for this data region successfully deleted */
   public void markDeleted() {
-    deleted = true;
     writeLock("markDeleted");
     try {
+      deleted = true;
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
