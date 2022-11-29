@@ -191,7 +191,7 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private void prepareDataNode() throws StartupException {
     // check iotdb server first
-    StartupChecks checks = new StartupChecks().withDefaultTest();
+    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     checks.verify();
 
     // Register services
