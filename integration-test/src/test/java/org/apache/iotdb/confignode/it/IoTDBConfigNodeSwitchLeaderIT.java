@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -49,7 +50,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -151,10 +151,12 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           schemaPartitionTableResp0.getStatus().getCode());
 
       // Create DataRegionGroups through getOrCreateDataPartition and record DataPartitionTable
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+      Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
       seriesSlotMap.put(
-          new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap = new HashMap<>();
+          new TSeriesPartitionSlot(1),
+          new TTimeSlotList()
+              .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
       sgSlotsMap.put(sg0, seriesSlotMap);
       sgSlotsMap.put(sg1, seriesSlotMap);
       dataPartitionTableResp0 =
@@ -177,10 +179,12 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           client.getSchemaPartitionTable(new TSchemaPartitionReq().setPathPatternTree(buffer)));
 
       // Check DataPartitionTable
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+      Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
       seriesSlotMap.put(
-          new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap = new HashMap<>();
+          new TSeriesPartitionSlot(1),
+          new TTimeSlotList()
+              .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
       sgSlotsMap.put(sg0, seriesSlotMap);
       sgSlotsMap.put(sg1, seriesSlotMap);
       Assert.assertEquals(

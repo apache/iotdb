@@ -226,6 +226,10 @@ public class SnapshotTaker {
     }
     stringBuilder.append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
     stringBuilder.append(File.separator);
+    stringBuilder.append(dataRegion.getStorageGroupName());
+    stringBuilder.append("-");
+    stringBuilder.append(dataRegion.getDataRegionId());
+    stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);
     // the content in here will be

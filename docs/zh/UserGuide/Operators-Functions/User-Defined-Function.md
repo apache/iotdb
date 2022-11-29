@@ -42,7 +42,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>udf-api</artifactId>
-  <version>0.14.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -368,8 +368,8 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 1. 实现一个完整的 UDF 类，假定这个类的全类名为`org.apache.iotdb.udf.UDTFExample`
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
-3. 可选项。您可以提前将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 下。
-   **注意，在部署集群的时候，如果您想将 JAR 包提前放到指定目录下，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。** 您也可以在注册 UDF 的 SQL 中指定要使用的 JAR 包的 URI，我们会尝试下载该 JAR 包并分发到集群中的每个节点，放置在 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf/install` 下。
+3. 可选项。您可以提前将 JAR 包放置到目录 `iotdb-server-1.0.0-all-bin/ext/udf` 下。
+   **注意，在部署集群的时候，如果您想将 JAR 包提前放到指定目录下，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。** 您也可以在注册 UDF 的 SQL 中指定要使用的 JAR 包的 URI，我们会尝试下载该 JAR 包并分发到集群中的每个节点，放置在 `iotdb-server-1.0.0-all-bin/ext/udf/install` 下。
    
     > 您可以通过修改配置文件中的`udf_root_dir`来指定 UDF 加载 Jar 的根路径。
 4. 使用 SQL 语句注册该 UDF，假定赋予该 UDF 的名字为`example`
@@ -530,7 +530,7 @@ Q1: 如何修改已经注册的 UDF？
 A1: 假设 UDF 的名称为`example`，全类名为`org.apache.iotdb.udf.UDTFExample`，由`example.jar`引入
 
 1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
-2. 删除 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 目录下的`example.jar`
+2. 删除 `iotdb-server-1.0.0-all-bin/ext/udf` 目录下的`example.jar`
 3. 修改`org.apache.iotdb.udf.UDTFExample`中的逻辑，重新打包，JAR 包的名字可以仍然为`example.jar`
-4. 将新的 JAR 包上传至 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 目录下
+4. 将新的 JAR 包上传至 `iotdb-server-1.0.0-all-bin/ext/udf` 目录下
 5. 装载新的 UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample"`
