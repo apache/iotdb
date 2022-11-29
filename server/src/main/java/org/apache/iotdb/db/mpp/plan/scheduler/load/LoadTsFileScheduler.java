@@ -49,6 +49,7 @@ import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -125,7 +126,8 @@ public class LoadTsFileScheduler implements IScheduler {
       allReplicaSets.clear();
 
       boolean isFirstPhaseSuccess = firstPhase(node);
-      boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+      boolean isSecondPhaseSuccess =
+          secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource().getTsFile());
 
       node.clean();
       if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
@@ -154,7 +156,7 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (Exception e) {
       stateMachine.transitionToFailed(e);
       logger.error(
-          String.format("Parse TsFile %s error.", node.getTsFileResource().getTsFile()), e);
+          String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
     }
     return true;
@@ -196,7 +198,11 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
         logger.error(String.format("Dispatch piece node error:%n%s", pieceNode));
-        stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
+        TSStatus status = result.getFailureStatus();
+        status.setMessage(
+            String.format("Load %s piece error in 1st phase. Because ", pieceNode.getTsFile())
+                + status.getMessage());
+        stateMachine.transitionToFailed(status); // TODO: record more status
         return false;
       }
     } catch (InterruptedException | ExecutionException | CancellationException e) {
@@ -216,7 +222,7 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid) {
+  private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid, File tsFile) {
     logger.info(String.format("Start dispatching Load command for uuid %s", uuid));
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -229,11 +235,16 @@ public class LoadTsFileScheduler implements IScheduler {
       if (!result.isSuccessful()) {
         // TODO: retry.
         logger.error(
-            String.format("Dispatch LoadCommand error to replicaSets %s error.", allReplicaSets));
+            String.format(
+                "Dispatch load command %s of TsFile %s error to replicaSets %s error.",
+                loadCommandReq, tsFile, allReplicaSets));
         logger.error(String.format("Result status code %s.", result.getFailureStatus().getCode()));
         logger.error(
             String.format("Result status message %s.", result.getFailureStatus().getMessage()));
-        stateMachine.transitionToFailed(result.getFailureStatus());
+        TSStatus status = result.getFailureStatus();
+        status.setMessage(
+            String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
+        stateMachine.transitionToFailed(status);
         return false;
       }
     } catch (InterruptedException | ExecutionException e) {
@@ -263,7 +274,9 @@ public class LoadTsFileScheduler implements IScheduler {
       instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
-      logger.error("Dispatch LoadCommand error to local error.");
+      logger.error(
+          String.format(
+              "Dispatch tsFile %s error to local error.", node.getTsFileResource().getTsFile()));
       logger.error(String.format("Result status code %s.", e.getFailureStatus().getCode()));
       logger.error(String.format("Result status message %s.", e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
