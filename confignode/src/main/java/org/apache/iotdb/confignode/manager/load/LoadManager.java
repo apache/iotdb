@@ -222,7 +222,7 @@ public class LoadManager {
     // Update RegionRouteMap
     if (routeBalancer.updateRegionRouteMap()) {
       isNeedBroadcast = true;
-      recordRegionRouteMap(routeBalancer.getLatestRegionRouteMap());
+      recordRegionRouteMap(routeBalancer.getRegionRouteMap());
     }
 
     if (isNeedBroadcast) {
