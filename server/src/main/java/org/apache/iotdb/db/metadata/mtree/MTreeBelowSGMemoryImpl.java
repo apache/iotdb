@@ -119,27 +119,36 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
-      IStorageGroupMNode storageGroupMNode,
+      PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       int schemaRegionId) {
-    PartialPath storageGroup = storageGroupMNode.getPartialPath();
-    store = new MemMTreeStore(storageGroup, true);
+    store = new MemMTreeStore(storageGroupPath, true);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
-    levelOfSG = storageGroup.getNodeLength() - 1;
+    this.storageGroupMNode.setParent(generatePrefix(storageGroupPath));
+    levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
   }
 
   private MTreeBelowSGMemoryImpl(
+      PartialPath storageGroupPath,
       MemMTreeStore store,
-      IStorageGroupMNode storageGroupMNode,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       int schemaRegionId) {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
-    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    this.storageGroupMNode.setParent(generatePrefix(storageGroupPath));
+    levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
+  }
+
+  // generate the ancestor nodes of storageGroupNode
+  private IMNode generatePrefix(PartialPath storageGroupPath) {
+    String[] nodes = storageGroupPath.getNodes();
+    IMNode cur = null;
+    for (int i = 0; i < nodes.length - 1; i++) {
+      cur = new InternalMNode(cur, nodes[i]);
+    }
+    return cur;
   }
 
   @Override
@@ -155,14 +164,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
       File snapshotDir,
-      IStorageGroupMNode storageGroupMNode,
+      String storageGroupFullPath,
       int schemaRegionId,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter)
-      throws IOException {
+      throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
+        new PartialPath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
-        storageGroupMNode,
         tagGetter,
         schemaRegionId);
   }

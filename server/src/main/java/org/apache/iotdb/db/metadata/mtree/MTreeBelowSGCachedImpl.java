@@ -118,28 +118,38 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
-      IStorageGroupMNode storageGroupMNode,
+      PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       int schemaRegionId)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    PartialPath storageGroup = storageGroupMNode.getPartialPath();
-    store = new CachedMTreeStore(storageGroup, schemaRegionId);
+    store = new CachedMTreeStore(storageGroupPath, schemaRegionId);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
-    levelOfSG = storageGroup.getNodeLength() - 1;
+
+    this.storageGroupMNode.setParent(generatePrefix(storageGroupPath));
+    levelOfSG = storageGroupPath.getNodeLength() - 1;
+  }
+
+  // generate the ancestor nodes of storageGroupNode
+  private IMNode generatePrefix(PartialPath storageGroupPath) {
+    String[] nodes = storageGroupPath.getNodes();
+    IMNode cur = null;
+    for (int i = 0; i < nodes.length - 1; i++) {
+      cur = new InternalMNode(cur, nodes[i]);
+    }
+    return cur;
   }
 
   /** Only used for load snapshot */
   private MTreeBelowSGCachedImpl(
+      PartialPath storageGroupPath,
       CachedMTreeStore store,
-      IStorageGroupMNode storageGroupMNode,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws MetadataException {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    this.storageGroupMNode.setParent(generatePrefix(storageGroupPath));
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
 
@@ -169,15 +179,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   public static MTreeBelowSGCachedImpl loadFromSnapshot(
       File snapshotDir,
-      IStorageGroupMNode storageGroupMNode,
+      String storageGroupFullPath,
       int schemaRegionId,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
-        CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupMNode.getFullPath(), schemaRegionId),
-        storageGroupMNode,
+        new PartialPath(storageGroupFullPath),
+        CachedMTreeStore.loadFromSnapshot(snapshotDir, storageGroupFullPath, schemaRegionId),
         measurementProcess,
         tagGetter);
   }

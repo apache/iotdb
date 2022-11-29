@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -164,7 +164,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
-  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGMemoryImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -177,7 +176,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
@@ -199,8 +197,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    this.storageGroupMNode = storageGroupMNode;
 
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
@@ -235,7 +231,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
+              new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -492,7 +488,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
-              storageGroupMNode,
+              storageGroupFullPath,
               schemaRegionId.getId(),
               measurementMNode -> {
                 if (measurementMNode.getOffset() == -1) {
@@ -521,7 +517,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
