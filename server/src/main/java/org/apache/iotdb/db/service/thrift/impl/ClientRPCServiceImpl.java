@@ -900,7 +900,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
-    return executeStatement(req);
+    long startTime = System.nanoTime();
+    try {
+      return executeStatement(req);
+    } finally {
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -911,6 +916,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     boolean finished = false;
+    long startTimeNanos = System.nanoTime();
     long startTime = System.currentTimeMillis();
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
@@ -946,6 +952,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 
