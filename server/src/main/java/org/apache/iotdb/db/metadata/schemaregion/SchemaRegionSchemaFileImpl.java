@@ -43,7 +43,6 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -161,7 +160,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       SchemaStatisticsManager.getInstance();
   private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
-  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
   private final LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -174,7 +172,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public SchemaRegionSchemaFileImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
@@ -203,7 +200,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-    this.storageGroupMNode = storageGroupMNode;
     this.seriesNumerMonitor = seriesNumerMonitor;
     init();
   }
@@ -224,7 +220,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGCachedImpl(
-              storageGroupMNode, tagManager::readTags, schemaRegionId.getId());
+              new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
 
       if (!(config.isClusterMode()
           && config
@@ -479,7 +475,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       mtree =
           MTreeBelowSGCachedImpl.loadFromSnapshot(
               latestSnapshotRootDir,
-              storageGroupMNode,
+              storageGroupFullPath,
               schemaRegionId.getId(),
               measurementMNode -> {
                 if (measurementMNode.getOffset() == -1) {
