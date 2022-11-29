@@ -18,21 +18,30 @@
  */
 package org.apache.iotdb.db.sync.sender.manager;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
 public class LocalSyncManager implements ISyncManager {
+  private static final Logger logger = LoggerFactory.getLogger(LocalSyncManager.class);
 
   private TsFilePipe syncPipe;
   private final DataRegion dataRegion;
@@ -46,8 +55,40 @@ public class LocalSyncManager implements ISyncManager {
 
   /** tsfile */
   @Override
-  public void syncRealTimeDeletion(Deletion deletion) {
-    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getStorageGroupName(), dataRegionId);
+  public void syncRealTimeDeletion(
+      Deletion deletion,
+      List<TsFileResource> unsealedResources,
+      List<TsFileResource> sealedResources) {
+    if (!((TsFilePipeInfo) syncPipe.getPipeInfo()).isSyncDelOp()) {
+      return;
+    }
+
+    Set<String> devices = new HashSet<>();
+    unsealedResources.forEach(o -> devices.addAll(o.getDevices()));
+    sealedResources.forEach(o -> devices.addAll(o.getDevices()));
+
+    String measurementId = deletion.getPath().getTailNode();
+    measurementId =
+        measurementId.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+            ? IoTDBConstant.ONE_LEVEL_PATH_WILDCARD
+            : measurementId;
+    for (String device : devices) {
+      try {
+        PartialPath path =
+            new PartialPath(device).concatNode(measurementId); // TODO: speed up PartialPath
+        if (deletion.getPath().include(path)) {
+          Deletion splitDeletion =
+              new Deletion(path, 0, deletion.getStartTime(), deletion.getEndTime());
+          syncPipe.collectRealTimeDeletion(
+              splitDeletion, dataRegion.getStorageGroupName(), dataRegionId);
+        }
+      } catch (IllegalPathException e) {
+        logger.error(
+            String.format(
+                "Parse device path %s to partial path error when splitting deletion.", device),
+            e);
+      }
+    }
   }
 
   @Override
