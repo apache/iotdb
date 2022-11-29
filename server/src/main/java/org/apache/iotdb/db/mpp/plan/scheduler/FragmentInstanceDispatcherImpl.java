@@ -192,7 +192,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   String.format("unknown query type [%s]", instance.getType())));
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node " + endPoint);
