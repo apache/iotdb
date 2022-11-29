@@ -34,9 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 20
-      matrix:
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os}}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3

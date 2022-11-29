@@ -87,19 +87,19 @@ Core-level metrics are enabled by default during system operation. The addition 
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
 
 ### 4.1.2. IoTDB process
-| Metric            | Tags          | Type      | Description                                            |
-| ----------------- | ------------- | --------- | ------------------------------------------------------ |
-| process_cpu_load  | name="cpu"    | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
-| process_cpu_time  | name="cpu"    | AutoGauge | The total CPU time occupied of IoTDB process, Unit: ns |
-| process_max_mem   | name="memory" | AutoGauge | The maximum available memory of IoTDB process          |
-| process_total_mem | name="memory" | AutoGauge | The current requested memory for IoTDB process         |
-| process_free_mem  | name="memory" | AutoGauge | The free available memory of IoTDB process             |
+| Metric            | Tags           | Type      | Description                                            |
+| ----------------- | -------------- | --------- | ------------------------------------------------------ |
+| process_cpu_load  | name="process" | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
+| process_cpu_time  | name="process" | AutoGauge | The total CPU time occupied of IoTDB process, Unit: ns |
+| process_max_mem   | name="memory"  | AutoGauge | The maximum available memory of IoTDB process          |
+| process_total_mem | name="memory"  | AutoGauge | The current requested memory for IoTDB process         |
+| process_free_mem  | name="memory"  | AutoGauge | The free available memory of IoTDB process             |
 
 ### 4.1.3. System
 | Metric                         | Tags          | Type      | Description                                                |
 | ------------------------------ | ------------- | --------- | ---------------------------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | AutoGauge | The current CPU usage of system, Unit: %                   |
-| sys_cpu_cores                  | name="cpu"    | Gauge     | The available number of CPU cores                          |
+| sys_cpu_load                   | name="system" | AutoGauge | The current CPU usage of system, Unit: %                   |
+| sys_cpu_cores                  | name="system" | Gauge     | The available number of CPU cores                          |
 | sys_total_physical_memory_size | name="memory" | Gauge     | The maximum physical memory of system                      |
 | sys_free_physical_memory_size  | name="memory" | AutoGauge | The current available memory of system                     |
 | sys_total_swap_space_size      | name="memory" | AutoGauge | The maximum swap space of system                           |
@@ -127,20 +127,20 @@ Core-level metrics are enabled by default during system operation. The addition 
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
 
-### 4.2.3. MultiLeader
+### 4.2.3. IoTConsensus
 | Metric       | Tags                                                                                         | Type      | Description                                                           |
 | ------------ | -------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | The write process of main process in replica group                    |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | The sync index of replica group                                       |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | The time consumed to get statemachine lock in main process            |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | The time consumed to precheck before write in main process            |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | The time consumed to write statemachine in main process               |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | The time consumed to try to offer request to queue in main process    |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | The time consumed to the whole write in main process                  |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | The time consumed to construct batch in synchronization thread        |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | The time consumed to sync log in asynchronous callback process        |
+| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | The write process of main process in replica group                    |
+| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | The sync index of replica group                                       |
+| stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                         | Histogram | The time consumed to get statemachine lock in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | The time consumed to precheck before write in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="writeStateMachine"                           | Histogram | The time consumed to write statemachine in main process               |
+| stage        | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                         | Histogram | The time consumed to try to offer request to queue in main process    |
+| stage        | name="iot_consensus", region="{{region}}", type="consensusWrite"                              | Histogram | The time consumed to the whole write in main process                  |
+| stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                              | Histogram | The time consumed to construct batch in synchronization thread        |
+| stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | The time consumed to sync log in asynchronous callback process        |
 
 ### 4.2.4. Cache
 | Metric    | Tags                               | Type      | Description                                                              |
@@ -175,7 +175,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
 | mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="MultiLeaderConsensus"   | AutoGauge | The memory usage of MultiLeader consensus, Unit: byte              |
+| mem    | name="IoTConsensus"   | AutoGauge | The memory usage of IoTConsensus, Unit: byte              |
 
 ### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
@@ -453,18 +453,18 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
 3. `Engine`:
    1. `Task number (pending and active)`: The number of tasks in different states in the system
    2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system
-4. `MultiLeader`：
-   1. `MultiLeader Used Memory`：The size of the memory used by multiLeader consensus
-   2. `MultiLeader Sync Index`：the searchIndex and safeIndex of region
-   3. `MultiLeader Overview`：The total sync lag and total size of buffered requests of node
+4. `IoTConsensus`：
+   1. `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
+   2. `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
+   3. `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
    4. `The time consumed of different stages(50%)`：The median  of the time consumed of different stages
    5. `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
    6. `The time consumed of different stages(100%)`：The max of the time consumed of different stages
-   7. `MultiLeader Search Index Rate`：The increasing rate of searchIndex of region
-   8. `MultiLeader Safe Index Rate`：The increasing rate of safeIndex of region
-   9. `MultiLeader LogDispatcher Request Size`：The number of requests buffered in logDispatcher
+   7. `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
+   8. `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
+   9. `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
    10. `Sync Lag`：The sync lag of region
-   11. `Min Peer Sync Lag`：The sync lag between the searchIndex of multiLeaderServerImpl and the max currentSyncIndex of LogDispatcher
+   11. `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of LogDispatcher
    12. `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min currentSyncIndex of LogDispatcher
 5. `CPU`:
    1. `CPU Load`：The load of CPU

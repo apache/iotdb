@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -96,9 +97,6 @@ public class TsFileIOWriter implements AutoCloseable {
 
   private long markedPosition;
   private String currentChunkGroupDeviceId;
-
-  // for upgrade tool and split tool
-  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
@@ -267,6 +265,30 @@ public class TsFileIOWriter implements AutoCloseable {
           chunkHeader.getMeasurementID(),
           chunkMetadata.getNumOfPoints());
     }
+  }
+
+  /** Write an empty value chunk into file directly. Only used for aligned timeseries. */
+  public void writeEmptyValueChunk(
+      String measurementId,
+      CompressionType compressionType,
+      TSDataType tsDataType,
+      TSEncoding encodingType,
+      Statistics<? extends Serializable> statistics)
+      throws IOException {
+    currentChunkMetadata =
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
+    currentChunkMetadata.setMask(TsFileConstant.VALUE_COLUMN_MASK);
+    ChunkHeader emptyChunkHeader =
+        new ChunkHeader(
+            measurementId,
+            0,
+            tsDataType,
+            compressionType,
+            encodingType,
+            0,
+            TsFileConstant.VALUE_COLUMN_MASK);
+    emptyChunkHeader.serializeTo(out.wrapAsStream());
+    endCurrentChunk();
   }
 
   public void writeChunk(Chunk chunk) throws IOException {
@@ -541,6 +563,14 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public TsFileOutput getIOWriterOut() {
     return out;
+  }
+
+  /**
+   * This method should be called before flushing chunk group metadata list, otherwise, it will
+   * return null.
+   */
+  public List<ChunkMetadata> getChunkMetadataListOfCurrentDeviceInMemory() {
+    return chunkMetadataList;
   }
 
   /**

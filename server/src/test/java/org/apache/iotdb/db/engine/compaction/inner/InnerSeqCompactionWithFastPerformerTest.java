@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,7 +27,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -70,7 +69,7 @@ import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunks;
 
-public class InnerSeqCompactionTest {
+public class InnerSeqCompactionWithFastPerformerTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
@@ -130,10 +129,10 @@ public class InnerSeqCompactionTest {
 
     long chunkSizeLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240);
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240000);
     long chunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(200000);
     try {
       for (int toMergeFileNum : toMergeFileNums) {
         for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -241,8 +240,9 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              ICompactionPerformer performer =
-                  new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource);
+              ICompactionPerformer performer = new FastCompactionPerformer(false);
+              performer.setSourceFiles(sourceResources);
+              performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
@@ -353,6 +353,8 @@ public class InnerSeqCompactionTest {
       }
     } catch (InterruptedException | StorageEngineException | ExecutionException e) {
       e.printStackTrace();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
@@ -364,10 +366,10 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException,
-          WriteProcessException, ExecutionException {
-
+  public void testAppendPage() throws Exception {
+    int oldMaxPagePointNum =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(100);
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
@@ -471,8 +473,9 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            ICompactionPerformer performer =
-                new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+            ICompactionPerformer performer = new FastCompactionPerformer(false);
+            performer.setSourceFiles(toMergeResources);
+            performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
             performer.setSummary(new CompactionTaskSummary());
             performer.perform();
             CompactionUtils.moveTargetFile(
@@ -621,30 +624,31 @@ public class InnerSeqCompactionTest {
                 }
               }
             }
-            CompactionCheckerUtils.checkChunkAndPage(
-                chunkPagePointsNumMerged, targetTsFileResource);
+            if (!compactionBeforeHasMod) {
+              CompactionCheckerUtils.checkChunkAndPage(
+                  chunkPagePointsNumMerged, targetTsFileResource);
+            }
             CompactionClearUtils.clearAllCompactionFiles();
           }
         }
       }
     }
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxPagePointNum);
   }
 
   @Test
-  public void testAppendChunk()
-      throws IOException, IllegalPathException, MetadataException, StorageEngineException,
-          WriteProcessException, ExecutionException {
+  public void testAppendChunk() throws Exception {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(10);
     long prevChunkSizeLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10000);
     long prevTargetChunkPointNum =
         IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
     long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10000);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
 
     try {
       for (int toMergeFileNum : toMergeFileNums) {
@@ -751,8 +755,9 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              ICompactionPerformer performer =
-                  new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+              ICompactionPerformer performer = new FastCompactionPerformer(false);
+              performer.setSourceFiles(toMergeResources);
+              performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
@@ -768,11 +773,15 @@ public class InnerSeqCompactionTest {
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[0],
-                        new long[] {100, 150, 299, 100, 200, 300});
+                        new long[] {100, 100, 100, 100, 100});
+                    putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {49, 100});
+                    putOnePageChunks(chunkPagePointsNumMerged, fullPaths[0], new long[] {200, 300});
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[1],
-                        new long[] {100, 200, 300, 100, 150, 299});
+                        new long[] {
+                          100, 200, 300, 100, 100, 100, 100, 100, 49,
+                        });
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[2],
@@ -796,15 +805,22 @@ public class InnerSeqCompactionTest {
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[0],
-                        new long[] {100, 150, 299, 100, 200, 300, 100, 200, 300});
+                        new long[] {100, 100, 100, 100, 100});
+                    putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {49, 100});
+                    putOnePageChunks(
+                        chunkPagePointsNumMerged,
+                        fullPaths[0],
+                        new long[] {200, 300, 100, 200, 300});
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[1],
-                        new long[] {100, 200, 300, 100, 150, 299, 100, 200, 300});
+                        new long[] {100, 200, 300, 100, 100, 100, 100, 100});
+                    putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {49, 100});
+                    putOnePageChunks(chunkPagePointsNumMerged, fullPaths[1], new long[] {200, 300});
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[2],
-                        new long[] {100, 200, 300, 100, 200, 300, 100, 150, 299});
+                        new long[] {100, 200, 300, 100, 200, 300, 100, 100, 100, 100, 100, 49});
                   } else {
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
@@ -824,7 +840,9 @@ public class InnerSeqCompactionTest {
                 if (toMergeFileNum == 2) {
                   if (compactionBeforeHasMod) {
                     putOnePageChunks(
-                        chunkPagePointsNumMerged, fullPaths[0], new long[] {100, 150, 299});
+                        chunkPagePointsNumMerged,
+                        fullPaths[0],
+                        new long[] {100, 100, 100, 100, 100, 49});
                     putOnePageChunks(
                         chunkPagePointsNumMerged,
                         fullPaths[1],
@@ -834,7 +852,9 @@ public class InnerSeqCompactionTest {
                         fullPaths[2],
                         new long[] {100L, 200L, 300L, 100L, 200L, 300L});
                     putOnePageChunks(
-                        chunkPagePointsNumMerged, fullPaths[3], new long[] {100, 150, 299});
+                        chunkPagePointsNumMerged,
+                        fullPaths[3],
+                        new long[] {100, 100, 100, 100, 100, 49});
                   } else {
                     putOnePageChunks(
                         chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
@@ -894,13 +914,17 @@ public class InnerSeqCompactionTest {
                     putOnePageChunks(
                         chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
                     putOnePageChunks(
-                        chunkPagePointsNumMerged, fullPaths[2], new long[] {100, 150, 299});
+                        chunkPagePointsNumMerged,
+                        fullPaths[2],
+                        new long[] {100, 100, 100, 100, 100, 49});
                     putOnePageChunks(
                         chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
                     putOnePageChunks(
                         chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                     putOnePageChunks(
-                        chunkPagePointsNumMerged, fullPaths[5], new long[] {100, 150, 299});
+                        chunkPagePointsNumMerged,
+                        fullPaths[5],
+                        new long[] {100, 100, 100, 100, 100, 49});
                   } else {
                     putOnePageChunks(
                         chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
@@ -957,8 +981,10 @@ public class InnerSeqCompactionTest {
                   }
                 }
               }
-              CompactionCheckerUtils.checkChunkAndPage(
-                  chunkPagePointsNumMerged, targetTsFileResource);
+              if (!compactionBeforeHasMod) {
+                CompactionCheckerUtils.checkChunkAndPage(
+                    chunkPagePointsNumMerged, targetTsFileResource);
+              }
               CompactionClearUtils.clearAllCompactionFiles();
             }
           }
@@ -1014,13 +1040,14 @@ public class InnerSeqCompactionTest {
     // delete data before compaction
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1000, 0, null);
 
+    ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0,
             vsgp.getTsFileResourceManager(),
             sourceResources,
             true,
-            new ReadChunkCompactionPerformer(),
+            performer,
             new AtomicInteger(0),
             0);
     task.setSourceFilesToCompactionCandidate();

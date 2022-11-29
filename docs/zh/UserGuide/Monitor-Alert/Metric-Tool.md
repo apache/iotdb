@@ -88,19 +88,19 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
 
 ### 4.1.2. IoTDB 进程运行状态
-| Metric            | Tags          | Type      | Description                         |
-| ----------------- | ------------- | --------- | ----------------------------------- |
-| process_cpu_load  | name="cpu"    | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
-| process_cpu_time  | name="cpu"    | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
-| process_max_mem   | name="memory" | AutoGauge | IoTDB 进程最大可用内存              |
-| process_total_mem | name="memory" | AutoGauge | IoTDB 进程当前已申请内存            |
-| process_free_mem  | name="memory" | AutoGauge | IoTDB 进程当前剩余可用内存          |
+| Metric            | Tags           | Type      | Description                         |
+| ----------------- | -------------- | --------- | ----------------------------------- |
+| process_cpu_load  | name="process" | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
+| process_cpu_time  | name="process" | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
+| process_max_mem   | name="memory"  | AutoGauge | IoTDB 进程最大可用内存              |
+| process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存            |
+| process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
 ### 4.1.3. 系统运行状态
 | Metric                         | Tags          | Type      | Description                              |
 | ------------------------------ | ------------- | --------- | ---------------------------------------- |
-| sys_cpu_load                   | name="cpu"    | AutoGauge | 系统的 CPU 占用率，单位为%               |
-| sys_cpu_cores                  | name="cpu"    | Gauge     | 系统的可用处理器数                       |
+| sys_cpu_load                   | name="system" | AutoGauge | 系统的 CPU 占用率，单位为%               |
+| sys_cpu_cores                  | name="system" | Gauge     | 系统的可用处理器数                       |
 | sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存                       |
 | sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存                       |
 | sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间                     |
@@ -120,30 +120,30 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 ### 4.2.2. 节点统计
-| Metric   | Tags                                       | Type      | Description                        |
-| -------- | ------------------------------------------ | --------- | ---------------------------------- |
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                     |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                   |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                   |
+| Metric   | Tags                                       | Type      | Description                          |
+| -------- | ------------------------------------------ | --------- | ------------------------------------ |
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                     |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
 | region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
-### 4.2.3. 弱一致性共识协议统计
-| Metric       | Tags                                                                                         | Type      | Description                      |
-| ------------ | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | 副本组主流程写入进度             |
-| mutli_leader | name="multiLeaderServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | 副本组同步进度                   |
-| stage        | name="multi_leader", region="{{region}}", type="getStateMachineLock"                         | Histogram | 主流程获取状态机锁耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | 主流程写入状态机检查耗时         |
-| stage        | name="multi_leader", region="{{region}}", type="writeStateMachine"                           | Histogram | 主流程写入状态机耗时             |
-| stage        | name="multi_leader", region="{{region}}", type="offerRequestToQueue"                         | Histogram | 主流程尝试添加队列耗时           |
-| stage        | name="multi_leader", region="{{region}}", type="consensusWrite"                              | Histogram | 主流程全写入耗时                 |
-| stage        | name="multi_leader", region="{{region}}", type="constructBatch"                              | Histogram | 同步线程构造 Batch 耗时          |
-| stage        | name="multi_leader", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | 异步回调流程同步日志耗时         |
+### 4.2.3. IoT共识协议统计
+| Metric        | Tags                                                                                         | Type      | Description                      |
+| ------------- | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时         |
+| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时             |
+| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时                 |
+| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时          |
+| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时         |
 
 ### 4.2.4. 缓存统计
 | Metric    | Tags                               | Type      | Description                                             |
@@ -178,7 +178,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ------ | ----------------------------- | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="MultiLeaderConsensus"   | AutoGauge | 弱一致性共识协议的内存占用，单位为byte            |
+| mem    | name="IoTConsensus"           | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
 
 ### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |
@@ -188,7 +188,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况       |
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
 | queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
-
 
 ### 4.2.8. 合并统计
 | Metric                | Tags                                                | Type    | Description        |
@@ -221,7 +220,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | Metric         | Tags                                | Type    | Description        |
 | -------------- | ----------------------------------- | ------- | ------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
-
 
 ### 4.2.12. JVM 线程统计
 
@@ -448,16 +446,16 @@ static_configs:
 - `Engine`：引擎
   - `Task number(pending and active)`：系统中不同状态的任务个数
   - `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时
-- `MultiLeader`：弱一致性共识协议
-  - `MultiLeader Used Memory`：弱一致性共识层使用的内存大小
-  - `MultiLeader Sync Index`：不同的Region的写入Index和同步Index
-  - `MultiLeader Overview`：不同节点的同步总差距、总缓存的请求个数
+- `IoTConsensus`：IoT共识协议
+  - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
+  - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
+  - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
   - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
   - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
   - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
-  - `MultiLeader Search Index Rate`：不同region的写入Index的增长速度
-  - `MultiLeader Safe Index Rate`：不同region的同步Index的增长速度
-  - `MultiLeader LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
+  - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
+  - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
+  - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
   - `Sync Lag`：每个region的同步index差距
   - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
   - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距

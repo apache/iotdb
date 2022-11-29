@@ -153,7 +153,7 @@ public class NodeManager {
         configNodeConfig.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
         configNodeConfig.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         configNodeConfig.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());

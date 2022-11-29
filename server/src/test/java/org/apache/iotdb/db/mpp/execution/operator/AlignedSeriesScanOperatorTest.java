@@ -51,6 +51,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -62,6 +63,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -124,6 +126,10 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = seriesScanOperator.next();
@@ -135,29 +141,26 @@ public class AlignedSeriesScanOperatorTest {
         assertTrue(tsBlock.getColumn(4) instanceof DoubleColumn);
         assertTrue(tsBlock.getColumn(5) instanceof BinaryColumn);
 
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
           int delta = 0;
-          if (expectedTime < 200) {
+          if ((long) count < 200) {
             delta = 20000;
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
             delta = 10000;
           }
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(1).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(2).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(3).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(4).getDouble(i), DELTA);
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(1).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(2).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(3).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(4).getDouble(i), DELTA);
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(5).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(5).getBinary(i).toString());
         }
-        count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -222,6 +225,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       AlignedPath alignedPath2 =
           new AlignedPath(
@@ -241,6 +247,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
@@ -264,6 +273,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
@@ -278,6 +290,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath5 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
@@ -292,6 +307,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath6 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
@@ -306,6 +324,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator6
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath7 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
@@ -320,6 +341,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator7
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath8 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
@@ -334,6 +358,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               true);
       seriesScanOperator8.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator8
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -410,43 +437,40 @@ public class AlignedSeriesScanOperatorTest {
         assertTrue(tsBlock.getColumn(16) instanceof DoubleColumn);
         assertTrue(tsBlock.getColumn(17) instanceof BinaryColumn);
 
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
           int delta = 0;
-          if (expectedTime < 200) {
+          if ((long) count < 200) {
             delta = 20000;
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
             delta = 10000;
           }
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(6).getBoolean(i));
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(12).getBoolean(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(1).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(7).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(13).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(2).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(8).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(14).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(3).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(9).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(15).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(4).getDouble(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(10).getDouble(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(16).getDouble(i), DELTA);
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(6).getBoolean(i));
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(12).getBoolean(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(1).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(7).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(13).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(2).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(8).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(14).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(3).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(9).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(15).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(4).getDouble(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(10).getDouble(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(16).getDouble(i), DELTA);
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(5).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(5).getBinary(i).toString());
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(11).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(11).getBinary(i).toString());
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(17).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(17).getBinary(i).toString());
         }
-        count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -512,6 +536,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       AlignedPath alignedPath2 =
           new AlignedPath(
@@ -531,6 +558,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
@@ -554,6 +584,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
@@ -568,6 +601,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath5 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
@@ -582,6 +618,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath6 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
@@ -596,6 +635,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator6
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath7 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
@@ -610,6 +652,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator7
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath8 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
@@ -624,6 +669,9 @@ public class AlignedSeriesScanOperatorTest {
               null,
               false);
       seriesScanOperator8.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator8
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
@@ -678,7 +726,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(7, 0), new DescTimeComparator())),
               new DescTimeComparator());
 
-      int count = 25;
+      int count = 499;
       while (timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
         assertEquals(18, tsBlock.getValueColumnCount());
@@ -701,43 +749,40 @@ public class AlignedSeriesScanOperatorTest {
         assertTrue(tsBlock.getColumn(16) instanceof DoubleColumn);
         assertTrue(tsBlock.getColumn(17) instanceof BinaryColumn);
 
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = tsBlock.getPositionCount() - i - 1 + 20L * (count - 1);
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count--) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
           int delta = 0;
-          if (expectedTime < 200) {
+          if ((long) count < 200) {
             delta = 20000;
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
             delta = 10000;
           }
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(6).getBoolean(i));
-          assertEquals((delta + expectedTime) % 2 == 0, tsBlock.getColumn(12).getBoolean(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(1).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(7).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(13).getInt(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(2).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(8).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(14).getLong(i));
-          assertEquals(delta + expectedTime, tsBlock.getColumn(3).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(9).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(15).getFloat(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(4).getDouble(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(10).getDouble(i), DELTA);
-          assertEquals(delta + expectedTime, tsBlock.getColumn(16).getDouble(i), DELTA);
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(0).getBoolean(i));
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(6).getBoolean(i));
+          assertEquals((delta + (long) count) % 2 == 0, tsBlock.getColumn(12).getBoolean(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(1).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(7).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(13).getInt(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(2).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(8).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(14).getLong(i));
+          assertEquals(delta + (long) count, tsBlock.getColumn(3).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(9).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(15).getFloat(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(4).getDouble(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(10).getDouble(i), DELTA);
+          assertEquals(delta + (long) count, tsBlock.getColumn(16).getDouble(i), DELTA);
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(5).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(5).getBinary(i).toString());
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(11).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(11).getBinary(i).toString());
           assertEquals(
-              String.valueOf(delta + expectedTime), tsBlock.getColumn(17).getBinary(i).toString());
+              String.valueOf(delta + (long) count), tsBlock.getColumn(17).getBinary(i).toString());
         }
-        count--;
       }
-      assertEquals(0, count);
+      assertEquals(-1, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

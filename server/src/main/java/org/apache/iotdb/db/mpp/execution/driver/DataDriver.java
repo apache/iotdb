@@ -87,7 +87,7 @@ public class DataDriver extends Driver {
     }
     closedFilePaths = null;
     for (TsFileResource tsFile : unClosedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
     }
     unClosedFilePaths = null;
   }

@@ -126,7 +126,11 @@ public class MultiColumnMerger implements ColumnMerger {
         // time of current location's input column is equal to current row's time
         if (timeColumn.getLong(index) == currentTime) {
           // value of current location's input column is not null
-          if (!valueColumn.isNull(index)) {
+          // here we only append value if there is no value appended before and current value is
+          // null
+          // TODO That means we choose first value as the final value if there exist timestamp
+          // belonging to more than one DataRegion, we need to choose which one is latest
+          if (!appendValue && !valueColumn.isNull(index)) {
             columnBuilder.write(valueColumn, index);
             appendValue = true;
           }
@@ -134,11 +138,13 @@ public class MultiColumnMerger implements ColumnMerger {
           index++;
           // update the index after merging
           updatedInputIndex[tsBlockIndex] = index;
-          // we can safely set appendValue to true and then break the loop, because these input
-          // columns' time is not overlapped
-          if (appendValue) {
-            break;
-          }
+          // we can never safely set appendValue to true and then break the loop, because these
+          // input
+          // columns' time may be overlapped, we should increase each column's index whose time is
+          // equal to currentTime
+          // if (appendValue) {
+          //    break;
+          //  }
         }
       }
     }

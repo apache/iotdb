@@ -319,6 +319,20 @@ public class ClusterSchemaManager {
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
+    // Adjust least_data_region_group_num
+    // TODO: The least_data_region_group_num should be maintained separately by different
+    // StorageGroup
+    int leastDataRegionGroupNum =
+        (int)
+            Math.ceil(
+                (double) totalCpuCoreNum
+                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
+    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
+      // The leastDataRegionGroupNum should be the maximum integer that satisfy:
+      // 1 <= leastDataRegionGroupNum <= 5(default)
+      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+    }
+
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
