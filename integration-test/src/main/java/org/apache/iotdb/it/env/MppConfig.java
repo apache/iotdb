@@ -100,14 +100,14 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
+        "dn_rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
+        "dn_rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
@@ -222,6 +222,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "data_region_group_extension_policy", dataRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
   public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     confignodeProperties.setProperty(
         "schema_replication_factor", String.valueOf(schemaReplicationFactor));
@@ -239,6 +253,13 @@ public class MppConfig implements BaseConfig {
   public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     confignodeProperties.setProperty(
         "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    confignodeProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
     return this;
   }
 
@@ -321,9 +342,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  public BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     confignodeProperties.setProperty(
-        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+        "enable_auto_leader_balance_for_ratis_consensus",
+        String.valueOf(enableAutoLeaderBalanceForRatisConsensus));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_iot_consensus",
+        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
     return this;
   }
 

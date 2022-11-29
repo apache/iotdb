@@ -82,10 +82,9 @@ public class ConfigNodeStartupCheck {
           String.valueOf(1));
     }
 
-    // When the schema region consensus protocol is set to MultiLeaderConsensus,
+    // When the schema region consensus protocol is set to IoTConsensus,
     // we should report an error
-    if (CONF.getSchemaRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),

@@ -51,7 +51,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
-import static org.apache.iotdb.consensus.ConsensusFactory.MULTI_LEADER_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class DataNodeRemoveHandler {
@@ -178,8 +178,17 @@ public class DataNodeRemoveHandler {
       return status;
     }
 
-    List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionReplicaNodes);
-    currentPeerNodes.add(destDataNode);
+    List<TDataNodeLocation> currentPeerNodes;
+    if (TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      // parameter of createPeer for MultiLeader should be all peers
+      currentPeerNodes = new ArrayList<>(regionReplicaNodes);
+      currentPeerNodes.add(destDataNode);
+    } else {
+      // parameter of createPeer for Ratis can be empty
+      currentPeerNodes = Collections.emptyList();
+    }
+
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
     // TODO replace with real ttl
@@ -278,7 +287,7 @@ public class DataNodeRemoveHandler {
     // Here we pick the DataNode who contains one of the RegionReplica of the specified
     // ConsensusGroup except the origin one
     // in order to notify the new ConsensusGroup that the origin peer should secede now
-    // if the selectedDataNode equals null, we choose the destDataNode to execute the method
+    // If the selectedDataNode equals null, we choose the destDataNode to execute the method
     Optional<TDataNodeLocation> selectedDataNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
     rpcClientDataNode = selectedDataNode.orElse(destDataNode);
@@ -551,8 +560,8 @@ public class DataNodeRemoveHandler {
   /**
    * Change the leader of given Region.
    *
-   * <p>For MULTI_LEADER_CONSENSUS, using `changeLeaderForMultiLeaderConsensus` method to change the
-   * regionLeaderMap maintained in ConfigNode.
+   * <p>For IOT_CONSENSUS, using `changeLeaderForIoTConsensus` method to change the regionLeaderMap
+   * maintained in ConfigNode.
    *
    * <p>For RATIS_CONSENSUS, invoking `changeRegionLeader` DataNode RPC method to change the leader.
    *
@@ -568,7 +577,7 @@ public class DataNodeRemoveHandler {
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && MULTI_LEADER_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       if (CONF.getDataReplicationFactor() == 1) {
         newLeaderNode = Optional.of(migrateDestDataNode);
       }
@@ -576,10 +585,10 @@ public class DataNodeRemoveHandler {
         configManager
             .getLoadManager()
             .getRouteBalancer()
-            .changeLeaderForMultiLeaderConsensus(regionId, newLeaderNode.get().getDataNodeId());
+            .changeLeaderForIoTConsensus(regionId, newLeaderNode.get().getDataNodeId());
 
         LOGGER.info(
-            "{}, Change region leader finished for MULTI_LEADER_CONSENSUS, regionId: {}, newLeaderNode: {}",
+            "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
             REMOVE_DATANODE_PROCESS,
             regionId,
             newLeaderNode);

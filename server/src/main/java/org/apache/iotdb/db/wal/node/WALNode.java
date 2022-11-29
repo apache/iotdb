@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -79,7 +79,7 @@ import java.util.regex.Pattern;
 public class WALNode implements IWALNode {
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  /** no iot consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /** timeout threshold when waiting for next wal entry */
@@ -266,7 +266,7 @@ public class WALNode implements IWALNode {
       }
       // delete files whose content's search index are all <= safelyDeletedSearchIndex
       WALFileUtils.ascSortByVersionId(filesToDelete);
-      // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for multi-leader
+      // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for iot
       int endFileIndex =
           safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
               ? filesToDelete.length
@@ -505,16 +505,6 @@ public class WALNode implements IWALNode {
         }
       }
 
-      // find file contains search index
-      while (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
-          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
-        currentFileIndex++;
-        if (currentFileIndex >= filesToSearch.length - 1) {
-          needUpdatingFilesToSearch = true;
-          return false;
-        }
-      }
-
       // find all nodes of current wal file
       List<IConsensusRequest> tmpNodes = new ArrayList<>();
       long targetIndex = nextSearchIndex;
@@ -529,7 +519,7 @@ public class WALNode implements IWALNode {
             long currentIndex = buffer.getLong();
             buffer.clear();
             if (currentIndex == targetIndex) {
-              tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+              tmpNodes.add(new IoTConsensusRequest(buffer));
             } else { // different search index, all slices found
               if (!tmpNodes.isEmpty()) {
                 insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
@@ -537,7 +527,7 @@ public class WALNode implements IWALNode {
               }
               // remember to add current plan node
               if (currentIndex > targetIndex) {
-                tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+                tmpNodes.add(new IoTConsensusRequest(buffer));
                 targetIndex = currentIndex;
               }
             }
@@ -598,7 +588,7 @@ public class WALNode implements IWALNode {
                   long currentIndex = buffer.getLong();
                   buffer.clear();
                   if (currentIndex == targetIndex) {
-                    tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
+                    tmpNodes.add(new IoTConsensusRequest(buffer));
                   } else { // find all slices of plan node
                     insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
                     tmpNodes = Collections.emptyList();

@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,14 +72,14 @@ public class MetricService extends AbstractMetricService implements MetricServic
   public void stop() {
     logger.info("Stop metric service");
     internalReporter.stop();
-    internalReporter = new MemoryInternalReporter();
+    internalReporter = new MemoryInternalIoTDBReporter();
     stopService();
     JMXService.deregisterMBean(mbeanName);
     logger.info("Finish stopping metric service");
   }
 
   @Override
-  public void reloadInternalReporter(InternalReporter internalReporter) {
+  public void reloadInternalReporter(InternalIoTDBReporter internalReporter) {
     logger.info("Reload internal reporter");
     internalReporter.addAutoGauge(this.internalReporter.getAllAutoGauge());
     this.internalReporter.stop();
@@ -115,7 +115,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
     return ServiceType.METRIC_SERVICE;
   }
 
-  public void updateInternalReporter(InternalReporter InternalReporter) {
+  public void updateInternalReporter(InternalIoTDBReporter InternalReporter) {
     this.internalReporter = InternalReporter;
   }
 

@@ -23,11 +23,12 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
+import org.apache.iotdb.commons.exception.sync.SyncHandshakeException;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -72,6 +73,8 @@ public class SenderManager {
 
   private boolean isRunning;
 
+  private boolean isError = false;
+
   public SenderManager(Pipe pipe, PipeSink pipeSink) {
     this.pipe = pipe;
     this.pipeSink = pipeSink;
@@ -84,6 +87,20 @@ public class SenderManager {
     this.clientMap = new HashMap<>();
     this.transportFutureMap = new HashMap<>();
     this.isRunning = false;
+  }
+
+  public void checkConnection() {
+    ISyncClient client = SyncClientFactory.createHeartbeatClient(pipe, pipeSink);
+    try {
+      client.handshake();
+    } catch (SyncConnectionException syncConnectionException) {
+      logger.warn(
+          "Cannot connect to the receiver {} when starting PIPE check because {}, PIPE will keep RUNNING and try to reconnect",
+          pipeSink,
+          syncConnectionException.getMessage());
+    } finally {
+      client.close();
+    }
   }
 
   public void start() {
@@ -169,12 +186,22 @@ public class SenderManager {
             object.notify();
           }
         }
+        isError = false;
       } catch (SyncConnectionException e) {
+        if (e instanceof SyncHandshakeException && !isError) {
+          SyncService.getInstance()
+              .recordMessage(
+                  pipe.getName(),
+                  new PipeMessage(
+                      PipeMessage.PipeMessageType.ERROR,
+                      String.format("Can not handshake with %s", pipeSink)));
+          isError = true;
+        }
         blockingQueue.offer(object);
         long reportInterval = System.currentTimeMillis() - lastReportTime;
         if (reportInterval > SyncConstant.LOST_CONNECT_REPORT_MILLISECONDS) {
           logger.warn(
-              "Connection error because {}, lost contact with the receiver {} for {} milliseconds.",
+              "Connection error because {}. Lost contact with the receiver {} for {} milliseconds.",
               e.getMessage(),
               pipeSink,
               System.currentTimeMillis() - lostConnectionTime);
@@ -184,7 +211,7 @@ public class SenderManager {
         client.close();
       }
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.info("Interrupted by PIPE operation, exit heartbeat.");
     }
   }
 
@@ -194,14 +221,7 @@ public class SenderManager {
       synchronized (lock) {
         while (!Thread.currentThread().isInterrupted()) {
           try {
-            if (!syncClient.handshake()) {
-              SyncService.getInstance()
-                  .recordMessage(
-                      pipe.getName(),
-                      new PipeMessage(
-                          PipeMessage.PipeMessageType.ERROR,
-                          String.format("Can not handshake with %s", pipeSink)));
-            }
+            syncClient.handshake();
             while (!Thread.currentThread().isInterrupted()) {
               PipeData pipeData = pipe.take(dataRegionId);
               if (!syncClient.send(pipeData)) {
@@ -219,9 +239,10 @@ public class SenderManager {
               pipe.commit(dataRegionId);
             }
           } catch (SyncConnectionException e) {
-            // If failed to connect to receiver, it will hang up until scheduled heartbeat task
+            // If failed to connect to receiver or failed to handshake with receiver, it will hang
+            // up until scheduled heartbeat task
             // successfully reconnect to receiver.
-            logger.error("Connect to receiver {} error, because {}.", pipeSink, e.getMessage(), e);
+            logger.error("Connect to receiver {} error, because {}.", pipeSink, e.getMessage());
             lostConnectionTime = Math.min(lostConnectionTime, System.currentTimeMillis());
             blockingQueue.offer(lock);
             lock.wait();
@@ -229,7 +250,7 @@ public class SenderManager {
         }
       }
     } catch (InterruptedException e) {
-      logger.info("Interrupted by pipe, exit transport.");
+      logger.info("Interrupted by PIPE operation, exit transport.");
     } finally {
       syncClient.close();
     }

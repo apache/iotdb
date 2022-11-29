@@ -48,8 +48,8 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.InternalReporter;
-import org.apache.iotdb.metrics.reporter.MemoryInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -218,7 +218,7 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties
                 .getProperty(
-                    "rpc_thrift_compression_enable",
+                    "dn_rpc_thrift_compression_enable",
                     Boolean.toString(conf.isRpcThriftCompressionEnable()))
                 .trim()));
 
@@ -226,7 +226,7 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties
                 .getProperty(
-                    "rpc_advanced_compression_enable",
+                    "dn_rpc_advanced_compression_enable",
                     Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
                 .trim()));
 
@@ -234,14 +234,14 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty(
-                    "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
     conf.setMaxConnectionForInternalService(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "max_connection_for_internal_service",
+                    "dn_max_connection_for_internal_service",
                     String.valueOf(conf.getMaxConnectionForInternalService()))
                 .trim()));
 
@@ -249,7 +249,7 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty(
-                    "core_connection_for_internal_service",
+                    "dn_core_connection_for_internal_service",
                     String.valueOf(conf.getCoreConnectionForInternalService()))
                 .trim()));
 
@@ -257,7 +257,7 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty(
-                    "selector_thread_count_of_client_manager",
+                    "dn_selector_thread_count_of_client_manager",
                     String.valueOf(conf.getSelectorNumOfClientManager()))
                 .trim()));
 
@@ -500,7 +500,8 @@ public class IoTDBDescriptor {
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "session_timeout_threshold", Integer.toString(conf.getSessionTimeoutThreshold()))));
+                "dn_session_timeout_threshold",
+                Integer.toString(conf.getSessionTimeoutThreshold()))));
     conf.setMaxNumberOfSyncFileRetry(
         Integer.parseInt(
             properties
@@ -680,7 +681,7 @@ public class IoTDBDescriptor {
     int rpcSelectorThreadNum =
         Integer.parseInt(
             properties.getProperty(
-                "rpc_selector_thread_count",
+                "dn_rpc_selector_thread_count",
                 Integer.toString(conf.getRpcSelectorThreadCount()).trim()));
     if (rpcSelectorThreadNum <= 0) {
       rpcSelectorThreadNum = 1;
@@ -691,7 +692,7 @@ public class IoTDBDescriptor {
     int minConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
-                "rpc_min_concurrent_client_num",
+                "dn_rpc_min_concurrent_client_num",
                 Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
     if (minConcurrentClientNum <= 0) {
       minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
@@ -702,7 +703,7 @@ public class IoTDBDescriptor {
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
-                "rpc_max_concurrent_client_num",
+                "dn_rpc_max_concurrent_client_num",
                 Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
     if (maxConcurrentClientNum <= 0) {
       maxConcurrentClientNum = 65535;
@@ -779,7 +780,7 @@ public class IoTDBDescriptor {
     conf.setThriftMaxFrameSize(
         Integer.parseInt(
             properties.getProperty(
-                "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
     if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
       conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
@@ -788,7 +789,7 @@ public class IoTDBDescriptor {
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
+                "dn_thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
     conf.setFrequencyIntervalInMinute(
         Integer.parseInt(
@@ -898,12 +899,6 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
-
-    conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "insert_multi_tablet_enable_multithreading_column_threshold",
-                String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
@@ -1145,7 +1140,7 @@ public class IoTDBDescriptor {
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_throttle_threshold_in_byte",
+                "iot_consensus_throttle_threshold_in_byte",
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
@@ -1154,7 +1149,7 @@ public class IoTDBDescriptor {
     long cacheWindowInMs =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_cache_window_time_in_ms",
+                "iot_consensus_cache_window_time_in_ms",
                 Long.toString(conf.getCacheWindowTimeInMs())));
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
@@ -1543,12 +1538,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalReporter internalReporter;
+      InternalIoTDBReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
         internalReporter = new IoTDBInternalReporter();
       } else {
-        internalReporter = new MemoryInternalReporter();
+        internalReporter = new MemoryInternalIoTDBReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
@@ -1832,24 +1827,10 @@ public class IoTDBDescriptor {
       conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
     }
 
-    conf.setMaxPendingContinuousQueryTasks(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_pending_continuous_query_tasks",
-                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
-    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
-      conf.setMaxPendingContinuousQueryTasks(64);
-    }
-
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
-
-    conf.setCqlogBufferSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "cqlog_buffer_size", Integer.toString(conf.getCqlogBufferSize()))));
   }
 
   public void loadClusterProps(Properties properties) {

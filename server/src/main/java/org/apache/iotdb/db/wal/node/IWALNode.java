@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;

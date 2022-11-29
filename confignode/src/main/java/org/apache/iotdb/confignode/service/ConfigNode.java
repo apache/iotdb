@@ -225,7 +225,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
             CONF.getDataRegionConsensusProtocolClass(),
             CONF.getSchemaRegionConsensusProtocolClass(),
-            CONF.getSeriesPartitionSlotNum(),
+            CONF.getSeriesSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
             COMMON_CONF.getDefaultTTLInMs(),
             CONF.getTimePartitionInterval(),

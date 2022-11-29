@@ -1370,7 +1370,6 @@ public class DataRegion {
         "Async close tsfile: {}",
         tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
 
-    boolean isEmptyFile = tsFileProcessor.isEmpty();
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       tsFileProcessor.asyncClose();
@@ -1391,16 +1390,6 @@ public class DataRegion {
       // controller
       if (!workSequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
-      }
-    }
-    if (isEmptyFile) {
-      try {
-        fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
-        tsFileManager.remove(tsFileProcessor.getTsFileResource(), sequence);
-      } catch (IOException e) {
-        logger.error(
-            "Remove empty file {} error",
-            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
     }
   }
@@ -2098,7 +2087,18 @@ public class DataRegion {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
+      if (tsFileProcessor.isEmpty()) {
+        try {
+          fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
+          tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
+        } catch (IOException e) {
+          logger.error(
+              "Remove empty file {} error",
+              tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
+        }
+      } else {
+        tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
+      }
     } finally {
       closeQueryLock.writeLock().unlock();
     }
@@ -3310,11 +3310,9 @@ public class DataRegion {
     return idTable;
   }
 
-  /** This method could only be used in multi-leader consensus */
+  /** This method could only be used in iot consensus */
   public IWALNode getWALNode() {
-    if (!config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

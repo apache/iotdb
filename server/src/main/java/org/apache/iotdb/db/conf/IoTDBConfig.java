@@ -293,6 +293,13 @@ public class IoTDBConfig {
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
+  private String ratisDataRegionSnapshotDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
+
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
@@ -360,13 +367,13 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
-  private boolean enableTimedFlushSeqMemtable = false;
+  private boolean enableTimedFlushSeqMemtable = true;
 
   /**
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
   private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -378,7 +385,7 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
@@ -443,15 +450,15 @@ public class IoTDBConfig {
 
   /**
    * If the chunk size is lower than this threshold, it will be deserialized into points, default is
-   * 1 KB
+   * 10 KB
    */
-  private long chunkSizeLowerBoundInCompaction = 1024L;
+  private long chunkSizeLowerBoundInCompaction = 10240L;
 
   /**
    * If the chunk point num is lower than this threshold, it will be deserialized into points,
-   * default is 100
+   * default is 1000
    */
-  private long chunkPointNumLowerBoundInCompaction = 100;
+  private long chunkPointNumLowerBoundInCompaction = 1000;
 
   /**
    * If compaction thread cannot acquire the write lock within this timeout, the compaction task
@@ -537,7 +544,7 @@ public class IoTDBConfig {
   private int externalSortThreshold = 1000;
 
   /** White list for sync */
-  private String ipWhiteList = "0.0.0.0/0";
+  private String ipWhiteList = "127.0.0.1/32";
 
   /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
   private int maxNumberOfSyncFileRetry = 5;
@@ -665,37 +672,16 @@ public class IoTDBConfig {
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /*
-   * Maximum number of continuous query tasks that can be pending for execution. When <= 0, the value is
-   * 64 by default.
-   */
-  private int maxPendingContinuousQueryTasks = 64;
-
-  /*
    * Minimum every interval to perform continuous query.
    * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
   /**
-   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
-   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
-   * by CQManager. Unit: byte
-   */
-  private int cqlogBufferSize = 1024 * 1024;
-
-  /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
-
-  /**
-   * When the insert plan column count reaches the specified threshold, which means that the plan is
-   * relatively large. At this time, may be enabled multithreading. If the tablet is small, the time
-   * of each insertion is short. If we enable multithreading, we also need to consider the switching
-   * loss between threads, so we need to judge the size of the tablet.
-   */
-  private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
@@ -744,7 +730,7 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 32;
+  private int primitiveArraySize = 64;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
@@ -1003,10 +989,10 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
-  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
+  /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
-  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 60 * 1000;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1148,6 +1134,7 @@ public class IoTDBConfig {
     tracingDir = addDataHomeDir(tracingDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
+    ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addDataHomeDir(indexRootFolder);
     extDir = addDataHomeDir(extDir);
@@ -1348,6 +1335,10 @@ public class IoTDBConfig {
 
   void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public String getRatisDataRegionSnapshotDir() {
+    return ratisDataRegionSnapshotDir;
   }
 
   public String getConsensusDir() {
@@ -1804,6 +1795,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -1816,6 +1808,10 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
@@ -1828,6 +1824,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+
+    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
+    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
+    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
   public long getAllocateMemoryForFree() {
@@ -1877,14 +1881,6 @@ public class IoTDBConfig {
     this.continuousQueryThreadNum = continuousQueryThreadNum;
   }
 
-  public int getMaxPendingContinuousQueryTasks() {
-    return maxPendingContinuousQueryTasks;
-  }
-
-  public void setMaxPendingContinuousQueryTasks(int maxPendingContinuousQueryTasks) {
-    this.maxPendingContinuousQueryTasks = maxPendingContinuousQueryTasks;
-  }
-
   public long getContinuousQueryMinimumEveryInterval() {
     return continuousQueryMinimumEveryInterval;
   }
@@ -1893,30 +1889,12 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
-  public int getCqlogBufferSize() {
-    return cqlogBufferSize;
-  }
-
-  public void setCqlogBufferSize(int cqlogBufferSize) {
-    this.cqlogBufferSize = cqlogBufferSize;
-  }
-
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
-  }
-
-  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
-    return insertMultiTabletEnableMultithreadingColumnThreshold;
-  }
-
-  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
-      int insertMultiTabletEnableMultithreadingColumnThreshold) {
-    this.insertMultiTabletEnableMultithreadingColumnThreshold =
-        insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {
