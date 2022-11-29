@@ -94,7 +94,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
             } catch (Throwable t) {
-              logger.error("cannot dispatch FI for load operation", t);
+              logger.warn("cannot dispatch FI for load operation", t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
@@ -132,11 +132,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
               instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
+        logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
@@ -174,7 +174,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 ((LoadSingleTsFileNode) planNode).getTsFileResource(),
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad());
       } catch (LoadFileException e) {
-        logger.error(String.format("Load TsFile Node %s error.", planNode), e);
+        logger.warn(String.format("Load TsFile Node %s error.", planNode), e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
@@ -204,7 +204,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.error("cannot dispatch LoadCommand for load operation", t);
+        logger.warn("cannot dispatch LoadCommand for load operation", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -220,11 +220,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         internalServiceClientManager.borrowClient(endPoint)) {
       TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
       if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
+        logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage(
