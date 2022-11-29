@@ -1704,34 +1704,42 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
-    PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
-    TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
-    if (timeValuePair == null) { // last value is not cached
-      return createUpdateLastCacheOperator(
-          node, context, node.getSeriesPath().getMeasurementPath());
-    } else if (!LastQueryUtil.satisfyFilter(
-        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
-        timeValuePair)) { // cached last value is not satisfied
+    AlignedPath alignedPath = node.getSeriesPath();
+    PartialPath devicePath = alignedPath.getDevicePath();
+    // get series under aligned entity that has not been cached
+    List<String> unCachedMeasurements = new ArrayList<>();
+    for (String measurement : alignedPath.getMeasurementList()) {
+      PartialPath measurementPath = devicePath.concatNode(measurement);
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      if (timeValuePair == null) { // last value is not cached
+        unCachedMeasurements.add(measurement);
+      } else if (!LastQueryUtil.satisfyFilter(
+          updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+          timeValuePair)) { // cached last value is not satisfied
 
-      boolean isFilterGtOrGe =
-          (context.getLastQueryTimeFilter() instanceof Gt
-              || context.getLastQueryTimeFilter() instanceof GtEq);
-      // time filter is not > or >=, we still need to read from disk
-      if (!isFilterGtOrGe) {
-        return createUpdateLastCacheOperator(
-            node, context, node.getSeriesPath().getMeasurementPath());
-      } else { // otherwise, we just ignore it and return null
-        return null;
+        boolean isFilterGtOrGe =
+            (context.getLastQueryTimeFilter() instanceof Gt
+                || context.getLastQueryTimeFilter() instanceof GtEq);
+        // time filter is not > or >=, we still need to read from disk
+        if (!isFilterGtOrGe) {
+          unCachedMeasurements.add(measurement);
+        }
+      } else { //  cached last value is satisfied, put it into LastCacheScanOperator
+        context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
       }
-    } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-      context.addCachedLastValue(timeValuePair, seriesPath.getFullPath());
-      return null;
     }
+
+    return unCachedMeasurements.size() == 0
+        ? null
+        : createUpdateLastCacheOperator(node, unCachedMeasurements, context);
   }
 
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
-      AlignedLastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
-    AlignedSeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
+      AlignedLastQueryScanNode node,
+      List<String> unCachedMeasurements,
+      LocalExecutionPlanContext context) {
+    AlignedSeriesAggregationScanOperator lastQueryScan =
+        createLastQueryScanOperator(node, unCachedMeasurements, context);
 
     OperatorContext operatorContext =
         context
