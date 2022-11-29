@@ -80,16 +80,30 @@ public enum AggregationStep {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
-    ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+    if (isInputFinal()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+      ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
+      ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isInputRaw(), stream);
-    ReadWriteIOUtils.write(isOutputPartial(), stream);
+    if (isInputFinal()) {
+      ReadWriteIOUtils.write(isInputFinal(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+      ReadWriteIOUtils.write(isInputRaw(), stream);
+      ReadWriteIOUtils.write(isOutputPartial(), stream);
+    }
   }
 
   public static AggregationStep deserialize(ByteBuffer byteBuffer) {
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      return AggregationStep.STATIC;
+    }
+
     boolean isInputRaw = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isOutputPartial = ReadWriteIOUtils.readBool(byteBuffer);
     if (isInputRaw && isOutputPartial) {
