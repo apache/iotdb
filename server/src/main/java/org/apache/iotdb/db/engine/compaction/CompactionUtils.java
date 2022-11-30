@@ -38,8 +38,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -337,5 +339,43 @@ public class CompactionUtils {
     } finally {
       tsFileManager.readUnlock();
     }
+  }
+
+  public static boolean validateTsFileResources(
+      TsFileManager manager, String storageGroupName, long timePartition, long compactionId) {
+    List<TsFileResource> resources =
+        manager.getSequenceListByTimePartition(timePartition).getArrayList();
+    resources.sort(
+        (f1, f2) ->
+            Long.compareUnsigned(
+                Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                Long.parseLong(f2.getTsFile().getName().split("-")[0])));
+    Map<String, Long> lastEndTimeMap = new HashMap<>();
+    TsFileResource prevTsFileResource = null;
+    for (TsFileResource resource : resources) {
+      Set<String> devices = resource.getDevices();
+      for (String device : devices) {
+        long currentStartTime = resource.getStartTime(device);
+        long currentEndTime = resource.getEndTime(device);
+        long lastEndTime = lastEndTimeMap.computeIfAbsent(device, x -> Long.MIN_VALUE);
+        if (lastEndTime >= currentStartTime) {
+          logger.error(
+              "{} [TaskId: {}] Device {} is overlapped between {} and {}, end time in {} is {}, start time in {} is {}",
+              storageGroupName,
+              compactionId,
+              device,
+              prevTsFileResource,
+              resource,
+              prevTsFileResource,
+              lastEndTime,
+              resource,
+              currentStartTime);
+          return false;
+        }
+        lastEndTimeMap.put(device, currentEndTime);
+      }
+      prevTsFileResource = resource;
+    }
+    return true;
   }
 }

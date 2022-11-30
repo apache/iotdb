@@ -557,7 +557,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: %s", file.toString(), status);
+    return String.format("%s ", file.toString());
   }
 
   @Override

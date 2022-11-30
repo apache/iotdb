@@ -185,6 +185,19 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             false);
       }
 
+      if (!CompactionUtils.validateTsFileResources(
+          tsFileManager, storageGroupName, timePartition, compactionId)) {
+        LOGGER.error(
+            "{}-{} [Compaction] [Task-id: {}] Failed to pass the check of resources. "
+                + "Source files is {}, target file is {}. Terminate the system.",
+            storageGroupName,
+            dataRegionId,
+            compactionId,
+            selectedTsFileResourceList,
+            targetTsFileList);
+        System.exit(-1);
+      }
+
       LOGGER.info(
           "{}-{} [Compaction] [Task-id: {}] Compacted target files, try to get the write lock of source files",
           storageGroupName,

@@ -173,6 +173,20 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
+        if (!CompactionUtils.validateTsFileResources(
+            tsFileManager, storageGroupName, timePartition, compactionId)) {
+          LOGGER.error(
+              "{}-{} [Compaction] [Task-id: {}] Failed to pass the check of resources. "
+                  + "Source sequence files is {}, unsequence files is {}, target files is {}. Terminate the system.",
+              storageGroupName,
+              dataRegionId,
+              compactionId,
+              selectedSequenceFiles,
+              selectedUnsequenceFiles,
+              targetTsfileResourceList);
+          System.exit(-1);
+        }
+
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
 
