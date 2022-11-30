@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.2"
+      "version": "8.4.6"
     },
     {
       "type": "panel",
@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1669566467252,
+  "iteration": 1669709013871,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -134,7 +134,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -473,7 +473,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -551,7 +551,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -825,7 +825,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region in StorageGroup",
+      "title": "Region in Database",
       "type": "timeseries"
     },
     {
@@ -911,7 +911,7 @@
           "refId": "A"
         }
       ],
-      "title": "Slot In Storage Group",
+      "title": "Slot In Database",
       "type": "timeseries"
     },
     {
@@ -989,7 +989,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.2",
+      "pluginVersion": "8.4.6",
       "targets": [
         {
           "datasource": {
@@ -1365,7 +1365,38 @@
           },
           "unit": "bytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Swap Size"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Used Swap Size"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -1488,8 +1519,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "targets": [
@@ -2058,6 +2089,10 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2103,7 +2138,53 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warn"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "trace"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -2230,7 +2311,7 @@
           "refId": "A"
         }
       ],
-      "title": "Time Time Consumed of Compilation Per Minute",
+      "title": "The Time Consumed of Compilation Per Minute",
       "type": "timeseries"
     },
     {
@@ -2342,7 +2423,7 @@
   "tags": [
     "Apache-IoTDB",
     "ConfigNode",
-    "0.14.0"
+    "v1.0"
   ],
   "templating": {
     "list": [
@@ -2408,7 +2489,7 @@
   },
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
-  "uid": "TbEVYRw7g",
-  "version": 1,
+  "uid": "TbEVYRw7T",
+  "version": 8,
   "weekStart": ""
 }

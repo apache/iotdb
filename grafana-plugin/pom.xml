@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
@@ -123,16 +123,16 @@
                                 <configuration>
                                     <tasks>
                                         <condition property="osFamily" value="windows">
-                                            <os family="windows"/>
+                                            <os family="windows" />
                                         </condition>
                                         <condition property="osFamily" value="unix">
-                                            <os family="unix"/>
+                                            <os family="unix" />
                                         </condition>
                                         <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows">
-                                            <arg line="/c backend-compile.bat"/>
+                                            <arg line="/c backend-compile.bat" />
                                         </exec>
                                         <exec executable="/bin/bash" osfamily="unix">
-                                            <arg line="-c ./backend-compile.sh"/>
+                                            <arg line="-c ./backend-compile.sh" />
                                         </exec>
                                     </tasks>
                                 </configuration>

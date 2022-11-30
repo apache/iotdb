@@ -103,7 +103,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
             } catch (Throwable t) {
-              logger.error("[DispatchFailed]", t);
+              logger.warn("[DispatchFailed]", t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
@@ -120,7 +120,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.error("[DispatchFailed]", t);
+        logger.warn("[DispatchFailed]", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -157,7 +157,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
-            logger.error(sendFragmentInstanceResp.message);
+            logger.warn(sendFragmentInstanceResp.message);
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
@@ -170,7 +170,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
-            logger.error(
+            logger.warn(
                 "dispatch write failed. status: {}, code: {}, message: {}, node {}",
                 sendPlanNodeResp.status,
                 TSStatusCode.representOf(sendPlanNodeResp.status.code),
@@ -192,7 +192,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   String.format("unknown query type [%s]", instance.getType())));
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node " + endPoint);
@@ -211,7 +211,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           ConsensusGroupId.Factory.createFromTConsensusGroupId(
               instance.getRegionReplicaSet().getRegionId());
     } catch (Throwable t) {
-      logger.error("Deserialize ConsensusGroupId failed. ", t);
+      logger.warn("Deserialize ConsensusGroupId failed. ", t);
       throw new FragmentInstanceDispatchException(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR,
@@ -223,7 +223,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionReadExecutor readExecutor = new RegionReadExecutor();
         RegionExecutionResult readResult = readExecutor.execute(groupId, instance);
         if (!readResult.isAccepted()) {
-          logger.error(readResult.getMessage());
+          logger.warn(readResult.getMessage());
           throw new FragmentInstanceDispatchException(
               RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));
         }
@@ -233,7 +233,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
-          logger.error(
+          logger.warn(
               "write locally failed. TSStatus: {}, message: {}",
               writeResult.getStatus(),
               writeResult.getMessage());

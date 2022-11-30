@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>tsfile</artifactId>
@@ -32,7 +32,7 @@
     <description>A columnar file format designed for time-series data</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
     <properties>
-        <tsfile.test.skip>false</tsfile.test.skip>
+        <tsfile.test.skip>true</tsfile.test.skip>
         <tsfile.it.skip>${tsfile.test.skip}</tsfile.it.skip>
         <tsfile.ut.skip>${tsfile.test.skip}</tsfile.ut.skip>
     </properties>
