@@ -109,7 +109,9 @@ public class LastQueryOperator implements ProcessOperator {
         if (tsBlock == null) {
           return null;
         } else if (!tsBlock.isEmpty()) {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, 0);
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, i);
+          }
         }
       }
       currentIndex++;

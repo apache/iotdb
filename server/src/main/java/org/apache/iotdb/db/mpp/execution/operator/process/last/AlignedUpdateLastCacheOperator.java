@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
 
@@ -57,6 +59,9 @@ public class AlignedUpdateLastCacheOperator extends UpdateLastCacheOperator {
   private final TsBlockBuilder tsBlockBuilder;
 
   private String databaseName;
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AlignedUpdateLastCacheOperator.class);
 
   public AlignedUpdateLastCacheOperator(
       OperatorContext operatorContext,
@@ -112,6 +117,7 @@ public class AlignedUpdateLastCacheOperator extends UpdateLastCacheOperator {
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
         }
+        LOGGER.warn("MeasurementPath in operator: {}", measurementPath.getFullPath());
         LastQueryUtil.appendLastValue(
             tsBlockBuilder,
             lastTime,

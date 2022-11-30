@@ -187,6 +187,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -209,6 +211,7 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperatorTreeGenerator.class);
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
@@ -1735,6 +1738,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       AlignedPath unCachedPath = new AlignedPath(alignedPath.getDevicePath());
       for (int i : unCachedMeasurementIndexes) {
+        LOGGER.warn("unCachedPath: {}", measurementList.get(i));
         unCachedPath.addMeasurement(measurementList.get(i), alignedPath.getSchemaList().get(i));
       }
       return createUpdateLastCacheOperator(node, unCachedPath, context);
