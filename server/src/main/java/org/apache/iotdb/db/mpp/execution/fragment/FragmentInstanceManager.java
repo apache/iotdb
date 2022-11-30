@@ -68,7 +68,7 @@ public class FragmentInstanceManager {
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
-  private ExecutorService intoOperationExecutor;
+  private final ExecutorService intoOperationExecutor;
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -81,10 +81,6 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
-    this.intoOperationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
-            "into-operation-executor");
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
@@ -96,6 +92,11 @@ public class FragmentInstanceManager {
         200,
         200,
         TimeUnit.MILLISECONDS);
+
+    this.intoOperationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
+            "into-operation-executor");
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
