@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.HashSet;
@@ -43,7 +44,9 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
             timeFilter,
             valueFilter,
             ascending),
-        seriesPath.getMeasurementList().size(),
-        context);
+        context,
+        // time + all value columns
+        (1L + seriesPath.getMeasurementList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 }

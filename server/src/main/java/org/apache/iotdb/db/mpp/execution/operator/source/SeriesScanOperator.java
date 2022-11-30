@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -47,7 +48,7 @@ public class SeriesScanOperator extends AbstractSeriesScanOperator {
             timeFilter,
             valueFilter,
             ascending),
-        1,
-        context);
+        context,
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 }
