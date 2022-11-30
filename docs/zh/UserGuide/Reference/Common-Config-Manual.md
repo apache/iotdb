@@ -1282,9 +1282,9 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 | :----------: | :------------------------------------------------------ |
 |     描述     | 权限服务的类名                                          |
 |     类型     | String                                                  |
-|    默认值    | org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|    默认值    | org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer |
 | 改后生效方式 | 重启服务生效                                            |
-|  其他可选值  | org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer    |
+|  其他可选值  | org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer    |
 
 * openID\_url
 

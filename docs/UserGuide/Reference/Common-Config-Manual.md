@@ -1227,9 +1227,9 @@ Different configuration parameters take effect in the following three ways:
 | :--------------------: | :------------------------------------------------------ |
 |      Description       | the class name of the authorization service             |
 |          Type          | String                                                  |
-|        Default         | org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|        Default         | org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer |
 |       Effective        | After restarting system                                 |
-| Other available values | org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer    |
+| Other available values | org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer    |
 
 * openID\_url
 

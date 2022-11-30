@@ -122,10 +122,10 @@ Special commands of Cli are below.
 Openid connect (oidc) uses keycloack as the authority authentication service of oidc service
 
 #### configuration
-The configuration is located in iotdb-datanode.properties(iotdb-confignode.properties) , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
+The configuration is located in iotdb-datanode.properties(iotdb-confignode.properties) , set the author_provider_class is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
 
 ```
-authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
+authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 ```
 If the openid service is turned on, openid_URL is required,openID_url value is http://ip:port/auth/realms/{realmsName}
 
