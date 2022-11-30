@@ -202,6 +202,10 @@ DEVICE
     : D E V I C E
     ;
 
+DEVICEID
+    : D E V I C E I D
+    ;
+
 DEVICES
     : D E V I C E S
     ;
@@ -524,10 +528,6 @@ SELECT
 
 SERIESSLOTID
     : S E R I E S S L O T I D
-    ;
-
-DEVICEID
-    : D E V I C E I D
     ;
 
 SET
