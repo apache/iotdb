@@ -40,11 +40,12 @@ public interface IPageReader {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  void writeDataToBuilder(TsBlockBuilder builder) throws IOException;
+  void appendDataToBuilder(TsBlockBuilder builder) throws IOException;
 
-  default void getAllSatisfiedData(boolean ascending, TsBlockBuilder builder) throws IOException {
+  default void appendAllSatisfiedDataToBuilder(boolean ascending, TsBlockBuilder builder)
+      throws IOException {
     if (ascending) {
-      writeDataToBuilder(builder);
+      appendDataToBuilder(builder);
     } else {
       TsBlock tsBlock = getAllSatisfiedData();
       tsBlock.reverse();

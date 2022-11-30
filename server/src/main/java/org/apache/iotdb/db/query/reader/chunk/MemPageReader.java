@@ -92,12 +92,12 @@ public class MemPageReader implements IPageReader {
   public TsBlock getAllSatisfiedData() {
     TSDataType dataType = chunkMetadata.getDataType();
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
-    writeDataToBuilder(builder);
+    appendDataToBuilder(builder);
     return builder.build();
   }
 
   @Override
-  public void writeDataToBuilder(TsBlockBuilder builder) {
+  public void appendDataToBuilder(TsBlockBuilder builder) {
     TSDataType dataType = chunkMetadata.getDataType();
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
