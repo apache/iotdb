@@ -878,7 +878,7 @@ public class IoTDBConfig {
   private String auditLogStorage = AuditLogUtils.LOG_LEVEL_LOGGER;
 
   // determines whether audit logs record IoTDB write operation
-  private boolean enableAuditLogWrite = true;
+  private boolean enableAuditLogWrite = false;
 
   private int remoteConfigPort = 8667;
 
