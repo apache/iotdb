@@ -24,13 +24,13 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-confignode</artifactId>
     <name>IoTDB ConfigNode</name>
     <properties>
-        <confignode.test.skip>false</confignode.test.skip>
+        <confignode.test.skip>true</confignode.test.skip>
         <confignode.it.skip>${confignode.test.skip}</confignode.it.skip>
         <confignode.ut.skip>${confignode.test.skip}</confignode.ut.skip>
     </properties>

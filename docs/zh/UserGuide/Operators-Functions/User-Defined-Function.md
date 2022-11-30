@@ -187,6 +187,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 1. 时间轴显示时间窗开始和结束时间。
 2. 会话窗口之间的最小时间间隔。
    
+
 如图是`StateWindowAccessStrategy`的开窗示意图。**对于数值型数据，状态差值小于等于给定的阈值 delta 则分为一组。**
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
 
@@ -296,7 +297,7 @@ public class Counter implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     if (rowWindow.windowSize() != 0) {
-      collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
+      collector.putInt(rowWindow.windowStartTime(), rowWindow.windowSize());
     }
   }
 }
@@ -336,6 +337,9 @@ public class Max implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) {
+    if (row.isNull(0)) {
+      return;
+    }
     int candidateValue = row.getInt(0);
     if (time == null || value < candidateValue) {
       time = row.getTime();
