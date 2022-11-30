@@ -1419,6 +1419,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 10000                                                        |
 | 改后生效方式 | 热加载                                                     |
 
+* into\_operation\_execution\_thread\_count
+
+|     名字     | into\_operation\_execution\_thread\_count |
+| :---------: | :---------------------------------------- |
+|     描述     | SELECT INTO 中执行写入任务的线程池的线程数      |
+|     类型     | int32                                     |
+|    默认值    | 2                                         |
+| 改后生效方式  | 重启服务生效                                 |
+
 ### 连续查询配置
 
 * continuous\_query\_submit\_thread\_count

@@ -897,14 +897,13 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "select_into_insert_tablet_plan_row_limit",
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
-    conf.setIntoOperationSubmitThreadCount(
+    conf.setIntoOperationExecutionThreadCount(
         Integer.parseInt(
             properties.getProperty(
-                "into_operation_submit_thread_count",
-                String.valueOf(conf.getIntoOperationSubmitThreadCount()))));
-    if (conf.getIntoOperationSubmitThreadCount() <= 0) {
-      conf.setIntoOperationSubmitThreadCount(
-          Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+                "into_operation_execution_thread_count",
+                String.valueOf(conf.getIntoOperationExecutionThreadCount()))));
+    if (conf.getIntoOperationExecutionThreadCount() <= 0) {
+      conf.setIntoOperationExecutionThreadCount(2);
     }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
