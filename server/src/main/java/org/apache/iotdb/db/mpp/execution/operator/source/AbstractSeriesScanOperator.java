@@ -137,7 +137,7 @@ public abstract class AbstractSeriesScanOperator implements DataSourceOperator {
   }
 
   private boolean readPageData() throws IOException {
-    return seriesScanUtil.tryToFetchDataFromPage();
+    return seriesScanUtil.tryToFetchDataFromPage(true);
   }
 
   @Override
