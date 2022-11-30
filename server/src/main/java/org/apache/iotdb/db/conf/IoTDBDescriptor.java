@@ -673,6 +673,12 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
+    conf.setEnableCompactionValidation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_validation",
+                Boolean.toString(conf.isEnableCompactionValidation()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
