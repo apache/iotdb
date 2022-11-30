@@ -68,17 +68,25 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private final ExecutorService writeOperationExecutor;
   private ListenableFuture<TSStatus> writeOperationFuture;
 
+  private final long maxRetainedSize;
+  private final long maxReturnSize;
+
   public AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
-      ExecutorService intoOperationExecutor) {
+      ExecutorService intoOperationExecutor,
+      long maxStatementSize,
+      long maxReturnSize) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
     this.writeOperationExecutor = intoOperationExecutor;
+
+    this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
+    this.maxReturnSize = maxReturnSize;
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
@@ -260,17 +268,17 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return maxReturnSize + maxRetainedSize + child.calculateMaxPeekMemory();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize();
+    return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
+    return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
   }
 
   public static class InsertTabletStatementGenerator {
