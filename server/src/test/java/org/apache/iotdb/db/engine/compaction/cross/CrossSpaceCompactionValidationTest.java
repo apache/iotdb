@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -2223,6 +2224,8 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
 
     // seq file 3 and 4 are being compacted by inner space compaction
     List<TsFileResource> sourceFiles = new ArrayList<>();
@@ -2232,6 +2235,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(sourceFiles, true);
     ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer(sourceFiles);
     performer.setTargetFiles(targetResources);
+    performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
