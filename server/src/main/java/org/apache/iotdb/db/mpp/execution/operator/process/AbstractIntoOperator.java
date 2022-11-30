@@ -37,10 +37,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -71,21 +69,20 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   private DataNodeInternalClient client;
 
-  private ListenableFuture<?> isBlocked = NOT_BLOCKED;
-
-  private final ListeningExecutorService writeOperationExecutor =
-      MoreExecutors.listeningDecorator(Executors.newCachedThreadPool());
+  private final ExecutorService writeOperationExecutor;
   private ListenableFuture<TSStatus> writeOperationFuture;
 
   public AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
-      Map<String, InputLocation> sourceColumnToInputLocationMap) {
+      Map<String, InputLocation> sourceColumnToInputLocationMap,
+      ExecutorService intoOperationExecutor) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
+    this.writeOperationExecutor = intoOperationExecutor;
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
@@ -144,14 +141,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       client = new DataNodeInternalClient(operatorContext.getSessionInfo());
     }
 
-    isBlocked = SettableFuture.create();
     writeOperationFuture =
-        writeOperationExecutor.submit(() -> client.insertTablets(insertMultiTabletsStatement));
-    writeOperationFuture.addListener(
-        () -> ((SettableFuture<Void>) isBlocked).set(null), writeOperationExecutor);
+        Futures.submit(
+            () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  protected boolean writeOperationDone() {
+  protected boolean handleWriteOperationFuture() {
     if (writeOperationFuture == null) {
       return true;
     }
@@ -220,9 +215,26 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return operatorContext;
   }
 
+  private boolean writeOperationDone() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
+
+    return writeOperationFuture.isDone();
+  }
+
   @Override
   public ListenableFuture<?> isBlocked() {
-    return successfulAsList(Arrays.asList(isBlocked, child.isBlocked()));
+    ListenableFuture<?> childBlocked = child.isBlocked();
+    if (writeOperationDone() && childBlocked.isDone()) {
+      return NOT_BLOCKED;
+    } else if (!writeOperationDone() && childBlocked.isDone()) {
+      return writeOperationFuture;
+    } else if (writeOperationDone() && !childBlocked.isDone()) {
+      return childBlocked;
+    } else {
+      return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));
+    }
   }
 
   @Override
@@ -237,7 +249,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (client != null) {
       client.close();
     }
-    writeOperationExecutor.shutdown();
+    if (writeOperationFuture != null) {
+      writeOperationFuture.cancel(true);
+    }
     child.close();
   }
 

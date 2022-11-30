@@ -68,6 +68,8 @@ public class FragmentInstanceManager {
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
+  private ExecutorService intoOperationExecutor;
+
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
   }
@@ -79,6 +81,10 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
+    this.intoOperationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getIntoOperationSubmitThreadCount(),
+            "into-operation-executor");
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
@@ -109,7 +115,10 @@ public class FragmentInstanceManager {
                         instanceId,
                         fragmentInstanceId ->
                             createFragmentInstanceContext(
-                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                                fragmentInstanceId,
+                                stateMachine,
+                                instance.getSessionInfo(),
+                                intoOperationExecutor));
 
                 try {
                   DataDriver driver =
@@ -165,7 +174,10 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              intoOperationExecutor));
 
               try {
                 SchemaDriver driver =

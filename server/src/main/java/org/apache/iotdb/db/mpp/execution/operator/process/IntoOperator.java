@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class IntoOperator extends AbstractIntoOperator {
@@ -48,19 +49,21 @@ public class IntoOperator extends AbstractIntoOperator {
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
       Map<String, Boolean> targetDeviceToAlignedMap,
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
-      Map<String, InputLocation> sourceColumnToInputLocationMap) {
+      Map<String, InputLocation> sourceColumnToInputLocationMap,
+      ExecutorService intoOperationExecutor) {
     super(
         operatorContext,
         child,
         constructInsertTabletStatementGenerators(
             targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap),
-        sourceColumnToInputLocationMap);
+        sourceColumnToInputLocationMap,
+        intoOperationExecutor);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
   }
 
   @Override
   public TsBlock next() {
-    if (!writeOperationDone()) {
+    if (!handleWriteOperationFuture()) {
       return null;
     }
 
