@@ -1738,7 +1738,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       AlignedPath unCachedPath = new AlignedPath(alignedPath.getDevicePath());
       for (int i : unCachedMeasurementIndexes) {
-        LOGGER.warn("unCachedPath: {}", measurementList.get(i));
         unCachedPath.addMeasurement(measurementList.get(i), alignedPath.getSchemaList().get(i));
       }
       return createUpdateLastCacheOperator(node, unCachedPath, context);

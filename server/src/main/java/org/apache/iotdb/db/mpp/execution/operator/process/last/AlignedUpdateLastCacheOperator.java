@@ -117,7 +117,6 @@ public class AlignedUpdateLastCacheOperator extends UpdateLastCacheOperator {
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
         }
-        LOGGER.warn("MeasurementPath in operator: {}", measurementPath.getFullPath());
         LastQueryUtil.appendLastValue(
             tsBlockBuilder,
             lastTime,
