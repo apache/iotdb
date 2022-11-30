@@ -39,8 +39,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,8 +53,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
 
   protected final OperatorContext operatorContext;
   protected final Operator child;
@@ -103,6 +99,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return insertTabletStatementGenerators;
   }
 
+  /** Return true if write task is submitted successfully. */
   protected boolean insertMultiTabletsInternally(boolean needCheck) {
     InsertMultiTabletsStatement insertMultiTabletsStatement =
         constructInsertMultiTabletsStatement(needCheck);
@@ -146,7 +143,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  protected boolean handleWriteOperationFuture() {
+  /** Return true if the previous write task has done. */
+  protected boolean processWriteOperationFuture() {
     if (writeOperationFuture == null) {
       return true;
     }

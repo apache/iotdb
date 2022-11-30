@@ -63,7 +63,7 @@ public class IntoOperator extends AbstractIntoOperator {
 
   @Override
   public TsBlock next() {
-    if (!handleWriteOperationFuture()) {
+    if (!processWriteOperationFuture()) {
       return null;
     }
 
@@ -86,6 +86,7 @@ public class IntoOperator extends AbstractIntoOperator {
     }
   }
 
+  /** Return true if write task is submitted during processing */
   private boolean processTsBlock(TsBlock inputTsBlock) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return true;
