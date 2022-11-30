@@ -161,12 +161,12 @@ public class PageReader implements IPageReader {
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
-    writeDataToBuilder(builder);
+    appendDataToBuilder(builder);
     return builder.build();
   }
 
   @Override
-  public void writeDataToBuilder(TsBlockBuilder builder) throws IOException {
+  public void appendDataToBuilder(TsBlockBuilder builder) throws IOException {
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     if (filter == null || filter.satisfy(getStatistics())) {

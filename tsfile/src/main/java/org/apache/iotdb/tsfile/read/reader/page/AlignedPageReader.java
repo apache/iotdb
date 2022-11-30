@@ -116,12 +116,12 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     builder.reset();
-    writeDataToBuilder(builder);
+    appendDataToBuilder(builder);
     return builder.build();
   }
 
   @Override
-  public void writeDataToBuilder(TsBlockBuilder builder) throws IOException {
+  public void appendDataToBuilder(TsBlockBuilder builder) throws IOException {
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
     // if all the sub sensors' value are null in current row, just discard it
