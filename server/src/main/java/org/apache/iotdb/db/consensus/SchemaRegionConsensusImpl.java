@@ -125,6 +125,8 @@ public class SchemaRegionConsensusImpl {
                                           conf.getSchemaRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           conf.getSchemaRatisConsensusMaxSleepTimeMs())
+                                      .setTriggerSnapshotFileSize(
+                                          conf.getSchemaRatisLogMaxMB() * 1024 * 1024)
                                       .build())
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())

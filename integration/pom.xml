@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration</artifactId>
@@ -85,7 +85,7 @@
             <id>LocalStandalone</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneTest</test.includedGroups>
-                <test.excludedGroups/>
+                <test.excludedGroups />
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -104,6 +104,14 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                            <skipITs>true</skipITs>
+                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -147,7 +155,7 @@
             <id>Remote</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.RemoteTest</test.includedGroups>
-                <test.excludedGroups/>
+                <test.excludedGroups />
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
@@ -177,7 +185,7 @@
                                     <goal>integration-test</goal>
                                 </goals>
                                 <configuration>
-                                    <skipTests>false</skipTests>
+                                    <skipTests>true</skipTests>
                                     <groups>${test.includedGroups}</groups>
                                     <excludedGroups>${test.excludedGroups}</excludedGroups>
                                     <useSystemClassLoader>false</useSystemClassLoader>
@@ -196,7 +204,7 @@
                                     <goal>verify</goal>
                                 </goals>
                                 <configuration>
-                                    <skipTests>false</skipTests>
+                                    <skipTests>true</skipTests>
                                     <summaryFiles>
                                         <summaryFile>target/failsafe-reports/failsafe-summary-Remote.xml</summaryFile>
                                     </summaryFiles>
@@ -211,7 +219,7 @@
             <id>Cluster</id>
             <properties>
                 <test.includedGroups>org.apache.iotdb.itbase.category.ClusterTest</test.includedGroups>
-                <test.excludedGroups/>
+                <test.excludedGroups />
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
@@ -252,6 +260,14 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                            <skipITs>true</skipITs>
+                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>

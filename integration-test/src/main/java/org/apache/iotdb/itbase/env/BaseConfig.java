@@ -231,6 +231,22 @@ public interface BaseConfig {
     return false;
   }
 
+  default BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getSchemaRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getSchemaRegionGroupPerDatabase() {
+    return 1;
+  }
+
   default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
     return this;
   }

@@ -133,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1375,12 +1376,16 @@ public class ConfigManager implements IManager {
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
-          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
-          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
+          value
+              .keySet()
+              .forEach(
+                  slot ->
+                      slotListMap.put(
+                          slot, new TTimeSlotList(Collections.emptyList(), true, true)));
           partitionSlotsMap.put(key, slotListMap);
         });
 

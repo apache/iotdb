@@ -883,7 +883,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
-        LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
+        LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
         TSStatus status =
             onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
         if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {

@@ -70,7 +70,16 @@ public class RatisConsensusTest {
                       .setPurgeGap(10)
                       .setUnsafeFlushEnabled(false)
                       .build())
-              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
+              .setSnapshot(
+                  RatisConfig.Snapshot.newBuilder()
+                      .setAutoTriggerThreshold(100)
+                      .setCreationGap(10)
+                      .build())
+              .setRatisConsensus(
+                  RatisConfig.RatisConsensus.newBuilder()
+                      .setTriggerSnapshotFileSize(1)
+                      .setTriggerSnapshotTime(4)
+                      .build())
               .build();
       int finalI = i;
       servers.add(

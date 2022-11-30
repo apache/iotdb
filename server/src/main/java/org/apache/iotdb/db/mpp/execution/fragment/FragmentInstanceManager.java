@@ -133,7 +133,7 @@ public class FragmentInstanceManager {
                       failedInstances,
                       instance.getTimeOut());
                 } catch (Throwable t) {
-                  logger.error("error when create FragmentInstanceExecution.", t);
+                  logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
                   return null;
                 }
@@ -185,7 +185,7 @@ public class FragmentInstanceManager {
                     failedInstances,
                     instance.getTimeOut());
               } catch (Throwable t) {
-                logger.error("Execute error caused by ", t);
+                logger.warn("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }
