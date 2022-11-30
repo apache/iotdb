@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -33,51 +35,43 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
 
-public class UpdateLastCacheOperator implements ProcessOperator {
-
+public class AlignedUpdateLastCacheOperator extends UpdateLastCacheOperator {
   private static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
       new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT))
           .build();
 
-  private OperatorContext operatorContext;
+  private final OperatorContext operatorContext;
 
-  private Operator child;
+  private final Operator child;
 
-  // fullPath for queried time series
-  // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
-  // accept PartialPath
-  private MeasurementPath fullPath;
+  private final AlignedPath seriesPath;
 
-  // dataType for queried time series;
-  private String dataType;
+  private PartialPath devicePath;
 
-  private DataNodeSchemaCache lastCache;
+  private final DataNodeSchemaCache lastCache;
 
-  private boolean needUpdateCache;
+  private final boolean needUpdateCache;
 
-  private TsBlockBuilder tsBlockBuilder;
+  private final TsBlockBuilder tsBlockBuilder;
 
   private String databaseName;
 
-  public UpdateLastCacheOperator(
+  public AlignedUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
-      MeasurementPath fullPath,
-      TSDataType dataType,
+      AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.fullPath = fullPath;
-    this.dataType = dataType.name();
+    this.seriesPath = seriesPath;
+    this.devicePath = seriesPath.getDevicePath();
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
   }
-
-  public UpdateLastCacheOperator() {}
 
   @Override
   public OperatorContext getOperatorContext() {
@@ -101,25 +95,33 @@ public class UpdateLastCacheOperator implements ProcessOperator {
 
     checkArgument(res.getPositionCount() == 1, "last query result should only have one record");
 
-    // last value is null
-    if (res.getColumn(0).isNull(0)) {
-      return LAST_QUERY_EMPTY_TSBLOCK;
-    }
-
-    long lastTime = res.getColumn(0).getLong(0);
-    TsPrimitiveType lastValue = res.getColumn(1).getTsPrimitiveType(0);
-
-    if (needUpdateCache) {
-      TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
-      lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
-    }
-
     tsBlockBuilder.reset();
+    boolean hasNonNullLastValue = false;
+    for (int i = 0; i + 1 < res.getValueColumnCount(); i += 2) {
+      if (!res.getColumn(i).isNull(0)) {
+        hasNonNullLastValue = true;
+        long lastTime = res.getColumn(i).getLong(0);
+        TsPrimitiveType lastValue = res.getColumn(i + 1).getTsPrimitiveType(0);
+        MeasurementPath measurementPath =
+            new MeasurementPath(
+                devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
+                seriesPath.getSchemaList().get(i / 2),
+                true);
+        if (needUpdateCache) {
+          TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
+          lastCache.updateLastCache(
+              getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
+        }
+        LastQueryUtil.appendLastValue(
+            tsBlockBuilder,
+            lastTime,
+            measurementPath.getFullPath(),
+            lastValue.getStringValue(),
+            seriesPath.getSchemaList().get(i / 2).getType().name());
+      }
+    }
 
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
-
-    return tsBlockBuilder.build();
+    return hasNonNullLastValue ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
   }
 
   private String getDatabaseName() {
