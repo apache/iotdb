@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class DeviceViewIntoOperator extends AbstractIntoOperator {
@@ -60,8 +61,9 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap,
       Map<String, Boolean> targetDeviceToAlignedMap,
       Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap,
-      Map<String, InputLocation> sourceColumnToInputLocationMap) {
-    super(operatorContext, child, null, sourceColumnToInputLocationMap);
+      Map<String, InputLocation> sourceColumnToInputLocationMap,
+      ExecutorService intoOperationExecutor) {
+    super(operatorContext, child, null, sourceColumnToInputLocationMap, intoOperationExecutor);
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
@@ -76,7 +78,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   @Override
   public TsBlock next() {
-    if (!writeOperationDone()) {
+    if (!handleWriteOperationFuture()) {
       return null;
     }
 

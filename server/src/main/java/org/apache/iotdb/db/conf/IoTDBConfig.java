@@ -683,6 +683,13 @@ public class IoTDBConfig {
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
+  /**
+   * How many thread will be set up to execute into operation. When <= 0, use max(1, CPU core number
+   * / 2).
+   */
+  private int intoOperationSubmitThreadCount =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -1895,6 +1902,14 @@ public class IoTDBConfig {
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public int getIntoOperationSubmitThreadCount() {
+    return intoOperationSubmitThreadCount;
+  }
+
+  public void setIntoOperationSubmitThreadCount(int intoOperationSubmitThreadCount) {
+    this.intoOperationSubmitThreadCount = intoOperationSubmitThreadCount;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {
