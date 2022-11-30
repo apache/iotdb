@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
@@ -44,16 +43,13 @@ public abstract class AbstractSeriesScanOperator implements DataSourceOperator {
   public AbstractSeriesScanOperator(
       PlanNodeId sourceId,
       SeriesScanUtil seriesScanUtil,
-      int subSensorSize,
-      OperatorContext context) {
+      OperatorContext context,
+      long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil = seriesScanUtil;
     this.resultBuilder = seriesScanUtil.getCachedTsBlockBuilder();
-
-    // time + all value columns
-    this.maxReturnSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override
