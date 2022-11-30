@@ -603,7 +603,7 @@ struct TUnsetSchemaTemplateReq{
 // ====================================================
 // Quota
 // ====================================================
-struct TShowSpaceQuotaResp{
+struct TSpaceQuotaResp{
   1: required common.TSStatus status
   2: optional map<string, common.TSpaceQuota> spaceQuota
 }
@@ -1091,6 +1091,8 @@ service IConfigNodeRPCService {
    **/
   common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 
-  TShowSpaceQuotaResp showSpaceQuota(list<string> storageGroups);
+  TSpaceQuotaResp showSpaceQuota(list<string> storageGroups);
+
+  TSpaceQuotaResp getSpaceQuota();
 }
 

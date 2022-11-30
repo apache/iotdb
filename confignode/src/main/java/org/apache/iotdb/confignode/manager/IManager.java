@@ -172,6 +172,13 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get ClusterQuotaManager
+   *
+   * @return ClusterQuotaManager instance
+   */
+  ClusterQuotaManager getClusterQuotaManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet

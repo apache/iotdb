@@ -972,6 +972,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
       resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
     }
+    if (req.getSchemaIds() != null) {
+      DataNodeSpaceQuotaManager.getInstance().updateUseSpaceQuota(req.getUseSpaceQuota());
+      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaIds()));
+    }
     return resp;
   }
 

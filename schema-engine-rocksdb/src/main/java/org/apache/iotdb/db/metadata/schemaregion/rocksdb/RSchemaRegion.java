@@ -1937,6 +1937,11 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public Integer countDeviceNumBySchemaRegion() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public String toString() {
     return String.format("database:[%s]", storageGroupFullPath);
   }

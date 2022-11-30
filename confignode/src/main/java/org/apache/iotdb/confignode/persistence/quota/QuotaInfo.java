@@ -73,6 +73,9 @@ public class QuotaInfo implements SnapshotProcessor {
           spaceQuota.setDiskSize(spaceQuotaLimit.get(storageGroup).getDiskSize());
         }
       }
+      if (!useSpaceQuota.containsKey(storageGroup)) {
+        useSpaceQuota.put(storageGroup, new TSpaceQuota());
+      }
       spaceQuotaLimit.put(storageGroup, spaceQuota);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -141,6 +144,10 @@ public class QuotaInfo implements SnapshotProcessor {
       spaceQuotaLimit.put(path, spaceQuota);
       size--;
     }
+  }
+
+  public Map<String, TSpaceQuota> getUseSpaceQuota() {
+    return useSpaceQuota;
   }
 
   public void clear() {

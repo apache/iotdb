@@ -131,8 +131,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -1028,6 +1028,11 @@ public class ConfigManager implements IManager {
     return cqManager;
   }
 
+  @Override
+  public ClusterQuotaManager getClusterQuotaManager() {
+    return clusterQuotaManager;
+  }
+
   /**
    * @param storageGroups the databases to check
    * @return List of PartialPath the databases that not exist
@@ -1333,11 +1338,18 @@ public class ConfigManager implements IManager {
         : status;
   }
 
-  public TShowSpaceQuotaResp showSpaceQuotaResp(List<String> storageGroups) {
+  public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.showSpaceQuota(storageGroups)
-        : new TShowSpaceQuotaResp(status);
+        : new TSpaceQuotaResp(status);
+  }
+
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.getSpaceQuota()
+        : new TSpaceQuotaResp(status);
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

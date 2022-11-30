@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -59,6 +60,8 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -208,7 +211,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
     IMNode deviceParent = pair.left;
     Template upperTemplate = pair.right;
-
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
@@ -410,7 +412,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
       String deviceName, IMNode deviceParent, Template upperTemplate)
-      throws PathAlreadyExistException, TemplateImcompatibeException {
+      throws PathAlreadyExistException, TemplateImcompatibeException, ExceedQuotaException {
     if (deviceParent == null) {
       // device is sg
       return new Pair<>(storageGroupMNode, null);
@@ -422,6 +424,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             deviceParent.getPartialPath().concatNode(deviceName).getFullPath(),
             upperTemplate.getName(),
             deviceName);
+      }
+      if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(storageGroupMNode.getName())) {
+        throw new ExceedQuotaException(
+            "The maximum number of devices has been used",
+            TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
       }
       device =
           store.addChild(deviceParent, deviceName, new InternalMNode(deviceParent, deviceName));

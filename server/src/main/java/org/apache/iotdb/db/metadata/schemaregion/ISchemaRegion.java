@@ -449,4 +449,7 @@ public interface ISchemaRegion {
 
   void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException;
   // endregion
+
+  // count
+  Integer countDeviceNumBySchemaRegion() throws MetadataException;
 }

@@ -69,8 +69,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -1131,13 +1131,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             .forEach(storageGroup -> storageGroups.add(storageGroup.toString()));
       }
       // Send request to some API server
-      TShowSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(storageGroups);
+      TSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(storageGroups);
       // build TSBlock
       ShowSpaceQuotaTask.buildTSBlock(showSpaceQuotaResp, future);
     } catch (Exception e) {
       future.setException(e);
     }
     return future;
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSpaceQuotaResp spaceQuotaResp = new TSpaceQuotaResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      // Send request to some API server
+      spaceQuotaResp = configNodeClient.getSpaceQuota();
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage(), e);
+    }
+    return spaceQuotaResp;
   }
 
   @Override

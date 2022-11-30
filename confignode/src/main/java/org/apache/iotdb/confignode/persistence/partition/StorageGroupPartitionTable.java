@@ -479,6 +479,16 @@ public class StorageGroupPartitionTable {
     return regionGroupMap.containsKey(regionId);
   }
 
+  public List<Integer> getSchemaIds() {
+    List<Integer> schemaIds = new ArrayList<>();
+    for (TConsensusGroupId consensusGroupId : regionGroupMap.keySet()) {
+      if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+        schemaIds.add(consensusGroupId.getId());
+      }
+    }
+    return schemaIds;
+  }
+
   public String getStorageGroupName() {
     return storageGroupName;
   }

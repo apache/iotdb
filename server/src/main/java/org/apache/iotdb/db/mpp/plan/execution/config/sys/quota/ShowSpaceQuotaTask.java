@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.sys.quota;
 
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.commons.enums.SpaceQuotaType;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -56,8 +56,7 @@ public class ShowSpaceQuotaTask implements IConfigTask {
     return configTaskExecutor.showSpaceQuota(showSpaceQuotaStatement);
   }
 
-  public static void buildTSBlock(
-      TShowSpaceQuotaResp resp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTSBlock(TSpaceQuotaResp resp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showSpaceQuotaColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)

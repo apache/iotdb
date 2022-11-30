@@ -892,6 +892,11 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public Integer countDeviceNumBySchemaRegion() {
+    throw new UnsupportedOperationException("countDeviceNumBySchemaRegion");
+  }
+
+  @Override
   public String toString() {
     return "TagSchemaRegion{"
         + "storageGroupFullPath='"

@@ -817,6 +817,10 @@ public class PartitionManager {
                     new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
+  public void getSchemaIds(List<String> storageGroups, Map<String, List<Integer>> schemaIds) {
+    partitionInfo.getSchemaIds(storageGroups, schemaIds);
+  }
+
   public ScheduledExecutorService getRegionMaintainer() {
     return regionMaintainer;
   }

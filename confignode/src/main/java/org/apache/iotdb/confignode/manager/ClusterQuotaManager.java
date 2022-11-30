@@ -26,8 +26,9 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,9 +36,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO: Manage quotas for storage groups
 public class ClusterQuotaManager {
@@ -46,10 +49,14 @@ public class ClusterQuotaManager {
 
   private final IManager configManager;
   private final QuotaInfo quotaInfo;
+  private final Map<Integer, Integer> deviceNum;
+  private final Map<String, List<Integer>> schemaIdMap;
 
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
     this.quotaInfo = quotaInfo;
+    deviceNum = new HashMap<>();
+    schemaIdMap = new HashMap<>();
   }
 
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
@@ -79,8 +86,8 @@ public class ClusterQuotaManager {
     }
   }
 
-  public TShowSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
-    TShowSpaceQuotaResp showSpaceQuotaResp = new TShowSpaceQuotaResp();
+  public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
+    TSpaceQuotaResp showSpaceQuotaResp = new TSpaceQuotaResp();
     if (storageGroups.isEmpty()) {
       showSpaceQuotaResp.setSpaceQuota(quotaInfo.getSpaceQuotaLimit());
     } else if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
@@ -94,5 +101,54 @@ public class ClusterQuotaManager {
     }
     showSpaceQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return showSpaceQuotaResp;
+  }
+
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSpaceQuotaResp spaceQuotaResp = new TSpaceQuotaResp();
+    if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
+      spaceQuotaResp.setSpaceQuota(quotaInfo.getSpaceQuotaLimit());
+    }
+    spaceQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return spaceQuotaResp;
+  }
+
+  public boolean hasSpaceQuotaLimit() {
+    return quotaInfo.getSpaceQuotaLimit().keySet().isEmpty();
+  }
+
+  public List<Integer> getSchemaIds() {
+    List<Integer> schemaIds = new ArrayList<>();
+    getPartitionManager()
+        .getSchemaIds(new ArrayList<>(quotaInfo.getSpaceQuotaLimit().keySet()), schemaIdMap);
+    schemaIdMap.values().forEach(schemaIdList -> schemaIds.addAll(schemaIdList));
+    return schemaIds;
+  }
+
+  public Map<String, TSpaceQuota> getUseSpaceQuota() {
+    return quotaInfo.getUseSpaceQuota();
+  }
+
+  public Map<Integer, Integer> getDeviceNum() {
+    return deviceNum;
+  }
+
+  public void updateDeviceNum() {
+    AtomicInteger deviceCount = new AtomicInteger();
+    for (Map.Entry<String, List<Integer>> entry : schemaIdMap.entrySet()) {
+      deviceCount.set(0);
+      entry
+          .getValue()
+          .forEach(
+              schemaId -> {
+                if (deviceNum.containsKey(schemaId)) {
+                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaId));
+                }
+              });
+      quotaInfo.getUseSpaceQuota().get(entry.getKey()).setDeviceNum(deviceCount.get());
+    }
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 }

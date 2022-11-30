@@ -838,6 +838,14 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.size();
   }
 
+  public void getSchemaIds(List<String> storageGroups, Map<String, List<Integer>> schemaIds) {
+    for (String storageGroup : storageGroups) {
+      if (storageGroupPartitionTables.containsKey(storageGroup)) {
+        schemaIds.put(storageGroup, storageGroupPartitionTables.get(storageGroup).getSchemaIds());
+      }
+    }
+  }
+
   public void clear() {
     nextRegionGroupId.set(-1);
     storageGroupPartitionTables.clear();

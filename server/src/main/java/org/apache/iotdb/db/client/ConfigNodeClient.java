@@ -102,8 +102,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -1755,10 +1755,26 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TShowSpaceQuotaResp showSpaceQuota(List<String> storageGroups) throws TException {
+  public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowSpaceQuotaResp resp = client.showSpaceQuota(storageGroups);
+        TSpaceQuotaResp resp = client.showSpaceQuota(storageGroups);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSpaceQuotaResp resp = client.getSpaceQuota();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

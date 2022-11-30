@@ -389,4 +389,18 @@ public class SchemaEngine {
   public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
     this.seriesNumerMonitor = seriesNumerMonitor;
   }
+
+  public Map<Integer, Integer> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Integer> deviceNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          deviceNum.put(entry.getKey().getId(), entry.getValue().countDeviceNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return deviceNum;
+  }
 }
