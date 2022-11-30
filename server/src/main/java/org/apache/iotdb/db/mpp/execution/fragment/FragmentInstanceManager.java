@@ -83,7 +83,7 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
     this.intoOperationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getIntoOperationSubmitThreadCount(),
+            IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
