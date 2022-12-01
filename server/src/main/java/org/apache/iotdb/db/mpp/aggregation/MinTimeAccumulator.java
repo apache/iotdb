@@ -82,6 +82,7 @@ public class MinTimeAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
+    hasCandidateResult = true;
     minTime = finalResult.getLong(0);
   }
 

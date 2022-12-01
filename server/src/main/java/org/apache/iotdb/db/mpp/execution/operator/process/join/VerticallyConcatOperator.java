@@ -99,7 +99,8 @@ public class VerticallyConcatOperator implements ProcessOperator {
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (empty(i)) {
         inputIndex[i] = 0;
-        if ((inputTsBlocks[i] = children.get(i).next()) == null) {
+        inputTsBlocks[i] = children.get(i).next();
+        if (empty(i)) {
           // child operator has not prepared TsBlock well
           return null;
         }
@@ -109,31 +110,30 @@ public class VerticallyConcatOperator implements ProcessOperator {
     }
 
     TimeColumn firstTimeColumn = inputTsBlocks[0].getTimeColumn();
-    boolean needToBuildTimeColumn = firstTimeColumn.getPositionCount() != 0;
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
-    for (int i = 0; i < maxRowCanBuild; i++) {
+    for (int row = 0; row < maxRowCanBuild; row++) {
       // build TimeColumn
-      if (needToBuildTimeColumn) {
-        timeColumnBuilder.writeLong(firstTimeColumn.getLong(inputIndex[0]));
-      }
+      timeColumnBuilder.writeLong(firstTimeColumn.getLong(inputIndex[0]));
+      tsBlockBuilder.declarePosition();
+    }
 
-      // build each ValueColumn in every inputTsBlock
-      int valueBuilderIndex = 0; // indicate which valueColumnBuilder should use
-      for (int j = 0; j < inputOperatorsCount; j++) {
-        int currTsBlockIndex = inputIndex[j];
-        for (Column column : inputTsBlocks[j].getValueColumns()) {
+    // build each ValueColumn in every inputTsBlock
+    int valueBuilderIndex = 0; // indicate which valueColumnBuilder should use
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      int currTsBlockIndex = inputIndex[i];
+      for (Column column : inputTsBlocks[i].getValueColumns()) {
+        for (int row = 0; row < maxRowCanBuild; row++) {
           if (column.isNull(currTsBlockIndex)) {
             valueColumnBuilders[valueBuilderIndex].appendNull();
           } else {
             valueColumnBuilders[valueBuilderIndex].writeObject(column.getObject(currTsBlockIndex));
           }
-          valueBuilderIndex++;
         }
-        inputIndex[j]++;
+        valueBuilderIndex++;
       }
-      tsBlockBuilder.declarePosition();
+      inputIndex[i] += maxRowCanBuild;
     }
     return tsBlockBuilder.build();
   }

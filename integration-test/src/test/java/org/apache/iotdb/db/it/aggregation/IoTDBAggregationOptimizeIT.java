@@ -32,7 +32,16 @@ import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.avg;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
+import static org.apache.iotdb.itbase.constant.TestConstant.extreme;
+import static org.apache.iotdb.itbase.constant.TestConstant.firstValue;
+import static org.apache.iotdb.itbase.constant.TestConstant.lastValue;
+import static org.apache.iotdb.itbase.constant.TestConstant.maxTime;
+import static org.apache.iotdb.itbase.constant.TestConstant.maxValue;
+import static org.apache.iotdb.itbase.constant.TestConstant.minTime;
+import static org.apache.iotdb.itbase.constant.TestConstant.minValue;
+import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -122,5 +131,31 @@ public class IoTDBAggregationOptimizeIT {
     String[] retArray = new String[] {"2,2,2,2,2,2,2,2,"};
     resultSetEqualWithDescOrderTest(
         "select count(s1),count(s2) from root.test.**", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testStaticAggregator() {
+    String[] expectedHeader =
+        new String[] {
+          count("root.test.1region_d1.s1"),
+          sum("root.test.1region_d1.s1"),
+          avg("root.test.1region_d1.s1"),
+          extreme("root.test.1region_d1.s1"),
+          maxValue("root.test.1region_d1.s1"),
+          minValue("root.test.1region_d1.s1"),
+          firstValue("root.test.1region_d1.s1"),
+          lastValue("root.test.1region_d1.s1"),
+          maxTime("root.test.1region_d1.s1"),
+          minTime("root.test.1region_d1.s1"),
+          count("root.test.2region_d1.s1")
+        };
+    String[] retArray = new String[] {"2,3.0,1.5,2,2,1,1,2,2,1,2,"};
+    resultSetEqualWithDescOrderTest(
+        "select count(1region_d1.s1),sum(1region_d1.s1),avg(1region_d1.s1),"
+            + "extreme(1region_d1.s1),max_value(1region_d1.s1),min_value(1region_d1.s1),"
+            + "first_value(1region_d1.s1),last_value(1region_d1.s1),max_time(1region_d1.s1),"
+            + "min_time(1region_d1.s1),count(2region_d1.s1) from root.test",
+        expectedHeader,
+        retArray);
   }
 }

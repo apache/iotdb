@@ -32,17 +32,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * This node is responsible for merge two or more TsBlocks has aligned. TsBlocks must have same time
- * column or no time column at all, and we can merge the value column directly without compare.
+ * This node is responsible for merge two or more TsBlocks have been aligned. TsBlocks must have
+ * same time column or no time column at all, and we can merge the value column directly without
+ * compare.
  */
 public class VerticallyConcatNode extends MultiChildProcessNode {
 
   public VerticallyConcatNode(PlanNodeId id) {
     super(id, new ArrayList<>());
-  }
-
-  public VerticallyConcatNode(PlanNodeId id, List<PlanNode> children) {
-    super(id, children);
   }
 
   @Override

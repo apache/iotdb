@@ -600,9 +600,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // the step of this series' aggregator will be `STATIC`
       List<SeriesAggregationSourceNode> sources = new ArrayList<>();
       Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
-      sourceGroup = splitAggregationSourceByPartition(root, context, sources, regionCountPerSeries);
+      boolean[] eachSeriesOneRegion = {true};
+      sourceGroup =
+          splitAggregationSourceByPartition(
+              root, context, sources, eachSeriesOneRegion, regionCountPerSeries);
 
-      if (sources.size() == root.getChildren().size()) {
+      if (eachSeriesOneRegion[0]) {
         newRoot = new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
       } else {
         List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
@@ -934,9 +937,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   /**
-   * This method is used for rewriting second step AggregationNode like GroupByLevelNode and
-   * GroupByTagNode, so the first step AggregationNode's step will be {@link
-   * AggregationStep#PARTIAL}
+   * This method is used for rewriting second step AggregationNode like GroupByLevelNode,
+   * GroupByTagNode and SlidingWindowAggregationNode, so the first step AggregationNode's step will
+   * be {@link AggregationStep#PARTIAL}
    */
   private Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>>
       splitAggregationSourceByPartition(PlanNode root, DistributionPlanContext context) {
@@ -970,6 +973,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           PlanNode root,
           DistributionPlanContext context,
           List<SeriesAggregationSourceNode> sources,
+          boolean[] eachSeriesOneRegion,
           Map<PartialPath, Integer> regionCountPerSeries) {
     // Step 0: get all SeriesAggregationSourceNode in PlanNodeTree
     List<SeriesAggregationSourceNode> rawSources = findAggregationSourceNode(root);
@@ -992,6 +996,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 if (isSingle) {
                   d.setStep(AggregationStep.SINGLE);
                 } else {
+                  eachSeriesOneRegion[0] = false;
                   d.setStep(AggregationStep.PARTIAL);
                   LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
                       d, context.queryContext.getTypeProvider());
