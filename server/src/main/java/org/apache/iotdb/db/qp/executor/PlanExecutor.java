@@ -28,6 +28,7 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
@@ -248,9 +249,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
-
-  private String AUDIT_LOGGER_LEVEL =
-      IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage();
+  private static boolean enableAuditLog =
+      AuditLogUtils.LOG_LEVEL_NONE.equals(IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage());
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
@@ -523,7 +523,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       // delete related data
-      if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+      if (!enableAuditLog) {
         AuditLogUtils.writeAuditLog(String.format("delete timeseries %s", pathToDelete));
       }
       DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
@@ -1382,7 +1382,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+    if (!enableAuditLog) {
       AuditLogUtils.writeAuditLog(
           String.format(
               "delete data from %s in [%s,%s]",
@@ -2158,7 +2158,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
-    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+    if (!enableAuditLog) {
       AuditLogUtils.writeAuditLog(
           String.format("delete timeseries %s", deleteTimeSeriesPlan.getPaths()));
     }
@@ -2240,7 +2240,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+    if (!enableAuditLog) {
       AuditLogUtils.writeAuditLog(
           String.format("set storage group to %s", setStorageGroupPlan.getPaths()));
     }
@@ -2255,7 +2255,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    if (!AuditLogUtils.LOG_LEVEL_NONE.equals(AUDIT_LOGGER_LEVEL)) {
+    if (!enableAuditLog) {
       AuditLogUtils.writeAuditLog(
           String.format("set storage group to %s", deleteStorageGroupPlan.getPaths()));
     }
