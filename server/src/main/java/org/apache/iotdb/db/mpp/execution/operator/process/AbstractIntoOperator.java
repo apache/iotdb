@@ -39,6 +39,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +55,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
 
   protected final OperatorContext operatorContext;
   protected final Operator child;
@@ -180,7 +184,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
       writeOperationFuture = null;
       return true;
-    } catch (ExecutionException | InterruptedException e) {
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          "{}: interrupted when processing write operation future with exception {}", this, e);
+      Thread.currentThread().interrupt();
+      throw new IntoProcessException(e.getMessage());
+    } catch (ExecutionException e) {
       throw new IntoProcessException(e.getMessage());
     }
   }
