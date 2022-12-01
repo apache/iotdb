@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -69,10 +68,11 @@ public class StatementMemorySourceVisitor
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
-  private boolean sourceNotExist(Analysis analysis) {
-    return (analysis.getSourceExpressions() == null || analysis.getSourceExpressions().isEmpty())
-        && (analysis.getDeviceToSourceExpressions() == null
-            || analysis.getDeviceToSourceExpressions().isEmpty());
+  private boolean sourceNotExist(StatementMemorySourceContext context) {
+    return (context.getAnalysis().getSourceExpressions() == null
+            || context.getAnalysis().getSourceExpressions().isEmpty())
+        && (context.getAnalysis().getDeviceToSourceExpressions() == null
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
   }
 
   @Override
@@ -84,7 +84,7 @@ public class StatementMemorySourceVisitor
             Collections.singletonList(
                 new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
             true);
-    if (sourceNotExist(context.getAnalysis())) {
+    if (sourceNotExist(context)) {
       return new StatementMemorySource(new TsBlock(0), header);
     }
     LogicalQueryPlan logicalPlan =
