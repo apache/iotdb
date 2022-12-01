@@ -20,30 +20,16 @@ package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class UpdateLastCacheOperator implements ProcessOperator {
-
-  private static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
-      new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT))
-          .build();
-
-  private OperatorContext operatorContext;
-
-  private Operator child;
+public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
@@ -53,14 +39,6 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   // dataType for queried time series;
   private String dataType;
 
-  private DataNodeSchemaCache lastCache;
-
-  private boolean needUpdateCache;
-
-  private TsBlockBuilder tsBlockBuilder;
-
-  private String databaseName;
-
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
@@ -68,25 +46,9 @@ public class UpdateLastCacheOperator implements ProcessOperator {
       TSDataType dataType,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {
-    this.operatorContext = operatorContext;
-    this.child = child;
+    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
-    this.lastCache = dataNodeSchemaCache;
-    this.needUpdateCache = needUpdateCache;
-    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
-  }
-
-  public UpdateLastCacheOperator() {}
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
   }
 
   @Override
@@ -120,45 +82,5 @@ public class UpdateLastCacheOperator implements ProcessOperator {
         tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
 
     return tsBlockBuilder.build();
-  }
-
-  private String getDatabaseName() {
-    if (databaseName == null) {
-      databaseName =
-          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getDataRegion()
-              .getStorageGroupName();
-    }
-    return databaseName;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return child.hasNext();
-  }
-
-  @Override
-  public boolean isFinished() {
-    return child.isFinished();
-  }
-
-  @Override
-  public void close() throws Exception {
-    child.close();
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize();
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
   }
 }

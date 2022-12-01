@@ -55,7 +55,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   private int cachedTsBlockRowIndex;
 
   // we must make sure that Operator in children has already been sorted
-  private final List<UpdateLastCacheOperator> children;
+  private final List<AbstractUpdateLastCacheOperator> children;
 
   private final OperatorContext operatorContext;
 
@@ -67,10 +67,13 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   private final Comparator<Binary> timeSeriesComparator;
 
+  // used to cache previous TsBlock get from children
+  private TsBlock previousTsBlock;
+
   public LastQuerySortOperator(
       OperatorContext operatorContext,
       TsBlock cachedTsBlock,
-      List<UpdateLastCacheOperator> children,
+      List<AbstractUpdateLastCacheOperator> children,
       Comparator<Binary> timeSeriesComparator) {
     this.cachedTsBlock = cachedTsBlock;
     this.cachedTsBlockSize = cachedTsBlock.getPositionCount();
@@ -80,6 +83,7 @@ public class LastQuerySortOperator implements ProcessOperator {
     this.currentIndex = 0;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder();
     this.timeSeriesComparator = timeSeriesComparator;
+    this.previousTsBlock = null;
   }
 
   @Override
@@ -107,8 +111,16 @@ public class LastQuerySortOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     // we have consumed up data from children Operator, just return all remaining cached data in
-    // cachedTsBlock and tsBlockBuilder
+    // cachedTsBlock, tsBlockBuilder and previousTsBlock
     if (currentIndex >= inputOperatorsCount) {
+      while (previousTsBlock != null) {
+        if (canUseDataFromCachedTsBlock(previousTsBlock)) {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
+        } else {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock);
+          previousTsBlock = null;
+        }
+      }
       TsBlock res = cachedTsBlock.subTsBlock(cachedTsBlockRowIndex);
       cachedTsBlockRowIndex = cachedTsBlockSize;
       if (!tsBlockBuilder.isEmpty()) {
@@ -126,24 +138,31 @@ public class LastQuerySortOperator implements ProcessOperator {
     int endIndex = getEndIndex();
 
     while ((System.nanoTime() - start < maxRuntime)
-        && currentIndex < endIndex
+        && (currentIndex < endIndex || previousTsBlock != null)
         && !tsBlockBuilder.isFull()) {
-      if (children.get(currentIndex).hasNext()) {
-        TsBlock tsBlock = children.get(currentIndex).next();
-        if (tsBlock == null) {
-          return null;
-        } else if (!tsBlock.isEmpty()) {
-          int index = 0;
-          while (index < tsBlock.getPositionCount()) {
-            if (canUseDataFromCachedTsBlock(tsBlock, index)) {
+      if (previousTsBlock != null) {
+        if (canUseDataFromCachedTsBlock(previousTsBlock)) {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
+        } else {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock);
+          previousTsBlock = null;
+        }
+      } else {
+        if (children.get(currentIndex).hasNext()) {
+          TsBlock tsBlock = children.get(currentIndex).next();
+          if (tsBlock == null) {
+            return null;
+          } else if (!tsBlock.isEmpty()) {
+            if (canUseDataFromCachedTsBlock(tsBlock)) {
               LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
+              previousTsBlock = tsBlock;
             } else {
-              LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, index++);
+              LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
             }
           }
         }
+        currentIndex++;
       }
-      currentIndex++;
     }
 
     TsBlock res = tsBlockBuilder.build();
@@ -155,7 +174,8 @@ public class LastQuerySortOperator implements ProcessOperator {
   public boolean hasNext() {
     return currentIndex < inputOperatorsCount
         || cachedTsBlockRowIndex < cachedTsBlockSize
-        || !tsBlockBuilder.isEmpty();
+        || !tsBlockBuilder.isEmpty()
+        || previousTsBlock != null;
   }
 
   @Override
@@ -201,14 +221,9 @@ public class LastQuerySortOperator implements ProcessOperator {
     return currentIndex + Math.min(MAX_DETECT_COUNT, inputOperatorsCount - currentIndex);
   }
 
-  private boolean canUseDataFromCachedTsBlock(TsBlock tsBlock, int indexOfPrevious) {
+  private boolean canUseDataFromCachedTsBlock(TsBlock tsBlock) {
     return cachedTsBlockRowIndex < cachedTsBlockSize
-        && compareTimeSeries(
-                cachedTsBlock,
-                cachedTsBlockRowIndex,
-                tsBlock,
-                indexOfPrevious,
-                timeSeriesComparator)
+        && compareTimeSeries(cachedTsBlock, cachedTsBlockRowIndex, tsBlock, 0, timeSeriesComparator)
             < 0;
   }
 }

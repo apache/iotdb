@@ -43,7 +43,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final List<UpdateLastCacheOperator> children;
+  private final List<AbstractUpdateLastCacheOperator> children;
 
   private final int inputOperatorsCount;
 
@@ -53,7 +53,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   public LastQueryOperator(
       OperatorContext operatorContext,
-      List<UpdateLastCacheOperator> children,
+      List<AbstractUpdateLastCacheOperator> children,
       TsBlockBuilder builder) {
     this.operatorContext = operatorContext;
     this.children = children;
@@ -109,9 +109,7 @@ public class LastQueryOperator implements ProcessOperator {
         if (tsBlock == null) {
           return null;
         } else if (!tsBlock.isEmpty()) {
-          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-            LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, i);
-          }
+          LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
         }
       }
       currentIndex++;

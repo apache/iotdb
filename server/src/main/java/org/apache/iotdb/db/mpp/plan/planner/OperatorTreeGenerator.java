@@ -82,6 +82,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MultiColumn
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
@@ -187,8 +188,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -211,8 +210,6 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperatorTreeGenerator.class);
-
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
@@ -1733,18 +1730,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
       }
     }
-    if (unCachedMeasurementIndexes.size() == 0) {
+    if (unCachedMeasurementIndexes.isEmpty()) {
       return null;
     } else {
       AlignedPath unCachedPath = new AlignedPath(alignedPath.getDevicePath());
       for (int i : unCachedMeasurementIndexes) {
         unCachedPath.addMeasurement(measurementList.get(i), alignedPath.getSchemaList().get(i));
       }
-      return createUpdateLastCacheOperator(node, unCachedPath, context);
+      return createAlignedUpdateLastCacheOperator(node, unCachedPath, context);
     }
   }
 
-  private AlignedUpdateLastCacheOperator createUpdateLastCacheOperator(
+  private AlignedUpdateLastCacheOperator createAlignedUpdateLastCacheOperator(
       AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     AlignedSeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, unCachedPath, context);
@@ -1755,7 +1752,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                UpdateLastCacheOperator.class.getSimpleName());
+                AlignedUpdateLastCacheOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new AlignedUpdateLastCacheOperator(
         operatorContext,
@@ -1813,11 +1810,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
 
-    List<UpdateLastCacheOperator> operatorList =
+    List<AbstractUpdateLastCacheOperator> operatorList =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .filter(Objects::nonNull)
-            .map(o -> (UpdateLastCacheOperator) o)
+            .map(o -> (AbstractUpdateLastCacheOperator) o)
             .collect(Collectors.toList());
 
     List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList =
