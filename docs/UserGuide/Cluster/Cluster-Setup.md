@@ -195,7 +195,6 @@ Start on Linux:
 ```
 bash sbin/start-standalone.sh
 ```
-It's recommended to use sudo here, for that the backstage logs may need sudo permission.
 
 Besides, with our shell, you can also directly kill these processes.
 
@@ -254,15 +253,15 @@ confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
 
 ### Remove DataNode
 
-Execute the remove-datanode shell on an active, and make sure that there are no less than the number of data/schema_replication_factor DataNodes in Cluster after removing.
+Execute the remove-datanode shell on an active DataNode, and make sure that the number of active DataNodes are no less than the number of data/schema_replication_factor in Cluster after removing.
 
 Remove on Linux:
 ```
 # Remove the DataNode with datanode_id
-./datanode/sbin/remove-datanode.sh <datanode_id>
+bash ./datanode/sbin/remove-datanode.sh <datanode_id>
 
 # Remove the DataNode with rpc address:port
-./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
+bash ./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
 ```
 
 Remove on Windows:
@@ -283,10 +282,10 @@ illustrate how to start, expand, and shrink a IoTDB Cluster.
 
 Unzip the apache-iotdb-1.0.0-all-bin.zip file to cluster0 folder.
 
-### 2. Starting a Minimum Cluster
+### 2. Start a Minimum Cluster
 
-Starting the Cluster version with one ConfigNode and one DataNode(1C1D),
-the default number of replica is one.
+Start the Cluster version with one ConfigNode and one DataNode(1C1D), and
+the default number of replicas is one.
 ```
 ./cluster0/sbin/start-confignode.sh
 ./cluster0/sbin/start-datanode.sh
@@ -294,7 +293,7 @@ the default number of replica is one.
 
 ### 3. Verify the Minimum Cluster
 
-+ The minimum cluster is successfully started. Start the Cli for verification.
++ If everything goes well, the minimum cluster will start successfully. Then, we can start the Cli for verification.
 ```
 ./cluster0/sbin/start-cli.sh
 ```
@@ -370,7 +369,7 @@ For folder cluster2:
 ### 6. Expanding the Cluster
 
 Expanding the Cluster to three ConfigNode and three DataNode(3C3D).
-The following commands can be executed in no particular order.
+The following commands can be executed in arbitrary order.
 
 ```
 ./cluster1/sbin/start-confignode.sh
@@ -381,7 +380,7 @@ The following commands can be executed in no particular order.
 
 ### 7. Verify Cluster expansion
 
-Execute the show cluster command, the result is shown below:
+Execute the show cluster command, then the result is shown below:
 ```
 IoTDB> show cluster
 +------+----------+-------+---------------+------------+
@@ -412,7 +411,7 @@ It costs 0.012s
 
 ### 9. Verify Cluster shrinkage
 
-Execute the show cluster command, the result is shown below:
+Execute the show cluster command, then the result is shown below:
 ```
 IoTDB> show cluster
 +------+----------+-------+---------------+------------+

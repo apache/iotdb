@@ -67,6 +67,8 @@ public class UDTFExample implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws IOException {
-    collector.putInt(row.getTime(), -row.getInt(0));
+    if (!row.isNull(0)) {
+      collector.putInt(row.getTime(), -row.getInt(0));
+    }
   }
 }

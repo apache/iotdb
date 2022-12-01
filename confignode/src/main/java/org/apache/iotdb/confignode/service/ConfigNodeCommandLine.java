@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -69,7 +70,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       try {
         // Startup environment check
-        StartupChecks checks = new StartupChecks().withDefaultTest();
+        StartupChecks checks = new StartupChecks(IoTDBConstant.CN_ROLE).withDefaultTest();
         checks.verify();
         // Do ConfigNode startup checks
         ConfigNodeStartupCheck.getInstance().startUpCheck();

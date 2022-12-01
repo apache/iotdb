@@ -1008,6 +1008,16 @@ Different configuration parameters take effect in the following three ways:
 |Default| 4                                                                         |
 |Effective| After restart system                                                      |
 
+* enable\_compaction\_validation
+
+|Name| enable\_compaction\_validation                                  |
+|:---:|:----------------------------------------------------------------|
+|Description| Enable the check of sequence tsfile time range after compaction |
+|Type| Boolean                                                         |
+|Default| true                                                            |
+|Effective| After restart system                                            |
+
+
 ### Write Ahead Log Configuration
 
 * wal\_mode
