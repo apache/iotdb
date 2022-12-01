@@ -1,0 +1,35 @@
+FROM openjdk:11-jre-slim
+ARG version=1.0.1-SNAPSHOT
+ARG target=apache-iotdb-${version}-confignode-bin
+
+RUN apt update \
+  && apt install lsof dos2unix procps unzip dumb-init -y \
+#  && apt remove unzip -y \
+  && apt autoremove -y \
+  && apt purge --auto-remove -y \
+  && apt clean -y
+
+COPY tmp/${target}.zip /
+RUN cd / && unzip ${target}.zip \
+  && rm ${target}.zip \
+  && mv ${target} iotdb
+
+ENV IOTDB_HOME=/iotdb VERSION=${version}
+WORKDIR ${IOTDB_HOME}/sbin
+
+COPY DockerCompose/replace-conf-from-env.sh .
+COPY DockerCompose/entrypoint.sh .
+RUN chmod +x *.sh && dos2unix *.sh \
+  && dos2unix ${IOTDB_HOME}/conf/*.sh
+
+EXPOSE 22277
+EXPOSE 22278
+VOLUME ${IOTDB_HOME}/data
+VOLUME ${IOTDB_HOME}/logs
+
+ENV PATH="${IOTDB_HOME}/sbin/:${IOTDB_HOME}/tools/:${PATH}"
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["bash", "-c", "entrypoint.sh confignode"]
+
+LABEL build_date="$build_date" maintainer="$maintainer" version="$version" commit_id="$commit_id"

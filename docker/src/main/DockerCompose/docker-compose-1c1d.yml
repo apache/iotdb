@@ -1,0 +1,23 @@
+version: "3"
+services:
+  iotdb-service:
+    image: apache/iotdb:1.0.1-SNAPSHOT-1c1d
+    hostname: iotdb-service
+    container_name: iotdb-service
+    ports:
+      - "26667:6667"
+    environment:
+      - cn_internal_address=iotdb-service
+      - cn_target_config_node_list=iotdb-service:22277
+      - dn_rpc_address=iotdb-service
+      - dn_target_config_node_list=iotdb-service:22277
+    volumes:
+        - ./data:/iotdb/data
+        - ./logs:/iotdb/logs
+    networks:
+      iotdb:
+        ipv4_address: 172.20.0.6
+
+networks:
+  iotdb:
+    external: true
