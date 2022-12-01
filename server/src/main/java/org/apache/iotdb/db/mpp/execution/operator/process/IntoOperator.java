@@ -86,6 +86,8 @@ public class IntoOperator extends AbstractIntoOperator {
       if (insertMultiTabletsInternally(false)) {
         return null;
       }
+
+      finished = true;
       return constructResultTsBlock();
     }
   }
