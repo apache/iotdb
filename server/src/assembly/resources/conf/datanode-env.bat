@@ -43,6 +43,8 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
+set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Diotdb.jmx.local=%JMX_LOCAL%
+
 for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
 	set system_cpu_cores=%%b
 )

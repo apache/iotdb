@@ -243,7 +243,7 @@ public class RegionWriteExecutor {
             response.setMessage(writeResponse.getStatus().message);
           }
         } else {
-          LOGGER.error(
+          LOGGER.warn(
               "Something wrong happened while calling consensus layer's write API.",
               writeResponse.getException());
           response.setAccepted(false);

@@ -154,7 +154,7 @@ $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
 ```
 这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

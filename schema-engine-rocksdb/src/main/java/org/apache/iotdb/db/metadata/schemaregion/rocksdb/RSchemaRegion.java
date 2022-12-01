@@ -44,7 +44,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
@@ -144,7 +143,6 @@ public class RSchemaRegion implements ISchemaRegion {
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
-  private IStorageGroupMNode storageGroupMNode;
   private int storageGroupPathLevel;
 
   public RSchemaRegion() throws MetadataException {
@@ -157,14 +155,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   public RSchemaRegion(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
-      RSchemaConfLoader rSchemaConfLoader)
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
-    this.storageGroupMNode = storageGroupMNode;
     init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);

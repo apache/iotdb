@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
@@ -246,20 +247,15 @@ public abstract class InsertNode extends WritePlanNode {
       throws QueryProcessException, MetadataException;
 
   /** Check whether data types are matched with measurement schemas */
-  protected void selfCheckDataTypes() throws DataTypeMismatchException {
+  protected void selfCheckDataTypes() throws DataTypeMismatchException, PathNotExistException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (measurementSchemas[i] == null
-          || (dataTypes[i] != measurementSchemas[i].getType()
-              && !checkAndCastDataType(i, measurementSchemas[i].getType()))) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw new DataTypeMismatchException(
-              devicePath.getFullPath(),
-              measurements[i],
-              dataTypes[i],
-              measurementSchemas[i].getType(),
-              getMinTime(),
-              getFirstValueOfIndex(i));
-        } else {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        // if enable partial insert, mark failed measurements with exception
+        if (measurementSchemas[i] == null) {
+          markFailedMeasurement(
+              i, new PathNotExistException(devicePath.concatNode(measurements[i]).getFullPath()));
+        } else if ((dataTypes[i] != measurementSchemas[i].getType()
+            && !checkAndCastDataType(i, measurementSchemas[i].getType()))) {
           markFailedMeasurement(
               i,
               new DataTypeMismatchException(
@@ -269,6 +265,20 @@ public abstract class InsertNode extends WritePlanNode {
                   measurementSchemas[i].getType(),
                   getMinTime(),
                   getFirstValueOfIndex(i)));
+        }
+      } else {
+        // if not enable partial insert, throw the exception directly
+        if (measurementSchemas[i] == null) {
+          throw new PathNotExistException(devicePath.concatNode(measurements[i]).getFullPath());
+        } else if ((dataTypes[i] != measurementSchemas[i].getType()
+            && !checkAndCastDataType(i, measurementSchemas[i].getType()))) {
+          throw new DataTypeMismatchException(
+              devicePath.getFullPath(),
+              measurements[i],
+              dataTypes[i],
+              measurementSchemas[i].getType(),
+              getMinTime(),
+              getFirstValueOfIndex(i));
         }
       }
     }
