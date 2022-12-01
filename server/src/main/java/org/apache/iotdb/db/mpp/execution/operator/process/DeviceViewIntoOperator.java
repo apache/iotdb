@@ -112,6 +112,8 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
         return null;
       }
+
+      finished = true;
       return resultTsBlockBuilder.build();
     }
   }

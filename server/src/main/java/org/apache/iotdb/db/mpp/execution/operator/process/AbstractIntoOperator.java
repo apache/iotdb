@@ -68,6 +68,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private final ExecutorService writeOperationExecutor;
   private ListenableFuture<TSStatus> writeOperationFuture;
 
+  protected boolean finished = false;
+
   private final long maxRetainedSize;
   private final long maxReturnSize;
 
@@ -245,9 +247,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return cachedTsBlock != null
-        || existNonEmptyStatement(insertTabletStatementGenerators)
-        || child.hasNext();
+    return !finished;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished;
   }
 
   @Override
@@ -259,11 +264,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       writeOperationFuture.cancel(true);
     }
     child.close();
-  }
-
-  @Override
-  public boolean isFinished() {
-    return !hasNext();
   }
 
   @Override
