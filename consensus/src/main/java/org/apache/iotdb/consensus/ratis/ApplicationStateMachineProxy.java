@@ -61,13 +61,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    groupId = id;
     retryPolicy =
         applicationStateMachine instanceof IStateMachine.RetryPolicy
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
-    snapshotStorage = new SnapshotStorage(applicationStateMachine);
+    snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     applicationStateMachine.start();
-    groupId = id;
   }
 
   @Override
