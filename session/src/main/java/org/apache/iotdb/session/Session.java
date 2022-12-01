@@ -448,6 +448,10 @@ public class Session implements ISession {
   public void setVersion(Version version) {
     this.version = version;
   }
+  @Override
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
+  }
 
   @Override
   public void setEnableAudit(boolean enableAudit) {
