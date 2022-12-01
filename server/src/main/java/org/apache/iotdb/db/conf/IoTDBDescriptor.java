@@ -898,11 +898,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_auditLog_write", String.valueOf(conf.isEnableAuditLogWrite()))));
 
-    conf.setEnableExternalService(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_external_service", String.valueOf(conf.isEnableExternalService()))));
-
     conf.setRemoteConfigPort(
         Integer.parseInt(
             properties.getProperty(

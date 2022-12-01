@@ -882,8 +882,6 @@ public class IoTDBConfig {
 
   private int remoteConfigPort = 8667;
 
-  private boolean enableExternalService = false;
-
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -2854,13 +2852,5 @@ public class IoTDBConfig {
 
   public void setRemoteConfigPort(int remoteConfigPort) {
     this.remoteConfigPort = remoteConfigPort;
-  }
-
-  public boolean isEnableExternalService() {
-    return enableExternalService;
-  }
-
-  public void setEnableExternalService(boolean enableExternalService) {
-    this.enableExternalService = enableExternalService;
   }
 }

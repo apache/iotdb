@@ -54,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ServiceLoader;
 
 public class IoTDB implements IoTDBMBean {
 
@@ -194,14 +193,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableExternalService()) {
-      ServiceLoader<IService> iServices = ServiceLoader.load(IService.class);
-      for (IService iService : iServices) {
-        registerManager.register(iService);
-      }
-    }
-
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
