@@ -71,6 +71,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
   protected boolean shouldVisitSubtree;
 
+  protected int patternIndexOfCurrentNode;
+
+  protected int lastMultiLevelWildcardIndexOfCurrentNode;
+
   // result variables
   protected N nextMatchedNode;
   protected int patternIndexOfMatchedNode;
@@ -124,19 +128,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private R consumeNextMatchedNode() {
     R result = generateResult();
-
-    // after the node be consumed, the subTree should be considered.
-    if (patternIndexOfMatchedNode == nodes.length) {
-      pushChildrenWhilePrefixMatch(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    } else if (patternIndexOfMatchedNode == nodes.length - 1) {
-      pushChildrenWhileTail(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    } else {
-      pushChildrenWhileInternal(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    }
-
     nextMatchedNode = null;
     return result;
   }
@@ -161,10 +152,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry<N> stackEntry;
-    int patternIndex;
     N node;
     Iterator<N> iterator;
-    int lastMultiLevelWildcardIndex;
     while (!visitorStack.isEmpty()) {
       stackEntry = visitorStack.peek();
       iterator = stackEntry.iterator;
@@ -175,68 +164,85 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       }
 
       node = iterator.next();
-      patternIndex = stackEntry.patternIndex;
-      lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
 
-      // only prefixMatch
-      if (patternIndex == nodes.length) {
-
-        shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
-
-        if (nextMatchedNode != null) {
-          saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-          return;
-        }
-
-        if (shouldVisitSubtree) {
-          pushChildrenWhilePrefixMatch(node, patternIndex, lastMultiLevelWildcardIndex);
-        }
-
-        continue;
-      }
-
-      if (checkIsMatch(patternIndex, node)) {
-        if (patternIndex == nodes.length - 1) {
+      if (checkIsMatch(node, stackEntry)) {
+        if (isFullMatch()) {
           shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
-
-          if (nextMatchedNode != null) {
-            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-            return;
-          }
-
-          if (shouldVisitSubtree) {
-            pushChildrenWhileTail(node, patternIndex, lastMultiLevelWildcardIndex);
-          }
         } else {
           shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
-
-          if (nextMatchedNode != null) {
-            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-            return;
-          }
-
-          if (shouldVisitSubtree) {
-            pushChildrenWhileInternal(node, patternIndex, lastMultiLevelWildcardIndex);
-          }
-        }
-      } else {
-        if (lastMultiLevelWildcardIndex == -1) {
-          continue;
-        }
-
-        int lastMatchIndex = findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
-
-        shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
-
-        if (nextMatchedNode != null) {
-          saveNextMatchedNodeContext(lastMatchIndex, lastMultiLevelWildcardIndex);
-          return;
         }
 
         if (shouldVisitSubtree) {
-          pushChildrenWhileInternal(node, lastMatchIndex, lastMultiLevelWildcardIndex);
+          pushChildren(node);
+        }
+
+        if (nextMatchedNode != null) {
+          saveNextMatchedNodeContext();
+          return;
         }
       }
+    }
+  }
+
+  protected boolean checkIsMatch(N node, VisitorStackEntry<N> stackEntry) {
+    int patternIndex = stackEntry.patternIndex;
+    int lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
+    // only prefixMatch
+    if (patternIndex == nodes.length) {
+      patternIndexOfCurrentNode = patternIndex;
+      lastMultiLevelWildcardIndexOfCurrentNode = lastMultiLevelWildcardIndex;
+      return true;
+    }
+
+    if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      patternIndexOfCurrentNode = patternIndex;
+      lastMultiLevelWildcardIndexOfCurrentNode = patternIndex;
+      return true;
+    } else {
+      if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        if (checkOneLevelWildcardMatch(nodes[patternIndex], node)) {
+          patternIndexOfCurrentNode = patternIndex;
+          lastMultiLevelWildcardIndexOfCurrentNode = lastMultiLevelWildcardIndex;
+          return true;
+        } else if (lastMultiLevelWildcardIndex == -1) {
+          return false;
+        } else {
+          patternIndexOfCurrentNode =
+              findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
+          lastMultiLevelWildcardIndexOfCurrentNode = lastMultiLevelWildcardIndex;
+          return true;
+        }
+      } else {
+        if (checkNameMatch(nodes[patternIndex], node)) {
+          patternIndexOfCurrentNode = patternIndex;
+          lastMultiLevelWildcardIndexOfCurrentNode = lastMultiLevelWildcardIndex;
+          return true;
+        } else if (lastMultiLevelWildcardIndex == -1) {
+          return false;
+        } else {
+          patternIndexOfCurrentNode =
+              findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
+          lastMultiLevelWildcardIndexOfCurrentNode = lastMultiLevelWildcardIndex;
+          return true;
+        }
+      }
+    }
+  }
+
+  protected boolean isFullMatch() {
+    return patternIndexOfCurrentNode >= nodes.length - 1;
+  }
+
+  private void pushChildren(N parent) {
+    if (patternIndexOfCurrentNode == nodes.length) {
+      pushChildrenWhilePrefixMatch(
+          parent, patternIndexOfCurrentNode, lastMultiLevelWildcardIndexOfCurrentNode);
+    } else if (patternIndexOfCurrentNode == nodes.length - 1) {
+      pushChildrenWhileTail(
+          parent, patternIndexOfCurrentNode, lastMultiLevelWildcardIndexOfCurrentNode);
+    } else {
+      pushChildrenWhileInternal(
+          parent, patternIndexOfCurrentNode, lastMultiLevelWildcardIndexOfCurrentNode);
     }
   }
 
@@ -244,10 +250,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * The context, mainly the matching info, of nextedMatchedNode should be saved. When the
    * nextedMatchedNode is consumed, the saved info will be used to process its subtree.
    */
-  private void saveNextMatchedNodeContext(
-      int patternIndexOfMatchedNode, int lastMultiLevelWildcardIndexOfMatchedNode) {
-    this.patternIndexOfMatchedNode = patternIndexOfMatchedNode;
-    this.lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndexOfMatchedNode;
+  private void saveNextMatchedNodeContext() {
+    this.patternIndexOfMatchedNode = patternIndexOfCurrentNode;
+    this.lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndexOfCurrentNode;
   }
 
   /**
@@ -346,6 +351,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           lastMultiLevelWildcardIndex);
     } else if (isPrefixMatch) {
       pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+    } else {
+      pushAllChildren(
+          node,
+          findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex) + 1,
+          lastMultiLevelWildcardIndex);
     }
   }
 
@@ -393,6 +403,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
               patternIndex,
               ancestorStack.size(),
               lastMultiLevelWildcardIndex));
+    } else {
+      ancestorStack.push(
+          new AncestorStackEntry<>(
+              parent,
+              visitorStack.peek().patternIndex,
+              visitorStack.peek().lastMultiLevelWildcardIndex));
+      visitorStack.push(
+          new VisitorStackEntry<>(
+              Collections.emptyListIterator(),
+              patternIndex,
+              ancestorStack.size(),
+              lastMultiLevelWildcardIndex));
     }
   }
 
@@ -424,6 +446,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   protected boolean checkIsMatch(int patternIndex, N node) {
+
     if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
       return true;
     } else if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
@@ -441,13 +464,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     return targetName.equals(node.getName());
   }
 
-  protected String[] generateFullPathNodes(N node) {
+  protected String[] generateFullPathNodes() {
     List<String> nodeNames = new ArrayList<>();
     Iterator<AncestorStackEntry<N>> iterator = ancestorStack.descendingIterator();
-    while (iterator.hasNext()) {
-      nodeNames.add(iterator.next().node.getName());
+    for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
+        i < size;
+        i++) {
+      if (iterator.hasNext()) {
+        nodeNames.add(iterator.next().node.getName());
+      }
     }
-    nodeNames.add(node.getName());
+    nodeNames.add(nextMatchedNode.getName());
     return nodeNames.toArray(new String[0]);
   }
 
