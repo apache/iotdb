@@ -623,7 +623,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                                   : AggregationStep.FINAL,
                               descriptor.getInputExpressions())));
         }
-        SeriesAggregationSourceNode seed = (SeriesAggregationScanNode) root.getChildren().get(0);
+        SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
         newRoot =
             new AggregationNode(
                 context.queryContext.getQueryId().genPlanNodeId(),
@@ -649,7 +649,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                             AggregationStep.INTERMEDIATE,
                             descriptor.getInputExpressions())));
       }
-      SeriesAggregationSourceNode seed = (SeriesAggregationScanNode) root.getChildren().get(0);
+      SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
       newRoot =
           new AggregationNode(
               context.queryContext.getQueryId().genPlanNodeId(),
