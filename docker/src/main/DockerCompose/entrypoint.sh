@@ -35,6 +35,7 @@ function on_stop(){
 
 trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 
+
 replace-conf-from-env.sh ${start_what}
 
 case "$1" in
