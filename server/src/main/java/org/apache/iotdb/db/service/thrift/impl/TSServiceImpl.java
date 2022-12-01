@@ -159,6 +159,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.AUTH_ENABLE_AUDIT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.CONSTANT_VERSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.SYSTEM_STORAGE_GROUP;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
@@ -345,16 +347,16 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
-    if (configuration != null && configuration.containsKey("version")) {
-      return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
+    if (configuration != null && configuration.containsKey(CONSTANT_VERSION)) {
+      return IoTDBConstant.ClientVersion.valueOf(configuration.get(CONSTANT_VERSION));
     }
     return IoTDBConstant.ClientVersion.V_0_12;
   }
 
   private boolean parseEnableAudit(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
-    if (configuration != null && configuration.containsKey("enableAudit")) {
-      return Boolean.parseBoolean(configuration.get("enableAudit"));
+    if (configuration != null && configuration.containsKey(AUTH_ENABLE_AUDIT)) {
+      return Boolean.parseBoolean(configuration.get(AUTH_ENABLE_AUDIT));
     }
     return true;
   }

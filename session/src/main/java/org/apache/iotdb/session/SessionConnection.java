@@ -92,6 +92,8 @@ public class SessionConnection {
   private EndPoint endPoint;
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
+  public static final String VERSION = "version";
+  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
 
   // TestOnly
   public SessionConnection() {}
@@ -140,8 +142,8 @@ public class SessionConnection {
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
-    openReq.putToConfiguration("version", session.version.toString());
-    openReq.putToConfiguration("enableAudit", String.valueOf(session.enableAudit));
+    openReq.putToConfiguration(VERSION, session.version.toString());
+    openReq.putToConfiguration(AUTH_ENABLE_AUDIT, String.valueOf(session.enableAudit));
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 

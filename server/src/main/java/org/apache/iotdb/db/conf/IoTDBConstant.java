@@ -210,6 +210,10 @@ public class IoTDBConstant {
 
   public static final String SYSTEM_STORAGE_GROUP = "root.__system";
 
+  public static final String CONSTANT_VERSION = "version";
+
+  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
+
   // client version number
   public enum ClientVersion {
     V_0_12,
