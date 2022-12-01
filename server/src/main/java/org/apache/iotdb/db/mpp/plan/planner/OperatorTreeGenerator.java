@@ -1383,7 +1383,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
     long maxReturnSize =
-        node.getChild().getOutputColumnNames().size()
+        (long) node.getChild().getOutputColumnNames().size()
             * (LongColumn.SIZE_IN_BYTES_PER_POSITION
                 + IntColumn.SIZE_IN_BYTES_PER_POSITION
                 + 256 * Byte.BYTES);
@@ -1448,7 +1448,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = statementSizePerLine * rowLimit;
     long maxReturnSize =
-        deviceToTargetPathDataTypeMap.size()
+        (long) deviceToTargetPathDataTypeMap.size()
             * (node.getChild().getOutputColumnNames().size() - 1)
             * (LongColumn.SIZE_IN_BYTES_PER_POSITION
                 + IntColumn.SIZE_IN_BYTES_PER_POSITION
