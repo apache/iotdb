@@ -2843,5 +2843,4 @@ public class IoTDBConfig {
   public void setEnableAuditLogWrite(boolean enableAuditLogWrite) {
     this.enableAuditLogWrite = enableAuditLogWrite;
   }
-
 }
