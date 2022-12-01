@@ -28,7 +28,6 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
@@ -250,7 +249,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   private static boolean enableAuditLog =
-      AuditLogUtils.LOG_LEVEL_NONE.equals(IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage());
+      AuditLogUtils.LOG_LEVEL_NONE.equals(
+          IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage());
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
