@@ -84,7 +84,7 @@ public abstract class ServiceProvider {
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final boolean enableAuditLog =
-      AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage());
+      !AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage());
 
   private final Planner planner;
   protected final IPlanExecutor executor;
@@ -210,7 +210,7 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage("Login successfully");
 
       SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
-      if (!enableAuditLog) {
+      if (enableAuditLog) {
         AuditLogUtils.writeAuditLog(
             String.format(
                 "%s: Login status: %s. User : %s, opens Session-%s",
@@ -221,7 +221,7 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
       session.setUsername(username);
-      if (!enableAuditLog) {
+      if (enableAuditLog) {
         AuditLogUtils.writeAuditLog(
             String.format("User %s opens Session failed with an incorrect password", username),
             true);
@@ -250,7 +250,7 @@ public abstract class ServiceProvider {
   }
 
   public boolean closeSession(IClientSession session) {
-    if (!enableAuditLog) {
+    if (enableAuditLog) {
       AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
     }
     return SessionTimeoutManager.getInstance().unregister(session);
@@ -270,7 +270,7 @@ public abstract class ServiceProvider {
     if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
     }
-    if (!enableAuditLog) {
+    if (enableAuditLog) {
       AuditLogUtils.writeAuditLog(
           String.format(
               "%s: receive close operation from Session %s",
