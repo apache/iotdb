@@ -22,8 +22,12 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -41,6 +45,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -2204,5 +2210,50 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
         .doCompaction();
 
     validateSeqFiles(true);
+  }
+
+  /**
+   * Cross space compaction select 1, 2, 3, 4, 5 seq file, but file 3 and 4 are being compacted and
+   * being deleted by other inner compaction task. Cross space compaction selector should abort this
+   * task.
+   */
+  @Test
+  public void testSelectingFilesWhenSomeFilesBeingDeleted()
+      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
+          InterruptedException, MergeException {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // seq file 3 and 4 are being compacted by inner space compaction
+    List<TsFileResource> sourceFiles = new ArrayList<>();
+    sourceFiles.add(seqResources.get(2));
+    sourceFiles.add(seqResources.get(3));
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(sourceFiles, true);
+    ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer(sourceFiles);
+    performer.setTargetFiles(targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
+    tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
+    CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
+
+    // start selecting files and then start a cross space compaction task
+    ICrossSpaceSelector selector =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getCrossCompactionSelector()
+            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    // In the process of getting the file list and starting to select files, the file list is
+    // updated (the file is deleted or the status is updated)
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(0, selected.size());
   }
 }

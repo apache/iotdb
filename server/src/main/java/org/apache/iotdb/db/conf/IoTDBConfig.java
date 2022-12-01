@@ -487,6 +487,8 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
+  private boolean enableCompactionValidation = true;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -3576,5 +3578,13 @@ public class IoTDBConfig {
 
   public void setSchemaRatisLogMaxMB(long schemaRatisLogMaxMB) {
     this.schemaRatisLogMaxMB = schemaRatisLogMaxMB;
+  }
+
+  public boolean isEnableCompactionValidation() {
+    return enableCompactionValidation;
+  }
+
+  public void setEnableCompactionValidation(boolean enableCompactionValidation) {
+    this.enableCompactionValidation = enableCompactionValidation;
   }
 }
