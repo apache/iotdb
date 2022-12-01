@@ -1063,6 +1063,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 4 |
 |改后生效方式| 重启服务生效|
 
+* enable\_compaction\_validation
+
+|名字| enable\_compaction\_validation |
+|:---:|:--|
+|描述| 开启合并结束后对顺序文件时间范围的检查 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式| 重启服务生效|
+
 ### 写前日志配置
 
 * wal\_mode
