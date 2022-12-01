@@ -250,12 +250,12 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public Object[] toArray() {
-    throw new NotImplementedException();
+    return getArrayList().toArray();
   }
 
   @Override
   public <T> T[] toArray(T[] a) {
-    throw new NotImplementedException();
+    return getArrayList().toArray(a);
   }
 
   @Override
