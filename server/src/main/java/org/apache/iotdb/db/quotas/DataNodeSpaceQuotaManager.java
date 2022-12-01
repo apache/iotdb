@@ -99,4 +99,19 @@ public class DataNodeSpaceQuotaManager {
   public void updateUseSpaceQuota(Map<String, TSpaceQuota> useSpaceQuota) {
     this.useSpaceQuota = useSpaceQuota;
   }
+
+  public boolean checkTimeSeriesNum(String storageGroup) {
+    storageGroup = IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + storageGroup;
+    TSpaceQuota spaceQuota = spaceQuotaLimit.get(storageGroup);
+    if (spaceQuota == null) {
+      return true;
+    } else if (spaceQuota.getTimeserieNum() == 0) {
+      return true;
+    }
+    int timeSeriesNum = useSpaceQuota.get(storageGroup).getTimeserieNum();
+    if (spaceQuota.getTimeserieNum() - timeSeriesNum > 0) {
+      return true;
+    }
+    return false;
+  }
 }

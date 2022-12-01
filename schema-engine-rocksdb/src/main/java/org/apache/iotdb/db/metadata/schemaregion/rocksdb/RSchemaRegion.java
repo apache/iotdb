@@ -1942,6 +1942,11 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public Integer countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public String toString() {
     return String.format("database:[%s]", storageGroupFullPath);
   }

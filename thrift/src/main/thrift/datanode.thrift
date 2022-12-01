@@ -225,6 +225,7 @@ struct THeartbeatResp {
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
   6: optional map<i32, i32> deviceNum
+  7: optional map<i32, i32> timeSeriesNum
 }
 
 struct TLoadSample {

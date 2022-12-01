@@ -41,18 +41,21 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   private final RouteBalancer routeBalancer;
   private final Map<Integer, Integer> deviceNum;
+  private final Map<Integer, Integer> timeSeriesNum;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
       Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
       RouteBalancer routeBalancer,
-      Map<Integer, Integer> deviceNum) {
+      Map<Integer, Integer> deviceNum,
+      Map<Integer, Integer> timeSeriesNum) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
     this.routeBalancer = routeBalancer;
     this.deviceNum = deviceNum;
+    this.timeSeriesNum = timeSeriesNum;
   }
 
   @Override
@@ -87,6 +90,11 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
             });
     if (heartbeatResp.getDeviceNum() != null) {
       heartbeatResp.getDeviceNum().forEach((schemaId, device) -> deviceNum.put(schemaId, device));
+    }
+    if (heartbeatResp.getTimeSeriesNum() != null) {
+      heartbeatResp
+          .getTimeSeriesNum()
+          .forEach((schemaId, timeSeries) -> timeSeriesNum.put(schemaId, timeSeries));
     }
   }
 

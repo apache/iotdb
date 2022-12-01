@@ -742,8 +742,9 @@ public class NodeManager {
                       empty -> new DataNodeHeartbeatCache()),
               getPartitionManager().getRegionGroupCacheMap(),
               getLoadManager().getRouteBalancer(),
-              getClusterQuotaManager().getDeviceNum());
-      getClusterQuotaManager().updateDeviceNum();
+              getClusterQuotaManager().getDeviceNum(),
+              getClusterQuotaManager().getTimeSeriesNum());
+      getClusterQuotaManager().updateUseSpaceQuota();
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

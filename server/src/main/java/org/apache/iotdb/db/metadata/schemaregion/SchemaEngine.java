@@ -403,4 +403,19 @@ public class SchemaEngine {
     }
     return deviceNum;
   }
+
+  public Map<Integer, Integer> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Integer> timeSeriesNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          timeSeriesNum.put(
+              entry.getKey().getId(), entry.getValue().countTimeSeriesNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return timeSeriesNum;
+  }
 }

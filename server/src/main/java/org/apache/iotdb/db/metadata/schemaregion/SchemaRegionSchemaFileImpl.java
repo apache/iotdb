@@ -1993,6 +1993,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         false);
   }
 
+  @Override
+  public Integer countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    return getAllTimeseriesCount(
+        new PartialPath(
+            IoTDBConstant.PATH_ROOT
+                + IoTDBConstant.PATH_SEPARATOR
+                + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+        false);
+  }
+
   // endregion
 
   private static class RecoverOperationResult {

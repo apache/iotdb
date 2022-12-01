@@ -897,6 +897,11 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public Integer countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException("countTimeSeriesNumBySchemaRegion");
+  }
+
+  @Override
   public String toString() {
     return "TagSchemaRegion{"
         + "storageGroupFullPath='"

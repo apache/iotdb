@@ -975,6 +975,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (req.getSchemaIds() != null) {
       DataNodeSpaceQuotaManager.getInstance().updateUseSpaceQuota(req.getUseSpaceQuota());
       resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaIds()));
+      resp.setTimeSeriesNum(schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaIds()));
     }
     return resp;
   }

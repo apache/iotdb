@@ -452,4 +452,6 @@ public interface ISchemaRegion {
 
   // count
   Integer countDeviceNumBySchemaRegion() throws MetadataException;
+
+  Integer countTimeSeriesNumBySchemaRegion() throws MetadataException;
 }

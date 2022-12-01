@@ -50,12 +50,14 @@ public class ClusterQuotaManager {
   private final IManager configManager;
   private final QuotaInfo quotaInfo;
   private final Map<Integer, Integer> deviceNum;
+  private final Map<Integer, Integer> timeSeriesNum;
   private final Map<String, List<Integer>> schemaIdMap;
 
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
     this.quotaInfo = quotaInfo;
     deviceNum = new HashMap<>();
+    timeSeriesNum = new HashMap<>();
     schemaIdMap = new HashMap<>();
   }
 
@@ -132,10 +134,16 @@ public class ClusterQuotaManager {
     return deviceNum;
   }
 
-  public void updateDeviceNum() {
+  public Map<Integer, Integer> getTimeSeriesNum() {
+    return timeSeriesNum;
+  }
+
+  public void updateUseSpaceQuota() {
     AtomicInteger deviceCount = new AtomicInteger();
+    AtomicInteger timeSeriesCount = new AtomicInteger();
     for (Map.Entry<String, List<Integer>> entry : schemaIdMap.entrySet()) {
       deviceCount.set(0);
+      timeSeriesCount.set(0);
       entry
           .getValue()
           .forEach(
@@ -143,8 +151,12 @@ public class ClusterQuotaManager {
                 if (deviceNum.containsKey(schemaId)) {
                   deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaId));
                 }
+                if (timeSeriesNum.containsKey(schemaId)) {
+                  timeSeriesCount.addAndGet(timeSeriesCount.get() + timeSeriesNum.get(schemaId));
+                }
               });
       quotaInfo.getUseSpaceQuota().get(entry.getKey()).setDeviceNum(deviceCount.get());
+      quotaInfo.getUseSpaceQuota().get(entry.getKey()).setTimeserieNum(timeSeriesCount.get());
     }
   }
 
