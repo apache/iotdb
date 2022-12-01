@@ -68,6 +68,13 @@ public class StatementMemorySourceVisitor
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
+  private boolean sourceNotExist(StatementMemorySourceContext context) {
+    return (context.getAnalysis().getSourceExpressions() == null
+            || context.getAnalysis().getSourceExpressions().isEmpty())
+            && (context.getAnalysis().getDeviceToSourceExpressions() == null
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
+  }
+
   @Override
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
@@ -77,8 +84,7 @@ public class StatementMemorySourceVisitor
             Collections.singletonList(
                 new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
             true);
-    if (context.getAnalysis().getSourceExpressions() == null
-        || context.getAnalysis().getSourceExpressions().isEmpty()) {
+    if (sourceNotExist(context)) {
       return new StatementMemorySource(new TsBlock(0), header);
     }
     LogicalQueryPlan logicalPlan =
