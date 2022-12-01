@@ -157,15 +157,21 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  /** Return true if the previous write task has done. */
-  protected boolean processWriteOperationFuture() {
+  /**
+   * Check whether the last write operation was executed successfully, and throw an exception if the
+   * execution failed, otherwise continue to execute the operator.
+   *
+   * @return true if the last write operation has been executed successfully.
+   */
+  protected boolean checkLastWriteOperation() {
     if (writeOperationFuture == null) {
       return true;
     }
 
     try {
       if (!writeOperationFuture.isDone()) {
-        return false;
+        throw new IllegalStateException(
+            "The operator cannot continue until the last write operation is done.");
       }
 
       TSStatus executionStatus = writeOperationFuture.get();
@@ -204,19 +210,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return false;
   }
 
-  private boolean existNonEmptyStatement(
-      List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
-    if (insertTabletStatementGenerators == null) {
-      return false;
-    }
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      if (generator != null && !generator.isEmpty()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   protected int findWritten(String device, String measurement) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (!Objects.equals(generator.getDevice(), device)) {
@@ -243,11 +236,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
-    if (writeOperationDone() && childBlocked.isDone()) {
+    boolean writeDone = writeOperationDone();
+    if (writeDone && childBlocked.isDone()) {
       return NOT_BLOCKED;
-    } else if (!writeOperationDone() && childBlocked.isDone()) {
+    } else if (childBlocked.isDone()) {
       return writeOperationFuture;
-    } else if (writeOperationDone() && !childBlocked.isDone()) {
+    } else if (writeDone) {
       return childBlocked;
     } else {
       return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));

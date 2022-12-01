@@ -87,7 +87,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   @Override
   public TsBlock next() {
-    if (!processWriteOperationFuture()) {
+    if (!checkLastWriteOperation()) {
       return null;
     }
 
