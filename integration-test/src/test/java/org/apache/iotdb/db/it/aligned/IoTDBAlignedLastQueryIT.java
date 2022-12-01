@@ -152,7 +152,6 @@ public class IoTDBAlignedLastQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          System.out.println(ans);
           assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
