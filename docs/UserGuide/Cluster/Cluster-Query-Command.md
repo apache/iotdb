@@ -23,7 +23,7 @@
 
 ## Show ConfigNode information
 
-Currently, IoTDB supports show ConfigNode information by the following SQL:
+Currently, IoTDB supports showing ConfigNode information by the following SQL:
 ```
 SHOW CONFIGNODES
 ```
@@ -45,12 +45,12 @@ It costs 0.030s
 ### ConfigNode status definition
 The ConfigNode statuses are defined as follows:
 
-- **Running**: The ConfigNode is running properly
-- **Unknown**: The ConfigNode doesn't report heartbeat properly
+- **Running**: The ConfigNode is running properly.
+- **Unknown**: The ConfigNode doesn't report heartbeat properly.
 
 ## Show DataNode information
 
-Currently, IoTDB supports show DataNode information by the following SQL:
+Currently, IoTDB supports showing DataNode information by the following SQL:
 ```
 SHOW DATANODES
 ```
@@ -92,10 +92,10 @@ The state machine of DataNode is shown in the figure below:
 
 The DataNode statuses are defined as follows:
 
-- **Running**: The DataNode is running properly and can be read and written
-- **Unknown**: The DataNode doesn't report heartbeat properly, the ConfigNode considers the DataNode as unreadable and un-writable
-- **Removing**: The DataNode is being removed from the cluster and cannot be read or written
-- **ReadOnly**: The remaining disk space of DataNode is lower than disk_warning_threshold(default is 5%), the DataNode can be read but can't be written or synchronize data
+- **Running**: The DataNode is running properly and is readable and writable.
+- **Unknown**: The DataNode doesn't report heartbeat properly, the ConfigNode considers the DataNode as unreadable and un-writable.
+- **Removing**: The DataNode is being removed from the cluster and is unreadable and un-writable.
+- **ReadOnly**: The remaining disk space of DataNode is lower than disk_warning_threshold(default is 5%), the DataNode is readable but un-writable and cannot synchronize data.
 
 ## Show all Node information
 
@@ -163,18 +163,18 @@ It costs 0.340s
 ## Show Region information
 
 The cluster uses a SchemaRegion/DataRegion as a unit for schema/data replication and data management. 
-The Region status and distribution is helpful for system operation and maintenance testing, as shown in the following scenario:
+The Region status and distribution is helpful for system operation and maintenance testing, as shown in the following scenarios:
 
 - Check which DataNodes are allocated to each Region in the cluster and whether they are balanced.
-- Check the partitions allocated to each Region in the cluster and whether they are balanced
-- Check which DataNodes are allocated by the leaders of each RegionGroup in the cluster and whether they are balanced
+- Check the partitions allocated to each Region in the cluster and whether they are balanced.
+- Check which DataNodes are allocated by the leaders of each RegionGroup in the cluster and whether they are balanced.
 
 Currently, IoTDB supports show Region information by the following SQL:
 
-- `SHOW REGIONS`: Show distribution of all Regions
-- `SHOW SCHEMA REGIONS`: Show distribution of all SchemaRegions
-- `SHOW DATA REGIONS`: Show distribution of all DataRegions
-- `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: Show Region distribution of specified StorageGroups
+- `SHOW REGIONS`: Show distribution of all Regions.
+- `SHOW SCHEMA REGIONS`: Show distribution of all SchemaRegions.
+- `SHOW DATA REGIONS`: Show distribution of all DataRegions.
+- `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: Show Region distribution of specified StorageGroups.
 
 Show distribution of all Regions:
 ```
@@ -296,12 +296,12 @@ It costs 0.009s
 ```
 
 ### Region status definition
-Region inherits the status of the DataNode where the Region resides. And Region states are defined as follows
+Region inherits the status of the DataNode where the Region resides. And Region states are defined as follows:
 
-- **Running**: The DataNode where the Region resides is running properly, the Region can be read and written
-- **Unknown**: The DataNode where the Region resides doesn't report heartbeat properly, the Region cannot be read or written
-- **Removing**: The DataNode where the Region resides is being removed from the cluster, the Region cannot be read or written
-- **ReadOnly**: The available disk space of the DataNode where the Region resides is lower than the disk_warning_threshold(5% by default). The Region can be read but can't be written and synchronize data
+- **Running**: The DataNode where the Region resides is running properly, the Region is readable and writable.
+- **Unknown**: The DataNode where the Region resides doesn't report heartbeat properly, the ConfigNode considers the Region is unreadable and un-writable.
+- **Removing**: The DataNode where the Region resides is being removed from the cluster, the Region is unreadable and un-writable.
+- **ReadOnly**: The available disk space of the DataNode where the Region resides is lower than the disk_warning_threshold(5% by default). The Region is readable but un-writable and cannot synchronize data.
 
 ## Show cluster slots information
 
