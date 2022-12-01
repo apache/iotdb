@@ -112,7 +112,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
-        <module>integration-test</module>
+        <!--        <module>integration-test</module>-->
         <module>consensus</module>
         <module>external-pipe-api</module>
         <module>library-udf</module>
