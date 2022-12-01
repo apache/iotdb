@@ -880,8 +880,6 @@ public class IoTDBConfig {
   // determines whether audit logs record IoTDB write operation
   private boolean enableAuditLogWrite = false;
 
-  private int remoteConfigPort = 8667;
-
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -2846,11 +2844,4 @@ public class IoTDBConfig {
     this.enableAuditLogWrite = enableAuditLogWrite;
   }
 
-  public int getRemoteConfigPort() {
-    return remoteConfigPort;
-  }
-
-  public void setRemoteConfigPort(int remoteConfigPort) {
-    this.remoteConfigPort = remoteConfigPort;
-  }
 }

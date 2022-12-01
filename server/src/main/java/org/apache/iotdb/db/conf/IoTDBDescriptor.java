@@ -898,11 +898,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_auditLog_write", String.valueOf(conf.isEnableAuditLogWrite()))));
 
-    conf.setRemoteConfigPort(
-        Integer.parseInt(
-            properties.getProperty(
-                "remote_config_port", String.valueOf(conf.getRemoteConfigPort()))));
-
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()
