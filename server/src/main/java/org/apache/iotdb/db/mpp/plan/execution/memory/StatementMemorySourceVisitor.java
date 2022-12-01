@@ -69,11 +69,10 @@ public class StatementMemorySourceVisitor
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
-  private boolean sourceNotExist(Analysis analysis){
-    return (analysis.getSourceExpressions() == null
-            || analysis.getSourceExpressions().isEmpty())&&
-            (analysis.getDeviceToSourceExpressions() == null
-                    || analysis.getDeviceToSourceExpressions().isEmpty());
+  private boolean sourceNotExist(Analysis analysis) {
+    return (analysis.getSourceExpressions() == null || analysis.getSourceExpressions().isEmpty())
+        && (analysis.getDeviceToSourceExpressions() == null
+            || analysis.getDeviceToSourceExpressions().isEmpty());
   }
 
   @Override
