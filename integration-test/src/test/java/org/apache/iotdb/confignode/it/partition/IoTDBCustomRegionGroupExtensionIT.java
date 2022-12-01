@@ -131,7 +131,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
   }
 
   @Test
-  public void testCustomDataRegionGroupExtensionPolicy()
+  public void testCustomRegionGroupExtensionPolicy()
       throws IOException, InterruptedException, TException, IllegalPathException {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
