@@ -57,7 +57,7 @@ public class Config {
   /** key of thrift max frame size */
   public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
 
-  static final String AUTH_ENABLE_AUDIT = "enableAudit";
+  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
 
   public static final boolean DEFAULT_ENABLE_AUDIT = true;
 }
