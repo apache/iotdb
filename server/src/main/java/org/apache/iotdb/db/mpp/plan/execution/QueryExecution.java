@@ -219,7 +219,7 @@ public class QueryExecution implements IQueryExecution {
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
-      logger.error("interrupted when waiting retry");
+      logger.warn("interrupted when waiting retry");
       Thread.currentThread().interrupt();
     }
     retryCount++;

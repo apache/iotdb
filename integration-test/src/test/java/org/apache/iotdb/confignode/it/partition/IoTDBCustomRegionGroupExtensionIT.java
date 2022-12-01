@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.confignode.it.partition;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -46,8 +50,11 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -55,6 +62,8 @@ public class IoTDBCustomRegionGroupExtensionIT {
 
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
+  private static String originalSchemaRegionGroupExtensionPolicy;
+  private static final String testSchemaRegionGroupExtensionPolicy = "CUSTOM";
   private static String originalDataRegionGroupExtensionPolicy;
   private static final String testDataRegionGroupExtensionPolicy = "CUSTOM";
 
@@ -62,8 +71,10 @@ public class IoTDBCustomRegionGroupExtensionIT {
   private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
+  private static int originalSchemaRegionGroupPerDatabase;
+  private static final int testSchemaRegionGroupPerDatabase = 2;
   private static int originalDataRegionGroupPerDatabase;
-  private static final int testDataRegionGroupPerDatabase = 2;
+  private static final int testDataRegionGroupPerDatabase = 3;
 
   private static int originalSchemaReplicationFactor;
   private static int originalDataReplicationFactor;
@@ -88,6 +99,12 @@ public class IoTDBCustomRegionGroupExtensionIT {
 
     originalTimePartitionInterval = CONF.getTimePartitionInterval();
 
+    originalSchemaRegionGroupExtensionPolicy = CONF.getSchemaRegionGroupExtensionPolicy();
+    CONF.setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy);
+
+    originalSchemaRegionGroupPerDatabase = CONF.getSchemaRegionGroupPerDatabase();
+    CONF.setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase);
+
     originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
     CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
 
@@ -106,13 +123,16 @@ public class IoTDBCustomRegionGroupExtensionIT {
     CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
+
+    CONF.setSchemaRegionGroupExtensionPolicy(originalSchemaRegionGroupExtensionPolicy);
+    CONF.setSchemaRegionGroupPerDatabase(originalSchemaRegionGroupPerDatabase);
     CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
     CONF.setDataRegionGroupPerDatabase(originalDataRegionGroupPerDatabase);
   }
 
   @Test
-  public void testCustomDataRegionGroupExtensionPolicy()
-      throws IOException, InterruptedException, TException {
+  public void testCustomRegionGroupExtensionPolicy()
+      throws IOException, InterruptedException, TException, IllegalPathException {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -134,21 +154,39 @@ public class IoTDBCustomRegionGroupExtensionIT {
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             dataPartitionTableResp.getStatus().getCode());
 
+        ByteBuffer patternTree = generatePatternTreeBuffer(new String[] {curSg + ".d1.s1"});
+        TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(patternTree);
+        TSchemaPartitionTableResp schemaPartitionTableResp =
+            client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            schemaPartitionTableResp.getStatus().getCode());
+
         /* Check the number of DataRegionGroups */
         TShowRegionResp showRegionReq = client.showRegion(new TShowRegionReq());
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
-        AtomicInteger regionCount = new AtomicInteger(0);
+        AtomicInteger dataRegionCount = new AtomicInteger(0);
+        AtomicInteger schemaRegionCount = new AtomicInteger(0);
         showRegionReq
             .getRegionInfoList()
             .forEach(
                 regionInfo -> {
-                  if (regionInfo.getStorageGroup().equals(curSg)) {
-                    regionCount.getAndIncrement();
+                  if (regionInfo.getStorageGroup().equals(curSg)
+                      && TConsensusGroupType.DataRegion.equals(
+                          regionInfo.getConsensusGroupId().getType())) {
+                    dataRegionCount.getAndIncrement();
+                  }
+                  if (regionInfo.getStorageGroup().equals(curSg)
+                      && TConsensusGroupType.SchemaRegion.equals(
+                          regionInfo.getConsensusGroupId().getType())) {
+                    schemaRegionCount.getAndIncrement();
                   }
                 });
         Assert.assertEquals(
-            testDataRegionGroupPerDatabase * testReplicationFactor, regionCount.get());
+            testDataRegionGroupPerDatabase * testReplicationFactor, dataRegionCount.get());
+        Assert.assertEquals(
+            testSchemaRegionGroupPerDatabase * testReplicationFactor, schemaRegionCount.get());
       }
     }
   }

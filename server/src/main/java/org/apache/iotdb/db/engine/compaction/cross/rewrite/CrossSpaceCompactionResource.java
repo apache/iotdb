@@ -23,9 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * CrossSpaceCompactionResource manages files and caches of readers to avoid unnecessary object
@@ -39,13 +37,8 @@ public class CrossSpaceCompactionResource {
 
   public CrossSpaceCompactionResource(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles;
     filterUnseqResource(unseqFiles);
-  }
-
-  /** Fitler the seq files into the compaction. Seq files should be not deleted or over ttl. */
-  private boolean filterSeqResource(TsFileResource res) {
-    return !res.isDeleted() && res.stillLives(ttlLowerBound);
   }
 
   /**
@@ -65,9 +58,9 @@ public class CrossSpaceCompactionResource {
   }
 
   public CrossSpaceCompactionResource(
-      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
-    this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles;
     filterUnseqResource(unseqFiles);
   }
 
