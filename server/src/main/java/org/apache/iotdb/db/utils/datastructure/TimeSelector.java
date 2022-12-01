@@ -66,7 +66,6 @@ public class TimeSelector {
 
     while (minTime == lastTime) {
       minTime = timeHeap[0];
-
       timeHeap[0] = timeHeap[heapSize - 1];
       percolateDown(0, timeHeap[0]);
       --heapSize;

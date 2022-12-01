@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,9 +37,22 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   private final OrderByParameter mergeOrderParameter;
 
+  private final List<String> devices;
+
+  public MergeSortNode(PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> devices) {
+    super(id);
+    this.mergeOrderParameter = mergeOrderParameter;
+    this.devices = devices;
+  }
+
   public MergeSortNode(PlanNodeId id, OrderByParameter mergeOrderParameter) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
+    this.devices = new ArrayList<>();
+  }
+
+  public void addDevice(String device) {
+    this.devices.add(device);
   }
 
   public OrderByParameter getMergeOrderParameter() {
@@ -46,16 +60,12 @@ public class MergeSortNode extends MultiChildProcessNode {
   }
 
   public List<String> getDevices() {
-    List<String> devices = new ArrayList<>();
-    for (PlanNode child : children) {
-      devices.add(((SingleDeviceViewNode) child).getDevice());
-    }
     return devices;
   }
 
   @Override
   public PlanNode clone() {
-    return new MergeSortNode(getPlanNodeId(), getMergeOrderParameter());
+    return new MergeSortNode(getPlanNodeId(), getMergeOrderParameter(), devices);
   }
 
   @Override
@@ -76,18 +86,32 @@ public class MergeSortNode extends MultiChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.MERGE_SORT.serialize(byteBuffer);
     mergeOrderParameter.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(devices.size(), byteBuffer);
+    for (String device : devices) {
+      ReadWriteIOUtils.write(device, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.MERGE_SORT.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String device : devices) {
+      ReadWriteIOUtils.write(device, stream);
+    }
   }
 
   public static MergeSortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
+    int deviceSize = ReadWriteIOUtils.read(byteBuffer);
+    List<String> devices = new ArrayList<>();
+    while (deviceSize > 0) {
+      devices.add(ReadWriteIOUtils.readString(byteBuffer));
+      deviceSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new MergeSortNode(planNodeId, orderByParameter);
+    return new MergeSortNode(planNodeId, orderByParameter, devices);
   }
 
   @Override

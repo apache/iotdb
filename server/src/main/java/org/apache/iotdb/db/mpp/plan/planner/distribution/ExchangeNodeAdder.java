@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -215,6 +216,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    if (isAggregationQuery()) {
+      return processMergeSortWithAggregation(node, context);
+    }
     return processMultiChildNode(node, context);
   }
 
@@ -268,20 +272,62 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processMultiChildNode(node, context);
   }
 
-  private PlanNode processDeviceViewWithAggregation(DeviceViewNode node, NodeGroupContext context) {
-    // group all the children by DataRegion distribution
+  private Map<TRegionReplicaSet, DeviceViewGroup> getDeviceViewGroup(
+      PlanNode node, NodeGroupContext context, List<String> devices) {
     Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap = new HashMap<>();
-    for (int i = 0; i < node.getDevices().size(); i++) {
-      String device = node.getDevices().get(i);
+    for (int i = 0; i < devices.size(); i++) {
+      String device = devices.get(i);
       PlanNode rawChildNode = node.getChildren().get(i);
       PlanNode visitedChild = visit(rawChildNode, context);
       TRegionReplicaSet region = context.getNodeDistribution(visitedChild.getPlanNodeId()).region;
       DeviceViewGroup group = deviceViewGroupMap.computeIfAbsent(region, DeviceViewGroup::new);
       group.addChild(device, visitedChild);
     }
+    return deviceViewGroupMap;
+  }
+
+  private PlanNode constructReturnResult(
+      OrderByParameter orderByParameter,
+      NodeGroupContext context,
+      List<String> devices,
+      List<PlanNode> deviceViewNodeList) {
+    if (deviceViewNodeList.size() == 1) {
+      return deviceViewNodeList.get(0);
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(), orderByParameter, devices);
+
+    // Each child has different TRegionReplicaSet, so we can select any one from
+    // its child
+    mergeSortNode.addChild(deviceViewNodeList.get(0));
+    context.putNodeDistribution(
+        mergeSortNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_SOME_CHILD,
+            context.getNodeDistribution(deviceViewNodeList.get(0).getPlanNodeId()).region));
+
+    // Add ExchangeNode for any other child except first one
+    for (int i = 1; i < deviceViewNodeList.size(); i++) {
+      PlanNode child = deviceViewNodeList.get(i);
+      ExchangeNode exchangeNode =
+          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.setChild(child);
+      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+      mergeSortNode.addChild(exchangeNode);
+    }
+    return mergeSortNode;
+  }
+
+  private PlanNode processDeviceViewWithAggregation(DeviceViewNode node, NodeGroupContext context) {
+    // group all the children by DataRegion distribution
+    List<String> devices = node.getDevices();
+    Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap =
+        getDeviceViewGroup(node, context, devices);
 
     // Generate DeviceViewNode for each group
-    List<DeviceViewNode> deviceViewNodeList = new ArrayList<>();
+    List<PlanNode> deviceViewNodeList = new ArrayList<>();
     for (DeviceViewGroup group : deviceViewGroupMap.values()) {
       DeviceViewNode deviceViewNode =
           new DeviceViewNode(
@@ -301,35 +347,41 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       deviceViewNodeList.add(deviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1) {
-      return deviceViewNodeList.get(0);
+    return constructReturnResult(
+        node.getMergeOrderParameter(), context, devices, deviceViewNodeList);
+  }
+
+  private PlanNode processMergeSortWithAggregation(MergeSortNode node, NodeGroupContext context) {
+    // group all the children by DataRegion distribution
+    List<String> devices = node.getDevices();
+    Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap =
+        getDeviceViewGroup(node, context, devices);
+
+    // Generate planNode for each group
+    List<PlanNode> planNodeList = new ArrayList<>();
+    for (DeviceViewGroup group : deviceViewGroupMap.values()) {
+      if (group.children.size() == 1) {
+        planNodeList.add(group.children.get(0));
+        continue;
+      }
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              devices);
+      for (int i = 0; i < group.devices.size(); i++) {
+        mergeSortNode.addChild(group.children.get(i));
+      }
+      context.putNodeDistribution(
+          mergeSortNode.getPlanNodeId(),
+          new NodeDistribution(
+              NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+              context.getNodeDistribution(mergeSortNode.getChildren().get(0).getPlanNodeId())
+                  .region));
+      planNodeList.add(mergeSortNode);
     }
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getDevices());
-
-    // Each child of deviceMergeNode has different TRegionReplicaSet, so we can select any one from
-    // its child
-    deviceMergeNode.addChild(deviceViewNodeList.get(0));
-    context.putNodeDistribution(
-        deviceMergeNode.getPlanNodeId(),
-        new NodeDistribution(
-            NodeDistributionType.SAME_WITH_SOME_CHILD,
-            context.getNodeDistribution(deviceViewNodeList.get(0).getPlanNodeId()).region));
-
-    // Add ExchangeNode for any other child except first one
-    for (int i = 1; i < deviceViewNodeList.size(); i++) {
-      PlanNode child = deviceViewNodeList.get(i);
-      ExchangeNode exchangeNode =
-          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-      exchangeNode.setChild(child);
-      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-      deviceMergeNode.addChild(exchangeNode);
-    }
-    return deviceMergeNode;
+    return constructReturnResult(node.getMergeOrderParameter(), context, devices, planNodeList);
   }
 
   private static class DeviceViewGroup {

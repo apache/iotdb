@@ -16,34 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
+package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
 
-public class TimeMergeToolKit implements MergeSortToolKit {
+public class TimeMergeUtils extends MergeSortUtils {
+  Long[] startKey;
+  Long[] endKey;
 
-  Ordering deviceOrdering;
-  Ordering timeOrdering;
-  long[] startKey;
-  long[] endKey;
-  TsBlock[] tsBlocks;
-  boolean[] tsBlocksExist;
-  long targetKey;
-  int tsBlockCount;
-
-  public TimeMergeToolKit(List<SortItem> sortItemList, int childNum) {
+  public TimeMergeUtils(List<SortItem> sortItemList, int childNum) {
     this.deviceOrdering = sortItemList.get(1).getOrdering();
     this.timeOrdering = sortItemList.get(0).getOrdering();
     this.tsBlockCount = childNum;
-    this.startKey = new long[tsBlockCount];
-    this.endKey = new long[tsBlockCount];
+    this.startKey = new Long[tsBlockCount];
+    this.endKey = new Long[tsBlockCount];
     this.tsBlocksExist = new boolean[tsBlockCount];
     this.tsBlocks = new TsBlock[tsBlockCount];
+    this.keyValueSelector = new KeyValueSelector(tsBlockCount);
   }
 
   @Override
@@ -67,37 +61,10 @@ public class TimeMergeToolKit implements MergeSortToolKit {
 
   @Override
   public List<Integer> getTargetTsBlockIndex() {
-    List<Integer> targetTsBlockIndex = new LinkedList<>();
     if (tsBlockCount == 1) {
-      targetTsBlockIndex.add(0);
-      return targetTsBlockIndex;
+      return Collections.singletonList(0);
     }
-    // find the targetValue in TsBlocks
-    // it is:
-    // (1) the smallest endKey when ordering is asc
-    // (2) the biggest endKey when ordering is desc
-    // which is controlled by greater method
-    long minEndKey = Long.MIN_VALUE;
-    int index = Integer.MAX_VALUE;
-    for (int i = 0; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i]) {
-        minEndKey = endKey[i];
-        index = i;
-        break;
-      }
-    }
-    for (int i = index + 1; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i] && greater(minEndKey, endKey[i])) {
-        minEndKey = endKey[i];
-      }
-    }
-    this.targetKey = minEndKey;
-    for (int i = 0; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i] && (greater(minEndKey, startKey[i]) || minEndKey == startKey[i])) {
-        targetTsBlockIndex.add(i);
-      }
-    }
-    return targetTsBlockIndex;
+    return getTargetIndex(startKey, endKey, (a, b) -> timeOrdering == Ordering.ASC ? a > b : a < b);
   }
 
   /** Comparator */
@@ -115,14 +82,10 @@ public class TimeMergeToolKit implements MergeSortToolKit {
     }
   }
 
-  public boolean greater(long t, long s) {
-    return timeOrdering == Ordering.ASC ? t > s : t < s;
-  }
-
   @Override
   public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
     return timeOrdering == Ordering.ASC
-        ? tsBlockIterator.currentTime() <= targetKey
-        : tsBlockIterator.currentTime() >= targetKey;
+        ? tsBlockIterator.currentTime() <= endKey[targetKeyIndex]
+        : tsBlockIterator.currentTime() >= endKey[targetKeyIndex];
   }
 }

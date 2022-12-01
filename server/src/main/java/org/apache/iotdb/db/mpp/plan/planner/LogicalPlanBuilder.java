@@ -574,6 +574,7 @@ public class LogicalPlanBuilder {
                 deviceToMeasurementIndexesMap.get(deviceName));
         singleDeviceViewNode.addChild(subPlan);
         mergeSortNode.addChild(singleDeviceViewNode);
+        mergeSortNode.addDevice(deviceName);
       }
       this.root = mergeSortNode;
     }

@@ -16,28 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
+package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class DeviceMergeToolKit implements MergeSortToolKit {
+public class DeviceMergeUtils extends MergeSortUtils {
 
-  Ordering timeOrdering;
-  Ordering deviceOrdering;
   String[] startKey;
   String[] endKey;
-  TsBlock[] tsBlocks;
-  boolean[] tsBlocksExist;
-  String targetKey;
-  int tsBlockCount;
 
-  public DeviceMergeToolKit(List<SortItem> sortItemList, int childNum) {
+  public DeviceMergeUtils(List<SortItem> sortItemList, int childNum) {
     this.deviceOrdering = sortItemList.get(0).getOrdering();
     this.timeOrdering = sortItemList.get(1).getOrdering();
     this.tsBlockCount = childNum;
@@ -45,6 +39,7 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     this.endKey = new String[tsBlockCount];
     this.tsBlocksExist = new boolean[tsBlockCount];
     this.tsBlocks = new TsBlock[tsBlockCount];
+    this.keyValueSelector = new KeyValueSelector(tsBlockCount);
   }
 
   @Override
@@ -68,37 +63,13 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
 
   @Override
   public List<Integer> getTargetTsBlockIndex() {
-    List<Integer> targetTsBlockIndex = new LinkedList<>();
     if (tsBlockCount == 1) {
-      targetTsBlockIndex.add(0);
-      return targetTsBlockIndex;
+      return Collections.singletonList(0);
     }
-    // find the targetValue in TsBlocks
-    // it is:
-    // (1) the smallest endKey when ordering is asc
-    // (2) the biggest endKey when ordering is desc
-    // which is controlled by greater method
-    String minEndKey = "";
-    int index = Integer.MAX_VALUE;
-    for (int i = 0; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i]) {
-        minEndKey = endKey[i];
-        index = i;
-        break;
-      }
-    }
-    for (int i = index + 1; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i] && greater(minEndKey, endKey[i])) {
-        minEndKey = endKey[i];
-      }
-    }
-    this.targetKey = minEndKey;
-    for (int i = 0; i < tsBlockCount; i++) {
-      if (tsBlocksExist[i] && (greater(minEndKey, startKey[i]) || minEndKey.equals(startKey[i]))) {
-        targetTsBlockIndex.add(i);
-      }
-    }
-    return targetTsBlockIndex;
+    return getTargetIndex(
+        startKey,
+        endKey,
+        (a, b) -> deviceOrdering == Ordering.ASC ? a.compareTo(b) > 0 : a.compareTo(b) < 0);
   }
 
   /** Comparator */
@@ -116,14 +87,10 @@ public class DeviceMergeToolKit implements MergeSortToolKit {
     }
   }
 
-  public boolean greater(String t, String s) {
-    return deviceOrdering == Ordering.ASC ? t.compareTo(s) > 0 : t.compareTo(s) < 0;
-  }
-
   @Override
   public boolean satisfyCurrentEndValue(TsBlock.TsBlockSingleColumnIterator tsBlockIterator) {
     return deviceOrdering == Ordering.ASC
-        ? targetKey.compareTo(tsBlockIterator.currentValue().toString()) >= 0
-        : targetKey.compareTo(tsBlockIterator.currentValue().toString()) <= 0;
+        ? endKey[targetKeyIndex].compareTo(tsBlockIterator.currentValue().toString()) >= 0
+        : endKey[targetKeyIndex].compareTo(tsBlockIterator.currentValue().toString()) <= 0;
   }
 }

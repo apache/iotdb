@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
@@ -85,6 +86,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, DistributionPlanContext context) {
+
+    if (isAggregationQuery()) {
+      return processMergeSortWithAggregation(node, context);
+    }
+
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
     List<String> devices = node.getDevices();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
@@ -99,7 +105,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     MergeSortNode mergeSortNode =
         new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            devices);
 
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
       List<PlanNode> childrenInRegion = new ArrayList<>();
@@ -110,13 +118,39 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
       MergeSortNode regionMergeSortNode =
           new MergeSortNode(
-              context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              devices);
       for (PlanNode planNode : childrenInRegion) {
         regionMergeSortNode.addChild(planNode);
       }
       mergeSortNode.addChild(regionMergeSortNode);
     }
     return mergeSortNode;
+  }
+
+  private PlanNode processMergeSortWithAggregation(
+      MergeSortNode node, DistributionPlanContext context) {
+    MergeSortNode newRoot = cloneMergeSortNodeWithoutChild(node, context);
+    for (int i = 0; i < node.getChildren().size(); i++) {
+      newRoot.addChild(rewrite(node.getChildren().get(i), context));
+    }
+    return newRoot;
+  }
+
+  private MergeSortNode cloneMergeSortNodeWithoutChild(
+      MergeSortNode node, DistributionPlanContext context) {
+    return new MergeSortNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getMergeOrderParameter(),
+        node.getDevices());
+  }
+
+  @Override
+  public PlanNode visitSingleDeviceView(
+      SingleDeviceViewNode node, DistributionPlanContext context) {
+    node.setChild(rewrite(node.getChild(), context));
+    return node;
   }
 
   @Override
@@ -146,7 +180,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     MergeSortNode mergeSortNode =
         new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getMergeOrderParameter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getDevices());
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
