@@ -20,6 +20,7 @@ package org.apache.iotdb.backup.core.pipeline.out.source;
 
 import org.apache.iotdb.backup.core.model.DeviceModel;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
+import org.apache.iotdb.backup.core.model.TimeseriesModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSource;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.CompressEnum;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class OutCompressDataSource
     extends PipeSource<
@@ -111,8 +113,8 @@ public class OutCompressDataSource
    * @param pair
    * @return
    */
-  public Flux<Pair<DeviceModel, List<String>>> initOutputStream(
-      Pair<DeviceModel, List<String>> pair,
+  public Flux<Pair<DeviceModel, List<TimeseriesModel>>> initOutputStream(
+      Pair<DeviceModel, List<TimeseriesModel>> pair,
       AtomicLong fileNo,
       ConcurrentHashMap<String, OutputStream> outputStreamMap) {
     return Flux.deferContextual(
@@ -147,7 +149,9 @@ public class OutCompressDataSource
                   .append("\r\n");
               outputStreamMap.get("CATALOG").write(catalogRecord.toString().getBytes());
             }
-            exportPipelineService.compressHeader(pair.getRight(), out, exportModel);
+            List<String> timeseriesNameList =
+                pair.getRight().stream().map(TimeseriesModel::getName).collect(Collectors.toList());
+            exportPipelineService.compressHeader(timeseriesNameList, out, exportModel);
             outputStreamMap.put(String.valueOf(pair.getLeft().getDeviceName()), out);
           } catch (IOException e) {
             log.error("异常信息:", e);
@@ -164,8 +168,6 @@ public class OutCompressDataSource
     this.name = name;
     this.parallelism = parallelism <= 0 ? Schedulers.DEFAULT_POOL_SIZE : parallelism;
     this.scheduler = Schedulers.newParallel("compress-pipeline-thread", this.parallelism);
-    if (this.exportPipelineService == null) {
-      this.exportPipelineService = ExportPipelineService.exportPipelineService();
-    }
+    this.exportPipelineService = ExportPipelineService.exportPipelineService();
   }
 }

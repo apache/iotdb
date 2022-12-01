@@ -180,6 +180,8 @@ public class ExportTool extends AbstractCsvTool {
       compressEnum = CompressEnum.SQL;
     } else if ("lz4".equals(compressAlgorithm)) {
       compressEnum = CompressEnum.LZ4;
+    } else if ("tsfile".equals(compressAlgorithm)) {
+      compressEnum = CompressEnum.TSFILE;
     } else {
       compressEnum = CompressEnum.CSV;
     }
@@ -277,7 +279,7 @@ public class ExportTool extends AbstractCsvTool {
             .longOpt(COMPRESS_NAME)
             .argName(COMPRESS_NAME)
             .hasArg()
-            .desc("Type sql/csv/snappy/gzip/lz4 to use compress algorithm. (optional)")
+            .desc("Type sql/csv/snappy/gzip/lz4/tsfile to use compress algorithm. (optional)")
             .build();
     options.addOption(opCompress);
 

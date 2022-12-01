@@ -23,5 +23,6 @@ public enum CompressEnum {
   CSV,
   SNAPPY,
   GZIP,
-  LZ4
+  LZ4,
+  TSFILE
 }

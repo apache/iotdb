@@ -64,7 +64,7 @@ public class OutStructureSource
 
   private Scheduler scheduler = Schedulers.newParallel("structure-pipeline-thread", 1);
 
-  private String TIMESERIES_STRUCTURE = "TIMESERIES_STRUCTURE.STRUCTURE";
+  private static final String TIMESERIES_STRUCTURE = "TIMESERIES_STRUCTURE.STRUCTURE";
 
   private ExportPipelineService exportPipelineService;
 
@@ -157,7 +157,7 @@ public class OutStructureSource
                     buffer
                         .append("show timeseries ")
                         .append(
-                            exportPipelineService.formatPath(deviceModel.getDeviceName(), version))
+                            ExportPipelineService.formatPath(deviceModel.getDeviceName(), version))
                         .append(".*");
                     String sql = buffer.toString();
                     try {
@@ -188,8 +188,6 @@ public class OutStructureSource
 
   public OutStructureSource(String name) {
     this.name = name;
-    if (this.exportPipelineService == null) {
-      this.exportPipelineService = ExportPipelineService.exportPipelineService();
-    }
+    this.exportPipelineService = ExportPipelineService.exportPipelineService();
   }
 }

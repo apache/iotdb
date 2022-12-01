@@ -18,38 +18,28 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class TimeSeriesRowModel {
+/** @Author: LL @Description: @Date: create in 2022/11/28 18:34 */
+public class TimeseriesModel {
 
-  // 时间戳
-  private String timestamp;
-  // 设备信息
-  private DeviceModel deviceModel;
-  // 行数据
-  private List<IField> iFieldList;
+  String name;
 
-  public String getTimestamp() {
-    return timestamp;
+  TSDataType type;
+
+  public String getName() {
+    return name;
   }
 
-  public void setTimestamp(String timestamp) {
-    this.timestamp = timestamp;
+  public void setName(String name) {
+    this.name = name;
   }
 
-  public DeviceModel getDeviceModel() {
-    return deviceModel;
+  public TSDataType getType() {
+    return type;
   }
 
-  public void setDeviceModel(DeviceModel deviceModel) {
-    this.deviceModel = deviceModel;
-  }
-
-  public List<IField> getIFieldList() {
-    return iFieldList;
-  }
-
-  public void setIFieldList(List<IField> iFieldList) {
-    this.iFieldList = iFieldList;
+  public void setType(TSDataType type) {
+    this.type = type;
   }
 }

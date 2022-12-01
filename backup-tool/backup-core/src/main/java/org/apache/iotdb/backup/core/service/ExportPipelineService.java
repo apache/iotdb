@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.backup.core.service;
 
-import org.apache.iotdb.backup.core.model.DeviceModel;
-import org.apache.iotdb.backup.core.model.FieldCopy;
-import org.apache.iotdb.backup.core.model.IField;
-import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
+import org.apache.iotdb.backup.core.model.*;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
 import org.apache.iotdb.backup.core.pipeline.context.model.FileSinkStrategyEnum;
@@ -32,8 +29,12 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
@@ -52,6 +53,7 @@ import reactor.core.publisher.FluxSink;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -126,6 +128,7 @@ public class ExportPipelineService {
                   SessionDataSet deviceData = exportModel.getSession().executeQueryStatement(sql);
                   sink.onRequest(
                       n -> {
+                        String aa = "";
                         for (int i = 0; i < n; i++) {
                           try {
                             if (deviceData.hasNext()) {
@@ -193,13 +196,13 @@ public class ExportPipelineService {
    * @param deviceModel
    * @return
    */
-  public Flux<Pair<DeviceModel, List<String>>> parseTimeseries(DeviceModel deviceModel) {
+  public Flux<Pair<DeviceModel, List<TimeseriesModel>>> parseTimeseries(DeviceModel deviceModel) {
     return Flux.deferContextual(
         contextView -> {
           PipelineContext<ExportModel> pcontext = contextView.get("pipelineContext");
           ExportModel exportModel = pcontext.getModel();
           String version = contextView.get("VERSION");
-          List<String> timeseriesList = new ArrayList<>();
+          List<TimeseriesModel> timeseriesList = new ArrayList<>();
           Session session = exportModel.getSession();
           try {
             StringBuilder buffer = new StringBuilder();
@@ -213,7 +216,12 @@ public class ExportPipelineService {
               RowRecord record = timeseriesSet.next();
               int position = timeseriesSet.getColumnNames().indexOf("timeseries");
               String measurement = record.getFields().get(position).getStringValue();
-              timeseriesList.add(measurement);
+              TimeseriesModel timeseriesModel = new TimeseriesModel();
+              timeseriesModel.setName(measurement);
+              position = timeseriesSet.getColumnNames().indexOf("dataType");
+              timeseriesModel.setType(
+                  generateTSDataType(record.getFields().get(position).getStringValue()));
+              timeseriesList.add(timeseriesModel);
             }
             // 过滤
             if (exportModel.getMeasurementList() != null
@@ -227,7 +235,16 @@ public class ExportPipelineService {
                             return builder.toString();
                           })
                       .collect(Collectors.toList());
-              timeseriesList.retainAll(queryMeasurementList);
+              timeseriesList =
+                  timeseriesList.stream()
+                      .filter(
+                          timeseriesModel -> {
+                            if (queryMeasurementList.contains(timeseriesModel.getName())) {
+                              return true;
+                            }
+                            return false;
+                          })
+                      .collect(Collectors.toList());
             }
           } catch (StatementExecutionException | IoTDBConnectionException e) {
             log.error("异常信息:", e);
@@ -242,7 +259,7 @@ public class ExportPipelineService {
    * @param pair
    * @return
    */
-  public Flux<TimeSeriesRowModel> parseToRowModel(Pair<DeviceModel, List<String>> pair) {
+  public Flux<TimeSeriesRowModel> parseToRowModel(Pair<DeviceModel, List<TimeseriesModel>> pair) {
     return Flux.deferContextual(
         contextView -> {
           PipelineContext<ExportModel> pcontext = contextView.get("pipelineContext");
@@ -276,26 +293,29 @@ public class ExportPipelineService {
    */
   private void createStreamData(
       DeviceModel deviceModel,
-      List<String> timeseries,
+      List<TimeseriesModel> timeseries,
       Session session,
       FluxSink<TimeSeriesRowModel> sink,
       ExportModel exportModel,
       String version)
       throws StatementExecutionException, IoTDBConnectionException {
 
-    List<List<String>> groupTimeseriesList = ListUtils.partition(timeseries, T_LIMIT);
+    List<List<TimeseriesModel>> groupTimeseriesList = ListUtils.partition(timeseries, T_LIMIT);
     List<SessionDataSet> dataSetList = new ArrayList<>();
 
-    for (List<String> l : groupTimeseriesList) {
+    for (List<TimeseriesModel> l : groupTimeseriesList) {
       StringBuilder timeseriesBuffer = new StringBuilder();
-      for (String s : l) {
+      for (TimeseriesModel s : l) {
         if (timeseriesBuffer.length() == 0) {
           timeseriesBuffer.append(
-              formatMeasurement(s.replace(deviceModel.getDeviceName() + ".", ""), version));
+              formatMeasurement(
+                  s.getName().replace(deviceModel.getDeviceName() + ".", ""), version));
         } else {
           timeseriesBuffer
               .append(",")
-              .append(formatMeasurement(s.replace(deviceModel.getDeviceName() + ".", ""), version));
+              .append(
+                  formatMeasurement(
+                      s.getName().replace(deviceModel.getDeviceName() + ".", ""), version));
         }
       }
       StringBuilder sqlBuffer = new StringBuilder();
@@ -312,7 +332,7 @@ public class ExportPipelineService {
       try {
         deviceDetials = session.executeQueryStatement(sql, Long.MAX_VALUE);
       } catch (Exception e) {
-        System.out.println(sql);
+        log.error(sql);
         throw e;
       }
       dataSetList.add(deviceDetials);
@@ -321,7 +341,7 @@ public class ExportPipelineService {
     ConcurrentHashMap<Long, List<IField>[]> sinkPoolMap = new ConcurrentHashMap<>();
     sink.onRequest(
         n -> {
-          Long mark = 0l; // 时间戳标志，sinkpoolMap根据此生成流,如果有小于此值得数据，sink.next会一次性添加多个stream流数据
+          Long mark = 0L; // 时间戳标志，sinkpoolMap根据此生成流,如果有小于此值得数据，sink.next会一次性添加多个stream流数据
           Long stopMark = 0L; // 结束标志，当一个时间戳连续出现两次的时候，表示读取完毕,单组数据遍历完毕
           int loopMark =
               0; // 假设一个时间序列按列分为了2组，首先遍历第一组 loopMark=0，当第一组遍历完成后，第二组也许比第一组数据多一些，在遍历第二组 loopMark=1
@@ -336,9 +356,17 @@ public class ExportPipelineService {
               for (int i = 0; i < dataSetList.size(); i++) {
                 SessionDataSet set = dataSetList.get(i);
                 mark =
-                    recursionSessionData(i, loopMark, mark, dataSetList.size(), set, sinkPoolMap);
+                    recursionSessionData(
+                        i,
+                        loopMark,
+                        mark,
+                        dataSetList.size(),
+                        set,
+                        sinkPoolMap,
+                        deviceModel,
+                        timeseries);
                 if (i == dataSetList.size() - 1) {
-                  if (stopMark == mark) {
+                  if (stopMark.equals(mark)) {
                     if (loopMark == dataSetList.size() - 1) {
                       stopFlag = true;
                     }
@@ -348,17 +376,19 @@ public class ExportPipelineService {
                   for (Long key :
                       sinkPoolMap.keySet().stream().sorted().collect(Collectors.toList())) {
                     if (key <= mark) {
-                      if (j == n) {
-                        return;
-                      }
                       try {
-
+                        if (sinkPoolMap.get(key) == null) {
+                          continue;
+                        }
                         TimeSeriesRowModel rowModel =
                             conformToRowData(
                                 sinkPoolMap.get(key), groupTimeseriesList, deviceModel, key);
                         sinkPoolMap.remove(key);
-                        j++;
                         sink.next(rowModel);
+                        if (j == n) {
+                          return;
+                        }
+                        j++;
                       } catch (Exception e) {
                         log.error("异常信息:", e);
                       }
@@ -397,19 +427,27 @@ public class ExportPipelineService {
    */
   private TimeSeriesRowModel conformToRowData(
       List<IField>[] lists,
-      List<List<String>> groupTimeseriesList,
+      List<List<TimeseriesModel>> groupTimeseriesList,
       DeviceModel deviceModel,
       Long timestamp) {
     TimeSeriesRowModel model = new TimeSeriesRowModel();
     model.setDeviceModel(deviceModel);
     model.setTimestamp(String.valueOf(timestamp));
     for (int i = 0; i < groupTimeseriesList.size(); i++) {
-      List<String> timeseriesList = groupTimeseriesList.get(i);
-
+      List<TimeseriesModel> timeseriesList = groupTimeseriesList.get(i);
+      Map<String, TSDataType> dataTypeMap =
+          timeseriesList.stream().collect(Collectors.toMap(s -> s.getName(), s -> s.getType()));
       if (model.getIFieldList() == null) {
         model.setIFieldList(new ArrayList<>());
       }
       if (lists[i] != null) {
+        // 解决查询出来的数据  不带tsDataType问题
+        lists[i].stream()
+            .forEach(
+                iField -> {
+                  TSDataType type = dataTypeMap.get(iField.getColumnName());
+                  iField.setTsDataType(type);
+                });
         model.getIFieldList().addAll(lists[i]);
       } else {
         List<IField> fillingEmptyIFieldList =
@@ -417,7 +455,8 @@ public class ExportPipelineService {
                 .map(
                     s -> {
                       IField iField = new IField();
-                      iField.setColumnName(s);
+                      iField.setColumnName(s.getName());
+                      iField.setTsDataType(s.getType());
                       return iField;
                     })
                 .collect(Collectors.toList());
@@ -446,7 +485,9 @@ public class ExportPipelineService {
       Long mark,
       int size,
       SessionDataSet set,
-      ConcurrentHashMap<Long, List<IField>[]> sinkPoolMap)
+      ConcurrentHashMap<Long, List<IField>[]> sinkPoolMap,
+      DeviceModel deviceModel,
+      List<TimeseriesModel> timeseries)
       throws StatementExecutionException, IoTDBConnectionException {
     if (set.hasNext()) {
       RowRecord rowRecord = set.next();
@@ -459,7 +500,21 @@ public class ExportPipelineService {
                     int position = columnName.indexOf(clname);
                     Field field = rowRecord.getFields().get(position);
                     IField iField = new IField();
-                    iField.setField(FieldCopy.copy(field));
+                    FieldCopy fieldCopy = FieldCopy.copy(field);
+                    if (fieldCopy.getDataType() == null) {
+                      timeseries.stream()
+                          .forEach(
+                              timeseriesModel -> {
+                                String colName =
+                                    timeseriesModel
+                                        .getName()
+                                        .substring(deviceModel.getDeviceName().length() + 1);
+                                if (colName.equals(clname)) {
+                                  iField.setTsDataType(timeseriesModel.getType());
+                                }
+                              });
+                    }
+                    iField.setField(fieldCopy);
                     iField.setColumnName(clname);
                     return iField;
                   })
@@ -470,14 +525,18 @@ public class ExportPipelineService {
       }
       if (sinkPoolMap.get(rowRecord.getTimestamp()) != null) {
         if (mark != 0 && rowRecord.getTimestamp() < mark) {
-          recursionSessionData(loopi, loopMark, mark, size, set, sinkPoolMap);
+          recursionSessionData(
+              loopi, loopMark, mark, size, set, sinkPoolMap, deviceModel, timeseries);
         }
         List<IField>[] array = sinkPoolMap.get(rowRecord.getTimestamp());
-        array[loopi] = fieldList;
-        sinkPoolMap.putIfAbsent(rowRecord.getTimestamp(), array);
+        if(array != null){
+            array[loopi] = fieldList;
+            sinkPoolMap.putIfAbsent(rowRecord.getTimestamp(), array);
+        }
       } else {
         if (mark != 0 && rowRecord.getTimestamp() < mark) {
-          recursionSessionData(loopi, loopMark, mark, size, set, sinkPoolMap);
+          recursionSessionData(
+              loopi, loopMark, mark, size, set, sinkPoolMap, deviceModel, timeseries);
         }
         List<IField>[] array = new List[size];
         array[loopi] = fieldList;
@@ -676,6 +735,17 @@ public class ExportPipelineService {
     }
   }
 
+  public void syncWriteByTsfileWriter(TsFileWriter tsFileWriter, Tablet tablet, boolean isAligned)
+      throws IOException, WriteProcessException {
+    synchronized (tsFileWriter) {
+      if (isAligned) {
+        tsFileWriter.writeAligned(tablet);
+      } else {
+        tsFileWriter.write(tablet);
+      }
+    }
+  }
+
   public void compressHeader(List<String> timeSeries, OutputStream outputStream, ExportModel model)
       throws IOException {
     // 模数 4byte 版本 2byte 压缩格式 2byte
@@ -795,5 +865,36 @@ public class ExportPipelineService {
     } catch (IOException e) {
       log.error("", e);
     }
+  }
+
+  public TSDataType generateTSDataType(String typeValue) {
+    if (typeValue.equals("BOOLEAN")) {
+      return TSDataType.BOOLEAN;
+    }
+
+    if (typeValue.equals("INT32")) {
+      return TSDataType.INT32;
+    }
+
+    if (typeValue.equals("INT64")) {
+      return TSDataType.INT64;
+    }
+
+    if (typeValue.equals("FLOAT")) {
+      return TSDataType.FLOAT;
+    }
+
+    if (typeValue.equals("DOUBLE")) {
+      return TSDataType.DOUBLE;
+    }
+
+    if (typeValue.equals("TEXT")) {
+      return TSDataType.TEXT;
+    }
+
+    if (typeValue.equals("VECTOR")) {
+      return TSDataType.VECTOR;
+    }
+    return null;
   }
 }

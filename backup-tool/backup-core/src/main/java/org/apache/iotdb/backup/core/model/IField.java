@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import java.io.Serializable;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /** @Author: LL @Description: @Date: create in 2022/6/24 10:06 */
-public class IField implements Serializable {
-
-  public static final long serialVersionUID = 1L;
+public class IField {
 
   private String columnName;
+
+  private TSDataType tsDataType;
 
   private FieldCopy field;
 
@@ -43,5 +43,13 @@ public class IField implements Serializable {
 
   public void setField(FieldCopy field) {
     this.field = field;
+  }
+
+  public TSDataType getTsDataType() {
+    return tsDataType;
+  }
+
+  public void setTsDataType(TSDataType tsDataType) {
+    this.tsDataType = tsDataType;
   }
 }

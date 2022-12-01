@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import java.io.Serializable;
-
 /** @Author: LL @Description: @Date: create in 2022/6/24 10:40 */
-public class DeviceModel implements Serializable {
-  public static final long serialVersionUID = 1L;
+public class DeviceModel {
+
   // 设备实体路径，也是timeseries前缀路径
   private String deviceName;
 

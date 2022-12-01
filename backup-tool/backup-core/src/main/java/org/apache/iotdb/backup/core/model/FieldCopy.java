@@ -24,11 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.io.Serializable;
-
 /** @Author: LL @Description: @Date: create in 2022/7/19 10:33 */
-public class FieldCopy implements Serializable {
-  public static final long serialVersionUID = 1L;
+public class FieldCopy {
+
   private TSDataType dataType;
   private boolean boolV;
   private int intV;
@@ -173,6 +171,7 @@ public class FieldCopy implements Serializable {
     }
   }
 
+  @Override
   public String toString() {
     return this.getStringValue();
   }

@@ -22,16 +22,11 @@ import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
 import org.apache.iotdb.backup.core.pipeline.*;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
+import org.apache.iotdb.backup.core.pipeline.out.channel.SimpleChannel;
 import org.apache.iotdb.backup.core.pipeline.out.channel.StringFormatIncludeNullFieldChannel;
 import org.apache.iotdb.backup.core.pipeline.out.channel.StringFormatWithoutNullFieldChannel;
-import org.apache.iotdb.backup.core.pipeline.out.sink.OutCompressFileSink;
-import org.apache.iotdb.backup.core.pipeline.out.sink.OutCsvFileSink;
-import org.apache.iotdb.backup.core.pipeline.out.sink.OutSqlFileSink;
-import org.apache.iotdb.backup.core.pipeline.out.sink.OutStructureFileSink;
-import org.apache.iotdb.backup.core.pipeline.out.source.OutCompressDataSource;
-import org.apache.iotdb.backup.core.pipeline.out.source.OutCsvDataSource;
-import org.apache.iotdb.backup.core.pipeline.out.source.OutSqlDataSource;
-import org.apache.iotdb.backup.core.pipeline.out.source.OutStructureSource;
+import org.apache.iotdb.backup.core.pipeline.out.sink.*;
+import org.apache.iotdb.backup.core.pipeline.out.source.*;
 
 import com.alibaba.fastjson.JSON;
 import reactor.core.Disposable;
@@ -165,6 +160,9 @@ public class ExportStarter implements Starter<ExportModel> {
       case LZ4:
         pipeSource = new OutCompressDataSource("compress source", exportModel.getParallelism());
         break;
+      case TSFILE:
+        pipeSource = new OutTsfileDataSource("tsfile source", exportModel.getParallelism());
+        break;
       default:
         throw new IllegalStateException("Unexpected value: " + exportModel.getCompressEnum());
     }
@@ -191,6 +189,9 @@ public class ExportStarter implements Starter<ExportModel> {
       case LZ4:
         pipeChannel = new StringFormatIncludeNullFieldChannel("string format channel");
         break;
+      case TSFILE:
+        pipeChannel = new SimpleChannel("tsfile channel");
+        break;
       default:
         throw new IllegalStateException("Unexpected value: " + exportModel.getCompressEnum());
     }
@@ -210,6 +211,9 @@ public class ExportStarter implements Starter<ExportModel> {
       case GZIP:
       case LZ4:
         pipeSink = new OutCompressFileSink("compress sink");
+        break;
+      case TSFILE:
+        pipeSink = new OutTsfileDataSink("tsfile sink");
         break;
       default:
         throw new IllegalStateException("Unexpected value: " + exportModel.getCompressEnum());

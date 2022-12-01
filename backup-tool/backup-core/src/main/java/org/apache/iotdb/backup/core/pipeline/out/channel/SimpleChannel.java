@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.backup.core.pipeline.out.channel;
 
-import org.apache.iotdb.backup.core.model.IField;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
 import org.apache.iotdb.backup.core.pipeline.PipeChannel;
 
@@ -50,13 +49,5 @@ public class SimpleChannel
                   return ParallelFlux.from(Flux.just(s));
                 })
             .transform(doNext());
-  }
-
-  private void sqlFileTransformer(IField iField) {
-    if (iField.getField() != null
-        && iField.getField().getObjectValue(iField.getField().getDataType()) != null) {
-    } else {
-      iField.setField(null);
-    }
   }
 }

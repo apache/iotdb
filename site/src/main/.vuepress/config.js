@@ -769,7 +769,8 @@ var config = {
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Metric-Tool','Metric Tool'],
 							['Maintenance-Tools/Sync-Tool','Sync Tool'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
+							['Maintenance-Tools/Backup-Tool','Data Backup Tool']
 						]
 					},
 					{
@@ -1688,7 +1689,8 @@ var config = {
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/Metric-Tool','监控工具'],
 							['Maintenance-Tools/Sync-Tool','TsFile 同步工具'],
-							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具']
+							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
+							['Maintenance-Tools/Backup-Tool','数据备份工具']
 						]
 					},
 					{

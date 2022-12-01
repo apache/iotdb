@@ -20,6 +20,7 @@ package org.apache.iotdb.backup.core.pipeline.out.source;
 
 import org.apache.iotdb.backup.core.model.DeviceModel;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
+import org.apache.iotdb.backup.core.model.TimeseriesModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSource;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
@@ -107,8 +108,8 @@ public class OutSqlDataSource
    * @param pair
    * @return
    */
-  public Flux<Pair<DeviceModel, List<String>>> initOutputStream(
-      Pair<DeviceModel, List<String>> pair,
+  public Flux<Pair<DeviceModel, List<TimeseriesModel>>> initOutputStream(
+      Pair<DeviceModel, List<TimeseriesModel>> pair,
       AtomicLong fileNo,
       ConcurrentHashMap<String, OutputStream> outputStreamMap) {
     return Flux.deferContextual(
@@ -153,8 +154,6 @@ public class OutSqlDataSource
     this.name = name;
     this.parallelism = parallelism <= 0 ? Schedulers.DEFAULT_POOL_SIZE : parallelism;
     scheduler = Schedulers.newParallel("pipeline-thread", this.parallelism);
-    if (this.exportPipelineService == null) {
-      this.exportPipelineService = ExportPipelineService.exportPipelineService();
-    }
+    this.exportPipelineService = ExportPipelineService.exportPipelineService();
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.backup.core.pipeline.out.source;
 
 import org.apache.iotdb.backup.core.model.DeviceModel;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
+import org.apache.iotdb.backup.core.model.TimeseriesModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSource;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class OutCsvDataSource
     extends PipeSource<
@@ -143,8 +145,8 @@ public class OutCsvDataSource
    * @param pair
    * @return
    */
-  public Flux<Pair<DeviceModel, List<String>>> initOutputStream(
-      Pair<DeviceModel, List<String>> pair,
+  public Flux<Pair<DeviceModel, List<TimeseriesModel>>> initOutputStream(
+      Pair<DeviceModel, List<TimeseriesModel>> pair,
       AtomicLong fileNo,
       ConcurrentHashMap<String, CSVPrinter> outputStreamMap,
       OutputStream catalogOutStream) {
@@ -173,7 +175,9 @@ public class OutCsvDataSource
             outputStream = new FileOutputStream(new File(fileName));
             List<String> headerList = new ArrayList<>();
             headerList.add("Time");
-            headerList.addAll(pair.getRight());
+            List<String> timeseriesNameList =
+                pair.getRight().stream().map(TimeseriesModel::getName).collect(Collectors.toList());
+            headerList.addAll(timeseriesNameList);
             CSVPrinter printer =
                 CSVFormat.Builder.create(CSVFormat.DEFAULT)
                     .setHeader()
@@ -200,9 +204,7 @@ public class OutCsvDataSource
     this.name = name;
     this.parallelism = parallelism <= 0 ? Schedulers.DEFAULT_POOL_SIZE : parallelism;
     this.scheduler = Schedulers.newParallel("csv-pipeline-thread", this.parallelism);
-    if (this.exportPipelineService == null) {
-      // TODO： 是否需要单例
-      this.exportPipelineService = ExportPipelineService.exportPipelineService();
-    }
+    // TODO： 是否需要单例
+    this.exportPipelineService = ExportPipelineService.exportPipelineService();
   }
 }
