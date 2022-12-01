@@ -61,7 +61,7 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final RegisterManager registerManager = new RegisterManager();
+  protected static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;

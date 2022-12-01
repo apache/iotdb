@@ -1040,6 +1040,12 @@ public class IoTDBConfig {
   private long dataRatisLogMaxMB = 20 * 1024;
   private long schemaRatisLogMaxMB = 2 * 1024;
 
+  /** determines whether audit logs are written to log files or IoTDB */
+  private String auditLogStorage = "NONE";
+
+  /** determines whether audit logs record IoTDB write operation */
+  private boolean enableAuditLogWrite = false;
+
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -3586,5 +3592,21 @@ public class IoTDBConfig {
 
   public void setEnableCompactionValidation(boolean enableCompactionValidation) {
     this.enableCompactionValidation = enableCompactionValidation;
+  }
+
+  public String getAuditLogStorage() {
+    return auditLogStorage;
+  }
+
+  public void setAuditLogStorage(String auditLogStorage) {
+    this.auditLogStorage = auditLogStorage;
+  }
+
+  public boolean isEnableAuditLogWrite() {
+    return enableAuditLogWrite;
+  }
+
+  public void setEnableAuditLogWrite(boolean enableAuditLogWrite) {
+    this.enableAuditLogWrite = enableAuditLogWrite;
   }
 }

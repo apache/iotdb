@@ -45,6 +45,8 @@ public abstract class IClientSession {
 
   public abstract String getClientAddress();
 
+  private boolean enableAudit;
+
   abstract int getClientPort();
 
   abstract TSConnectionType getConnectionType();
@@ -108,6 +110,14 @@ public abstract class IClientSession {
 
   public void setId(long id) {
     this.id = id;
+  }
+
+  public boolean isEnableAudit() {
+    return enableAudit;
+  }
+
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
   }
 
   public String toString() {

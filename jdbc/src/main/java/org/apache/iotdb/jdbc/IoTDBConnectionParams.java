@@ -40,6 +40,8 @@ public class IoTDBConnectionParams {
 
   private String timeZone = ZoneId.systemDefault().toString();
 
+  private boolean enableAudit = Config.DEFAULT_ENABLE_AUDIT;
+
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
   }
@@ -134,5 +136,13 @@ public class IoTDBConnectionParams {
 
   public String getTimeZone() {
     return this.timeZone;
+  }
+
+  public boolean isEnableAudit() {
+    return enableAudit;
+  }
+
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
   }
 }

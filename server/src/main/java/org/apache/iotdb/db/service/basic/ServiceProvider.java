@@ -48,8 +48,6 @@ import java.sql.SQLException;
 public abstract class ServiceProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
-  public static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   public static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 

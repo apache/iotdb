@@ -44,7 +44,7 @@ public class ClientSession extends IClientSession {
   }
 
   @Override
-  int getClientPort() {
+  public int getClientPort() {
     return clientSocket.getPort();
   }
 

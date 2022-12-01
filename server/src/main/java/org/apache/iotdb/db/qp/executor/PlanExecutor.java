@@ -136,10 +136,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.STATEMENT;
 
 public class PlanExecutor implements IPlanExecutor {
-
-  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
-  private static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;

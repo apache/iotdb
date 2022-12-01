@@ -905,7 +905,11 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
-
+    conf.setAuditLogStorage(properties.getProperty("audit_log_storage", conf.getAuditLogStorage()));
+    conf.setEnableAuditLogWrite(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_audit_log_write", String.valueOf(conf.isEnableAuditLogWrite()))));
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()

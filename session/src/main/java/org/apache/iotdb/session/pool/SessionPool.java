@@ -111,6 +111,8 @@ public class SessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
 
+  private final boolean enableAudit;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -268,6 +270,45 @@ public class SessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  public SessionPool(
+      String host, int port, String user, String password, boolean enableAudit, int maxSize) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        enableAudit);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, boolean enableAudit, int maxSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        enableAudit);
+  }
+
   @SuppressWarnings("squid:S107")
   public SessionPool(
       String host,
@@ -284,6 +325,40 @@ public class SessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        true);
+  }
+
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableAudit) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -299,6 +374,7 @@ public class SessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableAudit = enableAudit;
   }
 
   public SessionPool(
@@ -315,6 +391,38 @@ public class SessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        true);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableAudit) {
     this.maxSize = maxSize;
     this.host = null;
     this.port = -1;
@@ -330,6 +438,7 @@ public class SessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableAudit = enableAudit;
   }
 
   private Session constructNewSession() {
@@ -444,6 +553,7 @@ public class SessionPool {
       session = constructNewSession();
 
       try {
+        session.setEnableAudit(enableAudit);
         session.open(enableCompression, connectionTimeoutInMs);
         // avoid someone has called close() the session pool
         synchronized (this) {
@@ -2623,6 +2733,10 @@ public class SessionPool {
     return queryTimeoutInMs;
   }
 
+  public boolean isEnableAudit() {
+    return enableAudit;
+  }
+
   public static class Builder {
 
     private String host = SessionConfig.DEFAULT_HOST;
@@ -2641,6 +2755,7 @@ public class SessionPool {
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
+    private boolean enableAudit = true;
 
     public Builder host(String host) {
       this.host = host;
@@ -2722,6 +2837,11 @@ public class SessionPool {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public SessionPool build() {
       if (nodeUrls == null) {
         return new SessionPool(
@@ -2738,7 +2858,8 @@ public class SessionPool {
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            enableAudit);
       } else {
         return new SessionPool(
             nodeUrls,
@@ -2753,7 +2874,8 @@ public class SessionPool {
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            enableAudit);
       }
     }
   }

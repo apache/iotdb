@@ -484,6 +484,7 @@ public class SessionPoolIT {
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
             .version(Version.V_0_13)
+            .enableAudit(false)
             .build();
 
     assertEquals("localhost", pool.getHost());
@@ -498,6 +499,7 @@ public class SessionPoolIT {
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
     assertEquals(Version.V_0_13, pool.getVersion());
+    assertFalse(pool.isEnableAudit());
   }
 
   @Test

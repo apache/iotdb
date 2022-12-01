@@ -42,6 +42,8 @@ public interface ISession extends AutoCloseable {
 
   void setVersion(Version version);
 
+  void setEnableAudit(boolean enableAudit);
+
   int getFetchSize();
 
   void setFetchSize(int fetchSize);

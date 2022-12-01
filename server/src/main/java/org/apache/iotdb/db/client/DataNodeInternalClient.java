@@ -78,7 +78,8 @@ public class DataNodeInternalClient {
           session,
           sessionInfo.getUserName(),
           sessionInfo.getZoneId(),
-          IoTDBConstant.ClientVersion.V_0_13);
+          IoTDBConstant.ClientVersion.V_0_13,
+          true);
 
       LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), session);
     } catch (Exception e) {

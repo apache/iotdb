@@ -137,6 +137,8 @@ public class Session implements ISession {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
+  protected boolean enableAudit;
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -264,6 +266,22 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  public Session(
+      String host, String rpcPort, String username, String password, boolean enableAudit) {
+    this(
+        host,
+        Integer.parseInt(rpcPort),
+        username,
+        password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION,
+        enableAudit);
+  }
+
   @SuppressWarnings("squid:S107")
   public Session(
       String host,
@@ -276,6 +294,32 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version,
+        true);
+  }
+
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version,
+      boolean enableAudit) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -285,6 +329,7 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.enableAudit = enableAudit;
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -341,6 +386,30 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version,
+        true);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version,
+      boolean enableAudit) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -350,6 +419,7 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+    this.enableAudit = enableAudit;
   }
 
   @Override
@@ -373,6 +443,10 @@ public class Session implements ISession {
   }
 
   @Override
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
+  }
+
   public synchronized void open() throws IoTDBConnectionException {
     open(false, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
@@ -3295,6 +3369,8 @@ public class Session implements ISession {
 
     private List<String> nodeUrls = null;
 
+    private boolean enableAudit = true;
+
     public Builder host(String host) {
       this.host = host;
       return this;
@@ -3355,6 +3431,11 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
@@ -3373,7 +3454,8 @@ public class Session implements ISession {
                 thriftDefaultBufferSize,
                 thriftMaxFrameSize,
                 enableRedirection,
-                version);
+                version,
+                enableAudit);
         newSession.setEnableQueryRedirection(true);
         return newSession;
       }
@@ -3388,7 +3470,8 @@ public class Session implements ISession {
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
           enableRedirection,
-          version);
+          version,
+          enableAudit);
     }
   }
 }

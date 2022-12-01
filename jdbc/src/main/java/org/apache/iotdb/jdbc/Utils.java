@@ -82,6 +82,9 @@ public class Utils {
     if (info.containsKey(Config.TIME_ZONE)) {
       params.setTimeZone(info.getProperty(Config.TIME_ZONE));
     }
+    if (info.containsKey(Config.AUTH_ENABLE_AUDIT)) {
+      params.setEnableAudit(Boolean.parseBoolean(info.getProperty(Config.AUTH_ENABLE_AUDIT)));
+    }
 
     return params;
   }

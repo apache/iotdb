@@ -64,4 +64,8 @@ public class Config {
 
   /** key of connection's time zone */
   public static final String TIME_ZONE = "time_zone";
+
+  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
+
+  public static final boolean DEFAULT_ENABLE_AUDIT = true;
 }

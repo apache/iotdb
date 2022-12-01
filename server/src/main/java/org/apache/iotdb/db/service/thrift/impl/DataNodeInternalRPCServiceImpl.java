@@ -827,7 +827,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SESSION_MANAGER.registerSession(session);
 
     SESSION_MANAGER.supplySession(
-        session, req.getUsername(), req.getZoneId(), IoTDBConstant.ClientVersion.V_0_13);
+        session, req.getUsername(), req.getZoneId(), IoTDBConstant.ClientVersion.V_0_13, true);
 
     String executedSQL = req.queryBody;
 

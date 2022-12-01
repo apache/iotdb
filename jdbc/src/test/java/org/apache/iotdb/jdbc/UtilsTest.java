@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -132,5 +133,14 @@ public class UtilsTest {
     Properties properties = new Properties();
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
     assertTrue(Config.rpcThriftCompressionEnable);
+  }
+
+  @Test
+  public void testParseEnableAudit() throws IoTDBURLException {
+    Properties properties = new Properties();
+    properties.put("enableAudit", "false");
+    IoTDBConnectionParams ioTDBConnectionParams =
+        Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667", properties);
+    assertFalse(ioTDBConnectionParams.isEnableAudit());
   }
 }

@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -57,8 +59,10 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
-  public static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+
+  private static boolean enableAuditLog =
+      !AuditLogUtils.LOG_LEVEL_NONE.equals(
+          IoTDBDescriptor.getInstance().getConfig().getAuditLogStorage());
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
   private final ThreadLocal<IClientSession> currSession = new ThreadLocal<>();
@@ -90,7 +94,8 @@ public class SessionManager implements SessionManagerMBean {
       String password,
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion)
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean enableAudit)
       throws TException {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
@@ -106,23 +111,25 @@ public class SessionManager implements SessionManagerMBean {
               .setMessage(
                   "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
         } else {
-          supplySession(session, username, zoneId, clientVersion);
+          supplySession(session, username, zoneId, clientVersion, enableAudit);
 
           openSessionResp
               .sessionId(session.getId())
               .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
               .setMessage("Login successfully");
 
-          LOGGER.info(
-              "{}: Login status: {}. User : {}, opens Session-{}",
-              IoTDBConstant.GLOBAL_DB_NAME,
-              openSessionResp.getMessage(),
-              username,
-              session);
+          if (enableAuditLog) {
+            AuditLogUtils.writeAuditLog(
+                String.format(
+                    "%s: Login status: %s. User : %s, opens Session-%s",
+                    IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+          }
         }
       } else {
-        AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
-
+        if (enableAuditLog) {
+          AuditLogUtils.writeAuditLog(
+              String.format("User %s opens Session failed with an incorrect password", username));
+        }
         openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
       }
     } catch (ConfigNodeConnectionException e) {
@@ -147,13 +154,15 @@ public class SessionManager implements SessionManagerMBean {
     //    }
     IClientSession session1 = currSession.get();
     if (session1 != null && session != session1) {
-      AUDIT_LOGGER.error(
-          "The client-{} is trying to close another session {}, pls check if it's a bug",
-          session,
-          session1);
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            "The client-{} is trying to close another session {}, pls check if it's a bug");
+      }
       return false;
     } else {
-      AUDIT_LOGGER.info("Session-{} is closing", session);
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
+      }
       return true;
     }
   }
@@ -185,11 +194,11 @@ public class SessionManager implements SessionManagerMBean {
           "Log in failed. Either you are not authorized or the session has timed out.");
     }
 
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "{}: receive close operation from Session {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          currSession.get());
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "%s: receive close operation from Session %s",
+              IoTDBConstant.GLOBAL_DB_NAME, currSession.get()));
     }
 
     try {
@@ -347,13 +356,15 @@ public class SessionManager implements SessionManagerMBean {
       IClientSession session,
       String username,
       String zoneId,
-      IoTDBConstant.ClientVersion clientVersion) {
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean enableAudit) {
     session.setId(sessionIdGenerator.incrementAndGet());
     session.setUsername(username);
     session.setZoneId(ZoneId.of(zoneId));
     session.setClientVersion(clientVersion);
     session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setEnableAudit(enableAudit);
   }
 
   public void closeDataset(

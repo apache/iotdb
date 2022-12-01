@@ -93,7 +93,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
             new String(msg.getPassword()),
             ZoneId.systemDefault().toString(),
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-            IoTDBConstant.ClientVersion.V_0_13);
+            IoTDBConstant.ClientVersion.V_0_13,
+            false);
         clientIdToSessionMap.put(msg.getClientID(), session);
       } catch (TException e) {
         throw new RuntimeException(e);
