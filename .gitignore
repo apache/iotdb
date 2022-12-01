@@ -24,6 +24,8 @@ derby-tsfile-db
 
 # build generated
 **/target/
+tmp
+.m2
 
 # intermediately generated locally
 
