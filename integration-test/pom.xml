@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
@@ -95,112 +95,112 @@
     <build>
         <plugins>
             <!-- skip default-test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-test</id>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- If the test starts separate processes, we should package first -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
-                <configuration>
-                    <skipAssembly>${integrationTest.launchNodeInSameJVM}</skipAssembly>
-                </configuration>
-                <executions>
-                    <!-- Package binaries-->
-                    <execution>
-                        <id>cluster-test-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/mpp-test.xml</descriptor>
-                            </descriptors>
-                            <finalName>template-node</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>cluster-test-assembly-share</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/mpp-share.xml</descriptor>
-                            </descriptors>
-                            <finalName>template-node-share</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-surefire-plugin</artifactId>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>default-test</id>-->
+<!--                        <configuration>-->
+<!--                            <skip>true</skip>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+<!--            &lt;!&ndash; If the test starts separate processes, we should package first &ndash;&gt;-->
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-assembly-plugin</artifactId>-->
+<!--                <version>${maven.assembly.version}</version>-->
+<!--                <configuration>-->
+<!--                    <skipAssembly>${integrationTest.launchNodeInSameJVM}</skipAssembly>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    &lt;!&ndash; Package binaries&ndash;&gt;-->
+<!--                    <execution>-->
+<!--                        <id>cluster-test-assembly</id>-->
+<!--                        <phase>package</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>single</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <descriptors>-->
+<!--                                <descriptor>src/assembly/mpp-test.xml</descriptor>-->
+<!--                            </descriptors>-->
+<!--                            <finalName>template-node</finalName>-->
+<!--                            <appendAssemblyId>false</appendAssemblyId>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                    <execution>-->
+<!--                        <id>cluster-test-assembly-share</id>-->
+<!--                        <phase>package</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>single</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <descriptors>-->
+<!--                                <descriptor>src/assembly/mpp-share.xml</descriptor>-->
+<!--                            </descriptors>-->
+<!--                            <finalName>template-node-share</finalName>-->
+<!--                            <appendAssemblyId>false</appendAssemblyId>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
             <!-- Run integration tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                        <configuration>
-                            <groups>${integrationTest.includedGroups}</groups>
-                            <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
-                            <useSystemClassLoader>false</useSystemClassLoader>
-                            <parallel>${integrationTest.parallelMode}</parallel>
-                            <threadCount>1</threadCount>
-                            <forkCount>${integrationTest.forkCount}</forkCount>
-                            <reuseForks>false</reuseForks>
-                            <systemPropertyVariables>
-                                <TestEnv>${integrationTest.testEnv}</TestEnv>
-                                <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
-                                <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
-                            </systemPropertyVariables>
-                            <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                        <configuration>
-                            <skipTests>false</skipTests>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <configuration>
-                    <mainClass>org.apache.iotdb.it.framework.IoTDBTestReporter</mainClass>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>report</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-failsafe-plugin</artifactId>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>integration-test</id>-->
+<!--                        <goals>-->
+<!--                            <goal>integration-test</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <groups>${integrationTest.includedGroups}</groups>-->
+<!--                            <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>-->
+<!--                            <useSystemClassLoader>false</useSystemClassLoader>-->
+<!--                            <parallel>${integrationTest.parallelMode}</parallel>-->
+<!--                            <threadCount>1</threadCount>-->
+<!--                            <forkCount>${integrationTest.forkCount}</forkCount>-->
+<!--                            <reuseForks>false</reuseForks>-->
+<!--                            <systemPropertyVariables>-->
+<!--                                <TestEnv>${integrationTest.testEnv}</TestEnv>-->
+<!--                                <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>-->
+<!--                                <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>-->
+<!--                            </systemPropertyVariables>-->
+<!--                            <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                    <execution>-->
+<!--                        <id>verify</id>-->
+<!--                        <goals>-->
+<!--                            <goal>verify</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <skipTests>true</skipTests>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
+<!--            <plugin>-->
+<!--                <groupId>org.codehaus.mojo</groupId>-->
+<!--                <artifactId>exec-maven-plugin</artifactId>-->
+<!--                <version>1.6.0</version>-->
+<!--                <configuration>-->
+<!--                    <mainClass>org.apache.iotdb.it.framework.IoTDBTestReporter</mainClass>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>report</id>-->
+<!--                        <phase>post-integration-test</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>java</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
     </build>
     <profiles>
@@ -216,7 +216,7 @@
                 <integrationTest.parallelMode>classes</integrationTest.parallelMode>
             </properties>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
         </profile>
         <!-- Currently RemoteIT is not working as it lacks of the remote endpoint parameters -->
