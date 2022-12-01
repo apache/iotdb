@@ -44,6 +44,8 @@ public abstract class IClientSession {
 
   private long logInTime;
 
+  private boolean enableAudit;
+
   abstract String getClientAddress();
 
   abstract int getClientPort();
@@ -111,6 +113,14 @@ public abstract class IClientSession {
   @Deprecated
   public void setId(long id) {
     this.id = id;
+  }
+
+  public boolean isEnableAudit() {
+    return enableAudit;
+  }
+
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
   }
 
   public String toString() {

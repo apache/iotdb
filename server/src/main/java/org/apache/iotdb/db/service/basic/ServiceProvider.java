@@ -67,8 +67,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedExce
 public abstract class ServiceProvider {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
-  public static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+
   public static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
@@ -83,6 +82,9 @@ public abstract class ServiceProvider {
       new QueryFrequencyRecorder(CONFIG);
 
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final boolean enableAuditLog =
+      !AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage());
 
   private final Planner planner;
   protected final IPlanExecutor executor;
@@ -173,7 +175,8 @@ public abstract class ServiceProvider {
       String password,
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion)
+      IoTDBConstant.ClientVersion clientVersion,
+      boolean enableAudit)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -206,21 +209,26 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion);
-      LOGGER.info(
-          "{}: Login status: {}. User : {}, opens Session-{}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          openSessionResp.getMessage(),
-          username,
-          session);
+      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "%s: Login status: %s. User : %s, opens Session-%s",
+                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+      }
+
     } else {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
-      AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+      session.setUsername(username);
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format("User %s opens Session failed with an incorrect password", username),
+            true);
+      }
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
     SessionTimeoutManager.getInstance().register(session);
-    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGIN, "user login");
     return openSessionResp.sessionId(session == null ? -1 : session.getId());
   }
 
@@ -232,12 +240,19 @@ public abstract class ServiceProvider {
       TSProtocolVersion tsProtocolVersion)
       throws TException {
     return login(
-        session, username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
+        session,
+        username,
+        password,
+        zoneId,
+        tsProtocolVersion,
+        IoTDBConstant.ClientVersion.V_0_12,
+        false);
   }
 
   public boolean closeSession(IClientSession session) {
-    AUDIT_LOGGER.info("Session-{} is closing", session);
-    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_LOGOUT, "user logout");
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
+    }
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 
@@ -255,9 +270,11 @@ public abstract class ServiceProvider {
     if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "{}: receive close operation from Session {}", IoTDBConstant.GLOBAL_DB_NAME, session);
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "%s: receive close operation from Session %s",
+              IoTDBConstant.GLOBAL_DB_NAME, session));
     }
     try {
       if (haveStatementId) {

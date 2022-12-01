@@ -208,6 +208,12 @@ public class IoTDBConstant {
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
+  public static final String SYSTEM_STORAGE_GROUP = "root.__system";
+
+  public static final String CONSTANT_VERSION = "version";
+
+  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

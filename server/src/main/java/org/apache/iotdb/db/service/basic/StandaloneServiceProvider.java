@@ -28,7 +28,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.AuditLogUtils;
 
 public class StandaloneServiceProvider extends ServiceProvider {
 
@@ -51,10 +50,6 @@ public class StandaloneServiceProvider extends ServiceProvider {
         && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineReadonlyException();
     }
-    AuditLogUtils.writeAuditLog(
-        plan.getOperatorName(),
-        String.format(
-            "measurements size:%s", plan.getPaths() == null ? 0 : plan.getPaths().size()));
     return executor.processNonQuery(plan);
   }
 }

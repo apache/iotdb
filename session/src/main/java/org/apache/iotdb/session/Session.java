@@ -142,6 +142,8 @@ public class Session {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
+  protected boolean enableAudit = Config.DEFAULT_ENABLE_AUDIT;
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -253,6 +255,27 @@ public class Session {
       int rpcPort,
       String username,
       String password,
+      boolean enableCacheLeader,
+      boolean enableAudit) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        enableCacheLeader,
+        enableAudit,
+        Config.DEFAULT_VERSION);
+  }
+
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
       int fetchSize,
       ZoneId zoneId,
       boolean enableCacheLeader) {
@@ -289,6 +312,30 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
+  }
+
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader,
+      boolean enableAudit,
+      Version version) {
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableCacheLeader = enableCacheLeader;
+    this.enableAudit = enableAudit;
     this.version = version;
   }
 
@@ -346,6 +393,30 @@ public class Session {
       int thriftMaxFrameSize,
       boolean enableCacheLeader,
       Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableCacheLeader,
+        version,
+        true);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader,
+      Version version,
+      boolean enableAudit) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -355,6 +426,7 @@ public class Session {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
     this.version = version;
+    this.enableAudit = enableAudit;
   }
 
   public void setFetchSize(int fetchSize) {
@@ -371,6 +443,10 @@ public class Session {
 
   public void setVersion(Version version) {
     this.version = version;
+  }
+
+  public void setEnableAudit(boolean enableAudit) {
+    this.enableAudit = enableAudit;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -3129,6 +3205,8 @@ public class Session {
 
     private List<String> nodeUrls = null;
 
+    private boolean enableAudit = true;
+
     public Builder host(String host) {
       this.host = host;
       return this;
@@ -3184,6 +3262,11 @@ public class Session {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
@@ -3202,7 +3285,8 @@ public class Session {
                 thriftDefaultBufferSize,
                 thriftMaxFrameSize,
                 enableCacheLeader,
-                version);
+                version,
+                enableAudit);
         newSession.setEnableQueryRedirection(true);
         return newSession;
       }
@@ -3217,6 +3301,7 @@ public class Session {
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
           enableCacheLeader,
+          enableAudit,
           version);
     }
   }

@@ -100,6 +100,8 @@ public class SessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
 
+  private final boolean enableAudit;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -146,6 +148,23 @@ public class SessionPool {
   }
 
   public SessionPool(
+      String host, int port, String user, String password, boolean enableAudit, int maxSize) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS,
+        enableAudit);
+  }
+
+  public SessionPool(
       List<String> nodeUrls, String user, String password, int maxSize, boolean enableCompression) {
     this(
         nodeUrls,
@@ -158,6 +177,22 @@ public class SessionPool {
         null,
         Config.DEFAULT_CACHE_LEADER_MODE,
         Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, boolean enableAudit, int maxSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_CONNECTION_TIMEOUT_MS,
+        enableAudit);
   }
 
   public SessionPool(
@@ -246,6 +281,35 @@ public class SessionPool {
       ZoneId zoneId,
       boolean enableCacheLeader,
       int connectionTimeoutInMs) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableCacheLeader,
+        connectionTimeoutInMs,
+        true);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableCacheLeader,
+      int connectionTimeoutInMs,
+      boolean enableAudit) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
@@ -258,6 +322,7 @@ public class SessionPool {
     this.zoneId = zoneId;
     this.enableCacheLeader = enableCacheLeader;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.enableAudit = enableAudit;
   }
 
   public SessionPool(
@@ -271,6 +336,32 @@ public class SessionPool {
       ZoneId zoneId,
       boolean enableCacheLeader,
       int connectionTimeoutInMs) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableCacheLeader,
+        connectionTimeoutInMs,
+        true);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableCacheLeader,
+      int connectionTimeoutInMs,
+      boolean enableAudit) {
     this.maxSize = maxSize;
     this.host = null;
     this.port = -1;
@@ -283,6 +374,7 @@ public class SessionPool {
     this.zoneId = zoneId;
     this.enableCacheLeader = enableCacheLeader;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.enableAudit = enableAudit;
   }
 
   private Session constructNewSession() {
@@ -390,6 +482,7 @@ public class SessionPool {
       session = constructNewSession();
 
       try {
+        session.setEnableAudit(enableAudit);
         session.open(enableCompression, connectionTimeoutInMs);
         // avoid someone has called close() the session pool
         synchronized (this) {
@@ -2440,6 +2533,7 @@ public class SessionPool {
     private ZoneId zoneId = null;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
     private int connectionTimeoutInMs = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private boolean enableAudit = true;
 
     public Builder host(String host) {
       this.host = host;
@@ -2501,6 +2595,11 @@ public class SessionPool {
       return this;
     }
 
+    public Builder enableAudit(boolean enableAudit) {
+      this.enableAudit = enableAudit;
+      return this;
+    }
+
     public SessionPool build() {
       if (nodeUrls == null) {
         return new SessionPool(
@@ -2514,7 +2613,8 @@ public class SessionPool {
             enableCompression,
             zoneId,
             enableCacheLeader,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            enableAudit);
       } else {
         return new SessionPool(
             nodeUrls,
@@ -2526,7 +2626,8 @@ public class SessionPool {
             enableCompression,
             zoneId,
             enableCacheLeader,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            enableAudit);
       }
     }
   }

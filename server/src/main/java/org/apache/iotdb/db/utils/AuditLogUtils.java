@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.ClientSession;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -39,45 +40,44 @@ public class AuditLogUtils {
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
 
   public static final String LOG = "log";
-  public static final String TYPE = "type";
   public static final String USERNAME = "username";
+  public static final String ADDRESS = "address";
   public static final String AUDIT_LOG_DEVICE = "root.__system.audit.'%s'";
-  public static final String TYPE_QUERY = "QUERY";
-  public static final String TYPE_LOGIN = "LOGIN";
-  public static final String TYPE_LOGOUT = "LOGOUT";
-  public static final String TYPE_INSERT = "INSERT";
-  public static final String TYPE_DELETE = "DELETE";
   public static final String LOG_LEVEL_IOTDB = "IOTDB";
   public static final String LOG_LEVEL_LOGGER = "LOGGER";
   public static final String LOG_LEVEL_NONE = "NONE";
 
-  public static void writeAuditLog(String type, String log) {
+  public static void writeAuditLog(String log) {
+    writeAuditLog(log, false);
+  }
+
+  public static void writeAuditLog(String log, boolean enableWrite) {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     String auditLogStorage = config.getAuditLogStorage();
     IClientSession currSession = SessionManager.getInstance().getCurrSession();
     if (currSession == null) {
       return;
     }
+    ClientSession clientSession = (ClientSession) currSession;
+    String clientAddress = clientSession.getClientAddress();
+    int clientPort = ((ClientSession) currSession).getClientPort();
+    String address = String.format("%s:%s", clientAddress, clientPort);
     String username = currSession.getUsername();
-    if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
-      try {
-        InsertRowPlan insertRowPlan =
-            new InsertRowPlan(
-                new PartialPath(String.format(AUDIT_LOG_DEVICE, username)),
-                DateTimeUtils.currentTime(),
-                new String[] {TYPE, LOG, USERNAME},
-                new String[] {type, log, username});
-        IoTDB.serviceProvider.getExecutor().insert(insertRowPlan);
-      } catch (IllegalPathException | QueryProcessException e) {
-        logger.error("write audit log series error,", e);
-      }
-    } else if (LOG_LEVEL_LOGGER.equals(auditLogStorage)) {
-      if (type.contains(TYPE_INSERT)) {
-        if (config.isEnableAuditLogWrite()) {
-          AUDIT_LOGGER.debug("user:{},type:{},action:{}", username, type, log);
+    if (clientSession.isEnableAudit() || enableWrite) {
+      if (LOG_LEVEL_IOTDB.equals(auditLogStorage)) {
+        try {
+          InsertRowPlan insertRowPlan =
+              new InsertRowPlan(
+                  new PartialPath(String.format(AUDIT_LOG_DEVICE, username)),
+                  DateTimeUtils.currentTime(),
+                  new String[] {LOG, USERNAME, ADDRESS},
+                  new String[] {log, username, address});
+          IoTDB.serviceProvider.getExecutor().insert(insertRowPlan);
+        } catch (IllegalPathException | QueryProcessException e) {
+          logger.error("write audit log series error,", e);
         }
-      } else {
-        AUDIT_LOGGER.info("user:{},type:{},action:{}", username, type, log);
+      } else if (LOG_LEVEL_LOGGER.equals(auditLogStorage)) {
+        AUDIT_LOGGER.info("user:{},address:{},log:{}", username, address, log);
       }
     }
   }

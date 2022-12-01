@@ -159,7 +159,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.AUTH_ENABLE_AUDIT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.CONSTANT_VERSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SYSTEM_STORAGE_GROUP;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
@@ -177,6 +179,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private static final boolean isEnableOperationSync =
       IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
+
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final boolean enableAuditLog =
+      !AuditLogUtils.LOG_LEVEL_NONE.equals(conf.getAuditLogStorage());
 
   protected class QueryTask implements Callable<TSExecuteStatementResp> {
 
@@ -222,8 +229,10 @@ public class TSServiceImpl implements TSIService.Iface {
       plan.setLoginUserName(username);
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", session, statement);
-
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format("Session %s execute Query: %s", session, statement));
+      }
       final long queryId = SESSION_MANAGER.requestQueryId(statementId, true);
       QueryContext context =
           serviceProvider.genQueryContext(
@@ -324,6 +333,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
+    boolean enableAudit = parseEnableAudit(req);
     BasicOpenSessionResp openSessionResp =
         serviceProvider.login(
             SESSION_MANAGER.getCurrSession(),
@@ -331,7 +341,8 @@ public class TSServiceImpl implements TSIService.Iface {
             req.password,
             req.zoneId,
             req.client_protocol,
-            clientVersion);
+            clientVersion,
+            enableAudit);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -339,10 +350,18 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
-    if (configuration != null && configuration.containsKey("version")) {
-      return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
+    if (configuration != null && configuration.containsKey(CONSTANT_VERSION)) {
+      return IoTDBConstant.ClientVersion.valueOf(configuration.get(CONSTANT_VERSION));
     }
     return IoTDBConstant.ClientVersion.V_0_12;
+  }
+
+  private boolean parseEnableAudit(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    if (configuration != null && configuration.containsKey(AUTH_ENABLE_AUDIT)) {
+      return Boolean.parseBoolean(configuration.get(AUTH_ENABLE_AUDIT));
+    }
+    return true;
   }
 
   @Override
@@ -633,6 +652,9 @@ public class TSServiceImpl implements TSIService.Iface {
           serviceProvider
               .getPlanner()
               .parseSQLToPhysicalPlan(statement, session.getZoneId(), session.getClientVersion());
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(req.getStatement());
+      }
 
       if (physicalPlan.isQuery()) {
         return submitQueryTask(session, physicalPlan, startTime, req);
@@ -665,7 +687,9 @@ public class TSServiceImpl implements TSIService.Iface {
           serviceProvider
               .getPlanner()
               .parseSQLToPhysicalPlan(statement, session.getZoneId(), session.getClientVersion());
-
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(statement);
+      }
       if (physicalPlan.isQuery()) {
         return submitQueryTask(session, physicalPlan, startTime, req);
       } else {
@@ -780,7 +804,6 @@ public class TSServiceImpl implements TSIService.Iface {
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
-    AuditLogUtils.writeAuditLog(AuditLogUtils.TYPE_QUERY, req.getStatement());
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -948,7 +971,11 @@ public class TSServiceImpl implements TSIService.Iface {
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
     QUERY_FREQUENCY_RECORDER.incrementAndGet();
-    AUDIT_LOGGER.debug("Session {} execute select into: {}", session, statement);
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format("Session %s execute select into: %s", session, statement));
+    }
+
     if (queryPlan.isEnableTracing()) {
       TRACING_MANAGER.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
@@ -1199,13 +1226,14 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecords, first device {}, first time {}",
-          session,
-          req.prefixPaths.get(0),
-          req.getTimestamps().get(0));
+
+    if (conf.isEnableAuditLogWrite() && enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session %s insertRecords, first device %s, first time %s",
+              session, req.prefixPaths.get(0), req.getTimestamps().get(0)));
     }
+
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
@@ -1287,12 +1315,12 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecords, device {}, first time {}",
-          session,
-          req.prefixPath,
-          req.getTimestamps().get(0));
+
+    if (conf.isEnableAuditLogWrite() && enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session %s insertRecords, device %s, first time %s",
+              session, req.prefixPath, req.getTimestamps().get(0)));
     }
 
     List<TSStatus> statusList = new ArrayList<>();
@@ -1334,12 +1362,12 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecords, device {}, first time {}",
-          session,
-          req.prefixPath,
-          req.getTimestamps().get(0));
+
+    if (conf.isEnableAuditLogWrite() && enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session %s insertRecords, device %s, first time %s",
+              session, req.prefixPath, req.getTimestamps().get(0)));
     }
 
     boolean allCheckSuccess = true;
@@ -1393,12 +1421,12 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecords, first device {}, first time {}",
-          session,
-          req.prefixPaths.get(0),
-          req.getTimestamps().get(0));
+
+    if (conf.isEnableAuditLogWrite() && enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session %s insertRecords, first device %s, first time %s",
+              session, req.prefixPaths.get(0), req.getTimestamps().get(0)));
     }
 
     boolean allCheckSuccess = true;
@@ -1508,11 +1536,14 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          session,
-          req.getPrefixPath(),
-          req.getTimestamp());
+      if (!req.getPrefixPath().startsWith(SYSTEM_STORAGE_GROUP)
+          && conf.isEnableAuditLogWrite()
+          && enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "Session %s insertRecord, device %s, time %s",
+                session, req.getPrefixPath(), req.getTimestamp()));
+      }
 
       InsertRowPlan plan =
           new InsertRowPlan(
@@ -1544,11 +1575,12 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          session,
-          req.getPrefixPath(),
-          req.getTimestamp());
+      if (conf.isEnableAuditLogWrite() && enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "Session %s insertRecord, device %s, time %s",
+                session, req.getPrefixPath(), req.getTimestamp()));
+      }
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDevicePath(new PartialPath(req.getPrefixPath()));
@@ -1754,8 +1786,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug("Session-{} create timeseries {}", session, req.getPath());
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format("Session-%s create timeseries %s", session, req.getPath()));
       }
 
       CreateTimeSeriesPlan plan =
@@ -1786,13 +1819,11 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create aligned timeseries {}.{}",
-            session,
-            req.getPrefixPath(),
-            req.getMeasurements());
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "Session-%s create aligned timeseries %s.%s",
+                session, req.getPrefixPath(), req.getMeasurements()));
       }
 
       List<TSDataType> dataTypes = new ArrayList<>();
@@ -1835,12 +1866,11 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create {} timeseries, the first is {}",
-            session,
-            req.getPaths().size(),
-            req.getPaths().get(0));
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format(
+                "Session-%s create %s timeseries, the first is %s",
+                session, req.getPaths().size(), req.getPaths().get(0)));
       }
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
@@ -1953,8 +1983,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (isStatusNotSuccess(loginStatus)) {
         return loginStatus;
       }
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug("Session-{} create schema template {}", session, req.getName());
+      if (enableAuditLog) {
+        AuditLogUtils.writeAuditLog(
+            String.format("Session-%s create schema template %s", session, req.getName()));
       }
 
       CreateTemplatePlan plan;
@@ -2058,12 +2089,11 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session-{} set device template {}.{}",
-          session,
-          req.getTemplateName(),
-          req.getPrefixPath());
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session-%s set device template %s.%s",
+              session, req.getTemplateName(), req.getPrefixPath()));
     }
 
     try {
@@ -2082,14 +2112,12 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session-{} unset schema template {}.{}",
-          session,
-          req.getPrefixPath(),
-          req.getTemplateName());
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session-%s unset schema template %s.%s",
+              session, req.getPrefixPath(), req.getTemplateName()));
     }
-
     try {
       UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
       TSStatus status = serviceProvider.checkAuthority(plan, session);
@@ -2107,10 +2135,11 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session-{} unset using schema template {} on {}", session, templateName, prefixPath);
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session-%s unset using schema template %s on %s",
+              session, templateName, prefixPath));
     }
 
     try {
@@ -2130,9 +2159,11 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "Session-{} create timeseries of schema template on path {}", session, req.getDstPath());
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format(
+              "Session-%s create timeseries of schema template on path %s",
+              session, req.getDstPath()));
     }
 
     try {
@@ -2151,8 +2182,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (isStatusNotSuccess(loginStatus)) {
       return loginStatus;
     }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug("Session-{} drop schema template {}.", session, req.getTemplateName());
+    if (enableAuditLog) {
+      AuditLogUtils.writeAuditLog(
+          String.format("Session-%s drop schema template %s.", session, req.getTemplateName()));
     }
 
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
@@ -2170,7 +2202,6 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus executeOperationSync(TSOperationSyncWriteReq req) {
-    IClientSession session = SESSION_MANAGER.getCurrSession();
     PhysicalPlan physicalPlan;
     try {
       ByteBuffer planBuffer = req.physicalPlan;
