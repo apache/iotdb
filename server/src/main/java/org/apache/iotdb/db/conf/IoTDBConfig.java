@@ -875,7 +875,7 @@ public class IoTDBConfig {
   private int archivingThreadNum = 2;
 
   // determines whether audit logs are written to log files or IoTDB
-  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_LOGGER;
+  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_NONE;
 
   // determines whether audit logs record IoTDB write operation
   private boolean enableAuditLogWrite = false;
