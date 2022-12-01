@@ -157,6 +157,7 @@ public class LastQuerySortOperator implements ProcessOperator {
               LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
               previousTsBlock = tsBlock;
             } else {
+              // it is safe to append the whole TsBlock
               LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
             }
           }
