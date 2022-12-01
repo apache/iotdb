@@ -120,6 +120,8 @@ public abstract class Decoder {
         return new MTFDecoder();
       case BW:
         return new BWDecoder();
+      case AC:
+        return new ACDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

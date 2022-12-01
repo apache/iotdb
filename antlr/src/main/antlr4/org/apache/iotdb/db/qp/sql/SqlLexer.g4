@@ -665,7 +665,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | HUFFMAN | MTF | BW
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | HUFFMAN | MTF | BW | AC
     ;
 
 DICTIONARY
@@ -706,6 +706,10 @@ MTF
 
 BW
     : B W
+    ;
+
+AC
+    : A C
     ;
 
 

@@ -146,7 +146,8 @@ namespace TSEncoding {
         GORILLA = (char) 8,
         HUFFMAN = (char) 9,
         MTF = (char) 10,
-        BW = (char) 11
+        BW = (char) 11,
+        AC = (char) 12
     };
 }
 

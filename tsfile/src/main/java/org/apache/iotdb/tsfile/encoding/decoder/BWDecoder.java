@@ -52,6 +52,7 @@ public class BWDecoder extends Decoder {
     if (records.isEmpty()) {
       reset();
       load(buffer);
+      clearBuffer(buffer);
     }
     return records.poll();
   }
@@ -126,5 +127,11 @@ public class BWDecoder extends Decoder {
 
   private void loadBuffer(ByteBuffer buffer) {
     byteBuffer = buffer.get();
+  }
+
+  private void clearBuffer(ByteBuffer buffer) {
+    while (numberLeftInBuffer > 0) {
+      readbit(buffer);
+    }
   }
 }

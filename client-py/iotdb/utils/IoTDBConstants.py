@@ -62,6 +62,7 @@ class TSEncoding(Enum):
     HUFFMAN = 9
     MTF = 10
     BW = 11
+    AC = 12
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545
