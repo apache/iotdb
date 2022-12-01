@@ -183,7 +183,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     if (timestamp <= lastTime[subTaskId]) {
       throw new RuntimeException(
           "Timestamp of the current point of "
-              + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId)
+              + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId])
               + " is "
               + timestamp
               + ", which should be later than the last time "

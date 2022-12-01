@@ -19,81 +19,40 @@
 
 -->
 
-# Apache IoTDB 0.14.0-preview2
-The 0.14.0-preview2 version only contains the new cluster version.
+# Apache IoTDB 1.0.0
+
 ## New Features
 
-* Support RestApi
-* Support removing data node using Ratis consensus
-* Support having clause in query
-* Support Between expression
+* New architecture that supports standalone and cluster mode with two types of nodes: ConfigNode, DataNode
+* Support ConfigNode management: Start/Add, Stop, Remove
+* Support DataNode management: Start/Add, Stop, Remove
+* Support replication of ConfigNode, Schema and Data
+* Support Consensus Protocol: Simple, IoT, Ratis
+* Support Cluster management sql: show cluster, show regions
+* Support administration in Cluster:  User, Permission, Role management
+* Support authorization when login and executing a command
+* Support create/show/count/delete database
+* Support show/count devices
+* Support create/show/count timeseries
+* Support schema template management
+* Support MPP(massively parallel process) framework in cluster
+* Support insertion, deletion and all query types in Cluster
+* Support CSV import/export tools
+* Support TsFile import/export tools
+* Support Sync TsFile from an IoTDB with one replica to another with any replica number
+* Support UDF framework in Cluster
+* Support new UDF 'change_points
+* Support stateful, stateless Trigger in Cluster
+* Support Select into in Cluster
+* Support Continuous Query in Cluster
+* Support flush on local/cluster
+* Support clear cache on local/cluster
+* Support metric for DataNode and ConfigNode with output to IoTDB, Prometheus, and JMX
+* Support DBAPI in python client
+* Support RestApi, MQTT for cluster
+* Support having clause and between expression in query
 * Support order by timeseries in last query
 * Support hot configuration of data_dirs
-* Support schema template
-* Support executeBatchStatement in JDBC
-* Support new UDF 'change_points'
-
-## Improvements
-
-* Add memory control for query
-* Balance write load of IoT consensus
-* Optimize python client query performance
-* Optimize c++ client tablet insert performance
-* Print detailed info when failed opening session
-* Improve the performance of aligned series tsfile compaction
-* Improve the performance of group by query by returning batch result in one TsBlock instead of one row
-* Improve the performance of expression evaluation
-
-# Apache IoTDB 0.14.0-preview1
-The 0.14.0-preview1 version only contains the new cluster version.
-## New Features
-
-- The new cluster contains two types of nodes: ConfigNode, DataNode
-- Support ConfigNode Deploy: Start(Add), Stop
-- Support DataNode Deploy: Start(Add), Stop
-- Data and Schema replication management
-- Support Consensus Protocol: Standalone, MultiLeader, Ratis
-- Schema Management: Memory, SchemaFile, RocksDB
-- Cluster monitor sql: show cluster, show regions
-- Administration:  User, Permission, Role management
-- Authorization when login and executing a command
-- Load Balance for data and schema
-- Native API for reading and writing
-- Support CSV import/export tools
-- Support create/show/count/delete Storage Group
-- Support create/show/count timeseries
-- Support show/count devices
-- Flush is supported in cluster
-- Support monitor DataNode and ConfigNode through Prometheus and Grafana
-- Support Data insertion and deletion
-- Query Types: Raw data Query, Aggregation, Group By Time, Group By Level, Last query
-- Support Fill null values in the query result
-- Support order by time and limit, offset, slimit, soffset
-- Support value filter and expression
-- Python API: Add support for DBAPI
-
-![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Preview1-Function.png?raw=true)
-
-## Incompatible changes
-- Rename the following scripts and configuration files
-  
-| Previous                     | Now                            |
-|------------------------------|--------------------------------|
-| conf/iotdb-engine.properties | conf/iotdb-datanode.properties |
-| conf/iotdb-env.sh & bat      | conf/datanode-env.sh & bat     |
-
-- Rename the DataNode configuration parameters
-
-| Previous                         | Now                 |
-|----------------------------------|---------------------|
-| internal_ip                      | internal_address    |
-| target_confignode / config_nodes | target_config_nodes |
-
-- Rename the ConfigNode configuration parameters
-
- | Previous                         | Now                 |
- |----------------------------------|---------------------|
- | target_confignode / config_nodes | target_config_nodes |
 
 # Apache IoTDB 0.13.3
 

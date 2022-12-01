@@ -132,15 +132,15 @@ Core-level metrics are enabled by default during system operation. The addition 
 | ------------ | -------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                        | AutoGauge | The write process of main process in replica group                    |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                          | AutoGauge | The sync index of replica group                                       |
-| stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                         | Histogram | The time consumed to get statemachine lock in main process            |
-| stage        | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                         | Histogram | The time consumed to precheck before write in main process            |
-| stage        | name="iot_consensus", region="{{region}}", type="writeStateMachine"                           | Histogram | The time consumed to write statemachine in main process               |
-| stage        | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                         | Histogram | The time consumed to try to offer request to queue in main process    |
-| stage        | name="iot_consensus", region="{{region}}", type="consensusWrite"                              | Histogram | The time consumed to the whole write in main process                  |
-| stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                              | Histogram | The time consumed to construct batch in synchronization thread        |
-| stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                       | Histogram | The time consumed to sync log in asynchronous callback process        |
+| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | The write process of main process in replica group                    |
+| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | The sync index of replica group                                       |
+| stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | The time consumed to get statemachine lock in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | The time consumed to precheck before write in main process            |
+| stage        | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | The time consumed to write statemachine in main process               |
+| stage        | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | The time consumed to try to offer request to queue in main process    |
+| stage        | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | The time consumed to the whole write in main process                  |
+| stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | The time consumed to construct batch in synchronization thread        |
+| stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | The time consumed to sync log in asynchronous callback process        |
 
 ### 4.2.4. Cache
 | Metric    | Tags                               | Type      | Description                                                              |
@@ -149,8 +149,8 @@ Core-level metrics are enabled by default during system operation. The addition 
 | cache_hit | name="schema"                      | AutoGauge | The cache hit ratio of SchemaCache, Unit: %                              |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | The cache hit ratio of TimeseriesMetadataCache, Unit: %                  |
 | cache_hit | name="bloomFilter"                 | AutoGauge | The interception rate of bloomFilter in TimeseriesMetadataCache, Unit: % |
-| cache     | name="StorageGroup", type="hit"    | Counter   | The hit number of StorageGroup Cache                                     |
-| cache     | name="StorageGroup", type="all"    | Counter   | The access number of StorageGroup Cache                                  |
+| cache     | name="Database", type="hit"        | Counter   | The hit number of Database Cache                                         |
+| cache     | name="Database", type="all"        | Counter   | The access number of Database Cache                                      |
 | cache     | name="SchemaPartition", type="hit" | Counter   | The hit number of SchemaPartition Cache                                  |
 | cache     | name="SchemaPartition", type="all" | Counter   | The access number of SSchemaPartition Cache                              |
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
@@ -175,7 +175,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
 | mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"   | AutoGauge | The memory usage of IoTConsensus, Unit: byte              |
+| mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
 
 ### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
@@ -264,10 +264,10 @@ Core-level metrics are enabled by default during system operation. The addition 
 ## 4.3. Normal level Metrics
 
 ### 4.3.1. Cluster
-| Metric | Tags                                                               | Type      | Description                                                        |
-| ------ | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------------ |
-| region | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
-| slot   | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
+| Metric | Tags                                                           | Type      | Description                                                        |
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
+| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
+| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
 ## 4.4. All Metric
 Currently there is no All level metrics, and it will continue to be added in the future.
@@ -384,99 +384,103 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
 
-#### 5.2.4.2. Apache IoTDB StandaAlone Dashboard Instructions
+#### 5.2.4.2. Apache IoTDB ConfigNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
-1. `Overview`:
-   1. `The number of entity`: The number of entities, currently including the number of timeseries
-   2. `write point per minute`: the cumulative number of write points per minute
-   3. `database used memory`: The memory size used by each database
-2. `Interface`:
-   1. `The QPS of Interface`: The number of times the system interface is accessed per second
-   2. `The time consumed of Interface`: The average time consumed by the system interface
-   3. `Cache hit rate`: Cache hit rate
-3. `Engine`:
-   1. `Task number (pending and active)`: The number of tasks in different states in the system
-   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system
-4. `System`:
-   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
-   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
-   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC
-   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC
-   5. `Heap Memory`: The heap memory of IoTDB
-   6. `Off-heap Memory`: The off-heap memory of IoTDB
-   7. `The number of Java Thread`: The number of threads in different states of IoTDB
+- `Overview`: system overview
+  - `Registered Node`: The number of registered ConfigNode/DataNode
+  - `DataNode`: The status of the cluster DataNode, including Online and Unknown.
+  - `ConfigNode`: The status of the cluster ConfigNode, including Online and Unknown.
+  - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
+- `Region`: Region overview
+  - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of SchemaRegions.
+  - `Leadership distribution`: Cluster leader distribution, which refers to the number of Leaders corresponding to the Region on each node.
+  - `Total Region in Node`: The total number of Regions of different Nodes.
+  - `Region in Node`: the number of SchemaRegions/DataRegions of different Nodes.
+  - `Region in Database` (Normal level): the number of Regions in different Databases, including SchemaRegion and DataRegion.
+  - `Slot in Database` (Normal level): The number of Slots in different Databases, including the number of DataSlots and SchemaSlots.
+- `System`: system
+  - `CPU Core`: the number of CPU cores in the system.
+  - `CPU Load`: system CPU load, progress CPU load.
+  - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause this value to exceed 1 minute.
+  - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the memory size submitted by the virtual machine.
+  - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
+  - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process, and the memory size used by the IoTDB process.
+  - `The Number of GC Per Minute`: The average number of GC per minute.
+  - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
+  - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
+  - `Heap Memory`: the heap memory of the IoTDB process
+  - `Off Heap Memory`: the off-heap memory of the IoTDB process
+  - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
+  - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
+  - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
-#### 5.2.4.3. Apache IoTDB ConfigNode Dashboard Instructions
+#### 5.2.4.3. Apache IoTDB DataNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
-1. `Overview`:
-   1. `Online ConfigNode`：The number of online confignode
-   2. `Registered ConfigNode`：The number of registered confignode
-   3. `Unknown ConfigNode`：The number of unknown confignode
-   4. `Online DataNode`：The number of online datanode
-   5. `Registered DataNode`：The number of registered datanode
-   6. `Unknown DataNode`：The number of unknown datanode
-   7. `TotalRegion`：The number of region
-   8. `DataRegion`：The number of data region
-   9. `SchemaRegion`：The number of schema region
-2. `Node Info`
-   1. `The status of cluster node`：The status of cluster node
-   2. `Leadership distribution`：The distribution of leaderShip
-3. `Region`:
-   1. `Total Region in Node`: The total number of Regions in different Nodes
-   2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
-   3. `Region in Database` (Normal level): The number of Regions in different databases, including SchemaRegion, DataRegion
-   4. `Slot in Database` (Normal level): The number of Slots in different databases, including the number of DataSlots and the number of SchemaSlots
-4. `System`:
-   1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
-   2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
-   3. `Heap Memory`: The heap memory of IoTDB.
-   4. `Off-heap Memory`: The off-heap memory of IoTDB.
-   5. `The number of Java Thread`: The number of threads in different states of IoTDB.
-   6. `The time consumed of Interface`: The average time consumed by the system interface
-   7. `CPU Load`：The load of cpu
-   8. `Memory`：The size of system memory and used system memory
+- `Overview`: system overview
+   - `The Number Of Entity`: the number of entities, including time series, etc.
+   - `Write Point Per Minute`: the average number of system write points per minute
+   - `Database Used Memory`: the memory size used by each Database
+- `Interface`: interface
+   - `The Time Consumed Of Operation(50%)`: Median time spent by different client operations
+   - `The Time Consumed Of Operation(75%)`: The upper quartile of the time consumed by different client operations
+   - `The Time Consumed Of Operation(100%)`: The maximum time spent by different client operations
+   - `The QPS of Interface`: system interface visits per second
+   - `The Time Consumed Of Interface`: the average time consumed by the system interface
+   - `Cache Hit Rate`: cache hit rate
+   - `Thrift Connection`: the number of Thrift connections established
+   - `Thrift Active Thread`: The number of active Thrift connections established
+- `Engine`: 
+   - `Task Number`: the number of tasks in different states in the system
+   - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system
+   - `Compaction Read And Write Per Minute`: the average amount of combined read and write data per minute
+   - `Compaction R/W Ratio Per Minute`: The average ratio of combined read and write data per minute
+   - `Compaction Number Per Minute`: the average number of different types of consolidation tasks per minute
+- `IoTConsensus`：
+   - `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
+   - `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
+   - `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
+   - `The time consumed of different stages(50%)`：The median  of the time consumed of different stages
+   - `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
+   - `The time consumed of different stages(100%)`：The max of the time consumed of different stages
+   - `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
+   - `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
+   - `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
+   - `Sync Lag`：The sync lag of region
+   - `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of LogDispatcher
+   - `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min currentSyncIndex of LogDispatcher
+- `System`: system
+  - `CPU Core`: the number of CPU cores in the system.
+  - `CPU Load`: system CPU load, progress CPU load.
+  - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause this value to exceed 1 minute.
+  - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the memory size submitted by the virtual machine.
+  - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
+  - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process, and the memory size used by the IoTDB process.
+  - `The Size Of File`: IoTDB system-related file size, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
+  - `The Number Of File`: the number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
+  - `The Space Of Disk`: the total size and remaining size of the disk mounted in the current data directory
+  - `The Number of GC Per Minute`: The average number of GC per minute.
+  - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
+  - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
+  - `Heap Memory`: the heap memory of the IoTDB process
+  - `Off Heap Memory`: the off-heap memory of the IoTDB process
+  - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
+  - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
+  - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
-#### 5.2.4.4. Apache IoTDB DataNode Dashboard Instructions
-> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
+## 5.3. IoTDB
 
-1. `Overview`:
-   1. `The number of entity`: The number of entities, currently including the number of timeseries
-   2. `write point per minute`: the cumulative number of write points per minute
-   3. `database used memory`: The memory size used by each database
-   4. `Memory`：The size of system memory and used system memory
-2. `Interface`:
-   1. `The QPS of Interface`: The number of times the system interface is accessed per second
-   2. `The time consumed of Interface`: The average time consumed by the system interface
-   3. `Cache hit rate`: Cache hit rate
-3. `Engine`:
-   1. `Task number (pending and active)`: The number of tasks in different states in the system
-   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system
-4. `IoTConsensus`：
-   1. `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
-   2. `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
-   3. `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
-   4. `The time consumed of different stages(50%)`：The median  of the time consumed of different stages
-   5. `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
-   6. `The time consumed of different stages(100%)`：The max of the time consumed of different stages
-   7. `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
-   8. `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
-   9. `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
-   10. `Sync Lag`：The sync lag of region
-   11. `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of LogDispatcher
-   12. `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min currentSyncIndex of LogDispatcher
-5. `CPU`:
-   1. `CPU Load`：The load of CPU
-   2. `Process CPU Load`：The cpu load of iotdb process
-6. `File System`：
-   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
-   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
-   3. `Disk Space`：The total size and remaining size of the disk mounted by the current data directory
-7. `JVM`：
-   1. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC
-   2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC
-   3. `Heap Memory`: The heap memory of IoTDB
-   4. `Off-heap Memory`: The off-heap memory of IoTDB
-   5. `The number of Java Thread`: The number of threads in different states of IoTDB
+### 5.3.1. IoTDB mapping relationship of metrics
+> For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__system.metric as an example by default
 
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AutoGauge、Gauge | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Histogram        | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
+| Rate             | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Timer            | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15 |
+
+### 5.3.2. Obtain metrics
+According to the above mapping relationship, related IoTDB query statements can be formed to obtain metrics

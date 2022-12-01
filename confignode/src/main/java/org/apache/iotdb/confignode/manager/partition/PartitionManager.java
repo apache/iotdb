@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -103,7 +104,11 @@ public class PartitionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final DataRegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
+  private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
+      CONF.getSchemaRegionGroupExtensionPolicy();
+  private static final int SCHEMA_REGION_GROUP_PER_DATABASE =
+      CONF.getSchemaRegionGroupPerDatabase();
+  private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
   private static final int DATA_REGION_GROUP_PER_DATABASE = CONF.getDataRegionGroupPerDatabase();
 
@@ -157,7 +162,7 @@ public class PartitionManager {
    * Thread-safely get DataPartition
    *
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
+   *     TTimeSlotList>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
   public DataSet getDataPartition(GetDataPartitionPlan req) {
@@ -263,9 +268,8 @@ public class PartitionManager {
     // the number of serialized CreateDataPartitionReqs is acceptable.
     synchronized (this) {
       // Filter unassigned DataPartitionSlots
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap =
-              partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
+          partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
 
       // Here we ensure that each StorageGroup has at least one DataRegion.
       // And if some StorageGroups own too many slots, extend DataRegion for them.
@@ -336,9 +340,15 @@ public class PartitionManager {
 
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
-        // The SchemaRegionGroup always use AUTO policy currently.
-        return autoExtendRegionGroupIfNecessary(
-            unassignedPartitionSlotsCountMap, consensusGroupType);
+        switch (SCHEMA_REGION_GROUP_EXTENSION_POLICY) {
+          case CUSTOM:
+            return customExtendRegionGroupIfNecessary(
+                unassignedPartitionSlotsCountMap, consensusGroupType);
+          case AUTO:
+          default:
+            return autoExtendRegionGroupIfNecessary(
+                unassignedPartitionSlotsCountMap, consensusGroupType);
+        }
       } else {
         switch (DATA_REGION_GROUP_EXTENSION_POLICY) {
           case CUSTOM:
@@ -378,8 +388,11 @@ public class PartitionManager {
           partitionInfo.getRegionGroupCount(storageGroup, consensusGroupType);
 
       if (allocatedRegionGroupCount == 0) {
-        // Only for DataRegionGroup currently
-        allotmentMap.put(storageGroup, DATA_REGION_GROUP_PER_DATABASE);
+        allotmentMap.put(
+            storageGroup,
+            TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
+                ? SCHEMA_REGION_GROUP_PER_DATABASE
+                : DATA_REGION_GROUP_PER_DATABASE);
       }
     }
 

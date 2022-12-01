@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -536,16 +537,13 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only Leader use this interface. Filter unassigned SchemaPartitionSlots
    *
-   * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
-   *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
-   *     DataPartitionSlots that is not assigned in partitionSlotsMap
+   * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot, TTimeSlotList>>
+   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, TTimeSlotList>>, DataPartitionSlots
+   *     that is not assigned in partitionSlotsMap
    */
-  public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      filterUnassignedDataPartitionSlots(
-          Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result =
-        new ConcurrentHashMap<>();
+  public Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> filterUnassignedDataPartitionSlots(
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> result = new ConcurrentHashMap<>();
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {

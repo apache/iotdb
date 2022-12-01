@@ -326,6 +326,10 @@ public class SnapshotLoader {
               + File.separator
               + IoTDBConstant.SNAPSHOT_FOLDER_NAME
               + File.separator
+              + storageGroupName
+              + "-"
+              + dataRegionId
+              + File.separator
               + snapshotId;
       fileCnt += takeHardLinksFromSnapshotToDataDir(dataDir, new File(snapshotDir), fileInfoSet);
     }
@@ -457,6 +461,10 @@ public class SnapshotLoader {
             dataDir
                 + File.separator
                 + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+                + File.separator
+                + storageGroupName
+                + "-"
+                + dataRegionId
                 + File.separator
                 + snapshotId;
         fileList.addAll(searchDataFilesRecursively(snapshotDir));

@@ -29,9 +29,9 @@ An illustration of the cluster architecture：
 
 <img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
 
-ConfigNode is the control node of the cluster, which manages the node status of cluster, partition information, etc. All ConfigNodes in the cluster form a highly available group, which is fully replicated.
+ConfigNode is the control node of the cluster, which manages the cluster's node status, partition information, etc. All ConfigNodes in the cluster form a highly available group, which is fully replicated.
 
-DataNode stores the data and schema of cluster, which manages multiple data regions and schema regions. Data is a time-value pair, and schema is the path and data type of each time series.
+DataNode stores the data and schema of the cluster, which manages multiple data regions and schema regions. Data is a time-value pair, and schema is the path and data type of each time series.
 
 Client could only connect to the DataNode for operation.
 
@@ -39,16 +39,16 @@ Client could only connect to the DataNode for operation.
 
 | Concept           | Type                             | Description                                                                                                                                 |
 |:------------------|:---------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
-| ConfigNode        | node role                        | Configuration node, which manages cluster node information and partition information, monitors cluster status, controls load balancing      |
+| ConfigNode        | node role                        | Configuration node, which manages cluster node information and partition information, monitors cluster status and controls load balancing   |
 | DataNode          | node role                        | Data node, which manages data and meta data                                                                                                 |
 | Database          | meta data                        | Database, data are isolated physically from different databases                                                                             |
 | DeviceId          | device id                        | The full path from root to the penultimate level in the metadata tree represents a device id                                                |
-| SeriesSlot        | schema partition                 | Each database contains many SeriesSlot, the partition key is DeviceId                                                                       |
+| SeriesSlot        | schema partition                 | Each database contains many SeriesSlots, the partition key being DeviceId                                                                   |
 | SchemaRegion      | schema region                    | A collection of multiple SeriesSlots                                                                                                        |
-| SchemaRegionGroup | logical concept                  | The number of SchemaRegions contained in group is the number of schema replication, it manages the same schema data, and back up each other |
-| SeriesTimeSlot    | data partition                   | The data of a time interval of SeriesSlot, a SeriesSlot contains multiple SeriesTimeSlots, the partition key is timestamp                   |
+| SchemaRegionGroup | logical concept                  | The number of SchemaRegions contained in group is the number of schema replicas, it manages the same schema data, and back up each other    |
+| SeriesTimeSlot    | data partition                   | The data of a time interval of SeriesSlot, a SeriesSlot contains multiple SeriesTimeSlots, the partition key being timestamp                |
 | DataRegion        | data region                      | A collection of multiple SeriesTimeSlots                                                                                                    |
-| DataRegionGroup   | logical concept                  | The number of DataRegions contained in group is the number of data replication, it manages the same data, and back up each other            |
+| DataRegionGroup   | logical concept                  | The number of DataRegions contained in group is the number of data replicas, it manages the same data, and back up each other               |
 
 ## Characteristics of Cluster
 
@@ -87,7 +87,7 @@ Regions will be allocated to different DataNodes to avoid single point of failur
 
 The replication strategy replicates data in multiple replicas, which are copies of each other. Multiple copies can provide high-availability services together and tolerate the failure of some copies.
 
-A region is the basic unit of replication. Multiple replicas of a region construct a high-availability RegionGroup, to support high availability.
+A region is the basic unit of replication. Multiple replicas of a region construct a high-availability RegionGroup.
 
 * Replication and consensus
   * ConfigNode Group: Consisting of all ConfigNodes.
