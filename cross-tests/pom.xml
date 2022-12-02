@@ -28,7 +28,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>cross-tests</artifactId>
     <properties>
-        <cross.test.test.skip>false</cross.test.test.skip>
+        <cross.test.test.skip>true</cross.test.test.skip>
         <cross.test.it.skip>${cross.test.test.skip}</cross.test.it.skip>
         <cross.ut.skip>${cross.test.test.skip}</cross.ut.skip>
     </properties>
