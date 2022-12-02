@@ -51,8 +51,7 @@ public class IntoOperator extends AbstractIntoOperator {
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize,
-      long maxReturnSize) {
+      long maxStatementSize) {
     super(
         operatorContext,
         child,
@@ -60,8 +59,7 @@ public class IntoOperator extends AbstractIntoOperator {
             targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap),
         sourceColumnToInputLocationMap,
         intoOperationExecutor,
-        maxStatementSize,
-        maxReturnSize);
+        maxStatementSize);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
   }
 

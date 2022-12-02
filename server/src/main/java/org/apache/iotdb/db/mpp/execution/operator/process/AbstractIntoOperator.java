@@ -53,6 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
@@ -83,8 +84,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize,
-      long maxReturnSize) {
+      long maxStatementSize) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.insertTabletStatementGenerators = insertTabletStatementGenerators;
@@ -92,7 +92,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.writeOperationExecutor = intoOperationExecutor;
 
     this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
-    this.maxReturnSize = maxReturnSize;
+    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
