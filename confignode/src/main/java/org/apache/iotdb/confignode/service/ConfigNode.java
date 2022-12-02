@@ -259,6 +259,10 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (resp == null) {
+          LOGGER.error("The result of register ConfigNode is empty!");
+          throw new StartupException("The result of register ConfigNode is empty!");
+        }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
