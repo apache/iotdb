@@ -220,7 +220,7 @@ The server can be stopped with ctrl-C or the following script:
 Note: In Linux, please add the "sudo" as far as possible, or else the stopping process may fail.
 More explanations are in Cluster/Cluster-setup.md.
 
-### Administration
+### Administration management
 
 There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
 
@@ -230,7 +230,7 @@ ALTER USER <username> SET PASSWORD <password>;
 Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
 ```
 
-More about administration：[Administration](https://iotdb.apache.org/zh/UserGuide/Master/Administration-Management/Administration.html)
+More about administration management：[Administration Management](https://iotdb.apache.org/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 
 ## Basic configuration
