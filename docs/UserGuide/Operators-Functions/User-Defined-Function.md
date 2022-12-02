@@ -46,7 +46,7 @@ If you use [Maven](http://search.maven.org/), you can search for the development
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>udf-api</artifactId>
-  <version>0.14.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -324,7 +324,7 @@ public class Counter implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) {
     if (rowWindow.windowSize() != 0) {
-      collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
+      collector.putInt(rowWindow.windowStartTime(), rowWindow.windowSize());
     }
   }
 }
@@ -366,6 +366,9 @@ public class Max implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) {
+    if (row.isNull(0)) {
+      return;
+    }
     int candidateValue = row.getInt(0);
     if (time == null || value < candidateValue) {
       time = row.getTime();
@@ -404,9 +407,9 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Optional. You can place the JAR package in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
+3. Optional. You can place the JAR package in the directory `iotdb-server-1.0.0-all-bin/ext/udf`.
    **Note that if you choose to place the JAR in advance when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
-The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf/install`.
+   The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-1.0.0-all-bin/ext/udf/install`.
    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
@@ -597,7 +600,7 @@ Q1: How to modify the registered UDF?
 A1: Assume that the name of the UDF is `example` and the full class name is `org.apache.iotdb.udf.ExampleUDTF`, which is introduced by `example.jar`.
 
 1. Unload the registered function by executing `DROP FUNCTION example`.
-2. Delete `example.jar` under `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
+2. Delete `example.jar` under `iotdb-server-1.0.0-all-bin/ext/udf`.
 3. Modify the logic in `org.apache.iotdb.udf.ExampleUDTF` and repackage it. The name of the JAR package can still be `example.jar`.
-4. Upload the new JAR package to `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`.
+4. Upload the new JAR package to `iotdb-server-1.0.0-all-bin/ext/udf`.
 5. Load the new UDF by executing `CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`.

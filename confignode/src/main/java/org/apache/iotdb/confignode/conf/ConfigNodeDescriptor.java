@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
-import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -220,8 +220,20 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setSchemaRegionGroupPerDatabase(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_group_per_database",
+                String.valueOf(conf.getSchemaRegionGroupPerDatabase()).trim())));
+
     conf.setDataRegionGroupExtensionPolicy(
-        DataRegionGroupExtensionPolicy.parse(
+        RegionGroupExtensionPolicy.parse(
             properties.getProperty(
                 "data_region_group_extension_policy",
                 conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
@@ -704,6 +716,36 @@ public class ConfigNodeDescriptor {
                     "ratis_first_election_timeout_max_ms",
                     String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
                 .trim()));
+
+    conf.setConfigNodeRatisLogMaxMB(
+        Long.parseLong(
+                properties
+                    .getProperty(
+                        "config_node_ratis_log_max_size_mb",
+                        String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
+
+    conf.setSchemaRegionRatisLogMaxMB(
+        Long.parseLong(
+                properties
+                    .getProperty(
+                        "schema_region_ratis_log_max_size_mb",
+                        String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
+
+    conf.setDataRegionRatisLogMaxMB(
+        Long.parseLong(
+                properties
+                    .getProperty(
+                        "data_region_ratis_log_max_size_mb",
+                        String.valueOf(conf.getDataRegionRatisLogMaxMB()))
+                    .trim())
+            / 1024
+            / 1024);
   }
 
   private void loadCQConfig(Properties properties) {

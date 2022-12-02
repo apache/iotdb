@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -35,8 +36,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -255,5 +258,42 @@ public class CompactionUtils {
         targetResource.updatePlanIndexes(seqResource);
       }
     }
+  }
+
+  public static boolean validateTsFileResources(
+      TsFileManager manager, String storageGroupName, long timePartition) {
+    List<TsFileResource> resources =
+        manager.getSequenceListByTimePartition(timePartition).getArrayList();
+    resources.sort(
+        (f1, f2) ->
+            Long.compareUnsigned(
+                Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                Long.parseLong(f2.getTsFile().getName().split("-")[0])));
+    Map<String, Long> lastEndTimeMap = new HashMap<>();
+    TsFileResource prevTsFileResource = null;
+    for (TsFileResource resource : resources) {
+      Set<String> devices = resource.getDevices();
+      for (String device : devices) {
+        long currentStartTime = resource.getStartTime(device);
+        long currentEndTime = resource.getEndTime(device);
+        long lastEndTime = lastEndTimeMap.computeIfAbsent(device, x -> Long.MIN_VALUE);
+        if (lastEndTime >= currentStartTime) {
+          logger.error(
+              "{} Device {} is overlapped between {} and {}, end time in {} is {}, start time in {} is {}",
+              storageGroupName,
+              device,
+              prevTsFileResource,
+              resource,
+              prevTsFileResource,
+              lastEndTime,
+              resource,
+              currentStartTime);
+          return false;
+        }
+        lastEndTimeMap.put(device, currentEndTime);
+      }
+      prevTsFileResource = resource;
+    }
+    return true;
   }
 }

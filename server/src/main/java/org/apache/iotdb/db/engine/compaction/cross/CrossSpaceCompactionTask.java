@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -168,6 +169,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetTsfileResourceList,
             timePartition,
             true);
+
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+            && !CompactionUtils.validateTsFileResources(
+                tsFileManager, storageGroupName, timePartition)) {
+          LOGGER.error(
+              "Failed to pass compaction validation, source sequence files is: {}, unsequence files is {}, target files is {}",
+              selectedSequenceFiles,
+              selectedUnsequenceFiles,
+              targetTsfileResourceList);
+          throw new RuntimeException("Failed to pass compaction validation");
+        }
 
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
