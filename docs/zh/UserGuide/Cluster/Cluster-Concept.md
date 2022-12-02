@@ -31,6 +31,8 @@ Apache IoTDB 集群版包含两种角色的节点，ConfigNode 和 DataNode，�
 
 ConfigNode 是集群的控制节点，管理集群的节点状态、分区信息等，集群所有 ConfigNode 组成一个高可用组，数据全量备份。
 
+注意：ConfigNode 的副本数是集群当前加入的 ConfigNode 个数，一半以上的 ConfigNode 存活集群才能提供服务。
+
 DataNode 是集群的数据节点，管理多个数据分片、元数据分片，数据即时间序列中的时间戳和值，元数据为时间序列的路径信息、数据类型等。
 
 Client 只能通过 DataNode 进行数据读写。
