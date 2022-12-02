@@ -25,9 +25,10 @@ iotdb_path=$(cd ${current_path}/../../../../; pwd)
 iotdb_zip_path=${current_path}/../tmp
 options="confignode datanode 1c1d"
 nocache="true"
+do_build="false"
 
 function print_usage(){
-    echo "Usage: $(base_name $0) [option] "
+    echo "Usage: $(basename $0) [option] "
     echo "	-t image to build, required. Options:$options all"
     echo "	-v iotdb version, default 1.0.1"
     echo "	-u specified the docker image maintainer, default git current user"
@@ -52,8 +53,15 @@ version=${version:-"1.0.1-SNAPSHOT"}
 maintainer=${maintainer:-"$(git config user.name)"}
 build_date="$(date +'%Y-%m-%dT%H:%M:%S+08:00')"
 commit_id=${commit_id:-"$(git rev-parse --short HEAD)"}
-do_build=${do_build:-false}
 image_prefix="apache/iotdb"
+
+echo "#################################"
+echo "build_what=$build_what"
+echo "version=$version"
+echo "do_build=$do_build"
+echo "maintainer=$maintainer"
+echo "commit_id=$commit_id"
+echo "#################################"
 
 set -ex
 
@@ -86,14 +94,14 @@ function build_iotdb(){
 }
 
 function check_build(){
-    local zip_file=${iotdb_zip_path}/$1
+    local zip_file=${iotdb_zip_path}/apache-iotdb-${version}-$1-bin.zip
     if [[ ! -f ${zip_file} ]]; then
         do_build=true
     fi
 }
 
 function process_single(){
-    check_build "$1"
+    check_build "${1:-$build_what}"
     build_iotdb
     build_single ${build_what}
 }
@@ -101,16 +109,16 @@ function process_single(){
 function main() {
     case "$build_what" in
         confignode)
-            process_single apache-iotdb-${version}-confignode-bin
+            process_single
             ;;
         datanode)
-            process_single apache-iotdb-${version}-datanode-bin
+            process_single
             ;;
         1c1d)
-            process_single apache-iotdb-${version}-all-bin
+            process_single all
             ;;
         all)
-            check_build apache-iotdb-${version}-all-bin
+            check_build all
             build_iotdb
 	    for b in $options ; do
 	        build_single ${b}
@@ -120,7 +128,7 @@ function main() {
 	    print_usage ;;
    esac
    # clean up docker images
-   docker rmi `docker images|grep '<none>'|awk '{ print $3 }'` || true
+   docker rmi `docker images|grep '<none>'|awk '{ print $3 }'` > /dev/null 2>&1 || true
 }
 main
 exit $?
