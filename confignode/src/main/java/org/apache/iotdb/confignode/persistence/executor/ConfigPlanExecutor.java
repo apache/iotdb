@@ -178,7 +178,7 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(triggerInfo);
 
     this.syncInfo = syncInfo;
-    this.snapshotProcessorList.add(syncInfo);
+    this.snapshotProcessorList.add(triggerInfo);
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
