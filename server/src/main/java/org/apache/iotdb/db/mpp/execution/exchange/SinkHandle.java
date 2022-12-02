@@ -363,7 +363,7 @@ public class SinkHandle implements ISinkHandle {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Throwable e) {
-            logger.error("Failed to send new data block event, attempt times: {}", attempt, e);
+            logger.warn("Failed to send new data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               sinkHandleListener.onFailure(SinkHandle.this, e);
             }
@@ -403,9 +403,9 @@ public class SinkHandle implements ISinkHandle {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
           } catch (Throwable e) {
-            logger.error("Failed to send end of data block event, attempt times: {}", attempt, e);
+            logger.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
-              logger.error("Failed to send end of data block event after all retry", e);
+              logger.warn("Failed to send end of data block event after all retry", e);
               sinkHandleListener.onFailure(SinkHandle.this, e);
               return;
             }

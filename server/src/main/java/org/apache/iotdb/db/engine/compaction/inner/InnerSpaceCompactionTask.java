@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -175,6 +176,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             targetTsFileList,
             timePartition,
             false);
+      }
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+          && !CompactionUtils.validateTsFileResources(
+              tsFileManager, storageGroupName, timePartition)) {
+        LOGGER.error(
+            "Failed to pass compaction validation, source files is: {}, target files is {}",
+            selectedTsFileResourceList,
+            targetTsFileList);
+        throw new RuntimeException("Failed to pass compaction validation");
       }
 
       LOGGER.info(

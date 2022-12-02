@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -54,7 +55,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -135,11 +135,12 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       // Create a DataRegionGroup for each StorageGroup through getOrCreateDataPartition
       for (int i = 0; i < storageGroupNum; i++) {
-        Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+        Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
-            new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap =
-            new HashMap<>();
+            new TSeriesPartitionSlot(1),
+            new TTimeSlotList()
+                .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
         sgSlotsMap.put(sg + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
@@ -197,11 +198,12 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             schemaPartitionTableResp.getStatus().getCode());
 
         // Create a DataRegionGroup for each StorageGroup
-        Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesSlotMap = new HashMap<>();
+        Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
-            new TSeriesPartitionSlot(1), Collections.singletonList(new TTimePartitionSlot(100)));
-        Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> sgSlotsMap =
-            new HashMap<>();
+            new TSeriesPartitionSlot(1),
+            new TTimeSlotList()
+                .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
         sgSlotsMap.put(sg + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));

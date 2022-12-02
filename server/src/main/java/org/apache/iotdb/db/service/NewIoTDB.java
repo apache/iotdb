@@ -87,7 +87,7 @@ public class NewIoTDB implements NewIoTDBMBean {
 
   public void active(boolean isTesting) {
     processPid();
-    StartupChecks checks = new StartupChecks().withDefaultTest();
+    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     try {
       checks.verify();
     } catch (StartupException e) {
