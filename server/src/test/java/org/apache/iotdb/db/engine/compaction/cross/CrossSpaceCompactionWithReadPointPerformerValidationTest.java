@@ -25,7 +25,9 @@ import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -50,11 +52,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
+public class CrossSpaceCompactionWithReadPointPerformerValidationTest
+    extends AbstractCompactionTest {
   TsFileManager tsFileManager =
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   private final String oldThreadName = Thread.currentThread().getName();
+
+  private ICrossCompactionPerformer performer = new ReadPointCompactionPerformer();
 
   @Before
   public void setUp()
@@ -105,10 +110,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -153,10 +155,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -201,10 +200,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -257,10 +253,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -310,10 +303,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -361,10 +351,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -415,10 +402,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -468,10 +452,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -521,10 +502,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -575,10 +553,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -629,10 +604,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -683,10 +655,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -738,10 +707,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -794,10 +760,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -850,10 +813,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -907,10 +867,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -965,10 +922,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1023,10 +977,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1081,10 +1032,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1139,10 +1087,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1196,10 +1141,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1249,10 +1191,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1303,10 +1242,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1357,10 +1293,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1411,10 +1344,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1466,10 +1396,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1522,10 +1449,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1578,10 +1502,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1635,10 +1556,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1693,10 +1611,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1751,10 +1666,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1809,10 +1721,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1867,10 +1776,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1924,10 +1830,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -1979,10 +1882,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -2030,10 +1930,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -2086,10 +1983,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -2143,10 +2037,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
@@ -2200,10 +2091,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
             tsFileManager,
             selected.get(0).left,
             selected.get(0).right,
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
+            performer,
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())

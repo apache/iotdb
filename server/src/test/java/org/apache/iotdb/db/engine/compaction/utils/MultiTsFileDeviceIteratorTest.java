@@ -117,4 +117,79 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
   }
+
+  @Test
+  public void getNonAlignedDevicesFromDifferentFilesWithFourLayersInNodeTreeTestUsingFileTimeIndex()
+      throws MetadataException, IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
+    registerTimeseriesInMManger(30, 3, false);
+    createFiles(3, 10, 3, 100, 0, 0, 50, 50, false, true);
+    createFiles(4, 5, 3, 100, 1000, 0, 50, 50, false, true);
+    createFiles(2, 15, 3, 100, 1000, 0, 50, 50, false, false);
+    createFiles(3, 30, 3, 100, 1000, 0, 50, 50, false, false);
+
+    // use file time index
+    for (TsFileResource resource : seqResources) {
+      resource.degradeTimeIndex();
+    }
+    for (TsFileResource resource : unseqResources) {
+      resource.degradeTimeIndex();
+    }
+
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + i);
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        Assert.assertFalse(deviceInfo.right);
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
+  }
+
+  @Test
+  public void getAlignedDevicesFromDifferentFilesWithOneLayerInNodeTreeTestUsingFileTimeIndex()
+      throws MetadataException, IOException, WriteProcessException {
+    registerTimeseriesInMManger(30, 3, false);
+    createFiles(3, 10, 3, 100, 0, 0, 50, 50, true, true);
+    createFiles(4, 5, 3, 100, 1000, 0, 50, 50, true, true);
+    createFiles(2, 15, 3, 100, 1000, 0, 50, 50, true, false);
+    createFiles(3, 30, 3, 100, 1000, 0, 50, 50, true, false);
+
+    // use file time index
+    for (TsFileResource resource : seqResources) {
+      resource.degradeTimeIndex();
+    }
+    for (TsFileResource resource : unseqResources) {
+      resource.degradeTimeIndex();
+    }
+
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        Assert.assertTrue(deviceInfo.right);
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
+  }
 }
