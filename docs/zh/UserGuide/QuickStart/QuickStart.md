@@ -267,6 +267,18 @@ Windows 系统停止命令如下：
 > $sbin\stop-server.bat
 ```
 
+#### IoTDB 的权限管理
+
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
+
+您可以通过以下命令修改其密码：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V0.13.x/Administration-Management/Administration.html)
+
 ### 基础配置
 
 配置文件在"conf"文件夹下，包括：
