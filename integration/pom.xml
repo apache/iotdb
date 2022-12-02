@@ -108,14 +108,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <skipTests>true</skipTests>
-                            <skipITs>true</skipITs>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
                         <executions>
                             <execution>
                                 <id>integration-test-Standalone</id>
@@ -185,7 +177,7 @@
                                     <goal>integration-test</goal>
                                 </goals>
                                 <configuration>
-                                    <skipTests>true</skipTests>
+                                    <skipTests>false</skipTests>
                                     <groups>${test.includedGroups}</groups>
                                     <excludedGroups>${test.excludedGroups}</excludedGroups>
                                     <useSystemClassLoader>false</useSystemClassLoader>
@@ -204,7 +196,7 @@
                                     <goal>verify</goal>
                                 </goals>
                                 <configuration>
-                                    <skipTests>true</skipTests>
+                                    <skipTests>false</skipTests>
                                     <summaryFiles>
                                         <summaryFile>target/failsafe-reports/failsafe-summary-Remote.xml</summaryFile>
                                     </summaryFiles>
@@ -260,14 +252,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <skipTests>true</skipTests>
-                            <skipITs>true</skipITs>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>

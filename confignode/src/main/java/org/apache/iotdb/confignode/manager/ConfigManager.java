@@ -786,9 +786,6 @@ public class ConfigManager implements IManager {
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
-    if (req.getLeastDataRegionGroupNum() != conf.getLeastDataRegionGroupNum()) {
-      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
-    }
     return null;
   }
 

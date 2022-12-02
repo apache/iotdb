@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
+import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -362,8 +363,18 @@ public class StatementGenerator {
   public static Statement createStatement(String storageGroup) throws IllegalPathException {
     // construct create database statement
     SetStorageGroupStatement statement = new SetStorageGroupStatement();
-    statement.setStorageGroupPath(new PartialPath(storageGroup));
+    statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
     return statement;
+  }
+
+  private static PartialPath parseStorageGroupRawString(String storageGroup)
+      throws IllegalPathException {
+    PartialPath storageGroupPath = new PartialPath(storageGroup);
+    if (storageGroupPath.getNodeLength() < 2) {
+      throw new IllegalPathException(storageGroup);
+    }
+    MetaFormatUtils.checkStorageGroup(storageGroup);
+    return storageGroupPath;
   }
 
   public static Statement createStatement(TSCreateTimeseriesReq req) throws IllegalPathException {
@@ -440,6 +451,9 @@ public class StatementGenerator {
 
   public static Statement createStatement(List<String> storageGroups) throws IllegalPathException {
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
+    for (String path : storageGroups) {
+      parseStorageGroupRawString(path);
+    }
     statement.setPrefixPath(storageGroups);
     return statement;
   }

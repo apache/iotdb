@@ -112,10 +112,10 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
 
 #### 配置
-配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
+配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
 
 ```
-authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
+authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 ```
 如果开启了 openID 服务则 openID_url 为必填项，openID_url 值为 http://ip:port/auth/realms/{realmsName}
 
