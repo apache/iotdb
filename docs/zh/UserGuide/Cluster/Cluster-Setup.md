@@ -97,12 +97,12 @@ iotdb-confignode.properties：
 
 iotdb-common.properties：
 
-| **配置项**                                    | **说明**                    |
-|--------------------------------------------|---------------------------|
-| data\_replication\_factor                  | 数据副本数，DataNode 数量不应少于此数目  |
-| data\_region\_consensus\_protocol\_class   | 数据副本组的共识协议                |
-| schema\_replication\_factor                | 元数据副本数，DataNode 数量不应少于此数目 |
-| schema\_region\_consensus\_protocol\_class | 元数据副本组的共识协议               |
+| **配置项**                                    | **说明**                                |
+|--------------------------------------------|---------------------------------------|
+| data\_replication\_factor                  | 数据副本数，DataNode 数量不应少于此数目              |
+| data\_region\_consensus\_protocol\_class   | 数据副本组的共识协议。注：RatisConsensus目前不支持多数据目录 |
+| schema\_replication\_factor                | 元数据副本数，DataNode 数量不应少于此数目             |
+| schema\_region\_consensus\_protocol\_class | 元数据副本组的共识协议                           |
 
 Linux 启动方式：
 ```
