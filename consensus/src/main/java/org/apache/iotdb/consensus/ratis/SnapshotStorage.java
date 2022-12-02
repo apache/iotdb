@@ -20,6 +20,7 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
 
+import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
 import org.apache.ratis.server.storage.RaftStorage;
@@ -48,17 +49,25 @@ public class SnapshotStorage implements StateMachineStorage {
 
   private final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
+  private final RaftGroupId groupId;
 
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
 
-  public SnapshotStorage(IStateMachine applicationStateMachine) {
+  public SnapshotStorage(IStateMachine applicationStateMachine, RaftGroupId groupId) {
     this.applicationStateMachine = applicationStateMachine;
+    this.groupId = groupId;
   }
 
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
-    this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
+    this.stateMachineDir =
+        Optional.ofNullable(getSnapshotDir())
+            .orElse(raftStorage.getStorageDir().getStateMachineDir());
+
+    if (!stateMachineDir.exists()) {
+      FileUtils.createDirectories(stateMachineDir);
+    }
     updateSnapshotCache();
   }
 
@@ -168,7 +177,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getStateMachineDir() {
-    return Optional.ofNullable(getSnapshotDir()).orElse(stateMachineDir);
+    return stateMachineDir;
   }
 
   public File getSnapshotDir(String snapshotMetadata) {
@@ -191,6 +200,8 @@ public class SnapshotStorage implements StateMachineStorage {
 
   @Override
   public File getTmpDir() {
-    return getSnapshotDir() == null ? null : new File(getSnapshotDir(), TMP_PREFIX);
+    return getSnapshotDir() == null
+        ? null
+        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 }

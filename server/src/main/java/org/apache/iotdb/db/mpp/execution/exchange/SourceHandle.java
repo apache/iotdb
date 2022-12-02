@@ -421,7 +421,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
 
-            logger.error(
+            logger.warn(
                 "failed to get data block [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
@@ -485,7 +485,7 @@ public class SourceHandle implements ISourceHandle {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
           } catch (Throwable e) {
-            logger.error(
+            logger.warn(
                 "failed to send ack data block event [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
