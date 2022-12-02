@@ -1034,7 +1034,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1267,7 +1268,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
