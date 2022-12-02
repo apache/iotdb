@@ -109,4 +109,5 @@ Among multiple Regions of each RegionGroup, consistency is guaranteed through a 
 * Current supported consensus protocol
   * SimpleConsensus：Provide strong consistency, could only be used when replica is 1, which is the empty implementation of the consensus protocol.
   * IoTConsensus：Provide eventual consistency, could be used in any number of replicas, 2 replicas could avoid single point failure, only for DataRegion, writings can be applied on each replica and replicated asynchronously to other replicas.
-  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。
+  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups. 
+  Currently, DataRegion uses RatisConsensus does not support multiple data directories. This feature is planned to be supported in future releases.
