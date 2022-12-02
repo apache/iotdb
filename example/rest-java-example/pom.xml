@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>rest-java-example</artifactId>
