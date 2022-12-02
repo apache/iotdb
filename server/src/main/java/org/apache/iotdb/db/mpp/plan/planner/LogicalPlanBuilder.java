@@ -208,7 +208,6 @@ public class LogicalPlanBuilder {
         throw new IllegalArgumentException("unexpected path type");
       }
     }
-    updateTypeProvider(sourceExpressions);
 
     this.root =
         new LastQueryNode(
