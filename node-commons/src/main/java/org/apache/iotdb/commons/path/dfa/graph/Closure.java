@@ -16,29 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path.statemachine;
+package org.apache.iotdb.commons.path.dfa.graph;
+
+import org.apache.iotdb.commons.path.dfa.IDFAState;
 
 import java.util.Objects;
 import java.util.Set;
 
 public class Closure {
-  private Set<State> stateSet;
+  private Set<IDFAState> stateSet;
 
-  public Closure(Set<State> stateSet) {
+  public Closure(Set<IDFAState> stateSet) {
     this.stateSet = stateSet;
   }
 
-  public Set<State> getStateSet() {
+  public Set<IDFAState> getStateSet() {
     return stateSet;
   }
 
-  public void setStateSet(Set<State> stateSet) {
+  public void setStateSet(Set<IDFAState> stateSet) {
     this.stateSet = stateSet;
   }
 
   public boolean isFinal() {
     boolean res = false;
-    for (State state : stateSet) {
+    for (IDFAState state : stateSet) {
       res |= state.isFinal();
     }
     return res;

@@ -16,28 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path.statemachine;
+package org.apache.iotdb.commons.path.dfa;
 
 import java.util.Objects;
 
-public class State {
+public class DFAState implements IDFAState {
   private final int index;
   private final boolean isFinal;
 
-  public State(int state) {
+  public DFAState(int state) {
     this.index = state;
     this.isFinal = false;
   }
 
-  public State(int state, boolean isFinal) {
+  public DFAState(int state, boolean isFinal) {
     this.index = state;
     this.isFinal = isFinal;
   }
 
+  @Override
   public int getIndex() {
     return index;
   }
 
+  @Override
   public boolean isFinal() {
     return isFinal;
   }
@@ -46,7 +48,7 @@ public class State {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    State state = (State) o;
+    DFAState state = (DFAState) o;
     return index == state.index && isFinal == state.isFinal;
   }
 

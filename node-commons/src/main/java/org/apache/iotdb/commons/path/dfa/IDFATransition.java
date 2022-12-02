@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.path.dfa;
 
+// TODO: rename to ITransition
 public interface IDFATransition {
 
   boolean isMatch(String event);

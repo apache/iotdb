@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path.statemachine;
+package org.apache.iotdb.commons.path.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.schema.tree.ITreeNode;
 
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
+import java.util.Objects;
 
-public class Transfer {
+public class DFATransition implements IDFATransition {
 
   private final String acceptName;
   private List<String> rejectList;
 
-  public Transfer(String acceptName) {
+  public DFATransition(String acceptName) {
     this.acceptName = acceptName;
   }
 
-  public Transfer(String acceptName, List<String> rejectList) {
+  public DFATransition(String acceptName, List<String> rejectList) {
     this.acceptName = acceptName;
     this.rejectList = rejectList;
   }
@@ -43,11 +43,12 @@ public class Transfer {
     return acceptName;
   }
 
-  public boolean match(ITreeNode node) {
-    // TODO
+  @Override
+  public boolean isMatch(String event) {
     return false;
   }
 
+  @Override
   public boolean isBatch() {
     return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptName);
   }
@@ -59,5 +60,19 @@ public class Transfer {
     } else {
       return acceptName + "/(" + StringUtils.join(rejectList, ",") + ")";
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DFATransition that = (DFATransition) o;
+    return Objects.equals(acceptName, that.acceptName)
+        && Objects.equals(rejectList, that.rejectList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(acceptName, rejectList);
   }
 }
