@@ -254,7 +254,8 @@ Windows 系统停止命令如下：
 ### IoTDB 的权限管理
 
 初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
-您可以通过通过以下命令修改其密码：
+
+您可以通过以下命令修改其密码：
 ```
 ALTER USER <username> SET PASSWORD <password>;
 Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';

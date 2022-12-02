@@ -223,6 +223,7 @@ More explanations are in Cluster/Cluster-setup.md.
 ### Administration
 
 There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
+
 You can alter the password of root using the following command：
 ```
 ALTER USER <username> SET PASSWORD <password>;
