@@ -179,8 +179,6 @@ import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
@@ -1382,11 +1380,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int rowLimit =
         IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
-    long maxReturnSize =
-        (long) node.getChild().getOutputColumnNames().size()
-            * (LongColumn.SIZE_IN_BYTES_PER_POSITION
-                + IntColumn.SIZE_IN_BYTES_PER_POSITION
-                + 256 * Byte.BYTES);
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
@@ -1399,8 +1392,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         intoPathDescriptor.getSourceTargetPathPairList(),
         sourceColumnToInputLocationMap,
         context.getIntoOperationExecutor(),
-        maxStatementSize,
-        maxReturnSize);
+        maxStatementSize);
   }
 
   @Override
@@ -1447,12 +1439,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int rowLimit =
         IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = statementSizePerLine * rowLimit;
-    long maxReturnSize =
-        (long) deviceToTargetPathDataTypeMap.size()
-            * (node.getChild().getOutputColumnNames().size() - 1)
-            * (LongColumn.SIZE_IN_BYTES_PER_POSITION
-                + IntColumn.SIZE_IN_BYTES_PER_POSITION
-                + 512 * Byte.BYTES);
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new DeviceViewIntoOperator(
@@ -1464,8 +1450,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         deviceViewIntoPathDescriptor.getDeviceToSourceTargetPathPairListMap(),
         sourceColumnToInputLocationMap,
         context.getIntoOperationExecutor(),
-        maxStatementSize,
-        maxReturnSize);
+        maxStatementSize);
   }
 
   private Map<String, InputLocation> constructSourceColumnToInputLocationMap(PlanNode node) {
