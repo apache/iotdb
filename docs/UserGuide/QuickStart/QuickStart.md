@@ -35,7 +35,7 @@ To use IoTDB, you need to have:
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
