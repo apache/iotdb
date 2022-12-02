@@ -134,11 +134,11 @@ IoTDB 存储空间=数据存储空间 + 元数据存储空间 + 临时存储空�
 - 最小有效信息占比由 wal_min_effective_info_ratio 决定
   
 > 示例：为 IoTDB 分配 16G 内存，配置文件如下
-  storage_query_schema_consensus_free_memory_proportion=3:3:1:1:2
-  storage_engine_memory_proportion=8:2
-  write_memory_proportion=19:1
-  wal_min_effective_info_ratio=0.1
-  最大写前日志空间占用 = 16 * (3 / 10) * (8 / 10) * (19 / 20)  ÷ 0.1 = 36.48G
+>  storage_query_schema_consensus_free_memory_proportion=3:3:1:1:2
+>  storage_engine_memory_proportion=8:2
+>  write_memory_proportion=19:1
+>  wal_min_effective_info_ratio=0.1
+>  最大写前日志空间占用 = 16 * (3 / 10) * (8 / 10) * (19 / 20)  ÷ 0.1 = 36.48G
 
 2. 共识协议
 
