@@ -65,7 +65,6 @@ Then you will get the binary distribution under **distribution/target**, in whic
 |-------------------------|--------------------------------------------------------------------------------------------|
 | conf                    | Configuration files folder, contains configuration files of ConfigNode and DataNode        |
 | data                    | Data files folder, contains data files of ConfigNode and DataNode                          |       |
-| grafana-metrics-example | Grafana metric page module                                                                 |
 | lib                     | Jar files folder                                                                           |
 | licenses                | Licenses files folder                                                                      |
 | logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                          |
