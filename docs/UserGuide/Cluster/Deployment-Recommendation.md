@@ -38,8 +38,8 @@ Abbreviation
 |                  mode                   | Performance    | Extensibility | HA     | Consistency |
 |:---------------------------------------:|:---------------|:--------------|:-------|:------------|
 |       Lightweight standalone mode       | Extremely High | None          | None   | High        |
-|        Scalable standalone mode         | High           | High          | Medium | High        |
-| High performance cluster mode (default) | High           | High          | High   | Medium      |
+|   Scalable standalone mode (default)    | High           | High          | Medium | High        |
+|      High performance cluster mode      | High           | High          | High   | Medium      |
 |     Strong consistency cluster mode     | Medium         | High          | High   | High        | 
 
 
