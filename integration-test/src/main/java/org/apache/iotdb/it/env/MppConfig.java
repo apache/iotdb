@@ -355,6 +355,12 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    engineProperties.setProperty("schema_memory_allocate_proportion", schemaMemoryAllocate);
+    return this;
+  }
+
+  @Override
   public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     engineProperties.setProperty(
         "select_into_insert_tablet_plan_row_limit",

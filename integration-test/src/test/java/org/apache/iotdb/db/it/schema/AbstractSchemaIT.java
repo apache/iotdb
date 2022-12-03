@@ -44,14 +44,15 @@ public abstract class AbstractSchemaIT {
   protected SchemaTestMode schemaTestMode;
   private String defaultSchemaEngineMode;
   private int defaultCachedMNodeSizeInSchemaFileMode;
+  private String defaultSchemaMemoryAllocate;
 
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
     return Arrays.asList(
-        SchemaTestMode.Memory,
-        SchemaTestMode.SchemaFileFullMemory,
-        SchemaTestMode.SchemaFilePartialMemory,
-        SchemaTestMode.SchemaFileNonMemory);
+        //        SchemaTestMode.Memory,
+        //        SchemaTestMode.SchemaFileFullMemory,
+        SchemaTestMode.SchemaFilePartialMemory);
+    //        SchemaTestMode.SchemaFileNonMemory);
   }
 
   public AbstractSchemaIT(SchemaTestMode schemaTestMode) {
@@ -62,6 +63,7 @@ public abstract class AbstractSchemaIT {
     defaultSchemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
     defaultCachedMNodeSizeInSchemaFileMode =
         ConfigFactory.getConfig().getCachedMNodeSizeInSchemaFileMode();
+    defaultSchemaMemoryAllocate = ConfigFactory.getConfig().getSchemaMemoryAllocate();
     switch (schemaTestMode) {
       case Memory:
         ConfigFactory.getConfig().setSchemaEngineMode("Memory");
@@ -71,7 +73,8 @@ public abstract class AbstractSchemaIT {
         break;
       case SchemaFilePartialMemory:
         ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
-        ConfigFactory.getConfig().setCachedMNodeSizeInSchemaFileMode(3);
+        ConfigFactory.getConfig().setSchemaMemoryAllocate("5:10000:5000:5000");
+        //        ConfigFactory.getConfig().setCachedMNodeSizeInSchemaFileMode(3);
         break;
       case SchemaFileNonMemory:
         ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");

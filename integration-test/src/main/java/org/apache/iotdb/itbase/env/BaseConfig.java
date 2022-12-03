@@ -379,6 +379,14 @@ public interface BaseConfig {
     return -1;
   }
 
+  default BaseConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    return this;
+  }
+
+  default String getSchemaMemoryAllocate() {
+    return "5:3:1:1";
+  }
+
   default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
     return this;
   }

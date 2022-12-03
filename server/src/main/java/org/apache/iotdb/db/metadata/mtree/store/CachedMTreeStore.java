@@ -420,6 +420,7 @@ public class CachedMTreeStore implements IMTreeStore {
     if (hasReleaseTask) {
       return;
     }
+    System.out.println("registerReleaseTask");
     hasReleaseTask = true;
     releaseTaskManager.submit(this::tryExecuteMemoryRelease);
   }

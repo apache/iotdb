@@ -76,7 +76,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           };
 
       for (String sql : insertSqls) {
+        System.out.println(sql + ";");
         statement.execute(sql);
+        Thread.sleep(1000);
       }
     } catch (Exception e) {
       e.printStackTrace();
