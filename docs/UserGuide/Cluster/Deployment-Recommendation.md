@@ -157,6 +157,9 @@ The total Raft Log storage space is proportional to the data replica number
 > Example: DataRegion, 20kB data for one request, data_region_trigger_snapshot_threshold = 400,000, then max Raft Log disk size = 20K * 400,000 = 8G.
 Raft Log increases from 0 to 8GB, and then turns to 0 after snapshot. Average size will be 4GB.
 When replica number is 3, max Raft log size will be 3 * 8G = 24G.
+ 
+What's more, we can configure data_region_ratis_log_max_size to limit max log size of a single DataRegion.
+By default, data_region_ratis_log_max_size=20G, which guarantees that Raft Log size would not exceed 20G.
 
 3. Compaction
 
