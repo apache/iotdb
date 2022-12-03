@@ -175,19 +175,15 @@ git checkout vx.x.x
 
 ### 启动 IoTDB
 
-可以通过运行 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+可以通过运行 sbin 文件夹下的 start-standalone 脚本启动 1C1D IoTDB。
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
 
 ### 使用 IoTDB
 
