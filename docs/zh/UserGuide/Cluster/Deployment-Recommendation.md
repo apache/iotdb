@@ -154,6 +154,9 @@ Ratis共识协议
 > 示例：DataRegion, 平均每一次插入20k数据，data_region_trigger_snapshot_threshold = 400,000，那么Raft Log最大占用 = 20K * 400,000 = 8G。
 Raft Log会从0增长到8G，接着在snapshot之后重新变成0。平均占用为4G。
 当副本数为3时，集群中这个DataRegion总Raft Log最大占用 3 * 8G = 24G。
+ 
+此外，可以通过data_region_ratis_log_max_size规定每一个DataRegion的Raft Log磁盘占用最大值，
+默认为20G，能够保障运行全程中单DataRegion Raft Log总大小不超过20G。
 
 3. 合并临时空间
 
