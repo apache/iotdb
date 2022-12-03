@@ -82,10 +82,14 @@ public class PatternDFATest {
     }
   }
 
+  // TODO: remove this
   @Test
   public void test() throws IllegalPathException {
+
     Assert.assertFalse(
-        checkMatchUsingDFA(new PartialPath("root.*"), new PartialPath("root.sg1.d1.s1")));
+        new PartialPath("root.s*.d1.s1").matchFullPath(new PartialPath("root.sg1.d1.s1")));
+    //    Assert.assertFalse(
+    //        checkMatchUsingDFA(new PartialPath("root.*"), new PartialPath("root.sg1.d1.s1")));
   }
 
   private boolean checkMatchUsingDFA(PartialPath pattern, PartialPath fullPath) {

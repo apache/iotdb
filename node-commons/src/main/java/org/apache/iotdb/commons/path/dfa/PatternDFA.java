@@ -38,7 +38,7 @@ public class PatternDFA implements IPatternDFA {
   private PatternDFA(Builder builder) {
     System.out.println(builder.pathPattern);
 
-    // 1. build transfer
+    // 1. build transition
     boolean wildcard = false;
     for (String node : builder.pathPattern.getNodes()) {
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
