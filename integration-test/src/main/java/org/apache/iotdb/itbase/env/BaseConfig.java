@@ -231,6 +231,38 @@ public interface BaseConfig {
     return false;
   }
 
+  default BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getSchemaRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getSchemaRegionGroupPerDatabase() {
+    return 1;
+  }
+
+  default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getDataRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getDataRegionGroupPerDatabase() {
+    return 1;
+  }
+
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     return this;
   }
@@ -245,6 +277,14 @@ public interface BaseConfig {
 
   default int getDataReplicationFactor() {
     return 1;
+  }
+
+  default BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    return this;
+  }
+
+  default int getSeriesPartitionSlotNum() {
+    return 10000;
   }
 
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
@@ -347,11 +387,29 @@ public interface BaseConfig {
     return 10000;
   }
 
-  default BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  default BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     return this;
   }
 
-  default boolean isEnableLeaderBalancing() {
+  default boolean isEnableAutoLeaderBalanceForRatisConsensus() {
     return false;
+  }
+
+  default BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    return this;
+  }
+
+  default boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return true;
+  }
+
+  default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    return this;
+  }
+
+  default int getLeastDataRegionGroupNum() {
+    return 5;
   }
 }

@@ -49,6 +49,7 @@ import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -77,7 +78,9 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
   private static final long MAX_MEMORY_SIZE =
-      Math.min(config.getThriftMaxFrameSize() / 2, config.getAllocateMemoryForStorageEngine() / 8);
+      Math.min(
+          config.getThriftMaxFrameSize() / 2,
+          (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -123,7 +126,8 @@ public class LoadTsFileScheduler implements IScheduler {
       allReplicaSets.clear();
 
       boolean isFirstPhaseSuccess = firstPhase(node);
-      boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+      boolean isSecondPhaseSuccess =
+          secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource().getTsFile());
 
       node.clean();
       if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
@@ -143,7 +147,7 @@ public class LoadTsFileScheduler implements IScheduler {
         return false;
       }
     } catch (IllegalStateException e) {
-      logger.error(
+      logger.warn(
           String.format(
               "Dispatch TsFileData error when parsing TsFile %s.",
               node.getTsFileResource().getTsFile()),
@@ -151,8 +155,8 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } catch (Exception e) {
       stateMachine.transitionToFailed(e);
-      logger.error(
-          String.format("Parse TsFile %s error.", node.getTsFileResource().getTsFile()), e);
+      logger.warn(
+          String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
     }
     return true;
@@ -179,22 +183,26 @@ public class LoadTsFileScheduler implements IScheduler {
               LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         // TODO: retry.
-        logger.error(
+        logger.warn(
             String.format(
-                "Dispatch one piece to ReplicaSet %s error, result status code %s.",
-                replicaSet, TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
-        logger.error(
-            String.format("Result status message %s.", result.getFailureStatus().getMessage()));
+                "Dispatch one piece to ReplicaSet %s error. Result status code %s. Result status message %s. Dispatch piece node error:%n%s",
+                replicaSet,
+                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+                result.getFailureStatus().getMessage(),
+                pieceNode));
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
-            logger.error(
+            logger.warn(
                 String.format(
-                    "Sub status code %s.", TSStatusCode.representOf(status.getCode()).name()));
-            logger.error(String.format("Sub status message %s.", status.getMessage()));
+                    "Sub status code %s. Sub status message %s.",
+                    TSStatusCode.representOf(status.getCode()).name(), status.getMessage()));
           }
         }
-        logger.error(String.format("Dispatch piece node error:%n%s", pieceNode));
-        stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
+        TSStatus status = result.getFailureStatus();
+        status.setMessage(
+            String.format("Load %s piece error in 1st phase. Because ", pieceNode.getTsFile())
+                + status.getMessage());
+        stateMachine.transitionToFailed(status); // TODO: record more status
         return false;
       }
     } catch (InterruptedException | ExecutionException | CancellationException e) {
@@ -206,7 +214,7 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } catch (TimeoutException e) {
       dispatchResultFuture.cancel(true);
-      logger.error(
+      logger.warn(
           String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
       stateMachine.transitionToFailed(e);
       return false;
@@ -214,7 +222,7 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid) {
+  private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid, File tsFile) {
     logger.info(String.format("Start dispatching Load command for uuid %s", uuid));
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -226,12 +234,18 @@ public class LoadTsFileScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         // TODO: retry.
-        logger.error(
-            String.format("Dispatch LoadCommand error to replicaSets %s error.", allReplicaSets));
-        logger.error(String.format("Result status code %s.", result.getFailureStatus().getCode()));
-        logger.error(
-            String.format("Result status message %s.", result.getFailureStatus().getMessage()));
-        stateMachine.transitionToFailed(result.getFailureStatus());
+        logger.warn(
+            String.format(
+                "Dispatch load command %s of TsFile %s error to replicaSets %s error. Result status code %s. Result status message %s.",
+                loadCommandReq,
+                tsFile,
+                allReplicaSets,
+                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+                result.getFailureStatus().getMessage()));
+        TSStatus status = result.getFailureStatus();
+        status.setMessage(
+            String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
+        stateMachine.transitionToFailed(status);
         return false;
       }
     } catch (InterruptedException | ExecutionException e) {
@@ -261,9 +275,12 @@ public class LoadTsFileScheduler implements IScheduler {
       instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
-      logger.error("Dispatch LoadCommand error to local error.");
-      logger.error(String.format("Result status code %s.", e.getFailureStatus().getCode()));
-      logger.error(String.format("Result status message %s.", e.getFailureStatus().getMessage()));
+      logger.warn(
+          String.format(
+              "Dispatch tsFile %s error to local error. Result status code %s. Result status message %s.",
+              node.getTsFileResource().getTsFile(),
+              TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
+              e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
@@ -315,7 +332,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean addOrSendChunkData(ChunkData chunkData) {
-      dataSize += chunkData.getDataSize();
+      TRegionReplicaSet replicaSet =
+          singleTsFileNode
+              .getDataPartition()
+              .getDataRegionReplicaSetForWriting(
+                  chunkData.getDevice(), chunkData.getTimePartitionSlot());
+      dataSize +=
+          (1 + replicaSet.getDataNodeLocationsSize())
+              * chunkData.getDataSize(); // should multiply datanode factor
+
       if (dataSize > MAX_MEMORY_SIZE) {
         List<TRegionReplicaSet> sortedReplicaSets =
             replicaSet2Piece.keySet().stream()
@@ -332,7 +357,7 @@ public class LoadTsFileScheduler implements IScheduler {
             return false;
           }
 
-          dataSize -= pieceNode.getDataSize();
+          dataSize -= (1 + sortedReplicaSet.getDataNodeLocationsSize()) * pieceNode.getDataSize();
           replicaSet2Piece.put(
               sortedReplicaSet,
               new LoadTsFilePieceNode(
@@ -343,11 +368,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
       }
-      TRegionReplicaSet replicaSet =
-          singleTsFileNode
-              .getDataPartition()
-              .getDataRegionReplicaSetForWriting(
-                  chunkData.getDevice(), chunkData.getTimePartitionSlot());
+
       replicaSet2Piece
           .computeIfAbsent(
               replicaSet,
@@ -370,7 +391,7 @@ public class LoadTsFileScheduler implements IScheduler {
     private boolean sendAllTsFileData() {
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
-          logger.error(
+          logger.warn(
               String.format(
                   "Dispatch piece node %s of TsFile %s error.",
                   entry.getValue(), singleTsFileNode.getTsFileResource().getTsFile()));

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Iterator;
 
 /**
@@ -55,7 +56,5 @@ public interface IPageManager {
 
   int getLastPageIndex();
 
-  @Deprecated
-  StringBuilder inspect(StringBuilder builder)
-      throws IOException, MetadataException; // TODO: shift to use stream
+  void inspect(PrintWriter pw) throws IOException, MetadataException;
 }

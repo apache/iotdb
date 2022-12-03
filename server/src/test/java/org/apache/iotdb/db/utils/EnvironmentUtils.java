@@ -49,7 +49,6 @@ import org.apache.iotdb.db.service.NewIoTDB;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -264,7 +263,7 @@ public class EnvironmentUtils {
       cleanDir(walDir);
     }
     // delete sync dir
-    cleanDir(commonConfig.getSyncFolder());
+    cleanDir(commonConfig.getSyncDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -280,7 +279,6 @@ public class EnvironmentUtils {
     logger.debug("EnvironmentUtil setup...");
     config.setThriftServerAwaitTimeForStopService(60);
     // we do not start 9091 port in test.
-    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
@@ -356,7 +354,7 @@ public class EnvironmentUtils {
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
-    createDir(commonConfig.getSyncFolder());
+    createDir(commonConfig.getSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);

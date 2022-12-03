@@ -115,6 +115,11 @@ public class DeleteStorageGroupProcedure
                 env.getConfigManager()
                     .getPartitionManager()
                     .removeRegionGroupCache(regionReplicaSet.getRegionId());
+                env.getConfigManager()
+                    .getLoadManager()
+                    .getRouteBalancer()
+                    .getRegionRouteMap()
+                    .removeRegionRouteCache(regionReplicaSet.getRegionId());
               });
           env.getConfigManager().getConsensusManager().write(offerPlan);
 

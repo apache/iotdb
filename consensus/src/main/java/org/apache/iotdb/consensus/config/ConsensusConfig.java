@@ -27,19 +27,19 @@ public class ConsensusConfig {
   private final int thisNodeId;
   private final String storageDir;
   private final RatisConfig ratisConfig;
-  private final MultiLeaderConfig multiLeaderConfig;
+  private final IoTConsensusConfig ioTConsensusConfig;
 
   private ConsensusConfig(
       TEndPoint thisNode,
       int thisNodeId,
       String storageDir,
       RatisConfig ratisConfig,
-      MultiLeaderConfig multiLeaderConfig) {
+      IoTConsensusConfig ioTConsensusConfig) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.ratisConfig = ratisConfig;
-    this.multiLeaderConfig = multiLeaderConfig;
+    this.ioTConsensusConfig = ioTConsensusConfig;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -58,8 +58,8 @@ public class ConsensusConfig {
     return ratisConfig;
   }
 
-  public MultiLeaderConfig getMultiLeaderConfig() {
-    return multiLeaderConfig;
+  public IoTConsensusConfig getIoTConsensusConfig() {
+    return ioTConsensusConfig;
   }
 
   public static ConsensusConfig.Builder newBuilder() {
@@ -72,7 +72,7 @@ public class ConsensusConfig {
     private int thisNodeId;
     private String storageDir;
     private RatisConfig ratisConfig;
-    private MultiLeaderConfig multiLeaderConfig;
+    private IoTConsensusConfig ioTConsensusConfig;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -80,7 +80,9 @@ public class ConsensusConfig {
           thisNodeId,
           storageDir,
           ratisConfig != null ? ratisConfig : RatisConfig.newBuilder().build(),
-          multiLeaderConfig != null ? multiLeaderConfig : MultiLeaderConfig.newBuilder().build());
+          ioTConsensusConfig != null
+              ? ioTConsensusConfig
+              : IoTConsensusConfig.newBuilder().build());
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -103,8 +105,8 @@ public class ConsensusConfig {
       return this;
     }
 
-    public Builder setMultiLeaderConfig(MultiLeaderConfig multiLeaderConfig) {
-      this.multiLeaderConfig = multiLeaderConfig;
+    public Builder setIoTConsensusConfig(IoTConsensusConfig ioTConsensusConfig) {
+      this.ioTConsensusConfig = ioTConsensusConfig;
       return this;
     }
   }

@@ -39,7 +39,7 @@ The data sink then forwards the alert to the external terminal.
     * It is Suitable for scenarios where the original data needs to be down-sampled and persisted.
     * Since the timing query hardly affects the writing of the original time series, it is suitable for scenarios that are sensitive to the performance of the original data writing performance.
 
-With the introduction of the  [Trigger](../Process-Data/Triggers.md) into IoTDB,
+With the introduction of the  [Trigger](../Triggers/Triggers.md) into IoTDB,
 at present, users can use these two modules with `AlertManager` to realize the writing triggered alerting mode.
 
 

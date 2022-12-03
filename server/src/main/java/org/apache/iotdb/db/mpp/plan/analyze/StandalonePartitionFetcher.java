@@ -109,7 +109,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       } else {
         for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
           Pair<List<PartialPath>, Set<PartialPath>> result =
-              localConfigNode.getNodesListInGivenLevel(pathPattern, level, false, null);
+              localConfigNode.getNodesListInGivenLevel(pathPattern, level, false);
           matchedNodes.addAll(
               result.left.stream()
                   .map(
@@ -144,6 +144,13 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       logger.error("Meet error when get DataPartition", e);
       throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
     }
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    throw new UnsupportedOperationException(
+        "getDataPartitionWithUnclosedTimeRange is not supported");
   }
 
   @Override

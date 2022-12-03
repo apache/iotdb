@@ -145,7 +145,7 @@ public class IoTDBDeactivateTemplateIT {
       }
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.sg1.*");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.*");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -162,7 +162,7 @@ public class IoTDBDeactivateTemplateIT {
       }
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.*.d1");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.*.d1");
     String[] retArray =
         new String[] {"1,1,1.0,1,1.0,", "2,2,2.0,2,2.0,", "3,3,3.0,3,3.0,", "4,4,4.0,4,4.0,"};
     int cnt = 0;
@@ -180,7 +180,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.assertEquals(retArray.length, cnt);
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.**, root.sg1.*");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**, root.sg1.*");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -239,7 +239,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.assertFalse(resultSet.next());
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.**");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());

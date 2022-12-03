@@ -485,7 +485,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
         Set<String> standard = standards[n];
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           while (resultSet.next()) {
-            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+            String string = resultSet.getString(1) + "," + resultSet.getLong(2) + ",";
             Assert.assertTrue(standard.contains(string));
             standard.remove(string);
           }

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -33,11 +32,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -46,8 +42,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.RollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -91,11 +85,8 @@ public class SchemaRegionPlanCompatibilityTest {
           "DELETE_TIMESERIES",
           "CHANGE_TAG_OFFSET",
           "CHANGE_ALIAS",
-          "SET_TEMPLATE",
-          "ACTIVATE_TEMPLATE",
           "AUTO_CREATE_DEVICE_MNODE",
           "CREATE_ALIGNED_TIMESERIES",
-          "UNSET_TEMPLATE",
           "ACTIVATE_TEMPLATE_IN_CLUSTER",
           "PRE_DELETE_TIMESERIES_IN_CLUSTER",
           "ROLLBACK_PRE_DELETE_TIMESERIES"
@@ -124,20 +115,6 @@ public class SchemaRegionPlanCompatibilityTest {
     Assert.assertEquals(oldPlan.getTemplateSetLevel(), newPlan.getTemplateSetLevel());
     Assert.assertEquals(oldPlan.getTemplateId(), newPlan.getTemplateId());
     Assert.assertEquals(oldPlan.isAligned(), newPlan.isAligned());
-
-    Assert.assertEquals(position, getCurrentBufferPosition());
-  }
-
-  @Test
-  public void testActivateTemplatePlanSerializationCompatibility() throws IllegalPathException {
-    ActivateTemplatePlan oldPlan = new ActivateTemplatePlan();
-    oldPlan.setPrefixPath(new PartialPath("root.sg.d"));
-
-    int position = serializeToBuffer(oldPlan);
-
-    IActivateTemplatePlan newPlan = deserializeFromBuffer();
-
-    Assert.assertEquals(oldPlan.getPrefixPath(), newPlan.getPrefixPath());
 
     Assert.assertEquals(position, getCurrentBufferPosition());
   }
@@ -296,38 +273,6 @@ public class SchemaRegionPlanCompatibilityTest {
     IRollbackPreDeleteTimeSeriesPlan newPlan = deserializeFromBuffer();
 
     Assert.assertEquals(oldPlan.getPath(), newPlan.getPath());
-
-    Assert.assertEquals(position, getCurrentBufferPosition());
-  }
-
-  @Test
-  public void testSetTemplatePlanSerializationCompatibility() {
-    SetTemplatePlan oldPlan = new SetTemplatePlan();
-    oldPlan.setPrefixPath("root.sg");
-    oldPlan.setTemplateName("template");
-
-    int position = serializeToBuffer(oldPlan);
-
-    ISetTemplatePlan newPlan = deserializeFromBuffer();
-
-    Assert.assertEquals(oldPlan.getPrefixPath(), newPlan.getPrefixPath());
-    Assert.assertEquals(oldPlan.getTemplateName(), newPlan.getTemplateName());
-
-    Assert.assertEquals(position, getCurrentBufferPosition());
-  }
-
-  @Test
-  public void testUnsetTemplatePlanSerializationCompatibility() {
-    UnsetTemplatePlan oldPlan = new UnsetTemplatePlan();
-    oldPlan.setPrefixPath("root.sg");
-    oldPlan.setTemplateName("template");
-
-    int position = serializeToBuffer(oldPlan);
-
-    IUnsetTemplatePlan newPlan = deserializeFromBuffer();
-
-    Assert.assertEquals(oldPlan.getPrefixPath(), newPlan.getPrefixPath());
-    Assert.assertEquals(oldPlan.getTemplateName(), newPlan.getTemplateName());
 
     Assert.assertEquals(position, getCurrentBufferPosition());
   }

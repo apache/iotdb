@@ -214,7 +214,6 @@ public class MockSchemaFile implements ISchemaFile {
 
   private static void cloneInternalMNodeData(IMNode node, IMNode result) {
     result.setUseTemplate(node.isUseTemplate());
-    result.setSchemaTemplate(node.getSchemaTemplate());
     ICachedMNodeContainer container = new CachedMNodeContainer();
     container.setSegmentAddress((getCachedMNodeContainer(node)).getSegmentAddress());
     result.setChildren(container);

@@ -21,6 +21,7 @@ package org.apache.iotdb.it.env;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -86,6 +87,15 @@ public abstract class AbstractEnv implements BaseEnv {
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
+
+    // Check if the Seed-ConfigNode started successfully
+    try (SyncConfigNodeIServiceClient ignored =
+        (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+      // Do nothing
+      logger.info("The Seed-ConfigNode started successfully!");
+    } catch (Exception e) {
+      logger.error("Failed to get connection to the Seed-ConfigNode", e);
+    }
 
     List<String> configNodeEndpoints = new ArrayList<>();
     RequestDelegate<Void> configNodesDelegate = new SerialRequestDelegate<>(configNodeEndpoints);
@@ -232,7 +242,7 @@ public abstract class AbstractEnv implements BaseEnv {
         if (flag) {
           Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
           for (String status : nodeStatus.values()) {
-            if (!status.equals("Running")) {
+            if (NodeStatus.Unknown.getStatus().equals(status)) {
               flag = false;
               break;
             }
@@ -248,7 +258,10 @@ public abstract class AbstractEnv implements BaseEnv {
       }
       TimeUnit.SECONDS.sleep(1L);
     }
-    throw lastException;
+
+    if (lastException != null) {
+      throw lastException;
+    }
   }
 
   @Override
@@ -427,7 +440,7 @@ public abstract class AbstractEnv implements BaseEnv {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
         try {
           SyncConfigNodeIServiceClient client =
-              clientManager.borrowClient(
+              clientManager.purelyBorrowClient(
                   new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
           TShowClusterResp resp = client.showCluster();
 
@@ -496,6 +509,45 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void shutdownConfigNode(int index) {
     configNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    return dataNodeWrapperList.get(index);
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    // Config new DataNode
+    DataNodeWrapper newDataNodeWrapper =
+        new DataNodeWrapper(
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            getTestMethodName(),
+            EnvUtils.searchAvailablePorts());
+    dataNodeWrapperList.add(newDataNodeWrapper);
+    newDataNodeWrapper.createDir();
+    newDataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+
+    // Start new DataNode
+    List<String> dataNodeEndpoints =
+        Collections.singletonList(newDataNodeWrapper.getIpAndPortString());
+    RequestDelegate<Void> dataNodesDelegate =
+        new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
+    dataNodesDelegate.addRequest(
+        () -> {
+          newDataNodeWrapper.start();
+          return null;
+        });
+    try {
+      dataNodesDelegate.requestAll();
+    } catch (SQLException e) {
+      logger.error("Start dataNodes failed", e);
+      fail();
+    }
+
+    // Test whether register success
+    testWorking();
   }
 
   @Override

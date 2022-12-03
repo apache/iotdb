@@ -644,6 +644,7 @@ public class StorageEngineV2 implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      region.markDeleted();
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -651,7 +652,7 @@ public class StorageEngineV2 implements IService {
         if (config.isClusterMode()
             && config
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+                .equals(ConsensusFactory.IOT_CONSENSUS)) {
           WALManager.getInstance()
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
@@ -665,7 +666,6 @@ public class StorageEngineV2 implements IService {
             e);
       } finally {
         deletingDataRegionMap.remove(regionId);
-        region.markDeleted();
       }
     }
   }

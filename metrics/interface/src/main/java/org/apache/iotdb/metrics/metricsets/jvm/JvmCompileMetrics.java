@@ -33,8 +33,8 @@ public class JvmCompileMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
-      metricService.getOrCreateAutoGauge(
-          "jvm.compilation.time.ms",
+      metricService.createAutoGauge(
+          "jvm_compilation_time_ms",
           MetricLevel.IMPORTANT,
           compilationBean,
           CompilationMXBean::getTotalCompilationTime,
@@ -48,7 +48,7 @@ public class JvmCompileMetrics implements IMetricSet {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricService.remove(
-          MetricType.GAUGE, "jvm.compilation.time.ms", "compiler", compilationBean.getName());
+          MetricType.AUTO_GAUGE, "jvm_compilation_time_ms", "compiler", compilationBean.getName());
     }
   }
 }

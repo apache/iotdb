@@ -61,13 +61,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    groupId = id;
     retryPolicy =
         applicationStateMachine instanceof IStateMachine.RetryPolicy
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
-    snapshotStorage = new SnapshotStorage(applicationStateMachine);
+    snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     applicationStateMachine.start();
-    groupId = id;
   }
 
   @Override
@@ -209,7 +209,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     boolean applicationTakeSnapshotSuccess =
-        applicationStateMachine.takeSnapshot(snapshotTmpDir, metadata);
+        applicationStateMachine.takeSnapshot(
+            snapshotTmpDir, snapshotStorage.getSnapshotTmpId(metadata), metadata);
     if (!applicationTakeSnapshotSuccess) {
       deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;

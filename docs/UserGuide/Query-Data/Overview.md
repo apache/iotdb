@@ -26,28 +26,91 @@
 In IoTDB, `SELECT` statement is used to retrieve data from one or more selected time series. Here is the syntax definition of `SELECT` statement:
 
 ```sql
-[TRACING] SELECT
-    [LAST] [TOP k] resultColumn [, resultColumn] ...
+SELECT [LAST] selectExpr [, selectExpr] ...
+    [INTO intoItem [, intoItem] ...]
     FROM prefixPath [, prefixPath] ...
-    WHERE whereCondition
-    [GROUP BY ([startTime, endTime), interval, slidingStep)]
-    [GROUP BY LEVEL = levelNum [, levelNum] ...]
-    [FILL ({PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant})]
-    [LIMIT rowLimit] [OFFSET rowOffset]
+    [WHERE whereCondition]
+    [GROUP BY {
+        ([startTime, endTime), interval [, slidingStep]) |
+        LEVEL = levelNum [, levelNum] ... |
+        TAGS(tagKey [, tagKey] ... )
+    }]
+    [HAVING havingCondition]
+    [ORDER BY sortKey {ASC | DESC}]
+    [FILL ({PREVIOUS | LINEAR | constant})]
     [SLIMIT seriesLimit] [SOFFSET seriesOffset]
-    [WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
-    [ORDER BY TIME {ASC | DESC}]
-    [{ALIGN BY DEVICE | DISABLE ALIGN}]
+    [LIMIT rowLimit] [OFFSET rowOffset]
+    [ALIGN BY {TIME | DEVICE}]
 ```
 
-The most commonly used clauses of `SELECT` statements are these:
+## Syntax Description
 
-- Each `resultColumn` indicates a column that you want to retrieve, which may be a suffix of time series paths, an aggregate function and so on. There must be at least one `resultColumn`.  For more details for `resultColumn`, please refer to [Select Expression](./Select-Expression.md) .
-- `fromClause` contains the prefix of one or more time-series paths to query.
-- `whereCondition` (Optional) specify the filter criterion named ` queryfilter`. `queryfilter` is a logical expression that returns the data points which calculation result is TRUE. If you do not specify `whereCondition`, return all data points in the time series. For more details, please refer to [Query Filter](./Query-Filter.md).
-- The query results are sorted in ascending order by timestamp. You can specify the results to be sorted in descending order by timestamp through `ORDER BY TIME DESC` clause.
-- When there is a large amount of query result data, you can use `LIMIT/SLIMIT` and `OFFSET/SOFFSET` to paginate the result set, see [Query Result Pagination](./Pagination.md) for details.
-- The query result set is aligned according to the timestamp by default, that is, the time series is used as the column, and the timestamp of each row of data is the same. For other result set alignments, see [Query Result Alignment](./Result-Format.md).
+### `SELECT` clause
+
+- The `SELECT` clause specifies the output of the query, consisting of several `selectExpr`.
+- Each `selectExpr` defines one or more columns in the query result, which is an expression consisting of time series path suffixes, constants, functions, and operators.
+- Supports using `AS` to specify aliases for columns in the query result set.
+- Use the `LAST` keyword in the `SELECT` clause to specify that the query is the last query. For details and examples, see the document [Last Query](./Last-Query.md).
+- For details and examples, see the document [Select Expression](./Select-Expression.md).
+
+### `INTO` clause
+
+- `SELECT INTO` is used to write query results into a series of specified time series. The `INTO` clause specifies the target time series to which query results are written.
+- For detailed instructions and examples, see the document [SELECT INTO](Select-Into.md).
+
+### `FROM` clause
+
+- The `FROM` clause contains the path prefix of one or more time series to be queried, and wildcards are supported.
+- When executing a query, the path prefix in the `FROM` clause and the suffix in the `SELECT` clause will be concatenated to obtain a complete query target time series.
+
+### `WHERE` clause
+
+- The `WHERE` clause specifies the filtering conditions for data rows, consisting of a `whereCondition`.
+- `whereCondition` is a logical expression that evaluates to true for each row to be selected. If there is no `WHERE` clause, all rows will be selected.
+- In `whereCondition`, any IOTDB-supported functions and operators can be used except aggregate functions.
+- For details and examples, see the document [Where Condition](./Where-Condition.md).
+
+### `GROUP BY` clause
+
+- The `GROUP BY` clause specifies how the time series are aggregated by segment or group.
+- Segmented aggregation refers to segmenting data in the row direction according to the time dimension, aiming at the time relationship between different data points in the same time series, and obtaining an aggregated value for each segment. Currently only **segmentation by time interval** is supported, and more segmentation methods will be supported in the future.
+- Group aggregation refers to grouping the potential business attributes of time series for different time series. Each group contains several time series, and each group gets an aggregated value. Support **group by path level** and **group by tag** two grouping methods.
+- Segment aggregation and group aggregation can be mixed.
+- For details and examples, see the document [Group By Aggregation](./Group-By.md).
+
+### `HAVING` clause
+
+- The `HAVING` clause specifies the filter conditions for the aggregation results, consisting of a `havingCondition`.
+- `havingCondition` is a logical expression that evaluates to true for the aggregation results to be selected. If there is no `HAVING` clause, all aggregated results will be selected.
+- `HAVING` is to be used with aggregate functions and the `GROUP BY` clause.
+- For details and examples, see the document [Aggregation Result Filtering](./Having-Condition.md).
+
+### `ORDER BY` clause
+
+- The `ORDER BY` clause is used to specify how the result set is sorted.
+- In ALIGN BY TIME mode: By default, they are sorted in ascending order of timestamp size, and `ORDER BY TIME DESC` can be used to specify that the result set is sorted in descending order of timestamp.
+- In ALIGN BY DEVICE mode: arrange according to the device first, and sort each device in ascending order according to the timestamp. The `ORDER BY` clause is not supported now.
+
+### `FILL` clause
+
+- The `FILL` clause is used to specify the filling mode in the case of missing data, allowing users to fill in empty values ​​for the result set of any query according to a specific method.
+- For details and examples, see the document [Fill Null Value](./Fill.md).
+
+### `SLIMIT` and `SOFFSET` clauses
+
+- `SLIMIT` specifies the number of columns of the query result, and `SOFFSET` specifies the starting column position of the query result display. `SLIMIT` and `SOFFSET` are only used to control value columns and have no effect on time and device columns.
+- For details and examples of query result pagination, see the document [Result Set Pagination](./Pagination.md).
+
+### `LIMIT` and `OFFSET` clauses
+
+- `LIMIT` specifies the number of rows of the query result, and `OFFSET` specifies the starting row position of the query result display.
+- For details and examples of query result pagination, see the document [Result Set Pagination](./Pagination.md).
+
+### `ALIGN BY` clause
+
+- The query result set is **ALIGN BY TIME** by default, including a time column and several value columns, and the timestamps of each column of data in each row are the same.
+- It also supports  **ALIGN BY DEVICE**. The query result set contains a time column, a device column, and several value columns.
+- For details and examples, see the document [Query Alignment Mode](./Align-By.md).
 
 ## Basic Examples
 

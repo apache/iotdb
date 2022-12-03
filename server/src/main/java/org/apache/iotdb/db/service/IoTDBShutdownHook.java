@@ -58,6 +58,7 @@ public class IoTDBShutdownHook extends Thread {
       // even if there are frequent restarts
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
+          .parallelStream()
           .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
     }
 

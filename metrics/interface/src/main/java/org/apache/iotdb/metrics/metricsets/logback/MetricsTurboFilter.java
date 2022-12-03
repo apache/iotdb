@@ -38,19 +38,19 @@ public class MetricsTurboFilter extends TurboFilter {
 
   MetricsTurboFilter(AbstractMetricService metricService) {
     errorCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "error");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "error");
 
     warnCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "warn");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "warn");
 
     infoCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "info");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "info");
 
     debugCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "debug");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "debug");
 
     traceCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "trace");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "trace");
   }
 
   @Override

@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
@@ -153,7 +153,6 @@
                             <goal>integration-test</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
@@ -176,9 +175,6 @@
                         </goals>
                         <configuration>
                             <skipTests>false</skipTests>
-                            <summaryFiles>
-                                <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
-                            </summaryFiles>
                         </configuration>
                     </execution>
                 </executions>

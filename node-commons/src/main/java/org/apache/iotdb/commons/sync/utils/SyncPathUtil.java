@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.sync.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +47,7 @@ public class SyncPathUtil {
 
   /** sender */
   public static String getSenderDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.SENDER_DIR_NAME;
   }
@@ -96,7 +96,7 @@ public class SyncPathUtil {
 
   /** receiver */
   public static String getReceiverDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.RECEIVER_DIR_NAME;
   }
@@ -123,19 +123,14 @@ public class SyncPathUtil {
         + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
-  public static String getFileDataDirPath(TSyncIdentityInfo identityInfo) {
+  public static String getFileDataDirPath(SyncIdentityInfo identityInfo) {
     return SyncPathUtil.getReceiverFileDataDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
-  }
-
-  public static String getPipeLogDirPath(TSyncIdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverPipeLogDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+        identityInfo.getPipeName(), identityInfo.getRemoteAddress(), identityInfo.getCreateTime());
   }
 
   /** common */
   public static String getSysDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.SYNC_SYS_DIR;
   }

@@ -26,7 +26,9 @@ import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PathUtils {
 
@@ -63,8 +65,43 @@ public class PathUtils {
     if (measurementLists == null) {
       return;
     }
+    // use set to skip checking duplicated measurements
+    Set<String> measurementSet = new HashSet<>();
     for (List<String> measurements : measurementLists) {
-      isLegalSingleMeasurements(measurements);
+      checkLegalSingleMeasurementsAndSkipDuplicate(measurements, measurementSet);
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name, use set to skip checking duplicated measurements
+   */
+  public static void checkLegalSingleMeasurementsAndSkipDuplicate(
+      List<String> measurements, Set<String> measurementSet) throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      if (measurement == null) {
+        continue;
+      }
+      if (measurementSet.contains(measurement)) {
+        continue;
+      }
+      measurementSet.add(measurement);
+      if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+          && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+        if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
+          continue;
+        } else {
+          throw new IllegalPathException(measurement);
+        }
+      }
+      if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
+          || isRealNumber(measurement)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
+        throw new IllegalPathException(measurement);
+      }
     }
   }
 

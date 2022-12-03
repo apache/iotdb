@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -41,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -178,7 +178,9 @@ public class SchemaFile implements ISchemaFile {
     }
     resNode.setFullPath(storageGroupName);
     if (templateHash != 0) {
-      resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      //
+      // resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
+      // todo record the templateId generated in configNode
     }
     return resNode;
   }
@@ -187,8 +189,9 @@ public class SchemaFile implements ISchemaFile {
   public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    this.templateHash =
-        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
+    // todo record the templateId generated in configNode
+    //    this.templateHash =
+    //        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
     updateHeader();
     return true;
   }
@@ -271,22 +274,29 @@ public class SchemaFile implements ISchemaFile {
   }
 
   public String inspect() throws MetadataException, IOException {
-    StringBuilder builder =
-        new StringBuilder(
-            String.format(
-                "=============================\n"
-                    + "== Schema File Sketch Tool ==\n"
-                    + "=============================\n"
-                    + "== Notice: \n"
-                    + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
-                    + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
-                    + "=============================\n"
-                    + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
-                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
-                Long.toHexString(lastSGAddr),
-                lastPageIndex + 1));
+    return inspect(null);
+  }
 
-    return pageManager.inspect(builder).toString();
+  public String inspect(PrintWriter pw) throws MetadataException, IOException {
+    String header =
+        String.format(
+            "=============================\n"
+                + "== Schema File Sketch Tool ==\n"
+                + "=============================\n"
+                + "== Notice: \n"
+                + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+                + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
+                + "=============================\n"
+                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
+            storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+            Long.toHexString(lastSGAddr),
+            lastPageIndex + 1);
+    if (pw == null) {
+      pw = new PrintWriter(System.out);
+    }
+    pw.print(header);
+    pageManager.inspect(pw);
+    return String.format("SchemaFile[%s] had been inspected.", this.filePath);
   }
   // endregion
 
@@ -376,6 +386,7 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFileConfig.SEG_INDEX_MASK);
   }
 
+  /** TODO: shall merge with {@linkplain PageManager#reEstimateSegSize} */
   static short reEstimateSegSize(int oldSize) {
     for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (oldSize < size) {
