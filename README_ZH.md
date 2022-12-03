@@ -354,10 +354,10 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
 
 ## 只编译 server

@@ -362,10 +362,10 @@ The server can be stopped with "ctrl-C" or the following script:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
 
 ## Only build server
