@@ -27,38 +27,46 @@ import java.util.Objects;
 
 public class DFATransition implements IDFATransition {
 
-  private final String acceptName;
-  private List<String> rejectList;
+  private final String acceptEvent;
+  private List<String> rejectEventList;
 
-  public DFATransition(String acceptName) {
-    this.acceptName = acceptName;
+  public DFATransition(String acceptEvent) {
+    this.acceptEvent = acceptEvent;
   }
 
-  public DFATransition(String acceptName, List<String> rejectList) {
-    this.acceptName = acceptName;
-    this.rejectList = rejectList;
+  public DFATransition(String acceptEvent, List<String> rejectEventList) {
+    this.acceptEvent = acceptEvent;
+    this.rejectEventList = rejectEventList;
   }
 
-  public String getKey() {
-    return acceptName;
+  public String getAcceptEvent() {
+    return acceptEvent;
+  }
+
+  public List<String> getRejectEventList() {
+    return rejectEventList;
   }
 
   @Override
   public boolean isMatch(String event) {
-    return false;
+    if (isBatch()) {
+      return !rejectEventList.contains(event);
+    } else {
+      return acceptEvent.equals(event);
+    }
   }
 
   @Override
   public boolean isBatch() {
-    return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptName);
+    return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptEvent);
   }
 
   @Override
   public String toString() {
-    if (rejectList == null || rejectList.isEmpty()) {
-      return acceptName;
+    if (rejectEventList == null || rejectEventList.isEmpty()) {
+      return acceptEvent;
     } else {
-      return acceptName + "/(" + StringUtils.join(rejectList, ",") + ")";
+      return acceptEvent + "/(" + StringUtils.join(rejectEventList, ",") + ")";
     }
   }
 
@@ -67,12 +75,12 @@ public class DFATransition implements IDFATransition {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DFATransition that = (DFATransition) o;
-    return Objects.equals(acceptName, that.acceptName)
-        && Objects.equals(rejectList, that.rejectList);
+    return Objects.equals(acceptEvent, that.acceptEvent)
+        && Objects.equals(rejectEventList, that.rejectEventList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(acceptName, rejectList);
+    return Objects.hash(acceptEvent, rejectEventList);
   }
 }

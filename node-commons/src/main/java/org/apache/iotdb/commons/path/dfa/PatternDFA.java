@@ -46,14 +46,14 @@ public class PatternDFA implements IPatternDFA {
         wildcard = true;
       } else {
         DFATransition transition = new DFATransition(node);
-        transitionMap.put(transition.getKey(), transition);
+        transitionMap.put(transition.getAcceptEvent(), transition);
       }
     }
     if (wildcard) {
       DFATransition transition =
           new DFATransition(
               IoTDBConstant.ONE_LEVEL_PATH_WILDCARD, new ArrayList<>(transitionMap.keySet()));
-      transitionMap.put(transition.getKey(), transition);
+      transitionMap.put(transition.getAcceptEvent(), transition);
     }
 
     // 2. build NFA
@@ -75,10 +75,15 @@ public class PatternDFA implements IPatternDFA {
     return dfaGraph.getNextState(currentState, transition);
   }
 
+  @Override
+  public IDFAState getInitialState() {
+    return dfaGraph.getInitialState();
+  }
+
   public static final class Builder {
     private PartialPath pathPattern;
 
-    private Builder() {}
+    public Builder() {}
 
     public Builder pattern(PartialPath pattern) {
       this.pathPattern = pattern;

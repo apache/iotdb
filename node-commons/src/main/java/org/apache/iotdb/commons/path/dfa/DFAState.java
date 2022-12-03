@@ -40,6 +40,11 @@ public class DFAState implements IDFAState {
   }
 
   @Override
+  public boolean isInitial() {
+    return index == 0;
+  }
+
+  @Override
   public boolean isFinal() {
     return isFinal;
   }

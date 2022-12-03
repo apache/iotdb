@@ -26,4 +26,6 @@ public interface IPatternDFA {
   List<IDFATransition> getTransition(IDFAState state);
 
   IDFAState getNextState(IDFAState currentState, IDFATransition transition);
+
+  IDFAState getInitialState();
 }

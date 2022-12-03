@@ -129,4 +129,8 @@ public class DFAGraph {
   public IDFAState getNextState(IDFAState currentState, IDFATransition transition) {
     return dfaTransitionTable.get(transition).get(currentState.getIndex());
   }
+
+  public IDFAState getInitialState() {
+    return dfaStateList.get(0);
+  }
 }
