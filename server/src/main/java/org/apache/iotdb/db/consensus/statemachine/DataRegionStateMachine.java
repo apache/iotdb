@@ -30,7 +30,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -141,7 +141,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
     this.region = newRegion;
     try {
-      StorageEngineV2.getInstance()
+      StorageEngine.getInstance()
           .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();

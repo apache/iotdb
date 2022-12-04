@@ -53,7 +53,7 @@ import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -227,7 +227,7 @@ public class DataNode implements DataNodeMBean {
         getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
 
         // store ttl information
-        StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
+        StorageEngine.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -355,7 +355,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
-    registerManager.register(StorageEngineV2.getInstance());
+    registerManager.register(StorageEngine.getInstance());
     registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
@@ -364,7 +364,7 @@ public class DataNode implements DataNodeMBean {
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
-    while (!StorageEngineV2.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -379,9 +379,6 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    // registerManager.register(SettleService.getINSTANCE());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
