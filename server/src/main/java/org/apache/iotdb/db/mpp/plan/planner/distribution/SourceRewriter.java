@@ -103,12 +103,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            devices);
-
+    List<PlanNode> planNodeList = new ArrayList<>();
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
       List<PlanNode> childrenInRegion = new ArrayList<>();
       for (DeviceViewSplit split : deviceViewSplits) {
@@ -116,6 +111,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           childrenInRegion.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
         }
       }
+
+      if (childrenInRegion.size() == 1) {
+        planNodeList.add(childrenInRegion.get(0));
+        continue;
+      }
+
       MergeSortNode regionMergeSortNode =
           new MergeSortNode(
               context.queryContext.getQueryId().genPlanNodeId(),
@@ -124,8 +125,23 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (PlanNode planNode : childrenInRegion) {
         regionMergeSortNode.addChild(planNode);
       }
-      mergeSortNode.addChild(regionMergeSortNode);
+      planNodeList.add(regionMergeSortNode);
     }
+
+    if (planNodeList.size() == 1) {
+      return planNodeList.get(0);
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            devices);
+
+    for (PlanNode planNode : planNodeList) {
+      mergeSortNode.addChild(planNode);
+    }
+
     return mergeSortNode;
   }
 
@@ -178,13 +194,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getDevices());
-
     // Step 2: Iterate all partition and create DeviceViewNode for each region
+    List<DeviceViewNode> deviceViewNodeList = new ArrayList<>();
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
       List<String> devices = new ArrayList<>();
       List<PlanNode> children = new ArrayList<>();
@@ -198,9 +209,21 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (int i = 0; i < devices.size(); i++) {
         regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
       }
-      mergeSortNode.addChild(regionDeviceViewNode);
+      deviceViewNodeList.add(regionDeviceViewNode);
     }
 
+    if (deviceViewNodeList.size() == 1) {
+      return deviceViewNodeList.get(0);
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getDevices());
+    for (DeviceViewNode deviceViewNode : deviceViewNodeList) {
+      mergeSortNode.addChild(deviceViewNode);
+    }
     return mergeSortNode;
   }
 
