@@ -55,7 +55,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   private int cachedTsBlockRowIndex;
 
   // we must make sure that Operator in children has already been sorted
-  private final List<UpdateLastCacheOperator> children;
+  private final List<AbstractUpdateLastCacheOperator> children;
 
   private final OperatorContext operatorContext;
 
@@ -73,7 +73,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   public LastQuerySortOperator(
       OperatorContext operatorContext,
       TsBlock cachedTsBlock,
-      List<UpdateLastCacheOperator> children,
+      List<AbstractUpdateLastCacheOperator> children,
       Comparator<Binary> timeSeriesComparator) {
     this.cachedTsBlock = cachedTsBlock;
     this.cachedTsBlockSize = cachedTsBlock.getPositionCount();
@@ -117,7 +117,7 @@ public class LastQuerySortOperator implements ProcessOperator {
         if (canUseDataFromCachedTsBlock(previousTsBlock)) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
         } else {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, 0);
+          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock);
           previousTsBlock = null;
         }
       }
@@ -144,7 +144,7 @@ public class LastQuerySortOperator implements ProcessOperator {
         if (canUseDataFromCachedTsBlock(previousTsBlock)) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
         } else {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, 0);
+          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock);
           previousTsBlock = null;
         }
       } else {
@@ -157,7 +157,8 @@ public class LastQuerySortOperator implements ProcessOperator {
               LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
               previousTsBlock = tsBlock;
             } else {
-              LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, 0);
+              // it is safe to append the whole TsBlock
+              LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
             }
           }
         }

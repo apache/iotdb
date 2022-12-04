@@ -37,7 +37,7 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-20.04 ]
         include:
           - java: 8
             os: macos-latest
