@@ -85,6 +85,7 @@ var config = {
 					text: 'Documentation',
 					items: [
 						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v1.0.x', link: '/UserGuide/V1.0.x/QuickStart/QuickStart' },
 						{ text: 'v0.13.x', link: '/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
@@ -1033,7 +1034,9 @@ var config = {
 						title: 'Cluster',
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1265,7 +1268,9 @@ var config = {
 						title: 'Cluster',
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1310,6 +1315,7 @@ var config = {
 					text: '文档',
 					items: [
 						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v1.0.x', link: '/zh/UserGuide/V1.0.x/QuickStart/QuickStart' },
 						{ text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
@@ -2239,7 +2245,9 @@ var config = {
 						title: '分布式',
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
-							['Cluster/Cluster-Setup','分布式部署']
+							['Cluster/Cluster-Setup','分布式部署'],
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
@@ -2471,7 +2479,9 @@ var config = {
 						title: '分布式',
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
-							['Cluster/Cluster-Setup','分布式部署']
+							['Cluster/Cluster-Setup','分布式部署'],
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
