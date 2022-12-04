@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 
 import org.slf4j.Logger;
@@ -31,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 /** the utils for managing thread or thread pool */
 public class ThreadUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
+  private static final Logger logger = LoggerFactory.getLogger(ThreadUtils.class);
 
   public static void stopThreadPool(ExecutorService pool, ThreadName poolName) {
     if (pool != null) {

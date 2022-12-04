@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -126,7 +126,7 @@ public class LocalConfigNode {
   private final LocalSchemaPartitionTable schemaPartitionTable =
       LocalSchemaPartitionTable.getInstance();
 
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final LocalDataPartitionInfo dataPartitionInfo = LocalDataPartitionInfo.getInstance();
 
