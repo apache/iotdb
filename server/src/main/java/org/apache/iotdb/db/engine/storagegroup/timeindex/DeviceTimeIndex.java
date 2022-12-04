@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -234,8 +234,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   public long getTimePartition(String tsFilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
-        return StorageEngineV2.getTimePartition(
-            startTimes[deviceToIndex.values().iterator().next()]);
+        return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
       }
       String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
@@ -248,7 +247,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   private long getTimePartitionWithCheck() {
     long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
     for (int index : deviceToIndex.values()) {
-      long p = StorageEngineV2.getTimePartition(startTimes[index]);
+      long p = StorageEngine.getTimePartition(startTimes[index]);
       if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
         partitionId = p;
       } else {
@@ -257,7 +256,7 @@ public class DeviceTimeIndex implements ITimeIndex {
         }
       }
 
-      p = StorageEngineV2.getTimePartition(endTimes[index]);
+      p = StorageEngine.getTimePartition(endTimes[index]);
       if (partitionId != p) {
         return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }
