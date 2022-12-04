@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
 
+/** update last cache for aligned series */
 public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
   private final AlignedPath seriesPath;
