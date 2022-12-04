@@ -78,7 +78,7 @@ public class ConfigNodeConfig {
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.CUSTOM;
+      RegionGroupExtensionPolicy.AUTO;
 
   /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
   private int schemaRegionGroupPerDatabase = 1;
