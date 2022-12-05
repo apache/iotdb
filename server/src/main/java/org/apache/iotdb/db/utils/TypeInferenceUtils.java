@@ -29,19 +29,19 @@ import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
-  private static TSDataType booleanStringInferType =
+  private static final TSDataType booleanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
-  private static TSDataType integerStringInferType =
+  private static final TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
-  private static TSDataType longStringInferType =
+  private static final TSDataType longStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
-  private static TSDataType floatingStringInferType =
+  private static final TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
-  private static TSDataType nanStringInferType =
+  private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
@@ -119,7 +119,7 @@ public class TypeInferenceUtils {
           "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
     }
 
-    switch (aggrFuncName.toLowerCase()) {
+    switch (aggrFuncName) {
       case SQLConstant.MIN_TIME:
       case SQLConstant.MAX_TIME:
       case SQLConstant.COUNT:
@@ -140,7 +140,7 @@ public class TypeInferenceUtils {
 
   private static boolean verifyIsAggregationDataTypeMatched(
       String aggrFuncName, TSDataType dataType) {
-    switch (aggrFuncName.toLowerCase()) {
+    switch (aggrFuncName) {
       case SQLConstant.AVG:
       case SQLConstant.SUM:
       case SQLConstant.EXTREME:
