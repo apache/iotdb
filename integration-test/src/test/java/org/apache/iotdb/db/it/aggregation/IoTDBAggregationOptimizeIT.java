@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.avg;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.apache.iotdb.itbase.constant.TestConstant.extreme;
@@ -131,6 +132,25 @@ public class IoTDBAggregationOptimizeIT {
     String[] retArray = new String[] {"2,2,2,2,2,2,2,2,"};
     resultSetEqualWithDescOrderTest(
         "select count(s1),count(s2) from root.test.**", expectedHeader, retArray);
+
+    expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          sum("root.test.2region_d1.s1"),
+          sum("root.test.2region_d2.s1"),
+          sum("root.test.1region_d2.s1"),
+          sum("root.test.1region_d1.s1"),
+          sum("root.test.2region_d1.s2"),
+          sum("root.test.2region_d2.s2"),
+          sum("root.test.1region_d2.s2"),
+          sum("root.test.1region_d1.s2")
+        };
+    retArray =
+        new String[] {
+          "1,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,", "2,null,null,2.0,2.0,null,null,2.0,2.0,"
+        };
+    resultSetEqualWithDescOrderTest(
+        "select sum(s1),sum(s2) from root.test.** group by ([1,3), 1ms)", expectedHeader, retArray);
   }
 
   @Test

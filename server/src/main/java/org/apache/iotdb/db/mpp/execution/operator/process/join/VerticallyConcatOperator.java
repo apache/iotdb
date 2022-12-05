@@ -113,22 +113,23 @@ public class VerticallyConcatOperator implements ProcessOperator {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
+    // build TimeColumn according to the first inputTsBlock
+    int currTsBlockIndex = inputIndex[0];
     for (int row = 0; row < maxRowCanBuild; row++) {
-      // build TimeColumn
-      timeColumnBuilder.writeLong(firstTimeColumn.getLong(inputIndex[0]));
+      timeColumnBuilder.writeLong(firstTimeColumn.getLong(currTsBlockIndex + row));
       tsBlockBuilder.declarePosition();
     }
 
-    // build each ValueColumn in every inputTsBlock
+    // build ValueColumns according to inputTsBlocks
     int valueBuilderIndex = 0; // indicate which valueColumnBuilder should use
     for (int i = 0; i < inputOperatorsCount; i++) {
-      int currTsBlockIndex = inputIndex[i];
+      currTsBlockIndex = inputIndex[i];
       for (Column column : inputTsBlocks[i].getValueColumns()) {
         for (int row = 0; row < maxRowCanBuild; row++) {
-          if (column.isNull(currTsBlockIndex)) {
+          if (column.isNull(currTsBlockIndex + row)) {
             valueColumnBuilders[valueBuilderIndex].appendNull();
           } else {
-            valueColumnBuilders[valueBuilderIndex].writeObject(column.getObject(currTsBlockIndex));
+            valueColumnBuilders[valueBuilderIndex].write(column, currTsBlockIndex + row);
           }
         }
         valueBuilderIndex++;
