@@ -31,6 +31,8 @@ Apache IoTDB 集群版包含两种角色的节点，ConfigNode 和 DataNode，�
 
 ConfigNode 是集群的控制节点，管理集群的节点状态、分区信息等，集群所有 ConfigNode 组成一个高可用组，数据全量备份。
 
+注意：ConfigNode 的副本数是集群当前加入的 ConfigNode 个数，一半以上的 ConfigNode 存活集群才能提供服务。
+
 DataNode 是集群的数据节点，管理多个数据分片、元数据分片，数据即时间序列中的时间戳和值，元数据为时间序列的路径信息、数据类型等。
 
 Client 只能通过 DataNode 进行数据读写。
@@ -111,4 +113,4 @@ Region 是数据复制的基本单位，一个 Region 的多个副本构成了�
 * 现有的共识协议
     * SimpleConsensus：提供强一致性，仅单副本时可用，一致性协议的极简实现，效率最高。
     * IoTConsensus：提供最终一致性，任意副本数可用，2 副本时可容忍 1 节点失效，当前仅可用于 DataRegion 的副本上，写入可以在任一副本进行，并异步复制到其他副本。
-    * RatisConsensus：提供强一致性，Raft 协议的一种实现，任意副本数可用，当前可用于任意副本组上。
+    * RatisConsensus：提供强一致性，Raft 协议的一种实现，任意副本数可用，当前可用于任意副本组上。目前DataRegion使用RatisConsensus时暂不支持多数据目录，预计会在后续版本中支持这一功能。
