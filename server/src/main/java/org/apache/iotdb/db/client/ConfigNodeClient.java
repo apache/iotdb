@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
@@ -186,7 +187,7 @@ public class ConfigNodeClient
     try {
       tryToConnect();
     } catch (TException e) {
-      // can not connect to each config node
+      // Can not connect to each config node
       syncLatestConfigNodeList();
       tryToConnect();
     }
@@ -196,7 +197,7 @@ public class ConfigNodeClient
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
+              // As there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
       if (!transport.isOpen()) {
         transport.open();
@@ -1703,6 +1704,27 @@ public class ConfigNodeClient
         TGetSeriesSlotListResp resp = client.getSeriesSlotList(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.migrateRegion(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
         }
       } catch (TException e) {
         logger.warn(

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -35,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -66,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -82,6 +86,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -329,6 +334,94 @@ public class ProcedureManager {
               LOGGER.info("Submit RemoveDataNodeProcedure successfully, {}", tDataNodeLocation);
             });
     return true;
+  }
+
+  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+    // TODO: Whether to guarantee the check high consistency, i.e, use consensus read to check
+    Map<TConsensusGroupId, RegionGroupCache> regionReplicaMap =
+        configManager.getPartitionManager().getRegionGroupCacheMap();
+    Optional<TConsensusGroupId> regionId =
+        regionReplicaMap.keySet().stream()
+            .filter(id -> id.getId() == migrateRegionReq.getRegionId())
+            .findAny();
+    TDataNodeLocation originalDataNode =
+        configManager
+            .getNodeManager()
+            .getRegisteredDataNode(migrateRegionReq.getFromId())
+            .getLocation();
+    TDataNodeLocation destDataNode =
+        configManager
+            .getNodeManager()
+            .getRegisteredDataNode(migrateRegionReq.getToId())
+            .getLocation();
+    if (!regionId.isPresent()) {
+      LOGGER.info(
+          "Submit RegionMigrateProcedure failed, because no region Group {}",
+          migrateRegionReq.getRegionId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no region Group "
+              + migrateRegionReq.getRegionId());
+      return status;
+    } else if (originalDataNode == null) {
+      LOGGER.info(
+          "Submit RegionMigrateProcedure failed, because no original DataNode {}",
+          migrateRegionReq.getFromId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no original DataNode "
+              + migrateRegionReq.getFromId());
+      return status;
+    } else if (destDataNode == null) {
+      LOGGER.info(
+          "Submit RegionMigrateProcedure failed, because no target DataNode {}",
+          migrateRegionReq.getToId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no target DataNode "
+              + migrateRegionReq.getToId());
+      return status;
+    } else if (!regionReplicaMap
+        .get(regionId.get())
+        .getStatistics()
+        .getRegionStatisticsMap()
+        .containsKey(migrateRegionReq.getFromId())) {
+      LOGGER.info(
+          "Submit RegionMigrateProcedure failed, because region group {} doesn't contain original DataNode {}",
+          migrateRegionReq.getRegionId(),
+          migrateRegionReq.getFromId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because region group "
+              + migrateRegionReq.getRegionId()
+              + " doesn't contain original DataNode "
+              + migrateRegionReq.getFromId());
+      return status;
+    } else if (regionReplicaMap
+        .get(regionId.get())
+        .getStatistics()
+        .getRegionStatisticsMap()
+        .containsKey(migrateRegionReq.getToId())) {
+      LOGGER.info(
+          "Submit RegionMigrateProcedure failed, because region Group {} already contains target DataNode {}",
+          migrateRegionReq.getRegionId(),
+          migrateRegionReq.getToId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because region Group "
+              + migrateRegionReq.getRegionId()
+              + " already contains target DataNode "
+              + migrateRegionReq.getToId());
+      return status;
+    }
+    this.executor.submitProcedure(
+        new RegionMigrateProcedure(regionId.get(), originalDataNode, destDataNode));
+    LOGGER.info(
+        "Submit RegionMigrateProcedure successfully, ConsensusGroup: {}, From: {}, To: {}",
+        migrateRegionReq.getRegionId(),
+        migrateRegionReq.getFromId(),
+        migrateRegionReq.getToId());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**

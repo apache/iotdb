@@ -253,6 +253,12 @@ struct TGetSeriesSlotListResp {
     2: optional list<common.TSeriesPartitionSlot> seriesSlotList
 }
 
+struct TMigrateRegionReq {
+    1: required i32 regionId
+    2: required i32 fromId
+    3: required i32 toId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -943,6 +949,9 @@ service IConfigNodeRPCService {
   /** TestOnly. Set the target DataNode to the specified status */
   common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
+  /** Migrate a region replica from one dataNode to another */
+  common.TSStatus migrateRegion(TMigrateRegionReq req)
+
   // ======================================================
   // Cluster Tools
   // ======================================================
@@ -1071,7 +1080,6 @@ service IConfigNodeRPCService {
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
-
 
   // ====================================================
   // CQ

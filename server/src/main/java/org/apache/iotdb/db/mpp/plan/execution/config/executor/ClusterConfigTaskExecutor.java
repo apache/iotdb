@@ -51,11 +51,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
@@ -108,6 +108,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
@@ -316,7 +317,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             return future;
           }
           if (!uri.getScheme().equals("file")) {
-            // download executable
+            // Download executable
             ExecutableResource resource =
                 UDFExecutableManager.getInstance().request(Collections.singletonList(uriString));
             String jarFilePathUnderTempDir =
@@ -334,7 +335,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
             // ConfigNode.
             jarFile = ExecutableManager.transferToBytebuffer(libRoot);
-            // set md5 of the jar file
+            // Set md5 of the jar file
             jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
           }
         } catch (IOException | URISyntaxException e) {
@@ -927,8 +928,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+    try {
       // Send request to some API server
       List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
       // build TSBlock
@@ -944,12 +944,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     String req = showNodesInSchemaTemplateStatement.getTemplateName();
-    TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+    try {
       // Send request to some API server
       Template template = ClusterTemplateManager.getInstance().getTemplate(req);
-      // build TSBlock
+      // Build TSBlock
       ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
     } catch (Exception e) {
       future.setException(e);
@@ -979,12 +977,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       ShowPathSetTemplateStatement showPathSetTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     String templateName = showPathSetTemplateStatement.getTemplateName();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+    try {
       // Send request to some API server
       List<PartialPath> listPath =
           ClusterTemplateManager.getInstance().getPathsSetTemplate(templateName);
-      // build TSBlock
+      // Build TSBlock
       ShowPathSetTemplateTask.buildTSBlock(listPath, future);
     } catch (Exception e) {
       future.setException(e);
@@ -1011,13 +1008,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         } catch (TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
+            // Time out mainly caused by slow execution, just wait
             tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
           } else {
             throw e;
           }
         }
-        // keep waiting until task ends
+        // Keep waiting until task ends
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
@@ -1411,6 +1408,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     GetTimeSlotListTask.buildTSBlock(resp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> migrateRegion(
+      MigrateRegionStatement migrateRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      TMigrateRegionReq tMigrateRegionReq =
+          new TMigrateRegionReq(
+              migrateRegionStatement.getRegionId(),
+              migrateRegionStatement.getFromId(),
+              migrateRegionStatement.getToId());
+      TSStatus status = configNodeClient.migrateRegion(tMigrateRegionReq);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(status.message, status.code));
+        return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
     return future;
   }
 
