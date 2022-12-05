@@ -65,7 +65,6 @@ Then you will get the binary distribution under **distribution/target**, in whic
 |-------------------------|--------------------------------------------------------------------------------------------|
 | conf                    | Configuration files folder, contains configuration files of ConfigNode and DataNode        |
 | data                    | Data files folder, contains data files of ConfigNode and DataNode                          |       |
-| grafana-metrics-example | Grafana metric page module                                                                 |
 | lib                     | Jar files folder                                                                           |
 | licenses                | Licenses files folder                                                                      |
 | logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                          |
@@ -98,12 +97,12 @@ iotdb-confignode.properties:
 
 iotdb-common.properties:
 
-| **Configuration**                          | **Description**                                                                                      |
-|--------------------------------------------|------------------------------------------------------------------------------------------------------|
-| data\_replication\_factor                  | Data replication factor, no more than DataNode number                                                |
-| data\_region\_consensus\_protocol\_class   | Consensus protocol of data replicas                                                                  |
-| schema\_replication\_factor                | Schema replication factor, no more than DataNode number                                              |
-| schema\_region\_consensus\_protocol\_class | Consensus protocol of schema replicas                                                                |
+| **Configuration**                          | **Description**                                                                                                    |
+|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| data\_replication\_factor                  | Data replication factor, no more than DataNode number                                                              |
+| data\_region\_consensus\_protocol\_class   | Consensus protocol of data replicas. Note that RatisConsensus currently does not support multiple data directories |
+| schema\_replication\_factor                | Schema replication factor, no more than DataNode number                                                            |
+| schema\_region\_consensus\_protocol\_class | Consensus protocol of schema replicas                                                                              |
 
 Start on Linux:
 ```

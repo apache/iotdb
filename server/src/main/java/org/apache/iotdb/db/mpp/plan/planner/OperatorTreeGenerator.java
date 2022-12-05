@@ -83,6 +83,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MultiColumn
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
@@ -1753,34 +1755,46 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
-    PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
-    TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
-    if (timeValuePair == null) { // last value is not cached
-      return createUpdateLastCacheOperator(
-          node, context, node.getSeriesPath().getMeasurementPath());
-    } else if (!LastQueryUtil.satisfyFilter(
-        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
-        timeValuePair)) { // cached last value is not satisfied
+    AlignedPath alignedPath = node.getSeriesPath();
+    PartialPath devicePath = alignedPath.getDevicePath();
+    // get series under aligned entity that has not been cached
+    List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
+    List<String> measurementList = alignedPath.getMeasurementList();
+    for (int i = 0; i < measurementList.size(); i++) {
+      PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      if (timeValuePair == null) { // last value is not cached
+        unCachedMeasurementIndexes.add(i);
+      } else if (!LastQueryUtil.satisfyFilter(
+          updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+          timeValuePair)) { // cached last value is not satisfied
 
-      boolean isFilterGtOrGe =
-          (context.getLastQueryTimeFilter() instanceof Gt
-              || context.getLastQueryTimeFilter() instanceof GtEq);
-      // time filter is not > or >=, we still need to read from disk
-      if (!isFilterGtOrGe) {
-        return createUpdateLastCacheOperator(
-            node, context, node.getSeriesPath().getMeasurementPath());
-      } else { // otherwise, we just ignore it and return null
-        return null;
+        boolean isFilterGtOrGe =
+            (context.getLastQueryTimeFilter() instanceof Gt
+                || context.getLastQueryTimeFilter() instanceof GtEq);
+        // time filter is not > or >=, we still need to read from disk
+        if (!isFilterGtOrGe) {
+          unCachedMeasurementIndexes.add(i);
+        }
+      } else { //  cached last value is satisfied, put it into LastCacheScanOperator
+        context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
       }
-    } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-      context.addCachedLastValue(timeValuePair, seriesPath.getFullPath());
+    }
+    if (unCachedMeasurementIndexes.isEmpty()) {
       return null;
+    } else {
+      AlignedPath unCachedPath = new AlignedPath(alignedPath.getDevicePath());
+      for (int i : unCachedMeasurementIndexes) {
+        unCachedPath.addMeasurement(measurementList.get(i), alignedPath.getSchemaList().get(i));
+      }
+      return createAlignedUpdateLastCacheOperator(node, unCachedPath, context);
     }
   }
 
-  private UpdateLastCacheOperator createUpdateLastCacheOperator(
-      AlignedLastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
-    AlignedSeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
+  private AlignedUpdateLastCacheOperator createAlignedUpdateLastCacheOperator(
+      AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
+    AlignedSeriesAggregationScanOperator lastQueryScan =
+        createLastQueryScanOperator(node, unCachedPath, context);
 
     OperatorContext operatorContext =
         context
@@ -1788,20 +1802,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                UpdateLastCacheOperator.class.getSimpleName());
+                AlignedUpdateLastCacheOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new UpdateLastCacheOperator(
+    return new AlignedUpdateLastCacheOperator(
         operatorContext,
         lastQueryScan,
-        fullPath,
-        node.getSeriesPath().getSchemaList().get(0).getType(),
+        unCachedPath,
         DATA_NODE_SCHEMA_CACHE,
         context.isNeedUpdateLastCache());
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(
-      AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
-    AlignedPath seriesPath = node.getSeriesPath();
+      AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
             .getInstanceContext()
@@ -1811,17 +1823,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 AlignedSeriesAggregationScanOperator.class.getSimpleName());
 
     // last_time, last_value
-    List<Aggregator> aggregators =
-        LastQueryUtil.createAggregators(seriesPath.getSchemaList().get(0).getType());
+    List<Aggregator> aggregators = new ArrayList<>();
+    for (int i = 0; i < unCachedPath.getMeasurementList().size(); i++) {
+      aggregators.addAll(
+          LastQueryUtil.createAggregators(unCachedPath.getSchemaList().get(i).getType(), i));
+    }
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
-    long maxReturnSize =
-        calculateMaxAggregationResultSizeForLastQuery(
-            aggregators, seriesPath.transformToPartialPath());
+    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators, unCachedPath);
 
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
-            seriesPath,
+            unCachedPath,
             operatorContext,
             aggregators,
             timeRangeIterator,
@@ -1830,7 +1843,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             null,
             maxReturnSize);
     context.addSourceOperator(seriesAggregationScanOperator);
-    context.addPath(seriesPath);
+    context.addPath(unCachedPath);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
   }
@@ -1847,11 +1860,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
 
-    List<UpdateLastCacheOperator> operatorList =
+    List<AbstractUpdateLastCacheOperator> operatorList =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .filter(Objects::nonNull)
-            .map(o -> (UpdateLastCacheOperator) o)
+            .map(o -> (AbstractUpdateLastCacheOperator) o)
             .collect(Collectors.toList());
 
     List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList =

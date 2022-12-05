@@ -21,7 +21,7 @@ package org.apache.iotdb.db.sync.transport.client;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 
@@ -34,8 +34,7 @@ public class SyncClientFactory {
 
   public static ISyncClient createSyncClient(Pipe pipe, PipeSink pipeSink, String dataRegionId) {
     DataRegion dataRegion =
-        StorageEngineV2.getInstance()
-            .getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId)));
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId)));
     switch (pipeSink.getType()) {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;

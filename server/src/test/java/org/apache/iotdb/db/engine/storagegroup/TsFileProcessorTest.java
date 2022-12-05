@@ -66,7 +66,7 @@ import static org.apache.iotdb.db.engine.storagegroup.DataRegionTest.buildInsert
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-public class TsFileProcessorV2Test {
+public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private final String storageGroup = "root.vehicle";
@@ -79,9 +79,9 @@ public class TsFileProcessorV2Test {
   private final Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
   private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
-  private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorV2Test.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
-  public TsFileProcessorV2Test() {}
+  public TsFileProcessorTest() {}
 
   @Before
   public void setUp() throws DataRegionException {

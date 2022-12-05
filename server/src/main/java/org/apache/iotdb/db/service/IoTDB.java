@@ -31,7 +31,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -150,7 +149,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
-    registerManager.register(StorageEngine.getInstance());
+    //    registerManager.register(StorageEngine.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
