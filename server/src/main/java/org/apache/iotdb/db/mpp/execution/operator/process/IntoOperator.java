@@ -64,34 +64,7 @@ public class IntoOperator extends AbstractIntoOperator {
   }
 
   @Override
-  public TsBlock next() {
-    if (!checkLastWriteOperation()) {
-      return null;
-    }
-
-    if (!processTsBlock(cachedTsBlock)) {
-      return null;
-    }
-    cachedTsBlock = null;
-
-    if (child.hasNext()) {
-      TsBlock inputTsBlock = child.next();
-      processTsBlock(inputTsBlock);
-
-      // call child.next only once
-      return null;
-    } else {
-      if (insertMultiTabletsInternally(false)) {
-        return null;
-      }
-
-      finished = true;
-      return constructResultTsBlock();
-    }
-  }
-
-  /** @return false if we submit one write task during processing. */
-  private boolean processTsBlock(TsBlock inputTsBlock) {
+  protected boolean processTsBlock(TsBlock inputTsBlock) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return true;
     }
@@ -109,6 +82,16 @@ public class IntoOperator extends AbstractIntoOperator {
       }
     }
     return true;
+  }
+
+  @Override
+  protected TsBlock tryToReturnResultTsBlock() {
+    if (insertMultiTabletsInternally(false)) {
+      return null;
+    }
+
+    finished = true;
+    return constructResultTsBlock();
   }
 
   private TsBlock constructResultTsBlock() {

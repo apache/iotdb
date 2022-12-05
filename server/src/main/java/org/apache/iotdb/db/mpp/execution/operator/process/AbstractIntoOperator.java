@@ -95,6 +95,115 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
+  @Override
+  public OperatorContext getOperatorContext() {
+    return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean writeDone = writeOperationDone();
+    if (writeDone && childBlocked.isDone()) {
+      return NOT_BLOCKED;
+    } else if (childBlocked.isDone()) {
+      return writeOperationFuture;
+    } else if (writeDone) {
+      return childBlocked;
+    } else {
+      return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));
+    }
+  }
+
+  private boolean writeOperationDone() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
+
+    return writeOperationFuture.isDone();
+  }
+
+  @Override
+  public boolean hasNext() {
+    return !finished;
+  }
+
+  @Override
+  public TsBlock next() {
+    if (!checkLastWriteOperation()) {
+      return null;
+    }
+
+    if (!processTsBlock(cachedTsBlock)) {
+      return null;
+    }
+    cachedTsBlock = null;
+
+    if (child.hasNext()) {
+      TsBlock inputTsBlock = child.next();
+      processTsBlock(inputTsBlock);
+
+      // call child.next only once
+      return null;
+    } else {
+      return tryToReturnResultTsBlock();
+    }
+  }
+
+  /**
+   * Check whether the last write operation was executed successfully, and throw an exception if the
+   * execution failed, otherwise continue to execute the operator.
+   *
+   * @return true if the last write operation has been executed successfully.
+   */
+  private boolean checkLastWriteOperation() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
+
+    try {
+      if (!writeOperationFuture.isDone()) {
+        throw new IllegalStateException(
+            "The operator cannot continue until the last write operation is done.");
+      }
+
+      TSStatus executionStatus = writeOperationFuture.get();
+      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        String message =
+            String.format(
+                "Error occurred while inserting tablets in SELECT INTO: %s",
+                executionStatus.getMessage());
+        throw new IntoProcessException(message);
+      }
+
+      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+        generator.reset();
+      }
+
+      writeOperationFuture = null;
+      return true;
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          "{}: interrupted when processing write operation future with exception {}", this, e);
+      Thread.currentThread().interrupt();
+      throw new IntoProcessException(e.getMessage());
+    } catch (ExecutionException e) {
+      throw new IntoProcessException(e.getMessage());
+    }
+  }
+
+  /**
+   * Write the data of the input TsBlock into Statement.
+   *
+   * <p>If the Statement is full, submit one write task and return false.
+   *
+   * <p>If TsBlock is empty, or all data has been written to Statement, return true.
+   */
+  protected abstract boolean processTsBlock(TsBlock inputTsBlock);
+
+  protected abstract TsBlock tryToReturnResultTsBlock();
+
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
@@ -157,49 +266,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  /**
-   * Check whether the last write operation was executed successfully, and throw an exception if the
-   * execution failed, otherwise continue to execute the operator.
-   *
-   * @return true if the last write operation has been executed successfully.
-   */
-  protected boolean checkLastWriteOperation() {
-    if (writeOperationFuture == null) {
-      return true;
-    }
-
-    try {
-      if (!writeOperationFuture.isDone()) {
-        throw new IllegalStateException(
-            "The operator cannot continue until the last write operation is done.");
-      }
-
-      TSStatus executionStatus = writeOperationFuture.get();
-      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        String message =
-            String.format(
-                "Error occurred while inserting tablets in SELECT INTO: %s",
-                executionStatus.getMessage());
-        throw new IntoProcessException(message);
-      }
-
-      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-        generator.reset();
-      }
-
-      writeOperationFuture = null;
-      return true;
-    } catch (InterruptedException e) {
-      LOGGER.warn(
-          "{}: interrupted when processing write operation future with exception {}", this, e);
-      Thread.currentThread().interrupt();
-      throw new IntoProcessException(e.getMessage());
-    } catch (ExecutionException e) {
-      throw new IntoProcessException(e.getMessage());
-    }
-  }
-
   private boolean existFullStatement(
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
@@ -218,39 +284,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       return generator.getWrittenCount(measurement);
     }
     return 0;
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  private boolean writeOperationDone() {
-    if (writeOperationFuture == null) {
-      return true;
-    }
-
-    return writeOperationFuture.isDone();
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    ListenableFuture<?> childBlocked = child.isBlocked();
-    boolean writeDone = writeOperationDone();
-    if (writeDone && childBlocked.isDone()) {
-      return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
-      return writeOperationFuture;
-    } else if (writeDone) {
-      return childBlocked;
-    } else {
-      return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));
-    }
-  }
-
-  @Override
-  public boolean hasNext() {
-    return !finished;
   }
 
   @Override

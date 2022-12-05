@@ -84,50 +84,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   }
 
   @Override
-  public TsBlock next() {
-    if (!checkLastWriteOperation()) {
-      return null;
-    }
-
-    if (!processTsBlock(cachedTsBlock)) {
-      return null;
-    }
-    cachedTsBlock = null;
-
-    if (child.hasNext()) {
-      TsBlock inputTsBlock = child.next();
-      processTsBlock(inputTsBlock);
-
-      // call child.next only once
-      return null;
-    } else {
-      InsertMultiTabletsStatement insertMultiTabletsStatement =
-          constructInsertMultiTabletsStatement(false);
-      updateResultTsBlock();
-      currentDevice = null;
-
-      if (insertMultiTabletsStatement != null) {
-        executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
-        return null;
-      }
-
-      finished = true;
-      return resultTsBlockBuilder.build();
-    }
-  }
-
-  private List<IntoOperator.InsertTabletStatementGenerator>
-      constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
-    Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
-        deviceToTargetPathSourceInputLocationMap.get(currentDevice);
-    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
-        deviceToTargetPathDataTypeMap.get(currentDevice);
-    return constructInsertTabletStatementGenerators(
-        targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
-  }
-
-  /** Return true if write task is submitted during processing */
-  private boolean processTsBlock(TsBlock inputTsBlock) {
+  protected boolean processTsBlock(TsBlock inputTsBlock) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return true;
     }
@@ -162,6 +119,32 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       }
     }
     return true;
+  }
+
+  @Override
+  protected TsBlock tryToReturnResultTsBlock() {
+    InsertMultiTabletsStatement insertMultiTabletsStatement =
+        constructInsertMultiTabletsStatement(false);
+    updateResultTsBlock();
+    currentDevice = null;
+
+    if (insertMultiTabletsStatement != null) {
+      executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
+      return null;
+    }
+
+    finished = true;
+    return resultTsBlockBuilder.build();
+  }
+
+  private List<IntoOperator.InsertTabletStatementGenerator>
+      constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
+    Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
+        deviceToTargetPathSourceInputLocationMap.get(currentDevice);
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
+        deviceToTargetPathDataTypeMap.get(currentDevice);
+    return constructInsertTabletStatementGenerators(
+        targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
   }
 
   private void updateResultTsBlock() {
