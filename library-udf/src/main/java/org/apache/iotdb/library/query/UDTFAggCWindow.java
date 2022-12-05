@@ -1,12 +1,12 @@
 package org.apache.iotdb.library.query;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -21,7 +21,7 @@ public class UDTFAggCWindow implements UDTF {
     int slide = parameters.getInt("skip");
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(window, slide))
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(Type.DOUBLE);
   }
 
   @Override
