@@ -27,7 +27,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -337,7 +337,7 @@ public class WALNode implements IWALNode {
       DataRegion dataRegion;
       try {
         dataRegion =
-            StorageEngineV2.getInstance()
+            StorageEngine.getInstance()
                 .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
       } catch (Exception e) {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);

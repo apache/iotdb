@@ -36,7 +36,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -436,7 +436,7 @@ public class RegionMigrateService implements IService {
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       try {
         if (regionId instanceof DataRegionId) {
-          StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) regionId);
+          StorageEngine.getInstance().deleteDataRegion((DataRegionId) regionId);
         } else {
           SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
         }

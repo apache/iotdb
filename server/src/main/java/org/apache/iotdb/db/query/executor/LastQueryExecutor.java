@@ -22,18 +22,12 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -45,7 +39,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -256,47 +248,7 @@ public class LastQueryExecutor {
       QueryContext context,
       Map<String, Set<String>> deviceMeasurementsMap)
       throws StorageEngineException, QueryProcessException, IOException {
-    // Acquire query resources for the rest series paths
-    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
-        StorageEngine.getInstance().mergeLock(seriesPaths);
-    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
-        lockListAndProcessorToSeriesMapPair.right;
-
-    try {
-      // init QueryDataSource Cache
-      QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, filter);
-    } catch (Exception e) {
-      logger.error("Meet error when init QueryDataSource ", e);
-      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(lockList);
-    }
-
-    List<LastPointReader> readers = new ArrayList<>();
-    for (int i = 0; i < seriesPaths.size(); i++) {
-      QueryDataSource dataSource =
-          QueryResourceManager.getInstance()
-              .getQueryDataSource(seriesPaths.get(i), context, filter, ascending);
-      LastPointReader lastReader =
-          ResourceByPathUtils.getResourceInstance(seriesPaths.get(i))
-              .createLastPointReader(
-                  dataTypes.get(i),
-                  deviceMeasurementsMap.getOrDefault(
-                      seriesPaths.get(i).getDevice(), new HashSet<>()),
-                  context,
-                  dataSource,
-                  Long.MAX_VALUE,
-                  filter);
-      readers.add(lastReader);
-    }
-
-    List<TimeValuePair> lastPairs = new ArrayList<>(seriesPaths.size());
-    for (LastPointReader reader : readers) {
-      lastPairs.add(reader.readLastPoint());
-    }
-    return lastPairs;
+    return null;
   }
 
   private interface LastCacheAccessor {
