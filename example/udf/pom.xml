@@ -117,7 +117,7 @@
                                 <importOrder>
                                     <order>org.apache.iotdb,,javax,java,\#</order>
                                 </importOrder>
-                                <removeUnusedImports/>
+                                <removeUnusedImports />
                             </java>
                         </configuration>
                         <executions>
