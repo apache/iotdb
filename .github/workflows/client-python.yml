@@ -10,6 +10,7 @@ on:
       - "new_*"
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - master
@@ -17,6 +18,7 @@ on:
       - "new_*"
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -32,19 +34,12 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 20
-      matrix:
-        java: [ 11 ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os}}
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
-        with:
-          java-version: ${{ matrix.java }}
+      - uses: actions/checkout@v3
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -53,7 +48,7 @@ jobs:
         run: mvn -B clean install -pl distribution,client-py -am -DskipTests
       - name: Build IoTDB server docker image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:dev"
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r client-py/requirements_dev.txt

@@ -36,6 +36,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -205,13 +206,18 @@ public class IoTDBSnapshotTest {
                 + "0"
                 + File.separator
                 + "1-1-0-0.tsfile");
+    DataRegion region = Mockito.mock(DataRegion.class);
+    Mockito.when(region.getStorageGroupName()).thenReturn("root.test");
+    Mockito.when(region.getDataRegionId()).thenReturn("0");
     File snapshotFile =
-        new SnapshotTaker(null).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
+        new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
     Assert.assertEquals(
         new File(
                 IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
                     + File.separator
                     + "snapshot"
+                    + File.separator
+                    + "root.test-0"
                     + File.separator
                     + "test-snapshotId"
                     + File.separator

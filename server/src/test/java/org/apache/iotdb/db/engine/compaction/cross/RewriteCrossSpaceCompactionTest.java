@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -59,6 +60,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
@@ -70,8 +72,10 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
@@ -225,7 +229,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
@@ -463,7 +467,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
@@ -592,7 +596,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
-    vsgp.delete(
+    vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -611,14 +615,14 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
-    vsgp.delete(
+    vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -713,7 +717,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
-    vsgp.delete(
+    vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -732,14 +736,14 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
-    vsgp.delete(
+    vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
@@ -751,7 +755,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         1200,
         0,
         null);
-    vsgp.delete(
+    vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR

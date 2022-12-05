@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+import static org.apache.iotdb.consensus.iot.wal.ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
@@ -94,9 +94,7 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    if (!config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       // delete this wal node folder
       FileUtils.deleteDirectory(logDirectory);
       logger.info(

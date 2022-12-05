@@ -31,6 +31,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.util.Version;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -157,7 +158,7 @@ public class StandaloneEnv implements BaseEnv {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version)
       throws IoTDBConnectionException {
     Session session =
@@ -170,7 +171,7 @@ public class StandaloneEnv implements BaseEnv {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader,
+            enableRedirection,
             version);
 
     session.open();
@@ -178,22 +179,42 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public int getLeaderConfigNodeIndex() throws IOException {
+    return -1;
+  }
+
+  @Override
   public void startConfigNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownConfigNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void startDataNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownDataNode(int index) {
-    // Do nothing
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getMqttPort() {
+    return 1883;
   }
 }

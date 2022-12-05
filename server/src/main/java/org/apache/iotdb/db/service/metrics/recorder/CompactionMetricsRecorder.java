@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.service.metrics.recorder;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
@@ -44,13 +44,9 @@ public class CompactionMetricsRecorder {
             Metric.DATA_WRITTEN.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            compactionType.toString(),
+            "compaction_" + compactionType.toString(),
             Tag.TYPE.toString(),
-            aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.TYPE.toString(),
-            processChunkType.toString());
+            (aligned ? "ALIGNED" : "NOT_ALIGNED") + "_" + processChunkType.toString());
     MetricService.getInstance()
         .count(
             byteNum / 1024L,

@@ -9,11 +9,13 @@ on:
       - test/e2e
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - cluster_new
     paths-ignore:
       - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -33,9 +35,9 @@ jobs:
         case:
           - cli
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}

@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.consensus.request.write.region;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.persistence.partition.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -48,7 +48,7 @@ public class OfferRegionMaintainTasksPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.OfferRegionMaintainTasks.ordinal());
+    stream.writeShort(getType().getPlanType());
 
     stream.writeInt(regionMaintainTaskList.size());
     for (RegionMaintainTask task : regionMaintainTaskList) {

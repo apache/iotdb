@@ -18,16 +18,10 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.influxdb.InfluxDBException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,24 +73,6 @@ public class TagInfoRecords {
     values.add(tag);
     values.add(order);
     valuesList.add(values);
-  }
-
-  public List<InsertRowPlan> convertToInsertRowPlans() {
-    ArrayList<InsertRowPlan> insertRowPlans = new ArrayList<>();
-    for (int i = 0; i < deviceIds.size(); i++) {
-      try {
-        insertRowPlans.add(
-            new InsertRowPlan(
-                new PartialPath(deviceIds.get(i)),
-                times.get(i),
-                measurementsList.get(i).toArray(new String[0]),
-                DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)),
-                false));
-      } catch (QueryProcessException | IllegalPathException | IoTDBConnectionException e) {
-        throw new InfluxDBException(e.getMessage());
-      }
-    }
-    return insertRowPlans;
   }
 
   public List<TSInsertRecordReq> convertToInsertRecordsReq(long sessionID)

@@ -146,8 +146,8 @@ public class AuthUtils {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
-        case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
+        case CREATE_DATABASE:
+        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -165,8 +165,8 @@ public class AuthUtils {
     } else {
       switch (type) {
         case READ_TIMESERIES:
-        case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
+        case CREATE_DATABASE:
+        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -212,23 +212,6 @@ public class AuthUtils {
       PartialPath partialPathA = new PartialPath(pathA);
       PartialPath partialPathB = new PartialPath(pathB);
       return partialPathB.matchFullPath(partialPathA);
-    } catch (IllegalPathException e) {
-      throw new AuthException(e);
-    }
-  }
-
-  /**
-   * check if pathA either belongs to pathB or pathB belongs to pathA according to path pattern.
-   *
-   * @param pathA path
-   * @param pathB path
-   * @return True if pathA is a sub pattern of pathB, or pathB is a sub pattern of pathA
-   */
-  public static boolean pathOrBelongsTo(String pathA, String pathB) throws AuthException {
-    try {
-      PartialPath partialPathA = new PartialPath(pathA);
-      PartialPath partialPathB = new PartialPath(pathB);
-      return partialPathB.matchFullPath(partialPathA) || partialPathA.matchFullPath(partialPathB);
     } catch (IllegalPathException e) {
       throw new AuthException(e);
     }
@@ -374,7 +357,8 @@ public class AuthUtils {
 
   public static TPermissionInfoResp generateEmptyPermissionInfoResp() {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-    permissionInfoResp.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+    permissionInfoResp.setUserInfo(
+        new TUserResp("", "", new ArrayList<>(), new ArrayList<>(), false));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put("", new TRoleResp("", new ArrayList<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
@@ -389,6 +373,12 @@ public class AuthUtils {
     for (String s : authorizationList) {
       PrivilegeType[] types = PrivilegeType.values();
       boolean legal = false;
+      if ("SET_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.CREATE_DATABASE.name();
+      }
+      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(s)) {
+        s = PrivilegeType.DELETE_DATABASE.name();
+      }
       for (PrivilegeType privilegeType : types) {
         if (s.equalsIgnoreCase(privilegeType.name())) {
           result.add(privilegeType.ordinal());

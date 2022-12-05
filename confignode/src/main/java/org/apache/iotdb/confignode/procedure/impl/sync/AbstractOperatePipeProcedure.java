@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -44,7 +45,8 @@ abstract class AbstractOperatePipeProcedure
    *
    * @return true if procedure can finish directly
    */
-  abstract boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException;
+  abstract boolean executeCheckCanSkip(ConfigNodeProcedureEnv env)
+      throws PipeException, PipeSinkException;
 
   /** Execute at state PRE_OPERATE_PIPE_CONFIGNODE */
   abstract void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException;
@@ -63,7 +65,9 @@ abstract class AbstractOperatePipeProcedure
     try {
       switch (state) {
         case OPERATE_CHECK:
+          env.getConfigManager().getSyncManager().lockSyncMetadata();
           if (executeCheckCanSkip(env)) {
+            env.getConfigManager().getSyncManager().unlockSyncMetadata();
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeState.PRE_OPERATE_PIPE_CONFIGNODE);
@@ -78,9 +82,10 @@ abstract class AbstractOperatePipeProcedure
           break;
         case OPERATE_PIPE_CONFIGNODE:
           executeOperatePipeOnConfigNode(env);
+          env.getConfigManager().getSyncManager().unlockSyncMetadata();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeException e) {
+    } catch (PipeException | PipeSinkException e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail in OperatePipeProcedure", e);
         setFailure(new ProcedureException(e.getMessage()));

@@ -43,7 +43,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -74,15 +74,15 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
-      statement.execute("SET STORAGE GROUP TO root.demo");
+      statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
 
-    //Show storage group
-    statement.execute("SHOW STORAGE GROUP");
+    //SHOW DATABASES
+    statement.execute("SHOW DATABASES");
     outputResult(statement.getResultSet());
 
     //Create time series

@@ -25,15 +25,18 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +81,24 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   @Override
+  public synchronized List<TFragmentInstanceId> filterUnFinishedFIs(
+      List<TFragmentInstanceId> instanceIds) {
+    List<TFragmentInstanceId> res = new ArrayList<>();
+    if (instanceIds == null) {
+      return res;
+    }
+    for (TFragmentInstanceId tFragmentInstanceId : instanceIds) {
+      InstanceStateMetrics stateMetrics =
+          instanceStateMap.get(FragmentInstanceId.fromThrift(tFragmentInstanceId));
+      if (stateMetrics != null
+          && (stateMetrics.lastState == null || !stateMetrics.lastState.isDone())) {
+        res.add(tFragmentInstanceId);
+      }
+    }
+    return res;
+  }
+
+  @Override
   public synchronized void abort() {
     aborted = true;
     if (trackTask != null) {
@@ -95,31 +116,37 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   private void fetchStateAndUpdate() {
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        FragmentInstanceState state = fetchState(instance);
-        InstanceStateMetrics metrics =
-            instanceStateMap.computeIfAbsent(
-                instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
-        if (needPrintState(metrics.lastState, state, metrics.durationToLastPrintInMS)) {
-          logger.info("[PrintFIState] state is {}", state);
-          metrics.reset(state);
-        } else {
-          metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
-        }
+        FragmentInstanceInfo instanceInfo = fetchInstanceInfo(instance);
+        synchronized (this) {
+          InstanceStateMetrics metrics =
+              instanceStateMap.computeIfAbsent(
+                  instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
+          if (needPrintState(
+              metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
+            logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+            metrics.reset(instanceInfo.getState());
+          } else {
+            metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
+          }
 
-        if (state != null) {
-          updateQueryState(instance.getId(), state);
+          updateQueryState(instance.getId(), instanceInfo);
         }
       } catch (TException | IOException e) {
         // TODO: do nothing ?
-        logger.error("error happened while fetching query state", e);
+        logger.warn("error happened while fetching query state", e);
       }
     }
   }
 
-  private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceState state) {
-    if (state.isFailed()) {
-      stateMachine.transitionToFailed(
-          new RuntimeException(String.format("FragmentInstance[%s] is failed.", instanceId)));
+  private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
+    if (instanceInfo.getState().isFailed()) {
+      if (instanceInfo.getFailureInfoList() == null
+          || instanceInfo.getFailureInfoList().size() == 0) {
+        stateMachine.transitionToFailed(
+            new RuntimeException(String.format("FragmentInstance[%s] is failed.", instanceId)));
+      } else {
+        stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
+      }
     }
     boolean queryFinished =
         instanceStateMap.values().stream()

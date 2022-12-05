@@ -38,6 +38,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByLevelQueryIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -61,7 +62,7 @@ public class IoTDBGroupByLevelQueryIT {
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg2");
+      statement.execute("CREATE DATABASE root.sg2");
       statement.execute(
           "create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
       for (int i = 1; i <= 10; i++) {
@@ -98,7 +99,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void countFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{39, 20}};
@@ -135,7 +135,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void sumFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{131111, 510}};
@@ -169,7 +168,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void avgFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
@@ -203,7 +201,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
@@ -217,7 +214,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
@@ -233,7 +229,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void nestedQueryTest1() {
     // level = 1
     double[][] retArray1 = new double[][] {{40.0, 21.0}};
@@ -255,7 +250,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void nestedQueryTest2() {
     // level = 1
     double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
@@ -284,5 +278,36 @@ public class IoTDBGroupByLevelQueryIT {
     String[] columnNames3 = {"count(root.*.*.s1) + sum(root.*.*.s1)"};
     resultSetEqualTest(
         "select count(s1) + sum(s1) from root.*.* group by level=3", retArray3, columnNames3);
+  }
+
+  @Test
+  public void caseSensitivityTest() {
+    double[][] retArray = new double[][] {{39, 20, 39, 20, 39, 20}};
+
+    String[] columnNames1 = {
+      "count(root.sg1.*.s1)",
+      "count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames1);
+
+    String[] columnNames2 = {
+      "Count(root.sg1.*.s1)",
+      "Count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select Count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames2);
   }
 }

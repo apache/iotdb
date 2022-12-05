@@ -99,8 +99,8 @@ public class ForceAppendTsFileWriterTest {
     writer.close();
     TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s1"));
-    pathList.add(new Path("d1", "s2"));
+    pathList.add(new Path("d1", "s1", true));
+    pathList.add(new Path("d1", "s2", true));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     QueryDataSet dataSet = tsFileReader.query(queryExpression);
     RowRecord record = dataSet.next();

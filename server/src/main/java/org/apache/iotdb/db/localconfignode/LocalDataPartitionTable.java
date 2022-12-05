@@ -69,7 +69,7 @@ public class LocalDataPartitionTable {
   }
 
   /**
-   * Get all data region id of current storage group
+   * Get all data region id of current database
    *
    * @return data region id in list
    */

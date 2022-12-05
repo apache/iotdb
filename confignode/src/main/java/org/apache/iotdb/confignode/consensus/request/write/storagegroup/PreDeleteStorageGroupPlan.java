@@ -59,7 +59,7 @@ public class PreDeleteStorageGroupPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.PreDeleteStorageGroup.ordinal());
+    stream.writeShort(getType().getPlanType());
     BasicStructureSerDeUtil.write(storageGroup, stream);
     stream.write(preDeleteType.getType());
   }

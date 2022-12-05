@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -61,13 +62,28 @@ public interface ISession extends AutoCloseable {
 
   void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
 
+  void setTimeZoneOfSession(String zoneId);
+
+  /** @deprecated Use {@link #createDatabase(String)} instead. */
+  @Deprecated
   void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  @Deprecated
   void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  @Deprecated
   void deleteStorageGroups(List<String> storageGroups)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabases(List<String> databases)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void createTimeseries(
@@ -430,9 +446,11 @@ public interface ISession extends AutoCloseable {
 
   void setEnableQueryRedirection(boolean enableQueryRedirection);
 
-  boolean isEnableCacheLeader();
+  boolean isEnableRedirection();
 
-  void setEnableCacheLeader(boolean enableCacheLeader);
+  void setEnableRedirection(boolean enableRedirection);
 
   void sortTablet(Tablet tablet);
+
+  TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
 }

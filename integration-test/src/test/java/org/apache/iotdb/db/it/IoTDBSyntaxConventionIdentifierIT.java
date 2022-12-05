@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -117,8 +118,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
-          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-          expectedResult.remove(resultSet.getString("timeseries"));
+          Assert.assertTrue(
+              expectedResult.contains(resultSet.getString(ColumnHeaderConstant.TIMESERIES)));
+          expectedResult.remove(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
         Assert.assertEquals(0, expectedResult.size());
       }
@@ -250,8 +252,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
-          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-          expectedResult.remove(resultSet.getString("timeseries"));
+          Assert.assertTrue(
+              expectedResult.contains(resultSet.getString(ColumnHeaderConstant.TIMESERIES)));
+          expectedResult.remove(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
         Assert.assertEquals(0, expectedResult.size());
       }
@@ -389,7 +392,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("create storage group root.sg1.d1.");
+        statement.execute("create database root.sg1.d1.");
         fail();
       } catch (Exception ignored) {
       }
@@ -925,149 +928,127 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //    }
   //  }
 
-  // todo: add these back when support sync in new cluster
+  @Test
+  public void testPipeSinkNameIllegal() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("CREATE PIPESINK test` AS IoTDB (`ip` = '127.0.0.1')");
+        fail();
+      } catch (Exception ignored) {
+      }
 
-  //  @Test
-  //  public void testPipeSinkNameIllegal() {
-  //    try (Connection connection = EnvFactory.getEnv().getConnection();
-  //        Statement statement = connection.createStatement()) {
-  //      try {
-  //        statement.execute("CREATE PIPESINK test` AS IoTDB (`ip` = '127.0.0.1')");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute("CREATE PIPESINK ``test` AS IoTDB (`ip` = '127.0.0.1')");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute("CREATE PIPESINK test.1 AS IoTDB (`ip` = '127.0.0.1')");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute("CREATE PIPESINK 12345 AS IoTDB (`ip` = '127.0.0.1')");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute("CREATE PIPESINK a!@cb AS IoTDB (`ip` = '127.0.0.1')");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //    } catch (SQLException e) {
-  //      e.printStackTrace();
-  //      fail();
-  //    }
-  //  }
+      try {
+        statement.execute("CREATE PIPESINK ``test` AS IoTDB (`ip` = '127.0.0.1')");
+        fail();
+      } catch (Exception ignored) {
+      }
 
-  // todo: add this back when support template in new cluster
+      try {
+        statement.execute("CREATE PIPESINK test.1 AS IoTDB (`ip` = '127.0.0.1')");
+        fail();
+      } catch (Exception ignored) {
+      }
 
-  //  @Test
-  //  public void testTemplateName() {
-  //    String[] templateNames = {
-  //        "id",
-  //        "ID",
-  //        "id0",
-  //        "_id",
-  //        "0id",
-  //        "`233`",
-  //        "`ab!`",
-  //        "`\"ab\"`",
-  //        "`\\\"ac\\\"`",
-  //        "`'ab'`",
-  //        "`a.b`",
-  //        "`a``b`"
-  //    };
-  //
-  //    String[] resultNames = {
-  //        "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\\\"ac\\\"", "'ab'", "a.b",
-  // "a`b"
-  //    };
-  //
-  //    try (Connection connection = EnvFactory.getEnv().getConnection();
-  //        Statement statement = connection.createStatement()) {
-  //      for (String templateName : templateNames) {
-  //        String createTemplateSql =
-  //            String.format(
-  //                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN
-  // encoding=PLAIN compression=SNAPPY)",
-  //                templateName);
-  //        statement.execute(createTemplateSql);
-  //      }
-  //
-  //      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
-  //        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-  //        while (resultSet.next()) {
-  //          Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
-  //          expectedResult.remove(resultSet.getString("template name"));
-  //        }
-  //        Assert.assertEquals(0, expectedResult.size());
-  //      }
-  //    } catch (SQLException e) {
-  //      e.printStackTrace();
-  //      fail();
-  //    }
-  //  }
-  //
-  //  @Test
-  //  public void testTemplateNameIllegal() {
-  //    try (Connection connection = EnvFactory.getEnv().getConnection();
-  //        Statement statement = connection.createStatement()) {
-  //      try {
-  //        statement.execute(
-  //            "create schema template `a`` "
-  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
-  // compression=SNAPPY)");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create schema template 111 "
-  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
-  // compression=SNAPPY)");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create schema template `a "
-  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
-  // compression=SNAPPY)");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create schema template 'a' "
-  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
-  // compression=SNAPPY)");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create schema template \"a\" "
-  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
-  // compression=SNAPPY)");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //    } catch (SQLException e) {
-  //      e.printStackTrace();
-  //      fail();
-  //    }
-  //  }
+      try {
+        statement.execute("CREATE PIPESINK 12345 AS IoTDB (`ip` = '127.0.0.1')");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("CREATE PIPESINK a!@cb AS IoTDB (`ip` = '127.0.0.1')");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testTemplateName() {
+    String[] templateNames = {
+      "id", "ID", "id0", "_id", "0id", "`233`",
+    };
+
+    String[] resultNames = {
+      "id", "ID", "id0", "_id", "0id", "233",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String templateName : templateNames) {
+        String createTemplateSql =
+            String.format(
+                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                templateName);
+        statement.execute(createTemplateSql);
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
+        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
+        while (resultSet.next()) {
+          Assert.assertTrue(expectedResult.contains(resultSet.getString("TemplateName")));
+          expectedResult.remove(resultSet.getString("TemplateName"));
+        }
+        Assert.assertEquals(0, expectedResult.size());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testTemplateNameIllegal() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create schema template `a`` "
+                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute(
+            "create schema template 111 "
+                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute(
+            "create schema template `a "
+                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute(
+            "create schema template 'a' "
+                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute(
+            "create schema template \"a\" "
+                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }

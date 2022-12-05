@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -133,6 +135,10 @@ public class DeviceMergeOperatorTest {
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
@@ -154,6 +160,10 @@ public class DeviceMergeOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
               fragmentInstanceContext.getOperatorContexts().get(3),
@@ -180,13 +190,15 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count % 500;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
-              count < 25
+              count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
@@ -215,9 +227,8 @@ public class DeviceMergeOperatorTest {
             }
           }
         }
-        count++;
       }
-      assertEquals(50, count);
+      assertEquals(1000, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -288,6 +299,10 @@ public class DeviceMergeOperatorTest {
       unSeqResources1.add(unSeqResources.get(3));
       unSeqResources1.add(unSeqResources.get(5));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources1, unSeqResources1));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
@@ -306,6 +321,10 @@ public class DeviceMergeOperatorTest {
               null,
               null,
               true);
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<TsFileResource> seqResources2 = new ArrayList<>();
       List<TsFileResource> unSeqResources2 = new ArrayList<>();
       seqResources2.add(seqResources.get(2));
@@ -338,27 +357,27 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
           assertEquals(
               DEVICE_MERGE_OPERATOR_TEST_SG + ".device0",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(i));
+          if ((long) count < 200) {
+            assertEquals(20000 + (long) count, tsBlock.getColumn(1).getInt(i));
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
+            assertEquals(10000 + (long) count, tsBlock.getColumn(1).getInt(i));
           } else {
-            assertEquals(expectedTime, tsBlock.getColumn(1).getInt(i));
+            assertEquals(count, tsBlock.getColumn(1).getInt(i));
           }
         }
-        count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -431,6 +450,10 @@ public class DeviceMergeOperatorTest {
       unSeqResources1.add(unSeqResources.get(3));
       unSeqResources1.add(unSeqResources.get(5));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources1, unSeqResources1));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       MeasurementPath measurementPath2 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
@@ -444,6 +467,10 @@ public class DeviceMergeOperatorTest {
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<String> devices = new ArrayList<>();
       devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
       devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1");
@@ -471,6 +498,10 @@ public class DeviceMergeOperatorTest {
               null,
               null,
               true);
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<TsFileResource> seqResources2 = new ArrayList<>();
       List<TsFileResource> unSeqResources2 = new ArrayList<>();
       seqResources2.add(seqResources.get(2));
@@ -501,13 +532,15 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count % 500;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
-              count < 25
+              count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
@@ -536,9 +569,8 @@ public class DeviceMergeOperatorTest {
             }
           }
         }
-        count++;
       }
-      assertEquals(50, count);
+      assertEquals(1000, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

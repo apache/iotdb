@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import java.io.File;
+
 public class ConfigNodeConstant {
 
   public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
@@ -31,7 +33,7 @@ public class ConfigNodeConstant {
   public static final String JMX_TYPE = "type";
   public static final String CONFIGNODE_JMX_PORT = "confignode.jmx.port";
 
-  public static final String DATA_DIR = "data";
+  public static final String DATA_DIR = "data" + File.separator + "confignode";
   public static final String CONF_DIR = "conf";
   public static final String CONSENSUS_FOLDER = "consensus";
   public static final String UDF_FOLDER = "udf";
@@ -45,10 +47,16 @@ public class ConfigNodeConstant {
   public static final String METRIC_STATUS_ONLINE = "Online";
   public static final String METRIC_STATUS_UNKNOWN = "Unknown";
 
+  public static final String METRIC_CONFIG_NODE = "ConfigNode";
+  public static final String METRIC_DATA_NODE = "DataNode";
+
   public static final String REMOVE_CONFIGNODE_USAGE =
       "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
+
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   private ConfigNodeConstant() {
     // empty constructor

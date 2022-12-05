@@ -18,9 +18,9 @@
 package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -28,15 +28,15 @@ import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 
-  public Response checkAuthority(SecurityContext securityContext, PhysicalPlan physicalPlan) {
+  public Response checkAuthority(SecurityContext securityContext, Statement statement) {
+    String userName = securityContext.getUserPrincipal().getName();
     try {
-      if (!SessionManager.getInstance()
-          .checkAuthorization(physicalPlan, securityContext.getUserPrincipal().getName())) {
+      if (!AuthorityChecker.checkAuthorization(statement, userName)) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
-                    .code(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode())
-                    .message(TSStatusCode.NO_PERMISSION_ERROR.name()))
+                    .code(TSStatusCode.NO_PERMISSION.getStatusCode())
+                    .message(TSStatusCode.NO_PERMISSION.name()))
             .build();
       }
     } catch (AuthException e) {

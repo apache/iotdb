@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -72,20 +71,20 @@ public class ConfigMTreeTest {
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals(
-          "some children of root.edge1 have already been set to storage group", e.getMessage());
+          "some children of root.edge1 have already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge2"));
       root.setStorageGroup(new PartialPath("root.edge2.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+      assertEquals("root.edge2 has already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+      assertEquals("root.edge1.access has already been created as database", e.getMessage());
     }
   }
 
@@ -147,7 +146,7 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
@@ -270,33 +269,23 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));
-    LocalSchemaProcessor.StorageGroupFilter filter =
-        storageGroup -> storageGroup.equals("root.sg1");
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false);
     Assert.assertEquals(2, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
-
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter);
-    Assert.assertEquals(0, result.left.size());
-    Assert.assertEquals(1, result.right.size());
-
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter);
-    Assert.assertEquals(0, result.left.size());
-    Assert.assertEquals(1, result.right.size());
   }
 
   @Test
@@ -373,7 +362,7 @@ public class ConfigMTreeTest {
     }
 
     try {
-      List<String> pathList = root.getPathsSetOnTemplate(0);
+      List<String> pathList = root.getPathsSetOnTemplate(0, false);
       Assert.assertTrue(pathList.contains("root.a.template0"));
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {

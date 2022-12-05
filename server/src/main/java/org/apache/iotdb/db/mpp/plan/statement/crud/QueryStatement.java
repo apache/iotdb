@@ -69,38 +69,40 @@ import java.util.Set;
  */
 public class QueryStatement extends Statement {
 
-  protected SelectComponent selectComponent;
-  protected FromComponent fromComponent;
-  protected WhereCondition whereCondition;
-  protected HavingCondition havingCondition;
+  private SelectComponent selectComponent;
+  private FromComponent fromComponent;
+  private WhereCondition whereCondition;
+  private HavingCondition havingCondition;
 
   // row limit and offset for result set. The default value is 0, which means no limit
-  protected int rowLimit = 0;
+  private int rowLimit = 0;
   // row offset for result set. The default value is 0
-  protected int rowOffset = 0;
+  private int rowOffset = 0;
 
   // series limit and offset for result set. The default value is 0, which means no limit
-  protected int seriesLimit = 0;
+  private int seriesLimit = 0;
   // series offset for result set. The default value is 0
-  protected int seriesOffset = 0;
+  private int seriesOffset = 0;
 
-  protected FillComponent fillComponent;
+  private FillComponent fillComponent;
 
-  protected OrderByComponent orderByComponent;
+  private OrderByComponent orderByComponent;
 
-  protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
+  private ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
   // `GROUP BY TIME` clause
-  protected GroupByTimeComponent groupByTimeComponent;
+  private GroupByTimeComponent groupByTimeComponent;
 
   // `GROUP BY LEVEL` clause
-  protected GroupByLevelComponent groupByLevelComponent;
+  private GroupByLevelComponent groupByLevelComponent;
 
   // `GROUP BY TAG` clause
-  protected GroupByTagComponent groupByTagComponent;
+  private GroupByTagComponent groupByTagComponent;
 
   // `INTO` clause
-  protected IntoComponent intoComponent;
+  private IntoComponent intoComponent;
+
+  private boolean isCqQueryBody;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -239,7 +241,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isLastQuery() {
-    return selectComponent.isHasLast();
+    return selectComponent.hasLast();
   }
 
   public boolean isAggregationQuery() {
@@ -304,8 +306,24 @@ public class QueryStatement extends Statement {
     return orderByComponent.getSortItemList();
   }
 
+  public boolean hasFill() {
+    return fillComponent != null;
+  }
+
+  public boolean hasOrderBy() {
+    return orderByComponent != null;
+  }
+
   public boolean isSelectInto() {
     return intoComponent != null;
+  }
+
+  public boolean isCqQueryBody() {
+    return isCqQueryBody;
+  }
+
+  public void setCqQueryBody(boolean cqQueryBody) {
+    isCqQueryBody = cqQueryBody;
   }
 
   public void semanticCheck() {
@@ -314,17 +332,29 @@ public class QueryStatement extends Statement {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
       }
       if (isGroupByLevel() && isAlignByDevice()) {
-        throw new SemanticException("group by level does not support align by device now.");
+        throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
       }
       if (isGroupByTag() && isAlignByDevice()) {
-        throw new SemanticException("group by tag does not support align by device now.");
+        throw new SemanticException("GROUP BY TAGS does not support align by device now.");
       }
-      if (isGroupByTag() && isGroupByLevel()) {
-        throw new SemanticException("group by level cannot be used togather with group by tag");
-      }
+      Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+        }
+        outputColumn.add(
+            resultColumn.getAlias() != null
+                ? resultColumn.getAlias()
+                : resultColumn.getExpression().getExpressionString());
+      }
+      if (isGroupByTag()) {
+        for (String s : getGroupByTagComponent().getTagKeys()) {
+          if (outputColumn.contains(s)) {
+            throw new SemanticException("Output column is duplicated with the tag key: " + s);
+          }
+        }
+        if (rowLimit > 0 || rowOffset > 0 || seriesLimit > 0 || seriesOffset > 0) {
+          throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
         }
       }
     } else {
@@ -423,6 +453,53 @@ public class QueryStatement extends Statement {
         throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
       }
     }
+  }
+
+  public String constructFormattedSQL() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append(selectComponent.toSQLString()).append("\n");
+    if (isSelectInto()) {
+      sqlBuilder.append("\t").append(intoComponent.toSQLString()).append("\n");
+    }
+    sqlBuilder.append("\t").append(fromComponent.toSQLString()).append("\n");
+    if (hasWhere()) {
+      sqlBuilder.append("\t").append(whereCondition.toSQLString()).append("\n");
+    }
+    if (isGroupByTime()) {
+      sqlBuilder.append("\t").append(groupByTimeComponent.toSQLString()).append("\n");
+    }
+    if (isGroupByLevel()) {
+      sqlBuilder
+          .append("\t")
+          .append(groupByLevelComponent.toSQLString(isGroupByTime()))
+          .append("\n");
+    }
+    if (hasHaving()) {
+      sqlBuilder.append("\t").append(havingCondition.toSQLString()).append("\n");
+    }
+    if (hasFill()) {
+      sqlBuilder.append("\t").append(fillComponent.toSQLString()).append("\n");
+    }
+    if (hasOrderBy()) {
+      sqlBuilder.append("\t").append(orderByComponent.toSQLString()).append("\n");
+    }
+    if (rowLimit != 0) {
+      sqlBuilder.append("\t").append("LIMIT").append(' ').append(rowLimit).append("\n");
+    }
+    if (rowOffset != 0) {
+      sqlBuilder.append("\t").append("OFFSET").append(' ').append(rowOffset).append("\n");
+    }
+    if (seriesLimit != 0) {
+      sqlBuilder.append("\t").append("SLIMIT").append(' ').append(seriesLimit).append("\n");
+    }
+    if (seriesOffset != 0) {
+      sqlBuilder.append("\t").append("SOFFSET").append(' ').append(seriesOffset).append("\n");
+    }
+    if (isAlignByDevice()) {
+      sqlBuilder.append("\t").append("ALIGN BY DEVICE").append("\n");
+    }
+    sqlBuilder.append(';');
+    return sqlBuilder.toString();
   }
 
   @Override

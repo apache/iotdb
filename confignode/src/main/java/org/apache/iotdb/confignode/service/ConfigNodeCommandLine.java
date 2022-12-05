@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -69,7 +70,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       try {
         // Startup environment check
-        StartupChecks checks = new StartupChecks().withDefaultTest();
+        StartupChecks checks = new StartupChecks(IoTDBConstant.CN_ROLE).withDefaultTest();
         checks.verify();
         // Do ConfigNode startup checks
         ConfigNodeStartupCheck.getInstance().startUpCheck();
@@ -115,8 +116,11 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
+      return;
     }
 
-    LOGGER.info("ConfigNode: {} is removed.", args[1]);
+    LOGGER.info(
+        "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
+        args[1]);
   }
 }

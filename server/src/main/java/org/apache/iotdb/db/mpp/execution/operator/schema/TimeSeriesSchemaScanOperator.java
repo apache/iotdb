@@ -121,18 +121,19 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     builder.writeNullableText(5, series.getCompressor().toString());
     builder.writeNullableText(6, mapToString(series.getTag()));
     builder.writeNullableText(7, mapToString(series.getAttribute()));
+    builder.writeNullableText(8, series.getDeadband());
+    builder.writeNullableText(9, series.getDeadbandParameters());
     builder.declarePosition();
   }
 
   private String mapToString(Map<String, String> map) {
+    if (map == null || map.isEmpty()) {
+      return null;
+    }
     String content =
         map.entrySet().stream()
             .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
             .collect(Collectors.joining(","));
-    if (content.isEmpty()) {
-      return "null";
-    } else {
-      return "{" + content + "}";
-    }
+    return "{" + content + "}";
   }
 }

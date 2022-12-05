@@ -19,15 +19,12 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-
-import java.io.IOException;
 
 public class StorageGroupEntityMNode extends EntityMNode implements IStorageGroupMNode {
   /**
-   * when the data file in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually deleted.
+   * when the data file in a database is older than dataTTL, it is considered invalid and will be
+   * eventually deleted.
    */
   private long dataTTL;
 
@@ -84,13 +81,6 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return MNodeType.STORAGE_GROUP;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeStorageGroupMNode(this);
   }
 
   @Override

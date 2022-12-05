@@ -20,40 +20,51 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -62,16 +73,24 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStora
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -113,88 +132,99 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
+  public int getSerializedSize() throws IOException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    serializeImpl(outputStream);
+    return byteArrayOutputStream.size();
+  }
+
   public static class Factory {
 
     public static ConfigPhysicalPlan create(ByteBuffer buffer) throws IOException {
-      int typeNum = buffer.getInt();
-      if (typeNum >= ConfigPhysicalPlanType.values().length) {
-        throw new IOException("unrecognized log type " + typeNum);
+      short planType = buffer.getShort();
+      ConfigPhysicalPlanType configPhysicalPlanType =
+          ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
+      if (configPhysicalPlanType == null) {
+        throw new IOException("unrecognized log configPhysicalPlanType: " + planType);
       }
 
-      ConfigPhysicalPlanType type = ConfigPhysicalPlanType.values()[typeNum];
-      ConfigPhysicalPlan req;
-      switch (type) {
+      ConfigPhysicalPlan plan;
+      switch (configPhysicalPlanType) {
         case RegisterDataNode:
-          req = new RegisterDataNodePlan();
+          plan = new RegisterDataNodePlan();
+          break;
+        case UpdateDataNodeConfiguration:
+          plan = new UpdateDataNodePlan();
           break;
         case RemoveDataNode:
-          req = new RemoveDataNodePlan();
+          plan = new RemoveDataNodePlan();
           break;
         case GetDataNodeConfiguration:
-          req = new GetDataNodeConfigurationPlan();
+          plan = new GetDataNodeConfigurationPlan();
           break;
         case SetStorageGroup:
-          req = new SetStorageGroupPlan();
+          plan = new SetStorageGroupPlan();
           break;
         case SetTTL:
-          req = new SetTTLPlan();
+          plan = new SetTTLPlan();
           break;
         case SetSchemaReplicationFactor:
-          req = new SetSchemaReplicationFactorPlan();
+          plan = new SetSchemaReplicationFactorPlan();
           break;
         case SetDataReplicationFactor:
-          req = new SetDataReplicationFactorPlan();
+          plan = new SetDataReplicationFactorPlan();
           break;
         case SetTimePartitionInterval:
-          req = new SetTimePartitionIntervalPlan();
+          plan = new SetTimePartitionIntervalPlan();
           break;
-        case AdjustMaxRegionGroupCount:
-          req = new AdjustMaxRegionGroupCountPlan();
+        case AdjustMaxRegionGroupNum:
+          plan = new AdjustMaxRegionGroupNumPlan();
           break;
         case CountStorageGroup:
-          req = new CountStorageGroupPlan();
+          plan = new CountStorageGroupPlan();
           break;
         case GetStorageGroup:
-          req = new GetStorageGroupPlan();
+          plan = new GetStorageGroupPlan();
           break;
         case CreateRegionGroups:
-          req = new CreateRegionGroupsPlan();
+          plan = new CreateRegionGroupsPlan();
           break;
         case OfferRegionMaintainTasks:
-          req = new OfferRegionMaintainTasksPlan();
+          plan = new OfferRegionMaintainTasksPlan();
           break;
         case PollRegionMaintainTask:
-          req = new PollRegionMaintainTaskPlan();
+          plan = new PollRegionMaintainTaskPlan();
           break;
         case GetSchemaPartition:
-          req = new GetSchemaPartitionPlan();
+          plan = new GetSchemaPartitionPlan();
           break;
         case CreateSchemaPartition:
-          req = new CreateSchemaPartitionPlan();
+          plan = new CreateSchemaPartitionPlan();
           break;
         case GetOrCreateSchemaPartition:
-          req = new GetOrCreateSchemaPartitionPlan();
+          plan = new GetOrCreateSchemaPartitionPlan();
           break;
         case GetDataPartition:
-          req = new GetDataPartitionPlan();
+          plan = new GetDataPartitionPlan();
           break;
         case CreateDataPartition:
-          req = new CreateDataPartitionPlan();
+          plan = new CreateDataPartitionPlan();
           break;
         case GetOrCreateDataPartition:
-          req = new GetOrCreateDataPartitionPlan();
+          plan = new GetOrCreateDataPartitionPlan();
           break;
         case DeleteProcedure:
-          req = new DeleteProcedurePlan();
+          plan = new DeleteProcedurePlan();
           break;
         case UpdateProcedure:
-          req = new UpdateProcedurePlan();
+          plan = new UpdateProcedurePlan();
           break;
         case PreDeleteStorageGroup:
-          req = new PreDeleteStorageGroupPlan();
+          plan = new PreDeleteStorageGroupPlan();
           break;
         case DeleteStorageGroup:
-          req = new DeleteStorageGroupPlan();
+          plan = new DeleteStorageGroupPlan();
           break;
         case ListUser:
         case ListRole:
@@ -213,97 +243,151 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRole:
         case RevokeRoleFromUser:
         case UpdateUser:
-          req = new AuthorPlan(type);
+          plan = new AuthorPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
-          req = new ApplyConfigNodePlan();
+          plan = new ApplyConfigNodePlan();
           break;
         case RemoveConfigNode:
-          req = new RemoveConfigNodePlan();
+          plan = new RemoveConfigNodePlan();
           break;
         case CreateFunction:
-          req = new CreateFunctionPlan();
+          plan = new CreateFunctionPlan();
           break;
         case DropFunction:
-          req = new DropFunctionPlan();
+          plan = new DropFunctionPlan();
           break;
         case AddTriggerInTable:
-          req = new AddTriggerInTablePlan();
+          plan = new AddTriggerInTablePlan();
           break;
         case DeleteTriggerInTable:
-          req = new DeleteTriggerInTablePlan();
+          plan = new DeleteTriggerInTablePlan();
           break;
         case UpdateTriggerStateInTable:
-          req = new UpdateTriggerStateInTablePlan();
+          plan = new UpdateTriggerStateInTablePlan();
           break;
         case GetTriggerTable:
-          req = new GetTriggerTablePlan();
+          plan = new GetTriggerTablePlan();
+          break;
+        case GetTriggerLocation:
+          plan = new GetTriggerLocationPlan();
           break;
         case GetTriggerJar:
-          req = new GetTriggerJarPlan();
+          plan = new GetTriggerJarPlan();
           break;
         case CreateSchemaTemplate:
-          req = new CreateSchemaTemplatePlan();
+          plan = new CreateSchemaTemplatePlan();
           break;
         case GetAllSchemaTemplate:
-          req = new GetAllSchemaTemplatePlan();
+          plan = new GetAllSchemaTemplatePlan();
           break;
         case GetSchemaTemplate:
-          req = new GetSchemaTemplatePlan();
+          plan = new GetSchemaTemplatePlan();
           break;
         case CheckTemplateSettable:
-          req = new CheckTemplateSettablePlan();
+          plan = new CheckTemplateSettablePlan();
           break;
         case GetPathsSetTemplate:
-          req = new GetPathsSetTemplatePlan();
+          plan = new GetPathsSetTemplatePlan();
           break;
         case GetAllTemplateSetInfo:
-          req = new GetAllTemplateSetInfoPlan();
+          plan = new GetAllTemplateSetInfoPlan();
           break;
         case SetSchemaTemplate:
-          req = new SetSchemaTemplatePlan();
+          plan = new SetSchemaTemplatePlan();
+          break;
+        case GetTemplateSetInfo:
+          plan = new GetTemplateSetInfoPlan();
+          break;
+        case DropSchemaTemplate:
+          plan = new DropSchemaTemplatePlan();
+          break;
+        case PreUnsetTemplate:
+          plan = new PreUnsetSchemaTemplatePlan();
+          break;
+        case RollbackUnsetTemplate:
+          plan = new RollbackPreUnsetSchemaTemplatePlan();
+          break;
+        case UnsetTemplate:
+          plan = new UnsetSchemaTemplatePlan();
           break;
         case GetNodePathsPartition:
-          req = new GetNodePathsPartitionPlan();
+          plan = new GetNodePathsPartitionPlan();
           break;
         case GetRegionInfoList:
-          req = new GetRegionInfoListPlan();
+          plan = new GetRegionInfoListPlan();
           break;
         case UpdateRegionLocation:
-          req = new UpdateRegionLocationPlan();
+          plan = new UpdateRegionLocationPlan();
           break;
         case CreatePipeSink:
-          req = new CreatePipeSinkPlan();
+          plan = new CreatePipeSinkPlan();
           break;
         case DropPipeSink:
-          req = new DropPipeSinkPlan();
+          plan = new DropPipeSinkPlan();
           break;
         case GetPipeSink:
-          req = new GetPipeSinkPlan();
+          plan = new GetPipeSinkPlan();
           break;
         case PreCreatePipe:
-          req = new PreCreatePipePlan();
+          plan = new PreCreatePipePlan();
           break;
         case SetPipeStatus:
-          req = new SetPipeStatusPlan();
+          plan = new SetPipeStatusPlan();
+          break;
+        case DropPipe:
+          plan = new DropPipePlan();
           break;
         case ShowPipe:
-          req = new ShowPipePlan();
+          plan = new ShowPipePlan();
+          break;
+        case RecordPipeMessage:
+          plan = new RecordPipeMessagePlan();
           break;
         case GetRegionId:
-          req = new GetRegionIdPlan();
+          plan = new GetRegionIdPlan();
           break;
         case GetTimeSlotList:
-          req = new GetTimeSlotListPlan();
+          plan = new GetTimeSlotListPlan();
           break;
         case GetSeriesSlotList:
-          req = new GetSeriesSlotListPlan();
+          plan = new GetSeriesSlotListPlan();
+          break;
+        case UpdateTriggersOnTransferNodes:
+          plan = new UpdateTriggersOnTransferNodesPlan();
+          break;
+        case UpdateTriggerLocation:
+          plan = new UpdateTriggerLocationPlan();
+          break;
+        case GetTransferringTriggers:
+          plan = new GetTransferringTriggersPlan();
+          break;
+        case ACTIVE_CQ:
+          plan = new ActiveCQPlan();
+          break;
+        case ADD_CQ:
+          plan = new AddCQPlan();
+          break;
+        case DROP_CQ:
+          plan = new DropCQPlan();
+          break;
+        case UPDATE_CQ_LAST_EXEC_TIME:
+          plan = new UpdateCQLastExecTimePlan();
+          break;
+        case SHOW_CQ:
+          plan = new ShowCQPlan();
+          break;
+        case GetFunctionTable:
+          plan = new GetFunctionTablePlan();
+          break;
+        case GetFunctionJar:
+          plan = new GetUDFJarPlan();
           break;
         default:
-          throw new IOException("unknown PhysicalPlan type: " + typeNum);
+          throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
       }
-      req.deserializeImpl(buffer);
-      return req;
+      plan.deserializeImpl(buffer);
+      return plan;
     }
 
     private Factory() {

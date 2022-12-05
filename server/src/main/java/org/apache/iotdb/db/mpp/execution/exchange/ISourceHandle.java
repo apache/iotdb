@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.nio.ByteBuffer;
 
 public interface ISourceHandle {
 
@@ -40,6 +43,13 @@ public interface ISourceHandle {
    */
   TsBlock receive();
 
+  /**
+   * Get the serialized {@link TsBlock} as the form of bytebuffer. This method share the same
+   * iterator with receive(). When one of these two methods is called, the cursor in iterator will
+   * forward.
+   */
+  ByteBuffer getSerializedTsBlock() throws IoTDBException;
+
   /** If there are more tsblocks. */
   boolean isFinished();
 
@@ -56,6 +66,14 @@ public interface ISourceHandle {
    * <p>Should only be called in abnormal case
    */
   void abort();
+
+  /**
+   * Abort the handle. Discard all tsblocks which may still be in the memory buffer and cancel the
+   * future returned by {@link #isBlocked()}.
+   *
+   * <p>Should only be called in abnormal case
+   */
+  void abort(Throwable t);
 
   /**
    * Close the handle. Discard all tsblocks which may still be in the memory buffer and complete the

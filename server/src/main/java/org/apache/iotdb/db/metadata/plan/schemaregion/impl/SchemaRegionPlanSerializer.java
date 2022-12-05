@@ -24,17 +24,17 @@ import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -122,20 +122,6 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateSetLevel());
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateId());
         dataOutputStream.writeBoolean(activateTemplateInClusterPlan.isAligned());
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
-    }
-
-    @Override
-    public SchemaRegionPlanSerializationResult visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, DataOutputStream dataOutputStream) {
-      try {
-        ReadWriteIOUtils.write(
-            activateTemplatePlan.getPrefixPath().getFullPath(), dataOutputStream);
         // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionPlanSerializationResult.SUCCESS;
@@ -365,15 +351,10 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     }
 
     @Override
-    public SchemaRegionPlanSerializationResult visitSetTemplate(
-        ISetTemplatePlan setTemplatePlan, DataOutputStream dataOutputStream) {
+    public SchemaRegionPlanSerializationResult visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, DataOutputStream dataOutputStream) {
       try {
-        ReadWriteIOUtils.write(setTemplatePlan.getTemplateName(), dataOutputStream);
-        ReadWriteIOUtils.write(setTemplatePlan.getPrefixPath(), dataOutputStream);
-
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-
+        serializeTemplateSetInfo(preDeactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
@@ -381,18 +362,39 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     }
 
     @Override
-    public SchemaRegionPlanSerializationResult visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, DataOutputStream dataOutputStream) {
+    public SchemaRegionPlanSerializationResult visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        DataOutputStream dataOutputStream) {
       try {
-        ReadWriteIOUtils.write(unsetTemplatePlan.getPrefixPath(), dataOutputStream);
-        ReadWriteIOUtils.write(unsetTemplatePlan.getTemplateName(), dataOutputStream);
-
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-
+        serializeTemplateSetInfo(
+            rollbackPreDeactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, DataOutputStream dataOutputStream) {
+      try {
+        serializeTemplateSetInfo(deactivateTemplatePlan.getTemplateSetInfo(), dataOutputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    private void serializeTemplateSetInfo(
+        Map<PartialPath, List<Integer>> templateSetInfo, DataOutputStream dataOutputStream)
+        throws IOException {
+      dataOutputStream.writeInt(templateSetInfo.size());
+      for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+        entry.getKey().serialize(dataOutputStream);
+        dataOutputStream.writeInt(entry.getValue().size());
+        for (int templateId : entry.getValue()) {
+          dataOutputStream.writeInt(templateId);
+        }
       }
     }
   }

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
 
+  private boolean isDetails = false;
+
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
@@ -32,5 +34,13 @@ public class ShowClusterStatement extends ShowStatement implements IConfigStatem
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowCluster(this, context);
+  }
+
+  public boolean isDetails() {
+    return isDetails;
+  }
+
+  public void setDetails(boolean details) {
+    isDetails = details;
   }
 }

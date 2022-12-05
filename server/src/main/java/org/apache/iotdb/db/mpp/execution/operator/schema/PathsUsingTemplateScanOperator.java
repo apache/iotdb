@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -30,18 +31,25 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
+
+  private final List<PartialPath> pathPatternList;
 
   private final int templateId;
 
   private final List<TSDataType> outputDataTypes;
 
   public PathsUsingTemplateScanOperator(
-      PlanNodeId planNodeId, OperatorContext context, int templateId) {
+      PlanNodeId planNodeId,
+      OperatorContext context,
+      List<PartialPath> pathPatternList,
+      int templateId) {
     super(planNodeId, context, 0, 0, null, false);
+    this.pathPatternList = pathPatternList;
     this.templateId = templateId;
     this.outputDataTypes =
         ColumnHeaderConstant.showPathsUsingTemplateHeaders.stream()
@@ -52,10 +60,13 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
   @Override
   protected List<TsBlock> createTsBlockList() {
     try {
-      List<String> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getPathsUsingTemplate(templateId);
+      List<String> schemaRegionResult = new LinkedList<>();
+      for (PartialPath pathPattern : pathPatternList) {
+        schemaRegionResult.addAll(
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getPathsUsingTemplate(pathPattern, templateId));
+      }
       return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
           schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {

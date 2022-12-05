@@ -49,27 +49,32 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(getPort()));
-    properties.setProperty(IoTDBConstant.CONSENSUS_PORT, String.valueOf(this.consensusPort));
-    properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNodes);
+    properties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
+    properties.setProperty(IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    properties.setProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, this.targetConfigNodes);
     properties.setProperty(
         "config_node_consensus_protocol_class",
-        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
     properties.setProperty(
         "schema_region_consensus_protocol_class",
-        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
     properties.setProperty(
         "data_region_consensus_protocol_class",
-        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
     properties.setProperty("schema_replication_factor", "1");
     properties.setProperty("data_replication_factor", "1");
-    properties.setProperty("connection_timeout_ms", "30000");
+    properties.setProperty("cn_connection_timeout_ms", "30000");
   }
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-confignode.properties");
+    return workDirFilePath("conf", "iotdb-confignode.properties");
+  }
+
+  @Override
+  protected String getCommonConfigPath() {
+    return workDirFilePath("conf", "iotdb-common.properties");
   }
 
   @Override
@@ -82,15 +87,38 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void addStartCmdParams(List<String> params) {
-    final String workDir = getNodePath() + File.separator + "confignode";
+    final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
         Arrays.asList(
-            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback-confignode.xml",
             "-DCONFIGNODE_HOME=" + workDir,
             "-DCONFIGNODE_CONF=" + confDir,
+            "-DIOTDB_HOME=" + workDir,
+            "-DIOTDB_CONF=" + confDir,
+            "-DTSFILE_CONF=" + confDir,
             "org.apache.iotdb.confignode.service.ConfigNode",
             "-s"));
+  }
+
+  @Override
+  protected void renameFile() {
+    String configNodeName = isSeed ? "SeedConfigNode" : "ConfigNode";
+    // rename log file
+    File oldLogFile =
+        new File(getLogDirPath() + File.separator + configNodeName + portList[0] + ".log");
+    oldLogFile.renameTo(new File(getLogDirPath() + File.separator + getId() + ".log"));
+
+    // rename node dir
+    File oldNodeDir =
+        new File(
+            System.getProperty("user.dir")
+                + File.separator
+                + "target"
+                + File.separator
+                + configNodeName
+                + portList[0]);
+    oldNodeDir.renameTo(new File(getNodePath()));
   }
 
   public int getConsensusPort() {

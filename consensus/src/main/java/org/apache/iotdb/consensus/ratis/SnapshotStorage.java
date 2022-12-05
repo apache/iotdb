@@ -20,6 +20,7 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
 
+import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
 import org.apache.ratis.server.storage.RaftStorage;
@@ -39,6 +40,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SnapshotStorage implements StateMachineStorage {
@@ -47,23 +49,31 @@ public class SnapshotStorage implements StateMachineStorage {
 
   private final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
+  private final RaftGroupId groupId;
 
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
 
-  public SnapshotStorage(IStateMachine applicationStateMachine) {
+  public SnapshotStorage(IStateMachine applicationStateMachine, RaftGroupId groupId) {
     this.applicationStateMachine = applicationStateMachine;
+    this.groupId = groupId;
   }
 
   @Override
   public void init(RaftStorage raftStorage) throws IOException {
-    this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
+    this.stateMachineDir =
+        Optional.ofNullable(getSnapshotDir())
+            .orElse(raftStorage.getStorageDir().getStateMachineDir());
+
+    if (!stateMachineDir.exists()) {
+      FileUtils.createDirectories(stateMachineDir);
+    }
     updateSnapshotCache();
   }
 
   private Path[] getSortedSnapshotDirPaths() {
     ArrayList<Path> snapshotPaths = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(getStateMachineDir().toPath())) {
       for (Path path : stream) {
         if (path.toFile().isDirectory() && !path.toFile().getName().startsWith(TMP_PREFIX)) {
           snapshotPaths.add(path);
@@ -111,7 +121,13 @@ public class SnapshotStorage implements StateMachineStorage {
       if (file.endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
+      FileInfo fileInfo = null;
+      try {
+        fileInfo = new FileInfo(file.toRealPath(), null);
+      } catch (IOException e) {
+        logger.warn("{} cannot resolve real path of {} due to {}", this, file, e);
+        return null;
+      }
       fileInfos.add(fileInfo);
     }
 
@@ -165,11 +181,27 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File getSnapshotDir(String snapshotMetadata) {
-    return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
+    return new File(getStateMachineDir().getAbsolutePath() + File.separator + snapshotMetadata);
   }
 
   public File getSnapshotTmpDir(String snapshotMetadata) {
     return new File(
-        stateMachineDir.getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
+        getStateMachineDir().getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
+  }
+
+  public String getSnapshotTmpId(String snapshotMetadata) {
+    return TMP_PREFIX + snapshotMetadata;
+  }
+
+  @Override
+  public File getSnapshotDir() {
+    return applicationStateMachine.getSnapshotRoot();
+  }
+
+  @Override
+  public File getTmpDir() {
+    return getSnapshotDir() == null
+        ? null
+        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 }

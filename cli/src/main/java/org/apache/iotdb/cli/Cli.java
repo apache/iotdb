@@ -110,6 +110,9 @@ public class Cli extends AbstractCli {
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
       }
+      if (commandLine.hasOption(TIMEOUT_ARGS)) {
+        setQueryTimeout(commandLine.getOptionValue(TIMEOUT_ARGS));
+      }
     } catch (ParseException e) {
       println(
           "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
@@ -134,6 +137,7 @@ public class Cli extends AbstractCli {
             (IoTDBConnection)
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+          connection.setQueryTimeout(queryTimeout);
           properties = connection.getServerProperties();
           timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
@@ -160,6 +164,7 @@ public class Cli extends AbstractCli {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
+      connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();

@@ -43,7 +43,7 @@ public class IoTDBGroupByFillWithRangeIT {
 
   private static String[] dataSet1 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) " + "values(1, 1)",
         "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) " + "values(6, 6)",

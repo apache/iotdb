@@ -81,7 +81,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public double getDouble(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
@@ -97,7 +96,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return new TsPrimitiveType.TsDouble(getDouble(position));
   }
 
@@ -108,7 +106,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
   }
 
@@ -160,12 +157,6 @@ public class DoubleColumn implements Column {
         valueIsNull[i] = valueIsNull[j];
         valueIsNull[j] = isNullTmp;
       }
-    }
-  }
-
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
     }
   }
 }

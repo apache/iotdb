@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -104,7 +107,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] starting compaction task with {} files",
+        "{}-{} [Compaction] InnerSpaceCompaction task starts with {} files",
         storageGroupName,
         dataRegionId,
         selectedTsFileResourceList.size());
@@ -175,6 +178,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             false);
       }
 
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+          && !CompactionUtils.validateTsFileResources(
+              tsFileManager, storageGroupName, timePartition)) {
+        LOGGER.error(
+            "Failed to pass compaction validation, source files is: {}, target files is {}",
+            selectedTsFileResourceList,
+            targetTsFileList);
+        throw new RuntimeException("Failed to pass compaction validation");
+      }
+
       LOGGER.info(
           "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
           storageGroupName,
@@ -203,20 +216,39 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId);
       // delete the old files
+      long totalSizeOfDeletedFile = 0L;
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        totalSizeOfDeletedFile += resource.getTsFileSize();
+      }
       CompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileMetricManager.getInstance().deleteFile(resource.getTsFile().length(), sequence);
-      }
-      // inner space compaction task has only one target file
       TsFileMetricManager.getInstance()
-          .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+      // inner space compaction task has only one target file
+      if (targetTsFileList.get(0) != null) {
+        TsFileMetricManager.getInstance()
+            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+      }
+
+      if (performer instanceof FastCompactionPerformer) {
+        SubCompactionTaskSummary subTaskSummary =
+            ((FastCompactionPerformer) performer).getSubTaskSummary();
+        LOGGER.info(
+            "CHUNK_NONE_OVERLAP num is {}, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is {}, CHUNK_OVERLAP_OR_MODIFIED num is {}, PAGE_NONE_OVERLAP num is {}, PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is {}, PAGE_OVERLAP_OR_MODIFIED num is {}, PAGE_FAKE_OVERLAP num is {}.",
+            subTaskSummary.CHUNK_NONE_OVERLAP,
+            subTaskSummary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
+            subTaskSummary.CHUNK_OVERLAP_OR_MODIFIED,
+            subTaskSummary.PAGE_NONE_OVERLAP,
+            subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
+            subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
+            subTaskSummary.PAGE_FAKE_OVERLAP);
+      }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] all compaction task finish, target file is {},"
+          "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s",
           storageGroupName,
           dataRegionId,

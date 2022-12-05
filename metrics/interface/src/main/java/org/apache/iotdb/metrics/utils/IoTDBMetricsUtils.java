@@ -21,37 +21,38 @@ package org.apache.iotdb.metrics.utils;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.pool.SessionDataSetWrapper;
-import org.apache.iotdb.session.pool.SessionPool;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class IoTDBMetricsUtils {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetricsUtils.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final String STORAGE_GROUP =
-      "root." + metricConfig.getIoTDBReporterConfig().getDatabase();
+  public static final String DATABASE = "root.__system";
 
-  public static String generatePath(String name, Map<String, String> labels) {
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder
-        .append(STORAGE_GROUP)
-        .append(".`")
-        .append(metricConfig.getRpcAddress())
-        .append(":")
-        .append(metricConfig.getRpcPort())
-        .append("`")
-        .append(".")
-        .append("`")
-        .append(name)
-        .append("`");
-    for (Map.Entry<String, String> entry : labels.entrySet()) {
+  /** Generate the path of metric by metricInfo */
+  public static String generatePath(MetricInfo metricInfo) {
+    return generatePath(metricInfo.getName(), metricInfo.getTags());
+  }
+
+  /** Generate the path of metric with tags array */
+  public static String generatePath(String name, String... tags) {
+    StringBuilder stringBuilder = generateMetric(name);
+    for (int i = 0; i < tags.length; i += 2) {
+      stringBuilder
+          .append(".")
+          .append("`")
+          .append(tags[i])
+          .append("=")
+          .append(tags[i + 1])
+          .append("`");
+    }
+    return stringBuilder.toString();
+  }
+
+  /** Generate the path of metric with tags map */
+  public static String generatePath(String name, Map<String, String> tags) {
+    StringBuilder stringBuilder = generateMetric(name);
+    for (Map.Entry<String, String> entry : tags.entrySet()) {
       stringBuilder
           .append(".")
           .append("`")
@@ -63,16 +64,22 @@ public class IoTDBMetricsUtils {
     return stringBuilder.toString();
   }
 
-  public static void checkOrCreateStorageGroup(SessionPool session) {
-    try (SessionDataSetWrapper result =
-        session.executeQueryStatement("show storage group " + STORAGE_GROUP)) {
-      if (!result.hasNext()) {
-        session.setStorageGroup(STORAGE_GROUP);
-      }
-    } catch (IoTDBConnectionException e) {
-      logger.error("CheckOrCreateStorageGroup failed because ", e);
-    } catch (StatementExecutionException e) {
-      // do nothing
-    }
+  /** Generate the path of metric */
+  private static StringBuilder generateMetric(String name) {
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder
+        .append(DATABASE)
+        .append(".")
+        .append(metricConfig.getIoTDBReporterConfig().getLocation())
+        .append(".`")
+        .append(metricConfig.getRpcAddress())
+        .append(":")
+        .append(metricConfig.getRpcPort())
+        .append("`")
+        .append(".")
+        .append("`")
+        .append(name)
+        .append("`");
+    return stringBuilder;
   }
 }

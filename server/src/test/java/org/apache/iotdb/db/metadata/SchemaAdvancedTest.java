@@ -21,16 +21,12 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -203,26 +199,5 @@ public class SchemaAdvancedTest {
         TSDataType.INT32, node.getChild("s0").getAsMeasurementMNode().getSchema().getType());
 
     Assert.assertFalse(schemaProcessor.isPathExist(new PartialPath("root.vehicle.d100")));
-  }
-
-  @Test
-  public void testCachedLastTimeValue() throws MetadataException {
-    schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s0"),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-
-    TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
-    TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
-    TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    PartialPath path = new PartialPath("root.vehicle.d2.s0");
-    IMeasurementMNode node = schemaProcessor.getMeasurementMNode(path);
-    LastCacheManager.updateLastCache(node, tv1, true, Long.MIN_VALUE);
-    LastCacheManager.updateLastCache(node, tv2, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), schemaProcessor.getLastCache(node).getTimestamp());
-    LastCacheManager.updateLastCache(node, tv3, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), schemaProcessor.getLastCache(node).getTimestamp());
   }
 }

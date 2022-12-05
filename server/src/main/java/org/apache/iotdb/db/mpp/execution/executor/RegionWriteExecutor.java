@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -32,12 +33,16 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -56,6 +61,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,10 +79,19 @@ public class RegionWriteExecutor {
   private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
 
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
-    WritePlanNodeExecutionContext context =
-        new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
-    WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
-    return planNode.accept(executionVisitor, context);
+    try {
+      WritePlanNodeExecutionContext context =
+          new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
+      WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
+      return planNode.accept(executionVisitor, context);
+    } catch (Throwable e) {
+      LOGGER.error(e.getMessage(), e);
+      RegionExecutionResult result = new RegionExecutionResult();
+      result.setAccepted(false);
+      result.setMessage(e.getMessage());
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+      return result;
+    }
   }
 
   public static ConsensusWriteResponse fireTriggerAndInsert(
@@ -228,7 +243,7 @@ public class RegionWriteExecutor {
             response.setMessage(writeResponse.getStatus().message);
           }
         } else {
-          LOGGER.error(
+          LOGGER.warn(
               "Something wrong happened while calling consensus layer's write API.",
               writeResponse.getException());
           response.setAccepted(false);
@@ -261,7 +276,7 @@ public class RegionWriteExecutor {
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -295,7 +310,7 @@ public class RegionWriteExecutor {
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -304,7 +319,7 @@ public class RegionWriteExecutor {
           if (failingMeasurementMap.isEmpty()) {
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
-            MetadataException metadataException = failingMeasurementMap.get(0);
+            MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.error("Metadata error: ", metadataException);
             RegionExecutionResult result = new RegionExecutionResult();
             result.setAccepted(false);
@@ -327,7 +342,7 @@ public class RegionWriteExecutor {
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -343,16 +358,15 @@ public class RegionWriteExecutor {
               continue;
             }
 
-            // filter failed measurement and keep the rest for execution
             for (Map.Entry<Integer, MetadataException> failingMeasurement :
                 failingMeasurementMap.entrySet()) {
-              entry.getValue().removeMeasurement(failingMeasurement.getKey());
               LOGGER.error("Metadata error: ", failingMeasurement.getValue());
               failingStatus.add(
                   RpcUtils.getStatus(
                       failingMeasurement.getValue().getErrorCode(),
                       failingMeasurement.getValue().getMessage()));
             }
+            entry.getValue().removeMeasurements(failingMeasurementMap.keySet());
 
             if (entry.getValue().isEmpty()) {
               emptyDeviceList.add(entry.getKey());
@@ -397,7 +411,7 @@ public class RegionWriteExecutor {
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -414,21 +428,24 @@ public class RegionWriteExecutor {
               failingMeasurementMap.entrySet()) {
             metadataException = failingMeasurement.getValue();
             if (metadataException.getErrorCode()
-                == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
               LOGGER.info(
                   "There's no need to internal create timeseries. {}",
                   failingMeasurement.getValue().getMessage());
               alreadyExistingStatus.add(
                   RpcUtils.getStatus(
-                      metadataException.getErrorCode(), metadataException.getMessage()));
+                      metadataException.getErrorCode(),
+                      MeasurementPath.transformDataToString(
+                          ((MeasurementAlreadyExistException) metadataException)
+                              .getMeasurementPath())));
             } else {
               LOGGER.error("Metadata error: ", metadataException);
               failingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));
             }
-            measurementGroup.removeMeasurement(failingMeasurement.getKey());
           }
+          measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
           RegionExecutionResult executionResult =
               super.visitInternalCreateTimeSeries(node, context);
@@ -444,7 +461,7 @@ public class RegionWriteExecutor {
           if (failingStatus.isEmpty()) {
             if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
                 // there's only measurement_already_exist exception
                 alreadyExistingStatus.addAll(executionStatus.getSubStatus());
               } else {
@@ -456,7 +473,7 @@ public class RegionWriteExecutor {
           } else {
             if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               if (executionStatus.getSubStatus().get(0).getCode()
-                  != TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
                 failingStatus.addAll(executionStatus.getSubStatus());
               }
             } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -466,9 +483,9 @@ public class RegionWriteExecutor {
 
           TSStatus status;
           if (failingStatus.isEmpty()) {
-            status = RpcUtils.getStatus(failingStatus);
-          } else {
             status = RpcUtils.getStatus(alreadyExistingStatus);
+          } else {
+            status = RpcUtils.getStatus(failingStatus);
           }
 
           RegionExecutionResult result = new RegionExecutionResult();
@@ -481,6 +498,33 @@ public class RegionWriteExecutor {
         }
       } else {
         return super.visitInternalCreateTimeSeries(node, context);
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitActivateTemplate(
+        ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      // activate template operation shall be blocked by unset template check
+      context.getRegionWriteValidationRWLock().readLock().lock();
+      try {
+        Pair<Template, PartialPath> templateSetInfo =
+            ClusterTemplateManager.getInstance().checkTemplateSetInfo(node.getActivatePath());
+        if (templateSetInfo == null) {
+          // The activation has already been validated during analyzing.
+          // That means the template is being unset during the activation plan transport.
+          RegionExecutionResult result = new RegionExecutionResult();
+          result.setAccepted(false);
+          String message =
+              String.format(
+                  "Template is being unsetting from path %s. Please try activating later.",
+                  node.getPathSetTemplate());
+          result.setMessage(message);
+          result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+          return result;
+        }
+        return super.visitActivateTemplate(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().readLock().unlock();
       }
     }
   }

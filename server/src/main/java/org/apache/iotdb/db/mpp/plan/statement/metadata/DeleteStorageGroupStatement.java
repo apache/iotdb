@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
@@ -26,9 +27,16 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class DeleteStorageGroupStatement extends Statement implements IConfigStatement {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteStorageGroupStatement.class);
+
   private List<String> prefixPathList;
 
   public DeleteStorageGroupStatement() {
@@ -38,7 +46,15 @@ public class DeleteStorageGroupStatement extends Statement implements IConfigSta
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    List<PartialPath> paths = new ArrayList<>();
+    for (String prefixPath : prefixPathList) {
+      try {
+        paths.add(new PartialPath(prefixPath));
+      } catch (IllegalPathException e) {
+        LOGGER.error("{} is not a legal path", prefixPath, e);
+      }
+    }
+    return paths;
   }
 
   public List<String> getPrefixPath() {

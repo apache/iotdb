@@ -19,11 +19,15 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** Either of the left and right operators of AndExpression must satisfy the condition. */
 public class OrFilter extends BinaryFilter implements Serializable {
@@ -71,5 +75,67 @@ public class OrFilter extends BinaryFilter implements Serializable {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.OR;
+  }
+
+  @Override
+  public List<TimeRange> getTimeRanges() {
+    List<TimeRange> result = new ArrayList<>();
+    List<TimeRange> leftTimeRanges = left.getTimeRanges();
+    List<TimeRange> rightTimeRanges = right.getTimeRanges();
+
+    int leftIndex = 0,
+        rightIndex = 0,
+        leftSize = leftTimeRanges.size(),
+        rightSize = rightTimeRanges.size();
+    TimeRange range;
+    if (leftTimeRanges.isEmpty() && rightTimeRanges.isEmpty()) {
+      return Collections.emptyList();
+    } else if (leftTimeRanges.isEmpty()) {
+      return rightTimeRanges;
+    } else if (rightTimeRanges.isEmpty()) {
+      return leftTimeRanges;
+    } else {
+      TimeRange leftRange = leftTimeRanges.get(leftIndex);
+      TimeRange rightRange = rightTimeRanges.get(rightIndex);
+      if (leftRange.getMin() <= rightRange.getMin()) {
+        range = leftRange;
+        leftIndex++;
+      } else {
+        range = rightRange;
+        rightIndex++;
+      }
+    }
+
+    while (leftIndex < leftSize || rightIndex < rightSize) {
+      TimeRange chosenRange;
+      if (leftIndex < leftSize && rightIndex < rightSize) {
+        TimeRange leftRange = leftTimeRanges.get(leftIndex);
+        TimeRange rightRange = rightTimeRanges.get(rightIndex);
+        if (leftRange.getMin() <= rightRange.getMin()) {
+          chosenRange = leftRange;
+          leftIndex++;
+        } else {
+          chosenRange = rightRange;
+          rightIndex++;
+        }
+      } else if (leftIndex < leftSize) {
+        chosenRange = leftTimeRanges.get(leftIndex);
+        leftIndex++;
+      } else {
+        chosenRange = rightTimeRanges.get(rightIndex);
+        rightIndex++;
+      }
+
+      if (chosenRange.getMin() > range.getMax()) {
+        result.add(range);
+        range = chosenRange;
+      } else {
+        range.setMax(Math.max(range.getMax(), chosenRange.getMax()));
+      }
+    }
+
+    result.add(range);
+
+    return result;
   }
 }

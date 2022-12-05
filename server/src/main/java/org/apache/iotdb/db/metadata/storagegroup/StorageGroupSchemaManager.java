@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -46,8 +45,8 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_LOG;
 
-// This class implements all the interfaces for storage group management. The MTreeAboveSg is used
-// to manage all the storage groups and MNodes above storage group.
+// This class implements all the interfaces for database management. The MTreeAboveSg is used
+// to manage all the databases and MNodes above database.
 public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
@@ -112,7 +111,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
               logger.error("Unrecognizable command {}", plan.getOperatorType());
           }
         } catch (MetadataException | IOException e) {
-          logger.error("Error occurred while redo storage group log", e);
+          logger.error("Error occurred while redo database log", e);
         }
       }
     }
@@ -123,7 +122,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
     try {
       logWriter.force();
     } catch (IOException e) {
-      logger.error("Cannot force storage group log", e);
+      logger.error("Cannot force database log", e);
     }
   }
 
@@ -261,12 +260,8 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   @Override
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
-    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch, filter);
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
   }
 
   @Override
