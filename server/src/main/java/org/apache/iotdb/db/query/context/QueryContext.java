@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
@@ -94,26 +93,28 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-    // if the mods file does not exist, do not add it to the cache
-    if (!modFile.exists()) {
-      return Collections.emptyList();
-    }
-    Map<String, List<Modification>> fileModifications =
-        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(
-        path.getFullPath(),
-        k -> {
-          PatternTreeMap<Modification, ModsSerializer> allModifications =
-              fileModCache.get(modFile.getFilePath());
-          if (allModifications == null) {
-            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-            for (Modification modification : modFile.getModifications()) {
-              allModifications.append(modification.getPath(), modification);
-            }
-            fileModCache.put(modFile.getFilePath(), allModifications);
-          }
-          return sortAndMerge(allModifications.getOverlapped(path));
-        });
+    return Collections.emptyList();
+    //    // if the mods file does not exist, do not add it to the cache
+    //    if (!modFile.exists()) {
+    //      return Collections.emptyList();
+    //    }
+    //    Map<String, List<Modification>> fileModifications =
+    //        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new
+    // ConcurrentHashMap<>());
+    //    return fileModifications.computeIfAbsent(
+    //        path.getFullPath(),
+    //        k -> {
+    //          PatternTreeMap<Modification, ModsSerializer> allModifications =
+    //              fileModCache.get(modFile.getFilePath());
+    //          if (allModifications == null) {
+    //            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+    //            for (Modification modification : modFile.getModifications()) {
+    //              allModifications.append(modification.getPath(), modification);
+    //            }
+    //            fileModCache.put(modFile.getFilePath(), allModifications);
+    //          }
+    //          return sortAndMerge(allModifications.getOverlapped(path));
+    //        });
   }
 
   private List<Modification> sortAndMerge(List<Modification> modifications) {
