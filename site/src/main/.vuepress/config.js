@@ -18,6 +18,7 @@
 
 var config = {
     plugins: [
+        '@vuepress/back-to-top',
         ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
@@ -67,12 +68,18 @@ var config = {
 
 		sidebarDepth: 0,
 
+    editLinks: true,
+
+    docsRepo: 'apache/iotdb',
+
+    docsDir: 'docs',
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
 			label: 'English',
 			ariaLabel: 'Languages',
-			editLinkText: 'Edit this page on GitHub',
+			editLinkText: 'Found Error, Edit this page on GitHub',
 			serviceWorker: {
 			  updatePopup: {
 				message: "New content is available.",
@@ -1299,7 +1306,7 @@ var config = {
 			// 该语言在下拉菜单中的标签
 			label: '简体中文',
 			// 编辑链接文字
-			editLinkText: '在 GitHub 上编辑此页',
+			editLinkText: '发现错误？在 GitHub 上编辑此页',
 			// Service Worker 的配置
 			serviceWorker: {
 			  updatePopup: {
