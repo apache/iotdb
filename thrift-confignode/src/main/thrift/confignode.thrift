@@ -222,8 +222,10 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
-    3: required common.TSeriesPartitionSlot seriesSlotId
-    4: optional common.TTimePartitionSlot timeSlotId
+    3: optional common.TSeriesPartitionSlot seriesSlotId
+    4: optional string deviceId
+    5: optional common.TTimePartitionSlot timeSlotId
+    6: optional i64 timeStamp
 }
 
 struct TGetRegionIdResp {

@@ -312,10 +312,14 @@ The cluster uses partitions for schema and data arrangement, the partition is de
 
 The cluster slots information can be shown by the following SQLs:
 
-### Show the DataRegion where a DataPartition resides
+### Show the DataRegion where a DataPartition resides in
 
-Show the DataRegion where a DataPartition(or all DataPartitions under a same series slot) resides:
+Show the DataRegion where a DataPartition(or all DataPartitions under a same series slot) resides in:
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+
+The "SERIESSLOTID=s0" can be substituted by "DEVICEID=xxx.xx.xx". Using this, the sql will calculate the seriesSlot corresponding to that deviceId.
+
+Also, the "TIMESLOTID=t0" can be replaced by "TIMESTAMP=t1". In this case, the sql will calculate the timeSlot the timestamp belongs to, which starts before the timeStamp and (implicitly) ends after it.
 
 Eg:
 ```
@@ -339,10 +343,12 @@ Total line number = 2
 It costs 0.006s
 ```
 
-### Show the SchemaRegion where a SchemaPartition resides
+### Show the SchemaRegion where a SchemaPartition resides in
 
-Show the SchemaRegion where a SchemaPartition resides:
+Show the SchemaRegion where a SchemaPartition resides in:
 - `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+
+As is illustrated above, the SeriesSlotID and TimeSlotID are both replaceable.
 
 Eg:
 ```
