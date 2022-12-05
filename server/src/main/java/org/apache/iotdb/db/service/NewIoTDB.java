@@ -33,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -138,7 +138,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
-    registerManager.register(StorageEngineV2.getInstance());
+    registerManager.register(StorageEngine.getInstance());
     if (!isTesting) {
       registerManager.register(DriverScheduler.getInstance());
     }
@@ -158,7 +158,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     logger.info(
         "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
-    while (!StorageEngineV2.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

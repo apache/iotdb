@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -152,7 +152,7 @@ public class TsFilePipe implements Pipe {
     senderManager.checkConnection();
 
     // init sync manager
-    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
     for (DataRegion dataRegion : dataRegions) {
       logger.info(
           logFormat(
@@ -313,7 +313,7 @@ public class TsFilePipe implements Pipe {
         id -> {
           registerDataRegion(id);
           return new LocalSyncManager(
-              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+              StorageEngine.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
               this);
         });
   }

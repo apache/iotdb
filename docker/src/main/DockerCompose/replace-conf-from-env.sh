@@ -27,13 +27,13 @@ function process_single(){
 	local line=$(grep -ni "${key}=" ${filename})
 	#echo "line=$line"
 	if [[ -n "${line}" ]]; then
-	        echo "update $key $filename"
-        	local line_no=$(echo $line|cut -d : -f1)
+    echo "update $key $filename"
+    local line_no=$(echo $line|cut -d : -f1)
 		local content=$(echo $line|cut -d : -f2)
 		if [[ "${content:0:1}" != "#" ]]; then
-		    sed -i "${line_no}d" ${filename}
-	        fi
-                sed -i "${line_no} i${key_value}" ${filename}
+      sed -i "${line_no}d" ${filename}
+    fi
+    sed -i "${line_no} i${key_value}" ${filename}
 	fi
 }
 

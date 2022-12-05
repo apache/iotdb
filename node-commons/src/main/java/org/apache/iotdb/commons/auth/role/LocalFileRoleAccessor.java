@@ -214,17 +214,20 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     File roleTmpFolder =
         systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
     File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
-
-    try {
-      org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
-      if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
-        logger.error("Failed to load role folder snapshot and rollback.");
-        // rollback if failed to copy
-        FileUtils.deleteDirectory(roleFolder);
-        org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
+    if (roleSnapshotDir.exists()) {
+      try {
+        org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
+        if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
+          logger.error("Failed to load role folder snapshot and rollback.");
+          // rollback if failed to copy
+          FileUtils.deleteDirectory(roleFolder);
+          org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
+        }
+      } finally {
+        FileUtils.deleteDirectory(roleTmpFolder);
       }
-    } finally {
-      FileUtils.deleteDirectory(roleTmpFolder);
+    } else {
+      logger.info("There are no roles to load.");
     }
   }
 

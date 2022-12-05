@@ -37,18 +37,18 @@ import java.util.List;
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(DataRegion.class)
-public class StorageEngineV2Test {
+public class StorageEngineTest {
 
-  private StorageEngineV2 storageEngineV2;
+  private StorageEngine storageEngine;
 
   @Before
   public void setUp() {
-    storageEngineV2 = StorageEngineV2.getInstance();
+    storageEngine = StorageEngine.getInstance();
   }
 
   @After
   public void after() {
-    storageEngineV2 = null;
+    storageEngine = null;
   }
 
   @Test
@@ -57,11 +57,11 @@ public class StorageEngineV2Test {
     DataRegion rg1 = PowerMockito.mock(DataRegion.class);
     DataRegion rg2 = PowerMockito.mock(DataRegion.class);
     DataRegionId id2 = new DataRegionId(2);
-    storageEngineV2.setDataRegion(id1, rg1);
-    storageEngineV2.setDataRegion(id2, rg2);
+    storageEngine.setDataRegion(id1, rg1);
+    storageEngine.setDataRegion(id2, rg2);
 
     List<DataRegionId> actual = Lists.newArrayList(id1, id2);
-    List<DataRegionId> expect = storageEngineV2.getAllDataRegionIds();
+    List<DataRegionId> expect = storageEngine.getAllDataRegionIds();
 
     Assert.assertEquals(expect.size(), actual.size());
     Assert.assertTrue(actual.containsAll(expect));

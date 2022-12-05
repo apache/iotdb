@@ -38,6 +38,7 @@ WORKDIR ${IOTDB_HOME}/sbin
 
 COPY DockerCompose/replace-conf-from-env.sh .
 COPY DockerCompose/entrypoint.sh .
+
 RUN chmod +x *.sh && dos2unix *.sh \
   && dos2unix ${IOTDB_HOME}/conf/*.sh
 

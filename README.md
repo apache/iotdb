@@ -190,21 +190,15 @@ You can go through the following steps to test the installation. If there is no 
 
 ### Start IoTDB
 
-Users can start IoTDB by the start-server script under the sbin folder.
+Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-
-- "-c" is optional.
-- option "-c" specifies the system configuration file directory.
-
 
 ### Use IoTDB
 
@@ -368,10 +362,10 @@ The server can be stopped with "ctrl-C" or the following script:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
 
 ## Only build server
