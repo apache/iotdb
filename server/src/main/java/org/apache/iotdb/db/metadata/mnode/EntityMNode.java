@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 import java.util.Collections;
@@ -37,8 +35,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
   private volatile boolean isAligned = false;
-
-  private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
 
   @Override
   public String getFullPath() {
@@ -114,6 +110,44 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
     this.aliasChildren = aliasChildren;
   }
 
+  /**
+   * In EntityMNode(device node), schemaTemplateId represents the template activated on this node.
+   * The pre deactivation mechanism is implemented by making this value negative. Since value 0 and
+   * -1 are all occupied, the available negative value range is [Int.MIN_VALUE, -2]. The value of a
+   * pre deactivated case equals the negative normal value minus 2. For example, if the id of
+   * activated template is 0, then - 0 - 2 = -2 represents the pre deactivation of this template on
+   * this node.
+   */
+  @Override
+  public int getSchemaTemplateId() {
+    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
+  }
+
+  @Override
+  public boolean isPreDeactivateTemplate() {
+    return schemaTemplateId < -1;
+  }
+
+  @Override
+  public void preDeactivateTemplate() {
+    if (schemaTemplateId > -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public void rollbackPreDeactivateTemplate() {
+    if (schemaTemplateId < -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public void deactivateTemplate() {
+    schemaTemplateId = -1;
+    setUseTemplate(false);
+  }
+
   @Override
   public boolean isAligned() {
     return isAligned;
@@ -122,26 +156,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @Override
   public void setAligned(boolean isAligned) {
     this.isAligned = isAligned;
-  }
-
-  public ILastCacheContainer getLastCacheContainer(String measurementId) {
-    checkLastCacheMap();
-    return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheContainer());
-  }
-
-  @Override
-  public Map<String, ILastCacheContainer> getTemplateLastCaches() {
-    return lastCacheMap == null ? Collections.emptyMap() : lastCacheMap;
-  }
-
-  private void checkLastCacheMap() {
-    if (lastCacheMap == null) {
-      synchronized (this) {
-        if (lastCacheMap == null) {
-          lastCacheMap = new ConcurrentHashMap<>();
-        }
-      }
-    }
   }
 
   @Override

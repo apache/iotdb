@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 
 import java.lang.ref.WeakReference;
 import java.util.function.ToLongFunction;
 
-public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge<Long> {
+public class DropwizardAutoGauge<T> implements AutoGauge, com.codahale.metrics.Gauge<Long> {
 
   private final WeakReference<T> refObject;
   private final ToLongFunction<T> mapper;
@@ -45,20 +45,5 @@ public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge
   @Override
   public long value() {
     return getValue();
-  }
-
-  @Override
-  public void incr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void decr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void set(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }

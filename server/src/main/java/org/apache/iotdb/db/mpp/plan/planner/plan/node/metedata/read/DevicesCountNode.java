@@ -78,4 +78,10 @@ public class DevicesCountNode extends SchemaQueryScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new DevicesCountNode(planNodeId, path, isPrefixPath);
   }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "DeviceCountNode-%s:[DataRegion: %s]", this.getPlanNodeId(), this.getRegionReplicaSet());
+  }
 }

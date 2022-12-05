@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -37,7 +37,7 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
         schemaStatisticsManager,
@@ -49,7 +49,7 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
   }
 
   @Override

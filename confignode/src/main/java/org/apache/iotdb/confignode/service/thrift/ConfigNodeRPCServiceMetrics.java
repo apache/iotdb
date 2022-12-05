@@ -19,8 +19,8 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -37,9 +37,9 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.THRIFT_ACTIVE_THREADS.toString(),
-        MetricLevel.CORE,
+        MetricLevel.IMPORTANT,
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),
@@ -49,7 +49,7 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
         ThreadName.CONFIGNODE_RPC_SERVICE.getName());

@@ -80,7 +80,7 @@ public class FragmentInstanceManager {
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
 
-    this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
+    this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
@@ -108,7 +108,8 @@ public class FragmentInstanceManager {
                     instanceContext.computeIfAbsent(
                         instanceId,
                         fragmentInstanceId ->
-                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                            createFragmentInstanceContext(
+                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
                 try {
                   DataDriver driver =
@@ -127,13 +128,25 @@ public class FragmentInstanceManager {
                       failedInstances,
                       instance.getTimeOut());
                 } catch (Throwable t) {
-                  logger.error("error when create FragmentInstanceExecution.", t);
+                  logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
                   return null;
                 }
               });
 
-      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      if (execution != null) {
+        execution
+            .getStateMachine()
+            .addStateChangeListener(
+                newState -> {
+                  if (newState.isDone()) {
+                    instanceExecution.remove(instanceId);
+                  }
+                });
+        return execution.getInstanceInfo();
+      } else {
+        return createFailedInstanceInfo(instanceId);
+      }
     }
   }
 
@@ -151,7 +164,8 @@ public class FragmentInstanceManager {
                   instanceContext.computeIfAbsent(
                       instanceId,
                       fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                          createFragmentInstanceContext(
+                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
                 SchemaDriver driver =
@@ -165,12 +179,24 @@ public class FragmentInstanceManager {
                     failedInstances,
                     instance.getTimeOut());
               } catch (Throwable t) {
-                logger.error("Execute error caused by ", t);
+                logger.warn("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }
             });
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    if (execution != null) {
+      execution
+          .getStateMachine()
+          .addStateChangeListener(
+              newState -> {
+                if (newState.isDone()) {
+                  instanceExecution.remove(instanceId);
+                }
+              });
+      return execution.getInstanceInfo();
+    } else {
+      return createFailedInstanceInfo(instanceId);
+    }
   }
 
   /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
@@ -220,7 +246,10 @@ public class FragmentInstanceManager {
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     FragmentInstanceContext context = instanceContext.get(instanceId);
     return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED, context.getEndTime(), context.getFailedCause());
+        FragmentInstanceState.FAILED,
+        context.getEndTime(),
+        context.getFailedCause(),
+        context.getFailureInfoList());
   }
 
   private void removeOldInstances() {

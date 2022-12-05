@@ -93,6 +93,10 @@ BEGIN
     : B E G I N
     ;
 
+BLOCKED
+    : B L O C K E D
+    ;
+
 BOUNDARY
     : B O U N D A R Y
     ;
@@ -157,9 +161,21 @@ DATA
     : D A T A
     ;
 
+DATABASE
+    : D A T A B A S E
+    ;
+
+DATABASES
+    : D A T A B A S E S
+    ;
+
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+DEACTIVATE
+    : D E A C T I V A T E
     ;
 
 DEBUG
@@ -178,6 +194,10 @@ DESCRIBE
     : D E S C R I B E
     ;
 
+DETAILS
+    : D E T A I L S
+    ;
+
 DEVICE
     : D E V I C E
     ;
@@ -188,6 +208,10 @@ DEVICES
 
 DISABLE
     : D I S A B L E
+    ;
+
+DISCARD
+    : D I S C A R D
     ;
 
 DROP
@@ -205,7 +229,6 @@ ENDTIME
 EVERY
     : E V E R Y
     ;
-
 
 EXPLAIN
     : E X P L A I N
@@ -403,6 +426,10 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
+POLICY
+    : P O L I C Y
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;
@@ -435,8 +462,8 @@ QUERY
     : Q U E R Y
     ;
 
-RUNNING
-    : R U N N I N G
+RANGE
+    : R A N G E
     ;
 
 READONLY
@@ -481,6 +508,10 @@ ROLE
 
 ROOT
     : R O O T
+    ;
+
+RUNNING
+    : R U N N I N G
     ;
 
 SCHEMA
@@ -565,6 +596,10 @@ TEMPLATES
 
 TIME
     : T I M E
+    ;
+
+TIMEOUT
+    : T I M E O U T
     ;
 
 TIMESERIES
@@ -675,7 +710,7 @@ WRITABLE
 // Privileges Keywords
 
 PRIVILEGE_VALUE
-    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP
+    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP | CREATE_DATABASE | DELETE_DATABASE
     | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
     | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
@@ -691,6 +726,14 @@ SET_STORAGE_GROUP
 
 DELETE_STORAGE_GROUP
     : D E L E T E '_' S T O R A G E '_' G R O U P
+    ;
+
+CREATE_DATABASE
+    : C R E A T E '_' D A T A B A S E
+    ;
+
+DELETE_DATABASE
+    : D E L E T E '_' D A T A B A S E
     ;
 
 CREATE_TIMESERIES

@@ -20,19 +20,23 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.impl.CreateTriggerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.DropTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteStorageGroupProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,14 +50,15 @@ public class ProcedureFactory implements IProcedureFactory {
 
   @Override
   public Procedure create(ByteBuffer buffer) throws IOException {
-    int typeNum = buffer.getInt();
-    if (typeNum >= ProcedureType.values().length) {
-      LOGGER.error("unrecognized log type " + typeNum);
-      throw new IOException("unrecognized log type " + typeNum);
+    short typeCode = buffer.getShort();
+    ProcedureType procedureType = ProcedureType.convertToProcedureType(typeCode);
+    if (procedureType == null) {
+      LOGGER.error("unrecognized log type " + typeCode);
+      throw new IOException("unrecognized log type " + typeCode);
     }
-    ProcedureType type = ProcedureType.values()[typeNum];
+
     Procedure procedure;
-    switch (type) {
+    switch (procedureType) {
       case DELETE_STORAGE_GROUP_PROCEDURE:
         procedure = new DeleteStorageGroupProcedure();
         break;
@@ -93,9 +98,20 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
         break;
+      case CREATE_CQ_PROCEDURE:
+        procedure =
+            new CreateCQProcedure(
+                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
+        break;
+      case DEACTIVATE_TEMPLATE_PROCEDURE:
+        procedure = new DeactivateTemplateProcedure();
+        break;
+      case UNSET_TEMPLATE_PROCEDURE:
+        procedure = new UnsetTemplateProcedure();
+        break;
       default:
-        LOGGER.error("unknown Procedure type: " + typeNum);
-        throw new IOException("unknown Procedure type: " + typeNum);
+        LOGGER.error("unknown Procedure type: " + typeCode);
+        throw new IOException("unknown Procedure type: " + typeCode);
     }
     procedure.deserialize(buffer);
     return procedure;
@@ -128,24 +144,14 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.STOP_PIPE_PROCEDURE;
     } else if (procedure instanceof DropPipeProcedure) {
       return ProcedureType.DROP_PIPE_PROCEDURE;
+    } else if (procedure instanceof CreateCQProcedure) {
+      return ProcedureType.CREATE_CQ_PROCEDURE;
+    } else if (procedure instanceof DeactivateTemplateProcedure) {
+      return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof UnsetTemplateProcedure) {
+      return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
     }
     return null;
-  }
-
-  public enum ProcedureType {
-    DELETE_STORAGE_GROUP_PROCEDURE,
-    ADD_CONFIG_NODE_PROCEDURE,
-    REMOVE_CONFIG_NODE_PROCEDURE,
-    REMOVE_DATA_NODE_PROCEDURE,
-    REGION_MIGRATE_PROCEDURE,
-    CREATE_REGION_GROUPS,
-    DELETE_TIMESERIES_PROCEDURE,
-    CREATE_TRIGGER_PROCEDURE,
-    DROP_TRIGGER_PROCEDURE,
-    CREATE_PIPE_PROCEDURE,
-    START_PIPE_PROCEDURE,
-    STOP_PIPE_PROCEDURE,
-    DROP_PIPE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {

@@ -50,7 +50,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException {
-    if (!node.isMeasurement()) {
+    if (!node.isMeasurement()
+        || (skipPreDeletedSchema && node.getAsMeasurementMNode().isPreDeleted())) {
       return false;
     }
     if (hasLimit) {

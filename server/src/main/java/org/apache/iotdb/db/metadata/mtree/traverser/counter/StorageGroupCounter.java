@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
-// This class implements storage group count function.
+// This class implements database count function.
 public class StorageGroupCounter extends CounterTraverser {
 
   public StorageGroupCounter(IMNode startNode, PartialPath path, IMTreeStore store)

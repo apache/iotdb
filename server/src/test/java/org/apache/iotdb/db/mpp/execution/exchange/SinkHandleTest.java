@@ -110,11 +110,10 @@ public class SinkHandleTest {
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
         sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(2))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .onNewDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -123,7 +122,7 @@ public class SinkHandleTest {
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -145,7 +144,8 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_000).times(1))
+        .onEndOfBlocks(sinkHandle);
 
     // Ack tsblocks.
     sinkHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
@@ -153,13 +153,12 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(mockTsBlockSize, sinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockMemoryPool, Mockito.times(1))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkHandle);
 
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .onEndOfDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -167,7 +166,7 @@ public class SinkHandleTest {
                           && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && numOfMockTsBlock - 1 == e.getLastSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -240,11 +239,10 @@ public class SinkHandleTest {
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
         sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(2))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .onNewDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -253,7 +251,7 @@ public class SinkHandleTest {
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
-    } catch (TException | InterruptedException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -277,7 +275,7 @@ public class SinkHandleTest {
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockMemoryPool, Mockito.times(1))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
 
     // Send tsblocks.
@@ -289,11 +287,10 @@ public class SinkHandleTest {
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
         sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(3))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(3))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .onNewDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -302,7 +299,7 @@ public class SinkHandleTest {
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == numOfMockTsBlock
                           && e.getBlockSizes().size() == numOfMockTsBlock));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -311,10 +308,11 @@ public class SinkHandleTest {
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onEndOfBlocks(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_000).times(1))
+        .onEndOfBlocks(sinkHandle);
+
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(1))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
           .onEndOfDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -322,7 +320,7 @@ public class SinkHandleTest {
                           && remotePlanNodeId.equals(e.getTargetPlanNodeId())
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && numOfMockTsBlock * 2 - 1 == e.getLastSequenceId()));
-    } catch (InterruptedException | TException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -344,9 +342,9 @@ public class SinkHandleTest {
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(mockMemoryPool, Mockito.times(2))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkHandle);
   }
 
   @Test
@@ -417,11 +415,10 @@ public class SinkHandleTest {
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
         sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(2))
+    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
-      Thread.sleep(100L);
-      Mockito.verify(mockClient, Mockito.times(SinkHandle.MAX_ATTEMPT_TIMES))
+      Mockito.verify(mockClient, Mockito.timeout(10_000).times(SinkHandle.MAX_ATTEMPT_TIMES))
           .onNewDataBlockEvent(
               Mockito.argThat(
                   e ->
@@ -430,27 +427,24 @@ public class SinkHandleTest {
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
-    } catch (TException | InterruptedException e) {
+    } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
     }
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFailure(sinkHandle, mockException);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_000).times(1))
+        .onFailure(sinkHandle, mockException);
 
     // Close the SinkHandle.
-    try {
-      sinkHandle.setNoMoreTsBlocks();
-      Assert.fail("Expect an RuntimeException.");
-    } catch (RuntimeException e) {
-      Assert.assertEquals("Send EndOfDataBlockEvent failed", e.getMessage());
-    }
+    sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onEndOfBlocks(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_000).times(0))
+        .onEndOfBlocks(sinkHandle);
 
     // Abort the SinkHandle.
     sinkHandle.abort();
     Assert.assertTrue(sinkHandle.isAborted());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onAborted(sinkHandle);
-    Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onFinish(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onAborted(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(0)).onFinish(sinkHandle);
   }
 
   @Test
@@ -532,7 +526,7 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isAborted());
     Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onAborted(sinkHandle);
+    Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onAborted(sinkHandle);
     Assert.assertEquals(0L, spyMemoryPool.getQueryMemoryReservedBytes(queryId));
   }
 }

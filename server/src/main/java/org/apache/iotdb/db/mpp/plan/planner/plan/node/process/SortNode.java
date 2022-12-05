@@ -25,8 +25,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,9 +35,7 @@ import java.util.Objects;
  * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
  * optimized logical query plan, the sortNode should not appear.
  */
-public class SortNode extends ProcessNode {
-
-  private PlanNode child;
+public class SortNode extends SingleChildProcessNode {
 
   private final Ordering sortOrder;
 
@@ -49,27 +45,12 @@ public class SortNode extends ProcessNode {
   }
 
   public SortNode(PlanNodeId id, PlanNode child, Ordering sortOrder) {
-    this(id, sortOrder);
-    this.child = child;
+    super(id, child);
+    this.sortOrder = sortOrder;
   }
 
   public Ordering getSortOrder() {
     return sortOrder;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
   }
 
   @Override
@@ -117,11 +98,11 @@ public class SortNode extends ProcessNode {
       return false;
     }
     SortNode sortNode = (SortNode) o;
-    return child.equals(sortNode.child) && sortOrder == sortNode.sortOrder;
+    return sortOrder == sortNode.sortOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), child, sortOrder);
+    return Objects.hash(super.hashCode(), sortOrder);
   }
 }

@@ -19,6 +19,7 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.FilesUtils;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;
@@ -32,8 +33,6 @@ import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-
-import static org.apache.iotdb.db.utils.JarLoaderUtil.getExternalJarURLs;
 
 /** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
@@ -87,7 +86,7 @@ public class PayloadFormatManager {
       logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
     }
 
-    URL[] jarURLs = getExternalJarURLs(mqttDir);
+    URL[] jarURLs = FilesUtils.getPluginJarURLs(mqttDir);
     logger.debug("MQTT Plugin jarURLs: {}", jarURLs);
 
     for (URL jarUrl : jarURLs) {

@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -633,37 +634,105 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * @return an iterator of "device, isAligned" list, in which names of devices are ordered in
-   *     dictionary order, and isAligned represents whether the device is aligned
+   *     dictionary order, and isAligned represents whether the device is aligned. Only read devices
+   *     on one device leaf node each time to save memory.
    */
   public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
     readFileMetadata();
-
+    Queue<Pair<String, long[]>> queue = new LinkedList<>();
+    List<long[]> leafDeviceNodeOffsets = new ArrayList<>();
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
-    getAllDevicesWithIsAligned(metadataIndexNode, queue);
+    if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+      // the first node of index tree is device leaf node, then get the devices directly
+      getDevicesOfLeafNode(metadataIndexNode, queue);
+    } else {
+      // get all device leaf node offset
+      getAllDeviceLeafNodeOffset(metadataIndexNode, leafDeviceNodeOffsets);
+    }
 
-    return new TsFileDeviceIterator(this, queue);
+    return new TsFileDeviceIterator(this, leafDeviceNodeOffsets, queue);
   }
 
-  private void getAllDevicesWithIsAligned(
-      MetadataIndexNode metadataIndexNode, Queue<Pair<String, Pair<Long, Long>>> queue)
+  /**
+   * Get devices and first measurement node offset.
+   *
+   * @param startOffset start offset of device leaf node
+   * @param endOffset end offset of device leaf node
+   * @param measurementNodeOffsetQueue device -> first measurement node offset
+   */
+  public void getDevicesAndEntriesOfOneLeafNode(
+      Long startOffset, Long endOffset, Queue<Pair<String, long[]>> measurementNodeOffsetQueue)
       throws IOException {
     try {
-      int metadataIndexListSize = metadataIndexNode.getChildren().size();
+      ByteBuffer nextBuffer = readData(startOffset, endOffset);
+      MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+      getDevicesOfLeafNode(deviceLeafNode, measurementNodeOffsetQueue);
+    } catch (Exception e) {
+      logger.error("Something error happened while getting all devices of file {}", file);
+      throw e;
+    }
+  }
 
+  /**
+   * Get all devices and its corresponding entries on the specific device leaf node.
+   *
+   * @param deviceLeafNode this node must be device leaf node
+   */
+  private void getDevicesOfLeafNode(
+      MetadataIndexNode deviceLeafNode, Queue<Pair<String, long[]>> measurementNodeOffsetQueue) {
+    if (!deviceLeafNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+      throw new RuntimeException("the first param should be device leaf node.");
+    }
+    List<MetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
+    for (int i = 0; i < childrenEntries.size(); i++) {
+      MetadataIndexEntry deviceEntry = childrenEntries.get(i);
+      long childStartOffset = deviceEntry.getOffset();
+      long childEndOffset =
+          i == childrenEntries.size() - 1
+              ? deviceLeafNode.getEndOffset()
+              : childrenEntries.get(i + 1).getOffset();
+      long[] offset = {childStartOffset, childEndOffset};
+      measurementNodeOffsetQueue.add(new Pair<>(deviceEntry.getName(), offset));
+    }
+  }
+
+  /**
+   * Get the device leaf node offset under the specific device internal node.
+   *
+   * @param deviceInternalNode this node must be device internal node
+   */
+  private void getAllDeviceLeafNodeOffset(
+      MetadataIndexNode deviceInternalNode, List<long[]> leafDeviceNodeOffsets) throws IOException {
+    if (!deviceInternalNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
+      throw new RuntimeException("the first param should be device internal node.");
+    }
+    try {
+      int metadataIndexListSize = deviceInternalNode.getChildren().size();
+      boolean isCurrentLayerLeafNode = false;
       for (int i = 0; i < metadataIndexListSize; i++) {
-        MetadataIndexEntry entry = metadataIndexNode.getChildren().get(i);
+        MetadataIndexEntry entry = deviceInternalNode.getChildren().get(i);
         long startOffset = entry.getOffset();
-        long endOffset = metadataIndexNode.getEndOffset();
+        long endOffset = deviceInternalNode.getEndOffset();
         if (i != metadataIndexListSize - 1) {
-          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          endOffset = deviceInternalNode.getChildren().get(i + 1).getOffset();
         }
-        if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          queue.add(new Pair<>(entry.getName(), new Pair<>(startOffset, endOffset)));
+        if (i == 0) {
+          // check is current layer device leaf node or device internal node. Just need to check the
+          // first entry, because the rest are the same
+          MetadataIndexNodeType nodeType =
+              MetadataIndexNodeType.deserialize(
+                  ReadWriteIOUtils.readByte(readData(endOffset - 1, endOffset)));
+          isCurrentLayerLeafNode = nodeType.equals(MetadataIndexNodeType.LEAF_DEVICE);
+        }
+        if (isCurrentLayerLeafNode) {
+          // is device leaf node
+          long[] offset = {startOffset, endOffset};
+          leafDeviceNodeOffsets.add(offset);
           continue;
         }
         ByteBuffer nextBuffer = readData(startOffset, endOffset);
-        getAllDevicesWithIsAligned(MetadataIndexNode.deserializeFrom(nextBuffer), queue);
+        getAllDeviceLeafNodeOffset(
+            MetadataIndexNode.deserializeFrom(nextBuffer), leafDeviceNodeOffsets);
       }
     } catch (Exception e) {
       logger.error("Something error happened while getting all devices of file {}", file);
@@ -707,7 +776,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     for (String device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (String measurementId : timeseriesMetadataMap.keySet()) {
-        paths.add(new Path(device, measurementId));
+        paths.add(new Path(device, measurementId, true));
       }
     }
     return paths;
@@ -752,7 +821,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             paths.add(
                 new Path(
                     startEndPair.left,
-                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId()));
+                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId(),
+                    true));
           }
           return paths;
         } catch (IOException e) {
@@ -843,6 +913,73 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * Get the measurements of current device by its first measurement node. Also get the chunk
+   * metadata list and timeseries metadata offset.
+   *
+   * @param measurementNode first measurement node of the device
+   * @param excludedMeasurementIds do not deserialize chunk metadatas whose measurementId is in the
+   *     set. Notice: It only takes effect when the needChunkMetadata parameter is true.
+   * @param needChunkMetadata need to deserialize chunk metadatas or not
+   * @return measurement -> chunk metadata list -> timeseries metadata <startOffset, endOffset>
+   */
+  public Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>>
+      getTimeseriesMetadataOffsetByDevice(
+          MetadataIndexNode measurementNode,
+          Set<String> excludedMeasurementIds,
+          boolean needChunkMetadata)
+          throws IOException {
+    Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        new HashMap<>();
+    List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
+    for (int i = 0; i < childrenEntryList.size(); i++) {
+      long startOffset = childrenEntryList.get(i).getOffset();
+      long endOffset =
+          i == childrenEntryList.size() - 1
+              ? measurementNode.getEndOffset()
+              : childrenEntryList.get(i + 1).getOffset();
+      ByteBuffer nextBuffer = readData(startOffset, endOffset);
+      if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        // leaf measurement node
+        while (nextBuffer.hasRemaining()) {
+          int metadataStartOffset = nextBuffer.position();
+          TimeseriesMetadata timeseriesMetadata =
+              TimeseriesMetadata.deserializeFrom(
+                  nextBuffer, excludedMeasurementIds, needChunkMetadata);
+          timeseriesMetadataOffsetMap.put(
+              timeseriesMetadata.getMeasurementId(),
+              new Pair<>(
+                  timeseriesMetadata.getChunkMetadataList(),
+                  new Pair<>(
+                      startOffset + metadataStartOffset, startOffset + nextBuffer.position())));
+        }
+
+      } else {
+        // internal measurement node
+        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+        timeseriesMetadataOffsetMap.putAll(
+            getTimeseriesMetadataOffsetByDevice(
+                nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
+  /**
+   * Get chunk metadata list by the start offset and end offset of the timeseries metadata.
+   *
+   * @param startOffset the start offset of timeseries metadata
+   * @param endOffset the end offset of timeseries metadata
+   */
+  public List<IChunkMetadata> getChunkMetadataListByTimeseriesMetadataOffset(
+      long startOffset, long endOffset) throws IOException {
+    ByteBuffer timeseriesMetadataBuffer = readData(startOffset, endOffset);
+
+    TimeseriesMetadata timeseriesMetadata =
+        TimeseriesMetadata.deserializeFrom(timeseriesMetadataBuffer, true);
+    return timeseriesMetadata.getChunkMetadataList();
+  }
+
+  /**
    * Get timeseries metadata under the measurementNode and put them into timeseriesMetadataList.
    * Skip timeseries whose measurementId is in the excludedMeasurementIds.
    *
@@ -868,7 +1005,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           TimeseriesMetadata timeseriesMetadata =
               TimeseriesMetadata.deserializeFrom(
                   nextBuffer, excludedMeasurementIds, needChunkMetadata);
-          if (timeseriesMetadata != null) {
+          if (!excludedMeasurementIds.contains(timeseriesMetadata.getMeasurementId())) {
             timeseriesMetadataList.add(timeseriesMetadata);
           }
         }
@@ -1170,6 +1307,27 @@ public class TsFileSequenceReader implements AutoCloseable {
             header.getDataSize());
     return new Chunk(
         header, buffer, chunkCacheKey.getDeleteIntervalList(), chunkCacheKey.getStatistics());
+  }
+
+  /**
+   * read the {@link CompressionType} and {@link TSEncoding} of a timeseries. This method will skip
+   * the measurement id, and data type. This method will change the position of this reader.
+   *
+   * @param timeseriesMetadata timeseries' metadata
+   * @return a pair of {@link CompressionType} and {@link TSEncoding} of given timeseries.
+   * @throws IOException
+   */
+  public Pair<CompressionType, TSEncoding> readTimeseriesCompressionTypeAndEncoding(
+      TimeseriesMetadata timeseriesMetadata) throws IOException {
+
+    String measurementId = timeseriesMetadata.getMeasurementId();
+    int measurementIdLength = measurementId.getBytes(TSFileConfig.STRING_CHARSET).length;
+    position(
+        timeseriesMetadata.getChunkMetadataList().get(0).getOffsetOfChunkHeader()
+            + Byte.BYTES // chunkType
+            + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
+            + measurementIdLength); // measurementID
+    return ChunkHeader.deserializeCompressionTypeAndEncoding(tsFileInput.wrapAsInputStream());
   }
 
   /** Get measurement schema by chunkMetadatas. */
@@ -1542,7 +1700,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1561,7 +1719,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1583,7 +1741,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         // schema of last chunk group
         if (newSchema != null) {
           for (IMeasurementSchema tsSchema : measurementSchemaList) {
-            newSchema.putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+            newSchema.putIfAbsent(
+                new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
           }
         }
         // last chunk group Metadata

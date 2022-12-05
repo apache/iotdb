@@ -118,14 +118,16 @@ struct TSendPlanNodeResp {
   3: optional common.TSStatus status
 }
 
-struct TFetchFragmentInstanceStateReq {
+struct TFetchFragmentInstanceInfoReq {
   1: required TFragmentInstanceId fragmentInstanceId
 }
 
 // TODO: need to supply more fields according to implementation
-struct TFragmentInstanceStateResp {
+struct TFragmentInstanceInfoResp {
   1: required string state
-  2: optional list<string> failedMessages
+  2: optional i64 endTime
+  3: optional list<string> failedMessages
+  4: optional list<binary> failureInfoList
 }
 
 struct TCancelQueryReq {
@@ -159,19 +161,19 @@ struct TDisableDataNodeReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
-struct TCreateFunctionRequest {
-  1: required string udfName
-  2: required string className
-  3: required list<string> uris
+struct TCreateFunctionInstanceReq {
+  1: required binary udfInformation
+  2: optional binary jarFile
 }
 
-struct TDropFunctionRequest {
-  1: required string udfName
+struct TDropFunctionInstanceReq {
+  1: required string functionName
+  2: required bool needToDeleteJar
 }
 
 struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
-  2: required binary jarFile
+  2: optional binary jarFile
 }
 
 struct TActiveTriggerInstanceReq {
@@ -185,6 +187,11 @@ struct TInactiveTriggerInstanceReq {
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
+}
+
+struct TUpdateTriggerLocationReq {
+  1: required string triggerName
+  2: required common.TDataNodeLocation newLocation
 }
 
 struct TFireTriggerReq {
@@ -224,6 +231,9 @@ struct TLoadSample {
   2: required double memoryUsageRate
   // Percentage of occupied disk space in DataNode
   3: required double diskUsageRate
+  // The size of free disk space
+  // Unit: Byte
+  4: required i64 freeDiskSpace
 }
 
 struct TRegionRouteReq {
@@ -281,7 +291,7 @@ struct TFetchSchemaBlackListResp{
   2: required binary pathPatternTree
 }
 
-struct TDeleteDataForDeleteTimeSeriesReq{
+struct TDeleteDataForDeleteSchemaReq{
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
 }
@@ -289,6 +299,32 @@ struct TDeleteDataForDeleteTimeSeriesReq{
 struct TDeleteTimeSeriesReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+}
+
+struct TConstructSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TRollbackSchemaBlackListWithTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TDeactivateTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required map<string, list<i32>> templateSetInfo
+}
+
+struct TCountPathsUsingTemplateReq{
+  1: required i32 templateId
+  2: required binary patternTree
+  3: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCountPathsUsingTemplateResp{
+  1: required common.TSStatus status
+  2: optional i64 count
 }
 
 struct TCreatePipeOnDataNodeReq{
@@ -299,6 +335,20 @@ struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
+    3: optional i64 createTime
+}
+
+// ====================================================
+// CQ
+// ====================================================
+struct TExecuteCQ {
+  1: required string queryBody
+  2: required i64 startTime
+  3: required i64 endTime
+  4: required i64 timeout
+  5: required string zoneId
+  6: required string cqId
+  7: required string username
 }
 
 service IDataNodeRPCService {
@@ -315,7 +365,7 @@ service IDataNodeRPCService {
   */
   TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
-  TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
+  TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
   TCancelResp cancelQuery(TCancelQueryReq req);
 
@@ -368,9 +418,9 @@ service IDataNodeRPCService {
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
-   * Config node will change a region leader to other data node int same consensus group
-   * if the region is not leader on the node, will do nothing
-   * @param change a region leader to which node
+   * Change the leader of specified RegionGroup to another DataNode
+   *
+   * @param The specified RegionGroup and the new leader DataNode
    */
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 
@@ -432,14 +482,14 @@ service IDataNodeRPCService {
    *
    * @param function name, function class name, and executable uris
    **/
-  common.TSStatus createFunction(TCreateFunctionRequest req)
+  common.TSStatus createFunction(TCreateFunctionInstanceReq req)
 
   /**
    * Config node will drop a function on a list of data nodes.
    *
    * @param function name
    **/
-  common.TSStatus dropFunction(TDropFunctionRequest req)
+  common.TSStatus dropFunction(TDropFunctionInstanceReq req)
 
   /**
    * Config node will create a trigger instance on data node.
@@ -472,6 +522,13 @@ service IDataNodeRPCService {
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
+   * Config node will renew DataNodeLocation of a stateful trigger.
+   *
+   * @param trigger name, new DataNodeLocation
+   **/
+  common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
+
+  /**
     * Fire a stateful trigger on current data node.
     *
     * @param trigger name, tablet and event
@@ -498,7 +555,7 @@ service IDataNodeRPCService {
   common.TSStatus setSystemStatus(string status)
 
   /**
-   * Config node will Set the TTL for the storage group on a list of data nodes.
+   * Config node will Set the TTL for the database on a list of data nodes.
    */
   common.TSStatus setTTL(common.TSetTTLReq req)
   
@@ -541,12 +598,30 @@ service IDataNodeRPCService {
   /**
    * Config node inform this dataNode to execute a distribution data deleion mpp task
    */
-  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+  common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
 
- /**
-  * Delete matched timeseries and remove according schema black list in target schemRegion
-  */
+  /**
+   * Delete matched timeseries and remove according schema black list in target schemRegion
+   */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
+   */
+  common.TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries represent by template
+   */
+  common.TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
+
+  /**
+   * Deactivate template on device matched by input path pattern
+   * and remove according template schema black list in target schemRegion
+   */
+  common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
+
+  TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
  /**
   * Create PIPE on DataNode
@@ -557,6 +632,16 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Start, stop or drop PIPE on DataNode for rollback
+  */
+  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
+
+ /**
+  * Execute CQ on DataNode
+  */
+  common.TSStatus executeCQ(TExecuteCQ req)
 }
 
 service MPPDataExchangeService {

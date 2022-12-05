@@ -82,7 +82,6 @@ public class BinaryColumn implements Column {
 
   @Override
   public Binary getBinary(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
@@ -98,7 +97,6 @@ public class BinaryColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return new TsPrimitiveType.TsBinary(getBinary(position));
   }
 
@@ -109,7 +107,6 @@ public class BinaryColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
   }
 
@@ -161,12 +158,6 @@ public class BinaryColumn implements Column {
         valueIsNull[i] = valueIsNull[j];
         valueIsNull[j] = isNullTmp;
       }
-    }
-  }
-
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
     }
   }
 }

@@ -140,6 +140,24 @@ public class LastQueryUtil {
     return aggregators;
   }
 
+  public static List<Aggregator> createAggregators(TSDataType dataType, int valueColumnIndex) {
+    // max_time, last_value
+    List<Aggregator> aggregators = new ArrayList<>(2);
+    aggregators.add(
+        new Aggregator(
+            new MaxTimeDescAccumulator(),
+            AggregationStep.SINGLE,
+            Collections.singletonList(
+                new InputLocation[] {new InputLocation(0, valueColumnIndex)})));
+    aggregators.add(
+        new Aggregator(
+            new LastValueDescAccumulator(dataType),
+            AggregationStep.SINGLE,
+            Collections.singletonList(
+                new InputLocation[] {new InputLocation(0, valueColumnIndex)})));
+    return aggregators;
+  }
+
   public static boolean needUpdateCache(Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
     return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof GtEq)

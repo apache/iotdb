@@ -20,32 +20,31 @@
 package org.apache.iotdb.commons.service;
 
 public enum ServiceType {
-  STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
+  STORAGE_ENGINE_SERVICE("Storage Engine ServerService", "StorageEngine"),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   METRIC_SERVICE("Metrics ServerService", "MetricService"),
   RPC_SERVICE("RPC ServerService", "RPCService"),
   INFLUX_SERVICE("InfluxDB Protocol Service", "InfluxDB Protocol"),
-  MQTT_SERVICE("MQTTService", ""),
+  MQTT_SERVICE("MQTTService", "MqttService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
-  STAT_MONITOR_SERVICE("Statistics ServerService", ""),
-  WAL_SERVICE("WAL ServerService", ""),
-  CLOSE_MERGE_SERVICE("Close&Merge ServerService", ""),
-  JVM_MEM_CONTROL_SERVICE("Memory Controller", ""),
-  AUTHORIZATION_SERVICE("Authorization ServerService", ""),
-  FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
-  UPGRADE_SERVICE("UPGRADE DataService", ""),
-  SETTLE_SERVICE("SETTLE DataService", ""),
+  STAT_MONITOR_SERVICE("Statistics ServerService", "StatMonitorService"),
+  WAL_SERVICE("WAL ServerService", "WalService"),
+  CLOSE_MERGE_SERVICE("Close&Merge ServerService", "CloseMergeService"),
+  JVM_MEM_CONTROL_SERVICE("Memory Controller", "JvmMemControlService"),
+  AUTHORIZATION_SERVICE("Authorization ServerService", "AuthService"),
+  FILE_READER_MANAGER_SERVICE("File reader manager ServerService", "FileReaderManagerService"),
+  UPGRADE_SERVICE("UPGRADE DataService", "UpgradeService"),
+  SETTLE_SERVICE("SETTLE DataService", "SettleService"),
   SYNC_RPC_SERVICE("Sync RPC ServerService", ""),
-  SYNC_SERVICE("Sync Service", ""),
+  SYNC_SERVICE("Sync Service", "SyncService"),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
-  UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
-  UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
-  UDF_EXECUTABLE_MANAGER_SERVICE("UDF Executable Manager Service", ""),
-  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
-  TRIGGER_REGISTRATION_SERVICE_OLD("Old Standalone Trigger Registration Service", ""),
+  UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", "UdfClassLoader"),
+  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", "TempQueryDataFile"),
+  TRIGGER_REGISTRATION_SERVICE_OLD(
+      "Old Standalone Trigger Registration Service", "TriggerRegistration"),
   CACHE_HIT_RATIO_DISPLAY_SERVICE(
       "CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName("org.apache.iotdb.service", "Cache Hit Ratio")),
@@ -73,7 +72,7 @@ public enum ServiceType {
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
   MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
   INTERNAL_SERVICE("Internal Service", "InternalService"),
-  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
+  IOT_CONSENSUS_SERVICE("IoTConsensus Service", "IoTConsensusRPCService");
 
   private final String name;
   private final String jmxName;

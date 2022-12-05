@@ -170,7 +170,7 @@ public abstract class AlignedTVList extends TVList {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
-    minTime = Math.min(minTime, timestamp);
+    maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
       Object columnValue = columnIndexArray[i] < 0 ? null : value[columnIndexArray[i]];
@@ -704,7 +704,7 @@ public abstract class AlignedTVList extends TVList {
     checkExpansion();
     int idx = start;
 
-    updateMinTimeAndSorted(time, start, end);
+    updateMaxTimeAndSorted(time, start, end);
 
     while (idx < end) {
       int inputRemaining = end - idx;

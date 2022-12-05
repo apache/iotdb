@@ -37,11 +37,16 @@ public class TriggerExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExecutor.class);
 
-  public TriggerExecutor(TriggerInformation triggerInformation, Trigger trigger) {
+  public TriggerExecutor(
+      TriggerInformation triggerInformation, Trigger trigger, boolean isRestoring) {
     this.triggerInformation = triggerInformation;
     this.trigger = trigger;
     // call Trigger#validate and Trigger#onCreate
     onCreate();
+    // Only call Trigger.restore() for stateful trigger
+    if (isRestoring && triggerInformation.isStateful()) {
+      onRestore();
+    }
   }
 
   private void onCreate() {
@@ -59,6 +64,14 @@ public class TriggerExecutor {
       trigger.onDrop();
     } catch (Exception e) {
       onTriggerExecutionError("drop", e);
+    }
+  }
+
+  private void onRestore() {
+    try {
+      trigger.restore();
+    } catch (Exception e) {
+      onTriggerExecutionError("restore", e);
     }
   }
 

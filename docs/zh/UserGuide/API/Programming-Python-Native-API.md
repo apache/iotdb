@@ -77,15 +77,15 @@ session.close()
 
 ### 数据定义接口 DDL
 
-#### 存储组管理
+#### Database 管理
 
-* 设置存储组
+* 设置 database
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* 删除单个或多个存储组
+* 删除单个或多个 database
 
 ```python
 session.delete_storage_group(group_name)
@@ -451,7 +451,7 @@ SQLAlchemy 所使用的数据模型为关系数据模型，这种数据模型通
 
 IoTDB 中的元数据有：
 
-1. Storage Group：存储组
+1. Database：数据库
 2. Path：存储路径
 3. Entity：实体
 4. Measurement：物理量
@@ -463,10 +463,10 @@ SQLAlchemy 中的元数据有：
 
 它们之间的映射关系为：
 
-| SQLAlchemy中的元数据 | IoTDB中对应的元数据                            |
+| SQLAlchemy中的元数据   | IoTDB中对应的元数据                               |
 | -------------------- | ---------------------------------------------- |
-| Schema               | Storage Group                                  |
-| Table                | Path ( from storage group to entity ) + Entity |
+| Schema               | Database                                       |
+| Table                | Path ( from database to entity ) + Entity |
 | Column               | Measurement                                    |
 
 下图更加清晰的展示了二者的映射关系：

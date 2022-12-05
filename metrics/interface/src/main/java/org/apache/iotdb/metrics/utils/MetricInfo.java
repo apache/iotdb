@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.utils;
 
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,9 +35,12 @@ public class MetricInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricInfo.class);
   private static final Integer PAIR_SIZE = 2;
+  /** The name of metric */
   private final String name;
-  private final MetaInfo metaInfo;
+  /** The tags of metric */
   private final Map<String, String> tags = new LinkedHashMap<>();
+  /** The metaInfo of metric */
+  private final MetaInfo metaInfo;
 
   public MetricInfo(MetricType type, String name, String... tags) {
     this.name = name;
@@ -71,16 +76,15 @@ public class MetricInfo {
     return metaInfo;
   }
 
-  /** convert the metric name to string array. */
-  public String[] toStringArray() {
+  /** Convert the metric name and tag into pair */
+  public Pair<String, String[]> toStringArray() {
     List<String> allNames = new ArrayList<>();
-    allNames.add(name);
     tags.forEach(
         (k, v) -> {
           allNames.add(k);
           allNames.add(v);
         });
-    return allNames.toArray(new String[0]);
+    return new Pair<>(name, allNames.toArray(new String[0]));
   }
 
   @Override
@@ -129,7 +133,9 @@ public class MetricInfo {
   }
 
   public static class MetaInfo {
+    /** The type of metric */
     private final MetricType type;
+    /** The tag keys of metric */
     private final Set<String> tagNames;
 
     public MetaInfo(MetricType type, Set<String> tagNames) {
@@ -137,7 +143,7 @@ public class MetricInfo {
       this.tagNames = tagNames;
     }
 
-    /** check whether the key in tags is same */
+    /** Check whether the keys of tags are same */
     public boolean hasSameKey(String... tags) {
       if (tags.length != tagNames.size() * 2) {
         return false;

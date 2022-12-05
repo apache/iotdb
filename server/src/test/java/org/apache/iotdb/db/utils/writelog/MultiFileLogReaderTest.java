@@ -22,7 +22,10 @@ package org.apache.iotdb.db.utils.writelog;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -50,7 +53,15 @@ public class MultiFileLogReaderTest {
       logFiles[i] = new File(i + ".log");
       for (int j = 0; j < logsPerFile; j++) {
         fileLogs[i][j] =
-            new DeletePlan(Long.MIN_VALUE, i * logsPerFile + j, new PartialPath("path" + j));
+            new CreateTimeSeriesPlan(
+                new PartialPath("root.sg.d1.s" + j),
+                TSDataType.INT32,
+                TSEncoding.PLAIN,
+                CompressionType.SNAPPY,
+                null,
+                null,
+                null,
+                null);
       }
 
       ByteBuffer buffer = ByteBuffer.allocate(64 * 1024);

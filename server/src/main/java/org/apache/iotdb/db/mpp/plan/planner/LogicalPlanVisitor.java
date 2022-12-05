@@ -158,6 +158,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
 
+    // plan select into
+    if (queryStatement.isAlignByDevice()) {
+      planBuilder = planBuilder.planDeviceViewInto(analysis.getDeviceViewIntoPathDescriptor());
+    } else {
+      planBuilder = planBuilder.planInto(analysis.getIntoPathDescriptor());
+    }
+
     return planBuilder.getRoot();
   }
 
@@ -688,7 +695,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     planBuilder =
         planBuilder
-            .planPathsUsingTemplateSource(analysis.getTemplateSetInfo().left.getId())
+            .planPathsUsingTemplateSource(
+                analysis.getSpecifiedTemplateRelatedPathPatternList(),
+                analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
     return planBuilder.getRoot();
   }

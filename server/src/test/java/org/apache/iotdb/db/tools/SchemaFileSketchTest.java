@@ -43,6 +43,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -63,7 +65,7 @@ public class SchemaFileSketchTest {
   public void tearDown() throws Exception {
     File sketch = new File("sketch_schemafile.txt");
     sketch.deleteOnExit();
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
@@ -106,10 +108,14 @@ public class SchemaFileSketchTest {
 
     SchemaFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());
     ISchemaFile sf = SchemaFile.loadSchemaFile(file);
-    String sketchString = ((SchemaFile) sf).inspect();
-    Assert.assertEquals(
-        sketchString, new String(Files.readAllBytes(Paths.get(sketchFile.getAbsolutePath()))));
-    sf.close();
+    try {
+      StringWriter sw = new StringWriter();
+      ((SchemaFile) sf).inspect(new PrintWriter(sw));
+      Assert.assertEquals(
+          sw.toString(), new String(Files.readAllBytes(Paths.get(sketchFile.getAbsolutePath()))));
+    } finally {
+      sf.close();
+    }
   }
 
   private Iterator<IMNode> getTreeBFT(IMNode root) {

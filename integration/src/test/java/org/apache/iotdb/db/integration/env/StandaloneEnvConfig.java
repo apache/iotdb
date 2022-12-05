@@ -51,7 +51,7 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
     return this;
   }
 
@@ -78,11 +78,6 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
-    return this;
-  }
-
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 

@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
@@ -46,8 +50,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeClass() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -66,8 +70,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -148,7 +152,14 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
-    return null;
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    try (SyncConfigNodeIServiceClient client =
+        clientManager.borrowClient(new TEndPoint(ip_addr, 22277))) {
+      return client;
+    }
   }
 
   @Override
@@ -159,22 +170,42 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public int getLeaderConfigNodeIndex() throws IOException {
+    return -1;
+  }
+
+  @Override
   public void startConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void startDataNode(int index) {
-    getDataNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownDataNode(int index) {
-    getDataNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getMqttPort() {
+    throw new UnsupportedOperationException();
   }
 }

@@ -19,15 +19,16 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,6 @@ import java.util.Set;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final int subTaskNum =
-      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
@@ -65,7 +64,9 @@ public class CompactionUtils {
       fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
     }
     for (TsFileResource targetResource : targetResources) {
-      moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
+      if (targetResource != null) {
+        moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
+      }
     }
   }
 
@@ -102,28 +103,23 @@ public class CompactionUtils {
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
-    // target file may less than source seq files, so we should find each target file with its
-    // corresponding source seq file.
-    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
-    for (TsFileResource tsFileResource : seqResources) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
+    Set<Modification> modifications = new HashSet<>();
+    // get compaction mods from all source unseq files
+    for (TsFileResource unseqFile : unseqResources) {
+      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
     }
-    // update each target mods file.
-    for (TsFileResource targetResource : targetResources) {
-      TsFileResource seqFile = seqFileInfoMap.get(targetResource.getTsFile().getName());
-      Set<Modification> modifications = new HashSet<>();
-      if (seqFile != null) {
-        // get compaction mods from its corresponding source seq file
-        modifications.addAll(ModificationFile.getCompactionMods(seqFile).getModifications());
-      }
-      // get compaction mods from all source unseq files
-      for (TsFileResource unseqFile : unseqResources) {
-        modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
-      }
 
+    // write target mods file
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      if (targetResource == null) {
+        continue;
+      }
+      Set<Modification> seqModifications =
+          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
+      modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
+      modifications.removeAll(seqModifications);
     }
   }
 
@@ -216,5 +212,88 @@ public class CompactionUtils {
         normalModification.remove();
       }
     }
+  }
+
+  public static void updateResource(
+      TsFileResource resource, TsFileIOWriter tsFileIOWriter, String deviceId) {
+    List<ChunkMetadata> chunkMetadatasOfCurrentDevice =
+        tsFileIOWriter.getChunkMetadataListOfCurrentDeviceInMemory();
+    if (chunkMetadatasOfCurrentDevice != null) {
+      // this target file contains current device
+      for (ChunkMetadata chunkMetadata : chunkMetadatasOfCurrentDevice) {
+        if (chunkMetadata.getMask() == TsFileConstant.VALUE_COLUMN_MASK) {
+          // value chunk metadata can be skipped
+          continue;
+        }
+        resource.updateStartTime(deviceId, chunkMetadata.getStatistics().getStartTime());
+        resource.updateEndTime(deviceId, chunkMetadata.getStatistics().getEndTime());
+      }
+    }
+  }
+
+  public static void updatePlanIndexes(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources) {
+    // as the new file contains data of other files, track their plan indexes in the new file
+    // so that we will be able to compare data across different IoTDBs that share the same index
+    // generation policy
+    // however, since the data of unseq files are mixed together, we won't be able to know
+    // which files are exactly contained in the new file, so we have to record all unseq files
+    // in the new file
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      // remove the target file been deleted from list
+      if (!targetResource.getTsFile().exists()) {
+        logger.info(
+            "[Compaction] target file {} has been deleted after compaction.",
+            targetResource.getTsFilePath());
+        targetResources.set(i, null);
+        continue;
+      }
+      for (TsFileResource unseqResource : unseqResources) {
+        targetResource.updatePlanIndexes(unseqResource);
+      }
+      for (TsFileResource seqResource : seqResources) {
+        targetResource.updatePlanIndexes(seqResource);
+      }
+    }
+  }
+
+  public static boolean validateTsFileResources(
+      TsFileManager manager, String storageGroupName, long timePartition) {
+    List<TsFileResource> resources =
+        manager.getSequenceListByTimePartition(timePartition).getArrayList();
+    resources.sort(
+        (f1, f2) ->
+            Long.compareUnsigned(
+                Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                Long.parseLong(f2.getTsFile().getName().split("-")[0])));
+    Map<String, Long> lastEndTimeMap = new HashMap<>();
+    TsFileResource prevTsFileResource = null;
+    for (TsFileResource resource : resources) {
+      Set<String> devices = resource.getDevices();
+      for (String device : devices) {
+        long currentStartTime = resource.getStartTime(device);
+        long currentEndTime = resource.getEndTime(device);
+        long lastEndTime = lastEndTimeMap.computeIfAbsent(device, x -> Long.MIN_VALUE);
+        if (lastEndTime >= currentStartTime) {
+          logger.error(
+              "{} Device {} is overlapped between {} and {}, end time in {} is {}, start time in {} is {}",
+              storageGroupName,
+              device,
+              prevTsFileResource,
+              resource,
+              prevTsFileResource,
+              lastEndTime,
+              resource,
+              currentStartTime);
+          return false;
+        }
+        lastEndTimeMap.put(device, currentEndTime);
+      }
+      prevTsFileResource = resource;
+    }
+    return true;
   }
 }

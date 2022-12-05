@@ -60,7 +60,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -212,7 +212,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -277,7 +277,7 @@ public class AnalyzeTest {
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -314,7 +314,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new AdditionExpression(
                   new FunctionExpression(
                       "count",
@@ -450,7 +450,7 @@ public class AnalyzeTest {
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new FunctionExpression(
                   "sum",
                   new LinkedHashMap<>(),
@@ -604,7 +604,8 @@ public class AnalyzeTest {
             "select s1, s2 into ::(t1, t1, t2, t2) from root.sg.*;",
             "select s1, s2 into root.sg_copy.::(::) from root.sg.*;",
             "select s1, s2 into root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d1_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}), root.sg_copy.d2_copy(${2}_${3}) from root.sg.d1, root.sg.d2;",
-            "select d1.s1, d1.s2, d2.s1, d2.s2 into ::(s1_1, s2_2), root.sg.d2_2(s3_3), root.backup_${1}.::(s4) from root.sg");
+            "select d1.s1, d1.s2, d2.s1, d2.s2 into ::(s1_1, s2_2), root.sg.d2_2(s3_3), root.backup_${1}.::(s4) from root.sg",
+            "select s1, s2 into root.sg_bk.new_d1(::) from root.sg.d1;");
     List<List<Pair<String, PartialPath>>> results =
         Arrays.asList(
             Arrays.asList(
@@ -661,7 +662,10 @@ public class AnalyzeTest {
                 new Pair("root.sg.d1.s1", new PartialPath("root.sg.d1.s1_1")),
                 new Pair("root.sg.d1.s2", new PartialPath("root.sg.d1.s2_2")),
                 new Pair("root.sg.d2.s1", new PartialPath("root.sg.d2_2.s3_3")),
-                new Pair("root.sg.d2.s2", new PartialPath("root.backup_sg.d2.s4"))));
+                new Pair("root.sg.d2.s2", new PartialPath("root.backup_sg.d2.s4"))),
+            Arrays.asList(
+                new Pair("root.sg.d1.s1", new PartialPath("root.sg_bk.new_d1.s1")),
+                new Pair("root.sg.d1.s2", new PartialPath("root.sg_bk.new_d1.s2"))));
 
     for (int i = 0; i < sqls.size(); i++) {
       Analysis analysis = analyzeSQL(sqls.get(i));
@@ -764,7 +768,7 @@ public class AnalyzeTest {
       return analyzer.analyze(statement);
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      fail(sql + ", " + e.getMessage());
     }
     fail();
     return null;

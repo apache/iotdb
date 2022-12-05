@@ -20,10 +20,10 @@
 package org.apache.iotdb.confignode.persistence.metric;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.StorageGroupPartitionTable;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -40,14 +40,14 @@ public class PartitionInfoMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
         PartitionInfo::getStorageGroupPartitionTableSize,
         Tag.NAME.toString(),
-        "storageGroup");
-    metricService.getOrCreateAutoGauge(
+        "database");
+    metricService.createAutoGauge(
         Metric.REGION.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
@@ -56,7 +56,7 @@ public class PartitionInfoMetrics implements IMetricSet {
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.SchemaRegion.toString());
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.REGION.toString(),
         MetricLevel.IMPORTANT,
         partitionInfo,
@@ -70,16 +70,16 @@ public class PartitionInfoMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "storageGroup");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "database");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.REGION.toString(),
         Tag.NAME.toString(),
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.SchemaRegion.toString());
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.REGION.toString(),
         Tag.NAME.toString(),
         "total",
@@ -110,7 +110,7 @@ public class PartitionInfoMetrics implements IMetricSet {
 
     @Override
     public void bindTo(AbstractMetricService metricService) {
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.REGION.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -119,7 +119,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString());
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.REGION.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -129,7 +129,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.SLOT.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -138,7 +138,7 @@ public class PartitionInfoMetrics implements IMetricSet {
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           "schemaSlotNumber");
-      metricService.getOrCreateAutoGauge(
+      metricService.createAutoGauge(
           Metric.SLOT.toString(),
           MetricLevel.NORMAL,
           storageGroupPartitionTable,
@@ -152,14 +152,14 @@ public class PartitionInfoMetrics implements IMetricSet {
     @Override
     public void unbindFrom(AbstractMetricService metricService) {
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.REGION.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString());
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.REGION.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
@@ -167,14 +167,14 @@ public class PartitionInfoMetrics implements IMetricSet {
           TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.SLOT.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),
           Tag.TYPE.toString(),
           "schemaSlotNumber");
       metricService.remove(
-          MetricType.GAUGE,
+          MetricType.AUTO_GAUGE,
           Metric.SLOT.toString(),
           Tag.NAME.toString(),
           storageGroupPartitionTable.getStorageGroupName(),

@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -37,6 +38,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToLongFunction;
@@ -49,6 +51,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
+    Metrics.globalRegistry.add(new SimpleMeterRegistry());
   }
 
   @Override
@@ -58,7 +61,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
     return new MicrometerAutoGauge<T>(
         meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }
@@ -96,7 +99,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void remove(MetricType type, MetricInfo metricInfo) {
+  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
     Meter.Type meterType = transformType(type);
     Meter.Id id =
         new Meter.Id(
@@ -114,6 +117,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     switch (type) {
       case COUNTER:
         return Meter.Type.COUNTER;
+      case AUTO_GAUGE:
       case GAUGE:
       case RATE:
         return Meter.Type.GAUGE;

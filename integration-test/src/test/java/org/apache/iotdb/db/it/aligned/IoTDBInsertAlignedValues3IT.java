@@ -49,12 +49,12 @@ public class IoTDBInsertAlignedValues3IT {
     autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(4);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
@@ -63,12 +63,11 @@ public class IoTDBInsertAlignedValues3IT {
   public void testInsertAlignedWithEmptyPage2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
       for (int i = 0; i < 100; i++) {
         if (i >= 49) {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S2,S3) aligned values("
                   + i
                   + ","
@@ -79,7 +78,7 @@ public class IoTDBInsertAlignedValues3IT {
                   + i
                   + ")");
         } else {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
                   + i
                   + ","
@@ -89,6 +88,7 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         }
       }
+      statement.executeBatch();
       statement.execute("flush");
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select S3 from root.lz.dev.GPS")) {

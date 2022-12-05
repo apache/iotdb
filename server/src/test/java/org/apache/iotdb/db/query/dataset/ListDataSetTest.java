@@ -34,19 +34,22 @@ import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.sql.SQLException;
 
+@Ignore
+@Deprecated
 public class ListDataSetTest {
 
   private final IPlanExecutor queryExecutor = new PlanExecutor();
   private final Planner processor = new Planner();
 
   private final String[] sqls = {
-    "SET STORAGE GROUP TO root.vehicle",
-    "SET STORAGE GROUP TO root.test",
+    "CREATE DATABASE root.vehicle",
+    "CREATE DATABASE root.test",
     "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -76,10 +79,10 @@ public class ListDataSetTest {
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
     String[] results = new String[] {"0\troot.test", "0\troot.vehicle"};
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show storage group");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("SHOW DATABASES");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
-    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
+    Assert.assertEquals("[database]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
@@ -145,11 +148,11 @@ public class ListDataSetTest {
           "0\troot.test.d2\troot.test\ttrue",
           "0\troot.vehicle.d0\troot.vehicle\tfalse"
         };
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with storage group");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with database");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
     Assert.assertEquals("devices", dataSet.getPaths().get(0).toString());
-    Assert.assertEquals("storage group", dataSet.getPaths().get(1).toString());
+    Assert.assertEquals("database", dataSet.getPaths().get(1).toString());
     Assert.assertEquals("isAligned", dataSet.getPaths().get(2).toString());
     int i = 0;
     while (dataSet.hasNext()) {

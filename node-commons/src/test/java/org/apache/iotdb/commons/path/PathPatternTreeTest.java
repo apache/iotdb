@@ -159,6 +159,25 @@ public class PathPatternTreeTest {
   }
 
   /**
+   * This use case is used to test the completeness of getAllDevicePatterns and getAllPathPatterns
+   * results.
+   *
+   * <p>After appending root.sg1.d1 and root.sg1.d1.** to an empty pathPatternTree.
+   *
+   * <p>root.sg1.d1.** and root.sg1.d1 should be taken by invoking getAllPathPatterns.
+   */
+  @Test
+  public void pathPatternTreeTest9() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1"),
+            new PartialPath("root.sg1.d1.**"),
+            new PartialPath("root.sg1.d1.s1")),
+        Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d1.**")),
+        Arrays.asList(new PartialPath("root.sg1"), new PartialPath("root.sg1.d1.**")));
+  }
+
+  /**
    * @param paths PartialPath list to create PathPatternTree
    * @param compressedPaths Expected PartialPath list of getAllPathPatterns
    * @param compressedDevicePaths Expected PartialPath list of getAllDevicePatterns

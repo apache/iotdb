@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,11 +50,11 @@ public abstract class PipeData {
     this.serialNumber = serialNumber;
   }
 
-  public abstract PipeDataType getType();
+  public abstract PipeDataType getPipeDataType();
 
   public long serialize(DataOutputStream stream) throws IOException {
     long serializeSize = 0;
-    stream.writeByte((byte) getType().ordinal());
+    stream.writeByte(getPipeDataType().getType());
     serializeSize += Byte.BYTES;
     stream.writeLong(serialNumber);
     serializeSize += Long.BYTES;
@@ -74,16 +74,13 @@ public abstract class PipeData {
   public static PipeData createPipeData(DataInputStream stream)
       throws IOException, IllegalPathException {
     PipeData pipeData;
-    PipeDataType type = PipeDataType.values()[stream.readByte()];
+    PipeDataType type = PipeDataType.getPipeDataType(stream.readByte());
     switch (type) {
       case TSFILE:
         pipeData = new TsFilePipeData();
         break;
       case DELETION:
         pipeData = new DeletionPipeData();
-        break;
-      case SCHEMA:
-        pipeData = new SchemaPipeData();
         break;
       default:
         logger.error("Deserialize PipeData error because Unknown type {}.", type);
@@ -101,8 +98,28 @@ public abstract class PipeData {
   public abstract ILoader createLoader();
 
   public enum PipeDataType {
-    TSFILE,
-    DELETION,
-    SCHEMA
+    TSFILE((byte) 0),
+    DELETION((byte) 1);
+
+    private final byte type;
+
+    PipeDataType(byte type) {
+      this.type = type;
+    }
+
+    public byte getType() {
+      return type;
+    }
+
+    public static PipeDataType getPipeDataType(byte type) {
+      switch (type) {
+        case 0:
+          return PipeDataType.TSFILE;
+        case 1:
+          return PipeDataType.DELETION;
+        default:
+          throw new IllegalArgumentException("Invalid input: " + type);
+      }
+    }
   }
 }

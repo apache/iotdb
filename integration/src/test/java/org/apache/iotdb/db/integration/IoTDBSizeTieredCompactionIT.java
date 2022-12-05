@@ -60,7 +60,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void test() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -105,7 +105,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testAppendMergeAfterDeserializeMerge() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       try {
         statement.execute("CREATE TIMESERIES root.compactionTest.s1 WITH DATATYPE=INT64");
       } catch (SQLException e) {
@@ -156,7 +156,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testDeserializeMergeAfterAppendMerge() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       try {
         statement.execute("CREATE TIMESERIES root.compactionTest.s1 WITH DATATYPE=INT64");
       } catch (SQLException e) {
@@ -205,7 +205,7 @@ public class IoTDBSizeTieredCompactionIT {
   private void testCompactionNoUnseq(int mergeCount) throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -255,7 +255,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionOnceWithUnseq() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -308,7 +308,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionToSecondLevelWithUnseq() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -368,7 +368,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionToSecondLevelWithUnseqDisableUnseqCompaction() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -434,7 +434,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionToStableLevelWithUnseq() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -494,7 +494,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionToStableLevelWithUnseqDisableUnseqCompaction() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -554,7 +554,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionSeqMaxLevelNumError0() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -614,7 +614,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionSeqMaxLevelNumError1() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -674,7 +674,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionSeqFileNumInEachLevelError0() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -734,7 +734,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionSeqFileNumInEachLevelError1() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -794,7 +794,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionWithUnseqCompaction() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -877,7 +877,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionWithDeletionTimeseries() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -928,7 +928,7 @@ public class IoTDBSizeTieredCompactionIT {
   public void testCompactionWithDeletionTimeseriesAndCreateDifferentTypeTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      statement.execute("CREATE DATABASE root.compactionTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -1010,10 +1010,10 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testSequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     int originCandidateNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
@@ -1088,7 +1088,7 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
       IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(compactionPriority);
       IoTDBDescriptor.getInstance()
@@ -1162,10 +1162,10 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testUnsequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(2);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originFinishCount = CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionPriority compactionPriority =
@@ -1226,7 +1226,7 @@ public class IoTDBSizeTieredCompactionIT {
         }
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
       IoTDBDescriptor.getInstance()
           .getConfig()

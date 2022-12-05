@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,16 +61,16 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           setNextState(AddConfigNodeState.CREATE_PEER);
           break;
         case CREATE_PEER:
-          LOG.info("Executing createPeerForConsensusGroup on {}...", tConfigNodeLocation);
+          LOG.info("Executing CREATE_PEER on {}...", tConfigNodeLocation);
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
-          LOG.info("Successfully createPeerForConsensusGroup on {}", tConfigNodeLocation);
+          LOG.info("Successfully CREATE_PEER on {}", tConfigNodeLocation);
           break;
         case ADD_PEER:
-          LOG.info("Executing addPeer {}...", tConfigNodeLocation);
+          LOG.info("Executing ADD_PEER {}...", tConfigNodeLocation);
           env.addConfigNodePeer(tConfigNodeLocation);
           setNextState(AddConfigNodeState.REGISTER_SUCCESS);
-          LOG.info("Successfully addPeer {}", tConfigNodeLocation);
+          LOG.info("Successfully ADD_PEER {}", tConfigNodeLocation);
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
@@ -81,7 +81,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Add Config Node failed " + state));
+        setFailure(new ProcedureException("Add ConfigNode failed " + state));
       } else {
         LOG.error(
             "Retrievable error trying to add config node {}, state {}",
@@ -102,11 +102,11 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     switch (state) {
       case CREATE_PEER:
         env.deleteConfigNodePeer(tConfigNodeLocation);
-        LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
+        LOG.info("Rollback CREATE_PEER for: {}", tConfigNodeLocation);
         break;
       case ADD_PEER:
         env.removeConfigNodePeer(tConfigNodeLocation);
-        LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
+        LOG.info("Rollback ADD_PEER for: {}", tConfigNodeLocation);
         break;
     }
   }
@@ -138,7 +138,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.ADD_CONFIG_NODE_PROCEDURE.ordinal());
+    stream.writeShort(ProcedureType.ADD_CONFIG_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
   }

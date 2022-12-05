@@ -23,13 +23,12 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
+// TODO: remove this
 public class CreatePipeOperator extends Operator {
   private String pipeName;
   private String pipeSinkName;
@@ -57,13 +56,6 @@ public class CreatePipeOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    CreatePipePlan plan = new CreatePipePlan(pipeName, pipeSinkName);
-    plan.setDataStartTimestamp(startTime);
-    Iterator<Map.Entry<String, String>> iterator = pipeAttributes.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<String, String> entry = iterator.next();
-      plan.addPipeAttribute(entry.getKey(), entry.getValue());
-    }
-    return plan;
+    return null;
   }
 }

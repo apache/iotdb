@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
 public class SchemaCacheEntry {
+
+  private final String storageGroup;
 
   private final MeasurementSchema measurementSchema;
 
@@ -36,7 +38,11 @@ public class SchemaCacheEntry {
   private volatile ILastCacheContainer lastCacheContainer = null;
 
   SchemaCacheEntry(
-      MeasurementSchema measurementSchema, Map<String, String> tagMap, boolean isAligned) {
+      String storageGroup,
+      MeasurementSchema measurementSchema,
+      Map<String, String> tagMap,
+      boolean isAligned) {
+    this.storageGroup = storageGroup.intern();
     this.measurementSchema = measurementSchema;
     this.isAligned = isAligned;
     this.tagMap = tagMap;
@@ -44,6 +50,10 @@ public class SchemaCacheEntry {
 
   public String getSchemaEntryId() {
     return measurementSchema.getMeasurementId();
+  }
+
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
   public MeasurementSchema getMeasurementSchema() {

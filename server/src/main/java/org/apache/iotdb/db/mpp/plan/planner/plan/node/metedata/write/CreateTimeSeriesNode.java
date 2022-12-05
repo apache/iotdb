@@ -204,7 +204,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     }
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
-    compressor = CompressionType.values()[byteBuffer.get()];
+    compressor = CompressionType.deserialize(byteBuffer.get());
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -249,7 +249,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     byteBuffer.put(bytes);
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
-    byteBuffer.put((byte) compressor.ordinal());
+    byteBuffer.put(compressor.serialize());
 
     // alias
     if (alias != null) {
@@ -299,7 +299,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     stream.write(bytes);
     stream.write((byte) dataType.ordinal());
     stream.write((byte) encoding.ordinal());
-    stream.write((byte) compressor.ordinal());
+    stream.write(compressor.serialize());
 
     // alias
     if (alias != null) {

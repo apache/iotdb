@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -65,6 +66,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class UnsealedTsFileRecoverPerformerTest {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
@@ -72,10 +75,14 @@ public class UnsealedTsFileRecoverPerformerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.envSetUp();
+    isClusterMode = config.isClusterMode();
+    config.setClusterMode(true);
     IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
     IoTDB.schemaProcessor.createTimeseries(
         new PartialPath(DEVICE1_NAME.concat(".s1")),
@@ -108,6 +115,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.cleanEnv();
   }
@@ -122,12 +130,24 @@ public class UnsealedTsFileRecoverPerformerTest {
     // generate InsertRowPlan
     long time = 4;
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
+    Object[] columns = new Object[] {1.0f, 1.0d};
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            dataTypes,
+            time,
+            columns,
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
+        });
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowPlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -146,13 +166,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(2, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -179,10 +199,14 @@ public class UnsealedTsFileRecoverPerformerTest {
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
     assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
     // generate InsertRowPlan
-    DeletePlan deletePlan =
-        new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE2_NAME));
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId("0"),
+            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deletePlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deleteDataNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -201,13 +225,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(1, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));

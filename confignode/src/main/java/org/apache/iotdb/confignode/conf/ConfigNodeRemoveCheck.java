@@ -80,7 +80,8 @@ public class ConfigNodeRemoveCheck {
                   .findFirst()
                   .orElse(null);
         } catch (BadNodeUrlException e2) {
-          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          LOGGER.info(
+              "Usage: remove-confignode.sh <confignode-id> or remove-confignode.sh <internal_address>:<internal_port>");
           return nodeLocation;
         }
       }
@@ -111,7 +112,8 @@ public class ConfigNodeRemoveCheck {
         break;
       }
 
-      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode()) {
+        LOGGER.warn("Execute removeConfigNode failed for: {}", status.getMessage());
         break;
       }
     }
@@ -128,7 +130,7 @@ public class ConfigNodeRemoveCheck {
   }
 
   public int getConsensusPort() {
-    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT));
+    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CN_CONSENSUS_PORT));
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {

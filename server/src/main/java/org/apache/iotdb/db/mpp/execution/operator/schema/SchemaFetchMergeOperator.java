@@ -107,7 +107,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   private TsBlock generateStorageGroupInfo() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      // to indicate this binary data is storage group info
+      // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
       ReadWriteIOUtils.write(storageGroupList.size(), outputStream);

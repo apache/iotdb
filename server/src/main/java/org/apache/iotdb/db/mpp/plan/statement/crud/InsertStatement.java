@@ -39,7 +39,6 @@ public class InsertStatement extends Statement {
   private long[] times;
   private String[] measurementList;
 
-  // TODO: unify SQL and RPC requests
   private List<String[]> valuesList;
 
   private boolean isAligned;

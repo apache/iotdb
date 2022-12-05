@@ -27,17 +27,17 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -92,20 +93,6 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
       return activateTemplateInClusterPlan;
-    }
-
-    @Override
-    public ISchemaRegionPlan visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, ByteBuffer buffer) {
-      try {
-        activateTemplatePlan.setPrefixPath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
-      } catch (IllegalPathException e) {
-        LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
-      }
-
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
-      return activateTemplatePlan;
     }
 
     @Override
@@ -181,7 +168,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       List<CompressionType> compressors = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        compressors.add(CompressionType.values()[buffer.get()]);
+        compressors.add(CompressionType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setCompressors(compressors);
 
@@ -238,7 +225,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       createTimeSeriesPlan.setDataType(TSDataType.values()[buffer.get()]);
       createTimeSeriesPlan.setEncoding(TSEncoding.values()[buffer.get()]);
-      createTimeSeriesPlan.setCompressor(CompressionType.values()[buffer.get()]);
+      createTimeSeriesPlan.setCompressor(CompressionType.deserialize(buffer.get()));
       createTimeSeriesPlan.setTagOffset(buffer.getLong());
 
       // alias
@@ -312,26 +299,42 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
     }
 
     @Override
-    public ISchemaRegionPlan visitSetTemplate(ISetTemplatePlan setTemplatePlan, ByteBuffer buffer) {
-      setTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
-      setTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
-
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
-
-      return setTemplatePlan;
+    public ISchemaRegionPlan visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, ByteBuffer buffer) {
+      preDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return preDeactivateTemplatePlan;
     }
 
     @Override
-    public ISchemaRegionPlan visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, ByteBuffer buffer) {
-      unsetTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
-      unsetTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
+    public ISchemaRegionPlan visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, ByteBuffer buffer) {
+      rollbackPreDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return rollbackPreDeactivateTemplatePlan;
+    }
 
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
+    @Override
+    public ISchemaRegionPlan visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, ByteBuffer buffer) {
+      deactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
+      return deactivateTemplatePlan;
+    }
 
-      return unsetTemplatePlan;
+    private Map<PartialPath, List<Integer>> deserializeTemplateSetInfo(ByteBuffer buffer) {
+      int size = buffer.getInt();
+      Map<PartialPath, List<Integer>> result = new HashMap<>(size);
+      PartialPath pattern;
+      int templateNum;
+      List<Integer> templateIdList;
+      for (int i = 0; i < size; i++) {
+        pattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+        templateNum = buffer.getInt();
+        templateIdList = new ArrayList<>(templateNum);
+        for (int j = 0; j < templateNum; j++) {
+          templateIdList.add(buffer.getInt());
+        }
+        result.put(pattern, templateIdList);
+      }
+      return result;
     }
   }
 }

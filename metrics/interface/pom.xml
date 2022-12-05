@@ -23,11 +23,12 @@
     <modelVersion>4.0.0</modelVersion>
     <properties>
         <snakeyaml.version>1.31</snakeyaml.version>
+        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
     </properties>
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-metrics</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>metrics-interface</artifactId>
@@ -36,14 +37,14 @@
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
     <dependencies>
         <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+            <version>${reactor-netty-http.version}</version>
         </dependency>
     </dependencies>
     <build>

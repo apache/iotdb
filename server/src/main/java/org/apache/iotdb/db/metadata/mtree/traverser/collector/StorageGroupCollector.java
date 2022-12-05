@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
-// This class implements storage group path collection function.
+// This class implements database path collection function.
 public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
   protected boolean collectInternal = false;

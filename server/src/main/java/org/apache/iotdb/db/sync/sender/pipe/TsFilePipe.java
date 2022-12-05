@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
@@ -72,6 +73,16 @@ public class TsFilePipe implements Pipe {
   /* handle rpc send logic in sender-side*/
   private final SenderManager senderManager;
 
+  /* whether finish collect history file. If false, no need to collect realtime file*/
+  private boolean isCollectFinished;
+  /**
+   * Write lock needs to be added to block the real-time data collection process when collecting
+   * historical data, otherwise data may be lost. Because historical data collection operations are
+   * rare, it will not affect write performance.
+   */
+  private final ReentrantReadWriteLock isCollectFinishedReadWriteLock =
+      new ReentrantReadWriteLock(false);
+
   //  private long maxSerialNumber;
   private AtomicLong maxSerialNumber;
 
@@ -89,6 +100,7 @@ public class TsFilePipe implements Pipe {
     this.pipeSink = pipeSink;
 
     this.pipeLog = new TsFilePipeLogger(this);
+    this.isCollectFinished = pipeLog.isCollectFinished();
     this.collectRealTimeDataLock = new ReentrantLock();
     this.senderManager = new SenderManager(this, pipeSink);
 
@@ -99,7 +111,7 @@ public class TsFilePipe implements Pipe {
   private void recover() {
     File dir =
         new File(
-            SyncPathUtil.getSenderRealTimePipeLogDir(
+            SyncPathUtil.getSenderHistoryPipeLogDir(
                 pipeInfo.getPipeName(), pipeInfo.getCreateTime()));
     if (dir.exists()) {
       File[] fileList = dir.listFiles();
@@ -109,11 +121,21 @@ public class TsFilePipe implements Pipe {
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(
                     pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
+        historyQueueMap.put(dataRegionId, historyQueue);
+      }
+    }
+    dir =
+        new File(
+            SyncPathUtil.getSenderRealTimePipeLogDir(
+                pipeInfo.getPipeName(), pipeInfo.getCreateTime()));
+    if (dir.exists()) {
+      File[] fileList = dir.listFiles();
+      for (File file : fileList) {
+        String dataRegionId = file.getName();
         BufferedPipeDataQueue realTimeQueue =
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(
                     pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
-        historyQueueMap.put(dataRegionId, historyQueue);
         realTimeQueueMap.put(dataRegionId, realTimeQueue);
         this.maxSerialNumber.set(
             Math.max(this.maxSerialNumber.get(), realTimeQueue.getLastMaxSerialNumber()));
@@ -123,16 +145,14 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public synchronized void start() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      throw new PipeException(
-          String.format(
-              "Can not start pipe %s, because the pipe has been drop.", pipeInfo.getPipeName()));
-    } else if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
+    if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
+    // check connection
+    senderManager.checkConnection();
 
     // init sync manager
-    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
     for (DataRegion dataRegion : dataRegions) {
       logger.info(
           logFormat(
@@ -141,10 +161,12 @@ public class TsFilePipe implements Pipe {
       getOrCreateSyncManager(dataRegion.getDataRegionId());
     }
     try {
-      if (!pipeLog.isCollectFinished()) {
+      isCollectFinishedReadWriteLock.writeLock().lock();
+      if (!isCollectFinished) {
         pipeLog.clear();
         collectHistoryData();
         pipeLog.finishCollect();
+        isCollectFinished = true;
       }
 
       pipeInfo.setStatus(PipeStatus.RUNNING);
@@ -156,6 +178,8 @@ public class TsFilePipe implements Pipe {
               SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
           e);
       throw new PipeException("Start error, can not clear pipe log.");
+    } finally {
+      isCollectFinishedReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -283,12 +307,13 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public ISyncManager getOrCreateSyncManager(String dataRegionId) {
+    // Only need to deal with pipe that has finished history file collection,
     return syncManagerMap.computeIfAbsent(
         dataRegionId,
         id -> {
           registerDataRegion(id);
           return new LocalSyncManager(
-              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+              StorageEngine.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
               this);
         });
   }
@@ -319,6 +344,16 @@ public class TsFilePipe implements Pipe {
   }
 
   @Override
+  public boolean isHistoryCollectFinished() {
+    try {
+      isCollectFinishedReadWriteLock.readLock().lock();
+      return isCollectFinished;
+    } finally {
+      isCollectFinishedReadWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
   public PipeInfo getPipeInfo() {
     return pipeInfo;
   }
@@ -338,22 +373,14 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public synchronized void stop() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      throw new PipeException(
-          String.format("Can not stop pipe %s, because the pipe is drop.", pipeInfo.getPipeName()));
-    }
     senderManager.stop();
     pipeInfo.setStatus(PipeStatus.STOP);
   }
 
   @Override
   public synchronized void drop() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      return;
-    }
-    senderManager.close();
+    close();
     clear();
-    pipeInfo.setStatus(PipeStatus.DROP);
   }
 
   private void clear() {
@@ -376,9 +403,6 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public void close() throws PipeException {
-    if (pipeInfo.getStatus() == PipeStatus.DROP) {
-      return;
-    }
     historyQueueMap.values().forEach(PipeDataQueue::close);
     realTimeQueueMap.values().forEach(PipeDataQueue::close);
     senderManager.close();

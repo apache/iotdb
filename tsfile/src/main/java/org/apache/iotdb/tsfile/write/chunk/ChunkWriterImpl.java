@@ -314,6 +314,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
@@ -346,6 +347,27 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void clearPageWriter() {
     pageWriter = null;
+  }
+
+  @Override
+  public boolean checkIsUnsealedPageOverThreshold(
+      long size, long pointNum, boolean returnTrueIfPageEmpty) {
+    if (returnTrueIfPageEmpty && pageWriter.getPointNumber() == 0) {
+      // return true if there is no unsealed page
+      return true;
+    }
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
+  }
+
+  @Override
+  public boolean checkIsChunkSizeOverThreshold(
+      long size, long pointNum, boolean returnTrueIfChunkEmpty) {
+    if (returnTrueIfChunkEmpty && statistics.getCount() + pageWriter.getPointNumber() == 0) {
+      // return true if there is no unsealed chunk
+      return true;
+    }
+    return estimateMaxSeriesMemSize() >= size
+        || statistics.getCount() + pageWriter.getPointNumber() >= pointNum;
   }
 
   public TSDataType getDataType() {
@@ -456,5 +478,10 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public void setLastPoint(boolean isLastPoint) {
     this.isLastPoint = isLastPoint;
+  }
+
+  /** Only used for tests. */
+  public PageWriter getPageWriter() {
+    return pageWriter;
   }
 }

@@ -31,12 +31,12 @@ public class PipeSinkException extends IoTDBException {
   }
 
   public PipeSinkException(String message) {
-    super(message, TSStatusCode.PIPESINK_ERROR.getStatusCode());
+    super(message, TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode());
   }
 
   public PipeSinkException(String attr, String value, String attrType) {
     super(
         String.format("%s=%s has wrong format, require for %s.", attr, value, attrType),
-        TSStatusCode.PIPESINK_ERROR.getStatusCode());
+        TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode());
   }
 }

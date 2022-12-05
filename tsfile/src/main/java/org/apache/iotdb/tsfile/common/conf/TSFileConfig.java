@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.util.Properties;
 
 /** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
@@ -55,7 +56,7 @@ public class TSFileConfig implements Serializable {
 
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-common.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
@@ -73,8 +74,8 @@ public class TSFileConfig implements Serializable {
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
   private int pageSizeInByte = 64 * 1024;
-  /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  /** The maximum number of data points in a page, default value is 10000. */
+  private int maxNumberOfPointsInPage = 10_000;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -157,6 +158,9 @@ public class TSFileConfig implements Serializable {
   private int maxTsBlockLineNumber = 1000;
 
   private int patternMatchingThreshold = 1000000;
+
+  /** customizedProperties, this should be empty by default. */
+  private Properties customizedProperties = new Properties();
 
   public TSFileConfig() {}
 
@@ -462,5 +466,13 @@ public class TSFileConfig implements Serializable {
 
   public void setPatternMatchingThreshold(int patternMatchingThreshold) {
     this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
   }
 }
