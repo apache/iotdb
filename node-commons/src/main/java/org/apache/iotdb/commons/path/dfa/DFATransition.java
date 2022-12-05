@@ -48,6 +48,11 @@ public class DFATransition implements IFATransition {
   }
 
   @Override
+  public String getValue() {
+    return acceptEvent;
+  }
+
+  @Override
   public boolean isMatch(String event) {
     if (isBatch()) {
       return !rejectEventList.contains(event);

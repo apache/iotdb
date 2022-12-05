@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.path.dfa;
 
 public interface IFATransition {
 
+  String getValue();
+
   boolean isMatch(String event);
 
   boolean isBatch();
