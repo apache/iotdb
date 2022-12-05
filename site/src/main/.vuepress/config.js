@@ -1034,7 +1034,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1267,7 +1268,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -2242,7 +2244,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
 							['Cluster/Cluster-Setup','分布式部署'],
-							['Cluster/Cluster-Maintenance','分布式运维命令']
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
@@ -2475,7 +2478,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
 							['Cluster/Cluster-Setup','分布式部署'],
-							['Cluster/Cluster-Maintenance','分布式运维命令']
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
