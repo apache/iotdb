@@ -317,7 +317,7 @@ public class IoTDBConfig {
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Math.max(4, Runtime.getRuntime().availableProcessors());
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -684,6 +684,9 @@ public class IoTDBConfig {
    * statements.
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
+
+  /** The number of threads in the thread pool that execute insert-tablet tasks. */
+  private int intoOperationExecutionThreadCount = 2;
 
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
@@ -1900,6 +1903,14 @@ public class IoTDBConfig {
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public int getIntoOperationExecutionThreadCount() {
+    return intoOperationExecutionThreadCount;
+  }
+
+  public void setIntoOperationExecutionThreadCount(int intoOperationExecutionThreadCount) {
+    this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {

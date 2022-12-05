@@ -337,4 +337,18 @@ public class StandaloneEnvConfig implements BaseConfig {
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
   }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setQueryThreadCount(queryThreadCount);
+    return this;
+  }
+
+  @Override
+  public int getQueryThreadCount() {
+    return IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
+  }
 }
