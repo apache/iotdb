@@ -29,10 +29,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PatternDFA implements IPatternDFA {
+public class PatternDFA implements IPatternFA {
 
   // TODO: maybe transitionMap can be represented as List
-  private final Map<String, IDFATransition> transitionMap = new HashMap<>();
+  private final Map<String, IFATransition> transitionMap = new HashMap<>();
   private final DFAGraph dfaGraph;
 
   private PatternDFA(Builder builder) {
@@ -66,17 +66,17 @@ public class PatternDFA implements IPatternDFA {
   }
 
   @Override
-  public List<IDFATransition> getTransition(IDFAState state) {
+  public List<IFATransition> getTransition(IFAState state) {
     return dfaGraph.getTransition(state, transitionMap);
   }
 
   @Override
-  public IDFAState getNextState(IDFAState currentState, IDFATransition transition) {
+  public IFAState getNextState(IFAState currentState, IFATransition transition) {
     return dfaGraph.getNextState(currentState, transition);
   }
 
   @Override
-  public IDFAState getInitialState() {
+  public IFAState getInitialState() {
     return dfaGraph.getInitialState();
   }
 

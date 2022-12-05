@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.commons.path.dfa;
 
-import java.util.List;
+public interface IFATransition {
 
-public interface IPatternDFA {
+  boolean isMatch(String event);
 
-  List<IDFATransition> getTransition(IDFAState state);
-
-  IDFAState getNextState(IDFAState currentState, IDFATransition transition);
-
-  IDFAState getInitialState();
+  boolean isBatch();
 }

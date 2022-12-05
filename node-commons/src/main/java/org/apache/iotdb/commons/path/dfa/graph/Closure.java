@@ -18,29 +18,29 @@
  */
 package org.apache.iotdb.commons.path.dfa.graph;
 
-import org.apache.iotdb.commons.path.dfa.IDFAState;
+import org.apache.iotdb.commons.path.dfa.IFAState;
 
 import java.util.Objects;
 import java.util.Set;
 
 public class Closure {
-  private Set<IDFAState> stateSet;
+  private Set<IFAState> stateSet;
 
-  public Closure(Set<IDFAState> stateSet) {
+  public Closure(Set<IFAState> stateSet) {
     this.stateSet = stateSet;
   }
 
-  public Set<IDFAState> getStateSet() {
+  public Set<IFAState> getStateSet() {
     return stateSet;
   }
 
-  public void setStateSet(Set<IDFAState> stateSet) {
+  public void setStateSet(Set<IFAState> stateSet) {
     this.stateSet = stateSet;
   }
 
   public boolean isFinal() {
     boolean res = false;
-    for (IDFAState state : stateSet) {
+    for (IFAState state : stateSet) {
       res |= state.isFinal();
     }
     return res;

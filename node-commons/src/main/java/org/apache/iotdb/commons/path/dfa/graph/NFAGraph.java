@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.path.dfa.graph;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.dfa.DFAState;
-import org.apache.iotdb.commons.path.dfa.IDFAState;
-import org.apache.iotdb.commons.path.dfa.IDFATransition;
+import org.apache.iotdb.commons.path.dfa.IFAState;
+import org.apache.iotdb.commons.path.dfa.IFATransition;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -33,14 +33,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class NFAGraph {
-  private final List<IDFAState> nfaStateList = new ArrayList<>();
-  private final Map<IDFATransition, List<List<IDFAState>>> nfaTransitionTable = new HashMap<>();
+  private final List<IFAState> nfaStateList = new ArrayList<>();
+  private final Map<IFATransition, List<List<IFAState>>> nfaTransitionTable = new HashMap<>();
 
-  public NFAGraph(PartialPath pathPattern, Map<String, IDFATransition> transitionMap) {
+  public NFAGraph(PartialPath pathPattern, Map<String, IFATransition> transitionMap) {
     // init start state, index=0
     int index = 0;
     nfaStateList.add(new DFAState(index));
-    for (IDFATransition transition : transitionMap.values()) {
+    for (IFATransition transition : transitionMap.values()) {
       nfaTransitionTable.put(transition, new ArrayList<>());
       nfaTransitionTable.get(transition).add(new ArrayList<>());
     }
@@ -54,16 +54,16 @@ public class NFAGraph {
               ? new DFAState(++index, true)
               : new DFAState(++index);
       nfaStateList.add(state);
-      for (IDFATransition transition : transitionMap.values()) {
+      for (IFATransition transition : transitionMap.values()) {
         nfaTransitionTable.get(transition).add(new ArrayList<>());
       }
       // construct transition
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)) {
-        for (IDFATransition transition : transitionMap.values()) {
+        for (IFATransition transition : transitionMap.values()) {
           nfaTransitionTable.get(transition).get(preIndex).add(state);
         }
       } else if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
-        for (IDFATransition transition : transitionMap.values()) {
+        for (IFATransition transition : transitionMap.values()) {
           nfaTransitionTable.get(transition).get(preIndex).add(state);
           nfaTransitionTable.get(transition).get(index).add(state);
         }
@@ -73,7 +73,7 @@ public class NFAGraph {
     }
   }
 
-  public void print(Map<String, IDFATransition> transitionMap) {
+  public void print(Map<String, IFATransition> transitionMap) {
     System.out.println();
     System.out.println();
     System.out.println("NFA:");
@@ -81,7 +81,7 @@ public class NFAGraph {
         "==================================================================================================");
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append(String.format("|%-15s|", "State"));
-    for (IDFATransition transfer : transitionMap.values()) {
+    for (IFATransition transfer : transitionMap.values()) {
       stringBuilder.append(String.format("%-15s|", transfer.toString()));
     }
     stringBuilder.append(String.format("%-15s|", "Final"));
@@ -89,13 +89,13 @@ public class NFAGraph {
     for (int i = 0; i < nfaStateList.size(); i++) {
       stringBuilder = new StringBuilder();
       stringBuilder.append(String.format("|%-15d|", i));
-      for (IDFATransition transition : transitionMap.values()) {
+      for (IFATransition transition : transitionMap.values()) {
         stringBuilder.append(
             String.format(
                 "%-15s|",
                 StringUtils.join(
                     nfaTransitionTable.get(transition).get(i).stream()
-                        .map(IDFAState::getIndex)
+                        .map(IFAState::getIndex)
                         .collect(Collectors.toList()),
                     ",")));
       }
@@ -104,7 +104,7 @@ public class NFAGraph {
     }
   }
 
-  public List<List<IDFAState>> getTransitionColumn(IDFATransition transition) {
+  public List<List<IFAState>> getTransitionColumn(IFATransition transition) {
     return nfaTransitionTable.get(transition);
   }
 }

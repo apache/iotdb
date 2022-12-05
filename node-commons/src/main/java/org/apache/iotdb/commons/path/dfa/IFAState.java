@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.commons.path.dfa;
 
-// TODO: rename to IState
-public interface IDFAState {
+public interface IFAState {
 
   boolean isInitial();
 

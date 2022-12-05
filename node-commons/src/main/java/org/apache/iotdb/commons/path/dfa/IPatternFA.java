@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.commons.path.dfa;
 
-// TODO: rename to ITransition
-public interface IDFATransition {
+import java.util.List;
 
-  boolean isMatch(String event);
+public interface IPatternFA {
 
-  boolean isBatch();
+  List<IFATransition> getTransition(IFAState state);
+
+  IFAState getNextState(IFAState currentState, IFATransition transition);
+
+  IFAState getInitialState();
 }

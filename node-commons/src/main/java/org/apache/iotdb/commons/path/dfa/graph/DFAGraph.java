@@ -19,8 +19,8 @@
 package org.apache.iotdb.commons.path.dfa.graph;
 
 import org.apache.iotdb.commons.path.dfa.DFAState;
-import org.apache.iotdb.commons.path.dfa.IDFAState;
-import org.apache.iotdb.commons.path.dfa.IDFATransition;
+import org.apache.iotdb.commons.path.dfa.IFAState;
+import org.apache.iotdb.commons.path.dfa.IFATransition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,15 +32,15 @@ import java.util.Set;
 import java.util.Stack;
 
 public class DFAGraph {
-  private final List<IDFAState> dfaStateList = new ArrayList<>();
-  private final Map<IDFATransition, List<IDFAState>> dfaTransitionTable = new HashMap<>();
+  private final List<IFAState> dfaStateList = new ArrayList<>();
+  private final Map<IFATransition, List<IFAState>> dfaTransitionTable = new HashMap<>();
 
-  public DFAGraph(NFAGraph nfaGraph, Map<String, IDFATransition> transitionMap) {
+  public DFAGraph(NFAGraph nfaGraph, Map<String, IFATransition> transitionMap) {
     // init start state
     int index = 0;
     // Map NFAStateClosure to DFASate
     Map<Closure, DFAState> closureStateMap = new HashMap<>();
-    for (IDFATransition transition : transitionMap.values()) {
+    for (IFATransition transition : transitionMap.values()) {
       dfaTransitionTable.put(transition, new ArrayList<>());
       dfaTransitionTable.get(transition).add(null);
     }
@@ -54,7 +54,7 @@ public class DFAGraph {
     // construct DFA
     while (!closureStack.isEmpty()) {
       curClosure = closureStack.pop();
-      for (IDFATransition transition : transitionMap.values()) {
+      for (IFATransition transition : transitionMap.values()) {
         Closure nextClosure = getNextClosure(nfaGraph, curClosure, transition);
         if (!nextClosure.getStateSet().isEmpty()) {
           if (closureStateMap.containsKey(nextClosure)) {
@@ -67,7 +67,7 @@ public class DFAGraph {
             DFAState newState = new DFAState(++index, nextClosure.isFinal());
             dfaStateList.add(newState);
             closureStateMap.put(nextClosure, newState);
-            for (List<IDFAState> column : dfaTransitionTable.values()) {
+            for (List<IFAState> column : dfaTransitionTable.values()) {
               column.add(null);
             }
             dfaTransitionTable
@@ -80,7 +80,7 @@ public class DFAGraph {
     }
   }
 
-  public void print(Map<String, IDFATransition> transitionMap) {
+  public void print(Map<String, IFATransition> transitionMap) {
     // print
     System.out.println();
     System.out.println();
@@ -89,7 +89,7 @@ public class DFAGraph {
         "==================================================================================================");
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder.append(String.format("|%-15s|", "State"));
-    for (IDFATransition transfer : transitionMap.values()) {
+    for (IFATransition transfer : transitionMap.values()) {
       stringBuilder.append(String.format("%-15s|", transfer.toString()));
     }
     stringBuilder.append(String.format("%-15s|", "Final"));
@@ -97,8 +97,8 @@ public class DFAGraph {
     for (int i = 0; i < dfaStateList.size(); i++) {
       stringBuilder = new StringBuilder();
       stringBuilder.append(String.format("|%-15d|", i));
-      for (IDFATransition transition : transitionMap.values()) {
-        IDFAState tmp = dfaTransitionTable.get(transition).get(i);
+      for (IFATransition transition : transitionMap.values()) {
+        IFAState tmp = dfaTransitionTable.get(transition).get(i);
         stringBuilder.append(String.format("%-15s|", tmp == null ? "" : tmp.getIndex()));
       }
       stringBuilder.append(String.format("%-15s|", dfaStateList.get(i).isFinal()));
@@ -106,19 +106,19 @@ public class DFAGraph {
     }
   }
 
-  private Closure getNextClosure(NFAGraph nfaGraph, Closure curClosure, IDFATransition transfer) {
-    Set<IDFAState> nextStateSet = new HashSet<>();
-    List<List<IDFAState>> transferColumn = nfaGraph.getTransitionColumn(transfer);
-    for (IDFAState state : curClosure.getStateSet()) {
+  private Closure getNextClosure(NFAGraph nfaGraph, Closure curClosure, IFATransition transfer) {
+    Set<IFAState> nextStateSet = new HashSet<>();
+    List<List<IFAState>> transferColumn = nfaGraph.getTransitionColumn(transfer);
+    for (IFAState state : curClosure.getStateSet()) {
       nextStateSet.addAll(transferColumn.get(state.getIndex()));
     }
     return new Closure(nextStateSet);
   }
 
-  public List<IDFATransition> getTransition(
-      IDFAState state, Map<String, IDFATransition> transitionMap) {
-    List<IDFATransition> res = new ArrayList<>();
-    for (IDFATransition transition : transitionMap.values()) {
+  public List<IFATransition> getTransition(
+      IFAState state, Map<String, IFATransition> transitionMap) {
+    List<IFATransition> res = new ArrayList<>();
+    for (IFATransition transition : transitionMap.values()) {
       if (dfaTransitionTable.get(transition).get(state.getIndex()) != null) {
         res.add(transition);
       }
@@ -126,11 +126,11 @@ public class DFAGraph {
     return res;
   }
 
-  public IDFAState getNextState(IDFAState currentState, IDFATransition transition) {
+  public IFAState getNextState(IFAState currentState, IFATransition transition) {
     return dfaTransitionTable.get(transition).get(currentState.getIndex());
   }
 
-  public IDFAState getInitialState() {
+  public IFAState getInitialState() {
     return dfaStateList.get(0);
   }
 }

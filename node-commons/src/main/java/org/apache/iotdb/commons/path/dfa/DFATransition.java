@@ -25,7 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.List;
 import java.util.Objects;
 
-public class DFATransition implements IDFATransition {
+public class DFATransition implements IFATransition {
 
   private final String acceptEvent;
   private List<String> rejectEventList;

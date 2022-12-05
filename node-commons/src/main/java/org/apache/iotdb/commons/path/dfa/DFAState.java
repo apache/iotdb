@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.path.dfa;
 
 import java.util.Objects;
 
-public class DFAState implements IDFAState {
+public class DFAState implements IFAState {
   private final int index;
   private final boolean isFinal;
 
