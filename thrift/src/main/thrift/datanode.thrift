@@ -214,8 +214,9 @@ struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
-  4: optional list<i32> schemaIds
-  5: optional map<string, common.TSpaceQuota> useSpaceQuota
+  4: optional list<i32> schemaRegionIds
+  5: optional list<i32> dataRegionIds
+  6: optional map<string, common.TSpaceQuota> useSpaceQuota
 }
 
 struct THeartbeatResp {
@@ -226,6 +227,7 @@ struct THeartbeatResp {
   5: optional TLoadSample loadSample
   6: optional map<i32, i32> deviceNum
   7: optional map<i32, i32> timeSeriesNum
+  8: optional map<i32, i64> regionDisk
 }
 
 struct TLoadSample {

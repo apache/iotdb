@@ -479,14 +479,24 @@ public class StorageGroupPartitionTable {
     return regionGroupMap.containsKey(regionId);
   }
 
-  public List<Integer> getSchemaIds() {
-    List<Integer> schemaIds = new ArrayList<>();
+  public List<Integer> getSchemaRegionIds() {
+    List<Integer> schemaRegionIds = new ArrayList<>();
     for (TConsensusGroupId consensusGroupId : regionGroupMap.keySet()) {
       if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-        schemaIds.add(consensusGroupId.getId());
+        schemaRegionIds.add(consensusGroupId.getId());
       }
     }
-    return schemaIds;
+    return schemaRegionIds;
+  }
+
+  public List<Integer> getDataRegionIds() {
+    List<Integer> dataRegionIds = new ArrayList<>();
+    for (TConsensusGroupId consensusGroupId : regionGroupMap.keySet()) {
+      if (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+        dataRegionIds.add(consensusGroupId.getId());
+      }
+    }
+    return dataRegionIds;
   }
 
   public String getStorageGroupName() {

@@ -606,6 +606,7 @@ struct TUnsetSchemaTemplateReq{
 struct TSpaceQuotaResp{
   1: required common.TSStatus status
   2: optional map<string, common.TSpaceQuota> spaceQuota
+  3: optional map<string, common.TSpaceQuota> useSpaceQuota
 }
 
 service IConfigNodeRPCService {

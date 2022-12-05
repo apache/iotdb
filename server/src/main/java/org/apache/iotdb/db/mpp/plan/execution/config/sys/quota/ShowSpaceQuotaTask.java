@@ -75,6 +75,12 @@ public class ShowSpaceQuotaTask implements IConfigTask {
                       spaceQuotaEntry.getValue().getDiskSize() == 0
                           ? "unlimited"
                           : spaceQuotaEntry.getValue().getDiskSize() + "M"));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(
+                  Binary.valueOf(
+                      resp.getUseSpaceQuota().get(spaceQuotaEntry.getKey()).getDiskSize() / 1024
+                          + "M"));
           builder.declarePosition();
         }
         if (spaceQuotaEntry.getValue().getDeviceNum() != -1) {
@@ -88,6 +94,11 @@ public class ShowSpaceQuotaTask implements IConfigTask {
                       spaceQuotaEntry.getValue().getDeviceNum() == 0
                           ? "unlimited"
                           : spaceQuotaEntry.getValue().getDeviceNum() + ""));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(
+                  Binary.valueOf(
+                      resp.getUseSpaceQuota().get(spaceQuotaEntry.getKey()).getDeviceNum() + ""));
           builder.declarePosition();
         }
         if (spaceQuotaEntry.getValue().getTimeserieNum() != -1) {
@@ -103,6 +114,12 @@ public class ShowSpaceQuotaTask implements IConfigTask {
                       spaceQuotaEntry.getValue().getTimeserieNum() == 0
                           ? "unlimited"
                           : spaceQuotaEntry.getValue().getTimeserieNum() + ""));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(
+                  Binary.valueOf(
+                      resp.getUseSpaceQuota().get(spaceQuotaEntry.getKey()).getTimeserieNum()
+                          + ""));
           builder.declarePosition();
         }
       }

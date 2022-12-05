@@ -40,7 +40,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 // TODO: Manage quotas for storage groups
 public class ClusterQuotaManager {
@@ -51,14 +53,18 @@ public class ClusterQuotaManager {
   private final QuotaInfo quotaInfo;
   private final Map<Integer, Integer> deviceNum;
   private final Map<Integer, Integer> timeSeriesNum;
-  private final Map<String, List<Integer>> schemaIdMap;
+  private final Map<String, List<Integer>> schemaRegionIdMap;
+  private final Map<String, List<Integer>> dataRegionIdMap;
+  private final Map<Integer, Long> regionDisk;
 
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
     this.quotaInfo = quotaInfo;
-    deviceNum = new HashMap<>();
-    timeSeriesNum = new HashMap<>();
-    schemaIdMap = new HashMap<>();
+    deviceNum = new ConcurrentHashMap<>();
+    timeSeriesNum = new ConcurrentHashMap<>();
+    schemaRegionIdMap = new HashMap<>();
+    dataRegionIdMap = new HashMap<>();
+    regionDisk = new ConcurrentHashMap<>();
   }
 
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
@@ -92,14 +98,18 @@ public class ClusterQuotaManager {
     TSpaceQuotaResp showSpaceQuotaResp = new TSpaceQuotaResp();
     if (storageGroups.isEmpty()) {
       showSpaceQuotaResp.setSpaceQuota(quotaInfo.getSpaceQuotaLimit());
+      showSpaceQuotaResp.setUseSpaceQuota(quotaInfo.getUseSpaceQuota());
     } else if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
       Map<String, TSpaceQuota> spaceQuotaMap = new HashMap<>();
+      Map<String, TSpaceQuota> useSpaceQuotaMap = new HashMap<>();
       for (String storageGroup : storageGroups) {
         if (quotaInfo.getSpaceQuotaLimit().containsKey(storageGroup)) {
           spaceQuotaMap.put(storageGroup, quotaInfo.getSpaceQuotaLimit().get(storageGroup));
+          useSpaceQuotaMap.put(storageGroup, quotaInfo.getUseSpaceQuota().get(storageGroup));
         }
       }
       showSpaceQuotaResp.setSpaceQuota(spaceQuotaMap);
+      showSpaceQuotaResp.setUseSpaceQuota(useSpaceQuotaMap);
     }
     showSpaceQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return showSpaceQuotaResp;
@@ -118,12 +128,22 @@ public class ClusterQuotaManager {
     return quotaInfo.getSpaceQuotaLimit().keySet().isEmpty();
   }
 
-  public List<Integer> getSchemaIds() {
-    List<Integer> schemaIds = new ArrayList<>();
+  public List<Integer> getSchemaRegionIds() {
+    List<Integer> schemaRegionIds = new ArrayList<>();
     getPartitionManager()
-        .getSchemaIds(new ArrayList<>(quotaInfo.getSpaceQuotaLimit().keySet()), schemaIdMap);
-    schemaIdMap.values().forEach(schemaIdList -> schemaIds.addAll(schemaIdList));
-    return schemaIds;
+        .getSchemaRegionIds(
+            new ArrayList<>(quotaInfo.getSpaceQuotaLimit().keySet()), schemaRegionIdMap);
+    schemaRegionIdMap.values().forEach(schemaRegionIds::addAll);
+    return schemaRegionIds;
+  }
+
+  public List<Integer> getDataRegionIds() {
+    List<Integer> dataRegionIds = new ArrayList<>();
+    getPartitionManager()
+        .getDataRegionIds(
+            new ArrayList<>(quotaInfo.getSpaceQuotaLimit().keySet()), dataRegionIdMap);
+    dataRegionIdMap.values().forEach(dataRegionIds::addAll);
+    return dataRegionIds;
   }
 
   public Map<String, TSpaceQuota> getUseSpaceQuota() {
@@ -138,26 +158,45 @@ public class ClusterQuotaManager {
     return timeSeriesNum;
   }
 
+  public Map<Integer, Long> getRegionDisk() {
+    return regionDisk;
+  }
+
   public void updateUseSpaceQuota() {
     AtomicInteger deviceCount = new AtomicInteger();
     AtomicInteger timeSeriesCount = new AtomicInteger();
-    for (Map.Entry<String, List<Integer>> entry : schemaIdMap.entrySet()) {
+    for (Map.Entry<String, List<Integer>> entry : schemaRegionIdMap.entrySet()) {
       deviceCount.set(0);
       timeSeriesCount.set(0);
       entry
           .getValue()
           .forEach(
-              schemaId -> {
-                if (deviceNum.containsKey(schemaId)) {
-                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaId));
+              schemaRegionId -> {
+                if (deviceNum.containsKey(schemaRegionId)) {
+                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaRegionId));
                 }
-                if (timeSeriesNum.containsKey(schemaId)) {
-                  timeSeriesCount.addAndGet(timeSeriesCount.get() + timeSeriesNum.get(schemaId));
+                if (timeSeriesNum.containsKey(schemaRegionId)) {
+                  timeSeriesCount.addAndGet(
+                      timeSeriesCount.get() + timeSeriesNum.get(schemaRegionId));
                 }
               });
       quotaInfo.getUseSpaceQuota().get(entry.getKey()).setDeviceNum(deviceCount.get());
       quotaInfo.getUseSpaceQuota().get(entry.getKey()).setTimeserieNum(timeSeriesCount.get());
     }
+    AtomicLong regionDiskCount = new AtomicLong();
+    for (Map.Entry<String, List<Integer>> entry : dataRegionIdMap.entrySet()) {
+      regionDiskCount.set(0);
+      entry
+          .getValue()
+          .forEach(
+              dataRegionId -> {
+                if (regionDisk.containsKey(dataRegionId)) {
+                  regionDiskCount.addAndGet(regionDiskCount.get() + regionDisk.get(dataRegionId));
+                }
+              });
+      quotaInfo.getUseSpaceQuota().get(entry.getKey()).setDiskSize(regionDiskCount.get());
+    }
+    LOGGER.info(quotaInfo.getUseSpaceQuota().toString());
   }
 
   private PartitionManager getPartitionManager() {

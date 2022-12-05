@@ -972,10 +972,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
       resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
     }
-    if (req.getSchemaIds() != null) {
-      DataNodeSpaceQuotaManager.getInstance().updateUseSpaceQuota(req.getUseSpaceQuota());
-      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaIds()));
-      resp.setTimeSeriesNum(schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaIds()));
+    if (req.getSchemaRegionIds() != null) {
+      spaceQuotaManager.updateUseSpaceQuota(req.getUseSpaceQuota());
+      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+      resp.setTimeSeriesNum(
+          schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+    }
+    if (req.getDataRegionIds() != null) {
+      spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
+      resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     return resp;
   }

@@ -718,7 +718,8 @@ public class NodeManager {
     heartbeatCounter.getAndUpdate((x) -> (x + 1) % 10);
 
     if (!getClusterQuotaManager().hasSpaceQuotaLimit()) {
-      heartbeatReq.setSchemaIds(getClusterQuotaManager().getSchemaIds());
+      heartbeatReq.setSchemaRegionIds(getClusterQuotaManager().getSchemaRegionIds());
+      heartbeatReq.setDataRegionIds(getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setUseSpaceQuota(getClusterQuotaManager().getUseSpaceQuota());
     }
     return heartbeatReq;
@@ -743,7 +744,8 @@ public class NodeManager {
               getPartitionManager().getRegionGroupCacheMap(),
               getLoadManager().getRouteBalancer(),
               getClusterQuotaManager().getDeviceNum(),
-              getClusterQuotaManager().getTimeSeriesNum());
+              getClusterQuotaManager().getTimeSeriesNum(),
+              getClusterQuotaManager().getRegionDisk());
       getClusterQuotaManager().updateUseSpaceQuota();
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(

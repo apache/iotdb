@@ -805,6 +805,16 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+  public void getDiskSizeByDataRegion(
+      Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
+    dataRegionMap.forEach(
+        (dataRegionId, dataRegion) -> {
+          if (dataRegionIds.contains(dataRegionId.getId())) {
+            dataRegionDisk.put(dataRegionId.getId(), dataRegion.statisticsDiskSpace());
+          }
+        });
+  }
+
   static class InstanceHolder {
 
     private static final StorageEngineV2 INSTANCE = new StorageEngineV2();

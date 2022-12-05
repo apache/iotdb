@@ -336,5 +336,6 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(COLUMN_DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_QUOTA_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_LIMIT, TSDataType.TEXT));
+          new ColumnHeader(COLUMN_LIMIT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_USED, TSDataType.TEXT));
 }

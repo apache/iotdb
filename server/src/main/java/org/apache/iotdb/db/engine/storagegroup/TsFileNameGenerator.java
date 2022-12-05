@@ -262,6 +262,17 @@ public class TsFileNameGenerator {
                     + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
   }
 
+  public static String getDataRegionFolderPath(
+      boolean sequence, String logicalStorageGroup, String virtualStorageGroup)
+      throws DiskSpaceInsufficientException {
+    DirectoryManager directoryManager = DirectoryManager.getInstance();
+    String baseDir =
+        sequence
+            ? directoryManager.getNextFolderForSequenceFile()
+            : directoryManager.getNextFolderForUnSequenceFile();
+    return baseDir + File.separator + logicalStorageGroup + File.separator + virtualStorageGroup;
+  }
+
   public static class TsFileName {
     private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);

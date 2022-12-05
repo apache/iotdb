@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // TODO: Store quota information of each sg
@@ -41,12 +42,12 @@ public class DataNodeSpaceQuotaManager {
 
   private Map<String, TSpaceQuota> spaceQuotaLimit;
   private Map<String, TSpaceQuota> useSpaceQuota;
-  private Map<Integer, Integer> regionDisk;
+  private DataNodeSizeStore dataNodeSizeStore;
 
   public DataNodeSpaceQuotaManager() {
     spaceQuotaLimit = new HashMap<>();
     useSpaceQuota = new HashMap<>();
-    regionDisk = new HashMap<>();
+    dataNodeSizeStore = new DataNodeSizeStore();
     recover();
   }
 
@@ -113,5 +114,27 @@ public class DataNodeSpaceQuotaManager {
       return true;
     }
     return false;
+  }
+
+  public boolean checkRegionDisk(String storageGroup) {
+    TSpaceQuota spaceQuota = spaceQuotaLimit.get(storageGroup);
+    if (spaceQuota == null) {
+      return true;
+    } else if (spaceQuota.getDiskSize() == 0) {
+      return true;
+    }
+    long diskSize = useSpaceQuota.get(storageGroup).getDiskSize();
+    if (spaceQuota.getDiskSize() * 1024 - diskSize > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  public void setDataRegionIds(List<Integer> dataRegionIds) {
+    dataNodeSizeStore.setDataRegionIds(dataRegionIds);
+  }
+
+  public Map<Integer, Long> getRegionDisk() {
+    return dataNodeSizeStore.getDataRegionDisk();
   }
 }
