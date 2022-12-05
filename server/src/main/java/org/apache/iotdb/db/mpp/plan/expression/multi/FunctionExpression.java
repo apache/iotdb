@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
@@ -48,7 +46,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
@@ -57,9 +54,7 @@ public class FunctionExpression extends Expression {
    * true: aggregation function<br>
    * false: time series generating function
    */
-  private final boolean isBuiltInAggregationFunctionExpression;
-
-  private boolean isUserDefinedAggregationFunctionExpression;
+  private Boolean isBuiltInAggregationFunctionExpressionCache;
 
   private final String functionName;
   private final LinkedHashMap<String, String> functionAttributes;
@@ -79,10 +74,6 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
-
-    isBuiltInAggregationFunctionExpression =
-        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
-    isConstantOperandCache = true;
   }
 
   public FunctionExpression(
@@ -92,16 +83,6 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
-
-    isBuiltInAggregationFunctionExpression =
-        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
-    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
-    isUserDefinedAggregationFunctionExpression =
-        expressions.stream()
-            .anyMatch(
-                v ->
-                    v.isUserDefinedAggregationFunctionExpression()
-                        || v.isBuiltInAggregationFunctionExpression());
   }
 
   public FunctionExpression(ByteBuffer byteBuffer) {
@@ -114,16 +95,6 @@ public class FunctionExpression extends Expression {
     for (int i = 0; i < expressionSize; i++) {
       expressions.add(Expression.deserialize(byteBuffer));
     }
-
-    isBuiltInAggregationFunctionExpression =
-        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName);
-    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
-    isUserDefinedAggregationFunctionExpression =
-        expressions.stream()
-            .anyMatch(
-                v ->
-                    v.isUserDefinedAggregationFunctionExpression()
-                        || v.isBuiltInAggregationFunctionExpression());
   }
 
   @Override
@@ -133,27 +104,23 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isBuiltInAggregationFunctionExpression() {
-    return isBuiltInAggregationFunctionExpression;
+    if (isBuiltInAggregationFunctionExpressionCache == null) {
+      isBuiltInAggregationFunctionExpressionCache =
+          BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
+    }
+    return isBuiltInAggregationFunctionExpressionCache;
   }
 
   @Override
   public boolean isConstantOperandInternal() {
+    if (isConstantOperandCache == null) {
+      isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    }
     return isConstantOperandCache;
   }
 
-  @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isBuiltInAggregationFunctionExpression()
-        && !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return isUserDefinedAggregationFunctionExpression;
-  }
-
   public boolean isCountStar() {
-    if (!isBuiltInAggregationFunctionExpression) {
+    if (!isBuiltInAggregationFunctionExpression()) {
       return false;
     }
     return getPaths().size() == 1
@@ -168,11 +135,6 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
-    isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
-    isUserDefinedAggregationFunctionExpression =
-        isUserDefinedAggregationFunctionExpression
-            || expression.isUserDefinedAggregationFunctionExpression()
-            || expression.isBuiltInAggregationFunctionExpression();
     expressions.add(expression);
   }
 
@@ -191,43 +153,6 @@ public class FunctionExpression extends Expression {
   @Override
   public List<Expression> getExpressions() {
     return expressions;
-  }
-
-  @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
-
-    for (Expression suffixExpression : expressions) {
-      List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-      suffixExpression.concat(prefixPaths, resultExpressionsForRecursion);
-      resultExpressionsForRecursionList.add(resultExpressionsForRecursion);
-    }
-
-    List<List<Expression>> functionExpressions = new ArrayList<>();
-    ConcatPathOptimizer.cartesianProduct(
-        resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
-    for (List<Expression> functionExpression : functionExpressions) {
-      resultExpressions.add(
-          new FunctionExpression(functionName, functionAttributes, functionExpression));
-    }
-  }
-
-  @Override
-  public void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
-      resultExpressions.add(
-          new FunctionExpression(functionName, functionAttributes, functionExpression));
-    }
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    for (Expression expression : expressions) {
-      expression.collectPaths(pathSet);
-    }
   }
 
   @Override
@@ -275,7 +200,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression) {
+    if (isBuiltInAggregationFunctionExpression()) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)

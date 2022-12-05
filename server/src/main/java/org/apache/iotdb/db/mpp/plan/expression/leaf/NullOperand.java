@@ -19,22 +19,17 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class NullOperand extends LeafOperand {
   @Override
@@ -50,22 +45,6 @@ public class NullOperand extends LeafOperand {
   @Override
   protected boolean isConstantOperandInternal() {
     return true;
-  }
-
-  @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    resultExpressions.add(this);
-  }
-
-  @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    resultExpressions.add(this);
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    // do nothing
   }
 
   @Override

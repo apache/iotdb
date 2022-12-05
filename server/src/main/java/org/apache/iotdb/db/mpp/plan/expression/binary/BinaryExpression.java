@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.binary;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -34,11 +32,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
@@ -82,105 +78,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isBuiltInAggregationFunctionExpression()
-        || rightExpression.isBuiltInAggregationFunctionExpression()
-        || leftExpression.isUserDefinedAggregationFunctionExpression()
-        || rightExpression.isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
-  }
-
-  @Override
-  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.concat(prefixPaths, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.concat(prefixPaths, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  private void reconstruct(
-      List<Expression> leftExpressions,
-      List<Expression> rightExpressions,
-      List<Expression> resultExpressions) {
-    for (Expression le : leftExpressions) {
-      for (Expression re : rightExpressions) {
-        switch (operator()) {
-          case "+":
-            resultExpressions.add(new AdditionExpression(le, re));
-            break;
-          case "-":
-            resultExpressions.add(new SubtractionExpression(le, re));
-            break;
-          case "*":
-            resultExpressions.add(new MultiplicationExpression(le, re));
-            break;
-          case "/":
-            resultExpressions.add(new DivisionExpression(le, re));
-            break;
-          case "%":
-            resultExpressions.add(new ModuloExpression(le, re));
-            break;
-          case "<":
-            resultExpressions.add(new LessThanExpression(le, re));
-            break;
-          case "<=":
-            resultExpressions.add(new LessEqualExpression(le, re));
-            break;
-          case ">":
-            resultExpressions.add(new GreaterThanExpression(le, re));
-            break;
-          case ">=":
-            resultExpressions.add(new GreaterEqualExpression(le, re));
-            break;
-          case "=":
-            resultExpressions.add(new EqualToExpression(le, re));
-            break;
-          case "!=":
-            resultExpressions.add(new NonEqualExpression(le, re));
-            break;
-          case "&":
-            resultExpressions.add(new LogicAndExpression(le, re));
-            break;
-          case "|":
-            resultExpressions.add(new LogicOrExpression(le, re));
-            break;
-          default:
-            throw new UnsupportedOperationException();
-        }
-      }
-    }
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    leftExpression.collectPaths(pathSet);
-    rightExpression.collectPaths(pathSet);
   }
 
   @Override

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -28,18 +26,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class UnaryExpression extends Expression {
 
@@ -66,22 +61,6 @@ public abstract class UnaryExpression extends Expression {
   @Override
   public final List<Expression> getExpressions() {
     return Collections.singletonList(expression);
-  }
-
-  @Override
-  public final boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public final boolean isUserDefinedAggregationFunctionExpression() {
-    return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isBuiltInAggregationFunctionExpression();
-  }
-
-  @Override
-  public final void collectPaths(Set<PartialPath> pathSet) {
-    expression.collectPaths(pathSet);
   }
 
   @Override
@@ -116,26 +95,6 @@ public abstract class UnaryExpression extends Expression {
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     return expression.isMappable(expressionTypes);
-  }
-
-  @Override
-  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-    expression.concat(prefixPaths, resultExpressionsForRecursion);
-    for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(constructExpression(resultExpression));
-    }
-  }
-
-  @Override
-  public final void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-    expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
-    for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(constructExpression(resultExpression));
-    }
   }
 
   protected abstract Expression constructExpression(Expression childExpression);

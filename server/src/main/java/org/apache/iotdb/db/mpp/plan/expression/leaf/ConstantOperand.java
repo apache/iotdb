@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -36,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** Constant operand */
 public class ConstantOperand extends LeafOperand {
@@ -76,23 +73,6 @@ public class ConstantOperand extends LeafOperand {
   @Override
   public boolean isConstantOperandInternal() {
     return true;
-  }
-
-  @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    resultExpressions.add(this);
-  }
-
-  @Override
-  public void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions) {
-    resultExpressions.add(this);
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    // Do nothing
   }
 
   @Override

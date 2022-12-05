@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -65,7 +63,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** A skeleton class for expression */
 public abstract class Expression extends StatementNode {
@@ -86,14 +83,6 @@ public abstract class Expression extends StatementNode {
   public abstract ExpressionType getExpressionType();
 
   public boolean isBuiltInAggregationFunctionExpression() {
-    return false;
-  }
-
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return false;
-  }
-
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
 
@@ -119,25 +108,6 @@ public abstract class Expression extends StatementNode {
 
   /** Sub-classes should override this method indicating if the expression is a constant operand */
   protected abstract boolean isConstantOperandInternal();
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations for time series paths
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException;
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void collectPaths(Set<PartialPath> pathSet);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // For UDF instances initialization

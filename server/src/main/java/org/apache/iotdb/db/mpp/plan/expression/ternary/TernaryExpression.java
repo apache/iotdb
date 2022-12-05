@@ -21,8 +21,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -36,11 +34,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class TernaryExpression extends Expression {
   protected final Expression firstExpression;
@@ -86,76 +82,8 @@ public abstract class TernaryExpression extends Expression {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return firstExpression.isBuiltInAggregationFunctionExpression()
-        || secondExpression.isBuiltInAggregationFunctionExpression()
-        || thirdExpression.isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(firstExpression, secondExpression, thirdExpression);
-  }
-
-  @Override
-  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> firstExpressions = new ArrayList<>();
-    firstExpression.concat(prefixPaths, firstExpressions);
-
-    List<Expression> secondExpressions = new ArrayList<>();
-    secondExpression.concat(prefixPaths, secondExpressions);
-
-    List<Expression> thirdExpressions = new ArrayList<>();
-    secondExpression.concat(prefixPaths, thirdExpressions);
-
-    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    List<Expression> firstExpressions = new ArrayList<>();
-    firstExpression.removeWildcards(wildcardsRemover, firstExpressions);
-
-    List<Expression> secondExpressions = new ArrayList<>();
-    secondExpression.removeWildcards(wildcardsRemover, secondExpressions);
-
-    List<Expression> thirdExpressions = new ArrayList<>();
-    thirdExpression.removeWildcards(wildcardsRemover, secondExpressions);
-    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
-  }
-
-  private void reconstruct(
-      List<Expression> firstExpressions,
-      List<Expression> secondExpressions,
-      List<Expression> thirdExpressions,
-      List<Expression> resultExpressions) {
-    for (Expression fe : firstExpressions) {
-      for (Expression se : secondExpressions)
-        for (Expression te : thirdExpressions) {
-          switch (operator()) {
-            case "between":
-              resultExpressions.add(new BetweenExpression(fe, se, te));
-              break;
-            default:
-              throw new UnsupportedOperationException();
-          }
-        }
-    }
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    firstExpression.collectPaths(pathSet);
-    secondExpression.collectPaths(pathSet);
-    thirdExpression.collectPaths(pathSet);
   }
 
   @Override
