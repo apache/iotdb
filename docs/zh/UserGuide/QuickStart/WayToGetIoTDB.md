@@ -86,7 +86,9 @@ Shell > unzip iotdb-<version>.zip
 
 ### 通过 Docker 安装
 
-Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)
+Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)。
+Apache IoTDB 的配置项以环境变量形式添加到容器内。
+
 #### 简单尝试
 ```shell
 # 获取镜像

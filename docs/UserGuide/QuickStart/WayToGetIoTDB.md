@@ -86,7 +86,7 @@ Then you can find it under the path `{module.name}/target`.
 
 ### Installation by Docker 
 Apache IoTDB' Docker image is released on [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)
-
+Add environments of docker to update the configurations of Apache IoTDB.
 #### Have a try
 ```shell
 # get IoTDB official image
@@ -141,8 +141,8 @@ networks:
     external: true
 ```
 #### deploy cluster
-Until now, we support host and overlay networks but don't support bridge networks on multiple computers.
-Overlay networks see [1C2D](https://github.com/apache/iotdb/tree/master/docker/src/main/DockerCompose/docker-compose-cluster-1c2d.yml) and here are the configurations and operation steps to start an IoTDB cluster with docker。
+Until now, we support host and overlay networks but haven't supported bridge networks on multiple computers.
+Overlay networks see [1C2D](https://github.com/apache/iotdb/tree/master/docker/src/main/DockerCompose/docker-compose-cluster-1c2d.yml) and here are the configurations and operation steps to start an IoTDB cluster with docker using host networks。
 
 Suppose that there are three computers of iotdb-1, iotdb-2 and iotdb-3. We called them nodes.
 Here is the docker-compose file of iotdb-2, as the sample:
