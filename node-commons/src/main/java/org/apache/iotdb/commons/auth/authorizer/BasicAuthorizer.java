@@ -72,7 +72,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     logger.info("Initialization of Authorizer completes");
   }
 
-  /** function for getting the instance of the local file authorizer. */
+  /**
+   * Function for getting the instance of the local file authorizer.
+   *
+   * @exception AuthException Failed to initialize authorizer
+   */
   public static IAuthorizer getInstance() throws AuthException {
     if (InstanceHolder.instance == null) {
       throw new AuthException("Authorizer uninitialized");
@@ -81,7 +85,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   private static class InstanceHolder {
-    private static IAuthorizer instance;
+    private static final IAuthorizer instance;
 
     static {
       Class<BasicAuthorizer> c;
@@ -94,7 +98,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
             CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         instance = c.getDeclaredConstructor().newInstance();
       } catch (Exception e) {
-        instance = null;
         // startup failed.
         throw new IllegalStateException("Authorizer could not be initialized!", e);
       }

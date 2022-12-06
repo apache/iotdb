@@ -223,8 +223,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   /**
    * So not with the token!
    *
-   * @param token Usually the JWT but could also be just the name of the user ({@link
-   *     #getUsername(String)}.
+   * @param token Usually the JWT but could also be just the name of the user.
    * @return true if the user is an admin
    */
   @Override
@@ -234,7 +233,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       // This is a username!
       claims = this.loggedClaims.get(token);
     } else {
-      // Its a token
+      // It's a token
       try {
         claims = validateToken(token);
       } catch (JwtException e) {
