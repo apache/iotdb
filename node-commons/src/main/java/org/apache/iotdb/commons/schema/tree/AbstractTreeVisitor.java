@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.dfa.IFAState;
 import org.apache.iotdb.commons.path.dfa.IFATransition;
 import org.apache.iotdb.commons.path.dfa.IPatternFA;
+import org.apache.iotdb.commons.path.dfa.SimpleNFA;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -35,12 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class defines a dfs-based algorithm of tree-traversing with path pattern match, and support
@@ -96,6 +91,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             new ChildrenIterator(Collections.singletonList(root).iterator(), initialState), 0));
   }
 
+  public void reset() {
+    visitorStack.clear();
+    ancestorStack.clear();
+    nextMatchedNode = null;
+    IFAState initialState = patternFA.getInitialState();
+    visitorStack.push(
+        new VisitorStackEntry(
+            new ChildrenIterator(Collections.singletonList(root).iterator(), initialState), 0));
+  }
+
   @Override
   public boolean hasNext() {
     if (nextMatchedNode == null) {
@@ -109,32 +114,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    return consumeNextMatchedNode();
-  }
-
-  private R consumeNextMatchedNode() {
     R result = generateResult();
     nextMatchedNode = null;
     return result;
   }
 
-  /**
-   * Basically, the algorithm traverse the tree with dfs strategy. When it comes to push children
-   * into stack, the path pattern will be used to filter the children.
-   *
-   * <p>When there's MULTI_LEVEL_WILDCARD in given path pattern. There are the following notices:
-   *
-   * <ol>
-   *   <li>When it comes to push children into stack and there's MULTI_LEVEL_WILDCARD before the
-   *       current patternIndex, all the children will be pushed.
-   *   <li>When a node cannot match the target node name in the patternIndex place and there's
-   *       MULTI_LEVEL_WILDCARD before the current patternIndex, the node names between the current
-   *       patternIndex and lastMultiLevelWildcardIndex will be checked until the partial path end
-   *       with current node can match one. The children will be pushed with the matched index + 1.
-   * </ol>
-   *
-   * <p>Each node and fullPath of the tree will be traversed at most once.
-   */
   protected void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry stackEntry;
@@ -172,16 +156,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         new VisitorStackEntry(
             new ChildrenIterator(parent, currentStateMatchInfo), visitorStack.peek().level + 1));
     ancestorStack.add(new AncestorStackEntry(parent, currentStateMatchInfo));
-  }
-
-  public void reset() {
-    visitorStack.clear();
-    ancestorStack.clear();
-    nextMatchedNode = null;
-    IFAState initialState = patternFA.getInitialState();
-    visitorStack.push(
-        new VisitorStackEntry(
-            new ChildrenIterator(Collections.singletonList(root).iterator(), initialState), 0));
   }
 
   private void popStack() {
@@ -254,13 +228,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private StateMatchInfo traceback(N node, StateMatchInfo currentStateMatchInfo) {
     StateMatchInfo result = new StateMatchInfo();
-    for (IFAState currentState : currentStateMatchInfo.matchedStateSet) {
-      result.stateMatchDetail.put(currentState, null);
-    }
+    result.checkedSourceStateSet.addAll(currentStateMatchInfo.matchedStateSet);
     N childNode;
     StateMatchInfo parentStateMatchInfo = result, childStateMatchInfo;
     Set<IFAState> addedState;
-    Map<IFATransition, IFAState> transitionDetail;
     for (int i = ancestorStack.size() - 1, end = currentStateMatchInfo.indexOfTraceback;
         i >= end;
         i--) {
@@ -268,7 +239,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       parentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
       addedState = new HashSet<>();
       for (IFAState sourceState : parentStateMatchInfo.matchedStateSet) {
-        if (!childStateMatchInfo.stateMatchDetail.containsKey(sourceState)) {
+        if (!childStateMatchInfo.checkedSourceStateSet.contains(sourceState)) {
           addedState.add(sourceState);
         }
       }
@@ -305,7 +276,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         addedState = new HashSet<>();
-        transitionDetail = new HashMap<>();
         for (IFATransition transition : patternFA.getTransition(sourceState)) {
           if (checkIsMatch(childNode, sourceState, transition)) {
             matchedState = patternFA.getNextState(sourceState, transition);
@@ -314,11 +284,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             }
             addedState.add(matchedState);
             childStateMatchInfo.addState(matchedState);
-            transitionDetail.put(transition, matchedState);
           }
         }
-        childStateMatchInfo.stateMatchDetail.put(
-            sourceState, transitionDetail.isEmpty() ? null : transitionDetail);
+        childStateMatchInfo.checkedSourceStateSet.add(sourceState);
         if (!result.matchedStateSet.isEmpty()) {
           return result;
         }
@@ -331,7 +299,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     return result;
   }
 
-  protected class ChildrenIterator implements Iterator<N> {
+  private class ChildrenIterator implements Iterator<N> {
 
     private final Iterator<N> iterator;
 
@@ -395,8 +363,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
       boolean hasResult = false;
       IFAState matchedState;
-      Map<IFAState, Map<IFATransition, IFAState>> stateMatchDetail = new HashMap<>();
-      Map<IFATransition, IFAState> transitionDetail;
+      Set<IFAState> checkedSourceStateSet = new HashSet<>();
       Set<IFAState> matchedStateSet = new HashSet<>();
 
       while (iterator.hasNext()) {
@@ -406,16 +373,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
               sourceStateMatchInfo.preciseMatchTransitionsMap.get(sourceState);
           batchMatchTransitionList = sourceStateMatchInfo.batchMatchTransitionsMap.get(sourceState);
 
-          transitionDetail = new HashMap<>();
-
           if (!preciseMatchTransitionMap.isEmpty()) {
             targetTransition = getMatchedTransition(child, sourceState, preciseMatchTransitionMap);
             if (targetTransition != null) {
               hasResult = true;
               matchedState = patternFA.getNextState(sourceState, targetTransition);
               matchedStateSet.add(matchedState);
-              transitionDetail.put(
-                  targetTransition, patternFA.getNextState(sourceState, targetTransition));
             }
             if (hasResult) {
               for (IFATransition transition : preciseMatchTransitionMap.values()) {
@@ -425,7 +388,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
                 if (checkIsMatch(child, sourceState, transition)) {
                   matchedState = patternFA.getNextState(sourceState, transition);
                   matchedStateSet.add(matchedState);
-                  transitionDetail.put(transition, matchedState);
                 }
               }
             }
@@ -435,17 +397,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
               hasResult = true;
               matchedState = patternFA.getNextState(sourceState, transition);
               matchedStateSet.add(matchedState);
-              transitionDetail.put(transition, matchedState);
             }
           }
-          stateMatchDetail.put(sourceState, transitionDetail.isEmpty() ? null : transitionDetail);
+          checkedSourceStateSet.add(sourceState);
           if (hasResult) {
             break;
           }
         }
 
         if (hasResult) {
-          currentStateMatchInfo = new StateMatchInfo(stateMatchDetail, matchedStateSet);
+          currentStateMatchInfo = new StateMatchInfo(matchedStateSet, checkedSourceStateSet);
           nextMatchedChild = child;
         } else {
           if (sourceStateMatchInfo.indexOfTraceback > -1) {
@@ -469,7 +430,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  protected class VisitorStackEntry {
+  private class VisitorStackEntry {
 
     private final ChildrenIterator iterator;
 
@@ -481,7 +442,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  protected class AncestorStackEntry {
+  private class AncestorStackEntry {
     private final N node;
 
     private final StateMatchInfo stateMatchInfo;
@@ -497,13 +458,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   private class StateMatchInfo {
-    /**
-     * SourceState, matched by parent -> transitions matched by this node -> state matched by this
-     * node
-     */
-    private final Map<IFAState, Map<IFATransition, IFAState>> stateMatchDetail;
 
     private final Set<IFAState> matchedStateSet;
+
+    /** SourceState, matched by parent */
+    private final Set<IFAState> checkedSourceStateSet;
 
     private final Map<IFAState, Map<String, IFATransition>> preciseMatchTransitionsMap =
         new HashMap<>();
@@ -517,14 +476,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     private int indexOfTraceback = -1;
 
     StateMatchInfo() {
-      stateMatchDetail = new HashMap<>();
       matchedStateSet = new HashSet<>();
+      checkedSourceStateSet = new HashSet<>();
     }
 
-    StateMatchInfo(
-        Map<IFAState, Map<IFATransition, IFAState>> stateMatchDetail,
-        Set<IFAState> matchedStateSet) {
-      this.stateMatchDetail = stateMatchDetail;
+    StateMatchInfo(Set<IFAState> matchedStateSet, Set<IFAState> checkedSourceStateSet) {
       this.matchedStateSet = matchedStateSet;
       for (IFAState state : matchedStateSet) {
         if (state.isFinal()) {
@@ -532,6 +488,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
         processTransitionOfState(state);
       }
+      this.checkedSourceStateSet = checkedSourceStateSet;
     }
 
     private void addState(IFAState state) {
@@ -557,151 +514,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       batchMatchTransitionsMap.put(state, batchMatchTransitions);
       if (!batchMatchTransitions.isEmpty()) {
         hasBatchMatchTransition = true;
-      }
-    }
-  }
-
-  private static class SimpleNFA implements IPatternFA {
-
-    private final String[] nodes;
-    private final boolean isPrefixMatch;
-
-    private final SimpleNFAState[] states;
-
-    private final SimpleNFAState initialState = new SimpleNFAState(-1);
-
-    SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
-      this.nodes = optimizePathPattern(pathPattern);
-      this.isPrefixMatch = isPrefixMatch;
-
-      states = new SimpleNFAState[this.nodes.length + 1];
-      for (int i = 0; i < states.length; i++) {
-        states[i] = new SimpleNFAState(i);
-      }
-    }
-
-    /**
-     * Optimize the given path pattern. Currently, the node name used for one level match will be
-     * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
-     * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
-     */
-    private String[] optimizePathPattern(PartialPath pathPattern) {
-      String[] rawNodes = pathPattern.getNodes();
-      List<String> optimizedNodes = new ArrayList<>(rawNodes.length);
-      for (String rawNode : rawNodes) {
-        if (rawNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          optimizedNodes.add(MULTI_LEVEL_PATH_WILDCARD);
-        } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
-          optimizedNodes.add(rawNode.replace("*", ".*"));
-        } else {
-          optimizedNodes.add(rawNode);
-        }
-      }
-
-      return optimizedNodes.toArray(new String[0]);
-    }
-
-    @Override
-    public List<IFATransition> getTransition(IFAState state) {
-      SimpleNFAState nfaState = (SimpleNFAState) state;
-      if (nfaState.isInitial()) {
-        return Collections.singletonList(states[0]);
-      }
-      if (nfaState.patternIndex == nodes.length) {
-        // prefix match
-        return Collections.singletonList(nfaState);
-      }
-
-      if (nfaState.patternIndex == nodes.length - 1) {
-        if (isPrefixMatch) {
-          return Collections.singletonList(states[nodes.length]);
-        } else if (nodes[nfaState.patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          return Collections.singletonList(nfaState);
-        }
-        {
-          return Collections.emptyList();
-        }
-      }
-
-      if (nodes[nfaState.patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return Arrays.asList(states[nfaState.patternIndex + 1], nfaState);
-      } else {
-        return Collections.singletonList(states[nfaState.patternIndex + 1]);
-      }
-    }
-
-    @Override
-    public IFAState getNextState(IFAState currentState, IFATransition transition) {
-      return (SimpleNFAState) transition;
-    }
-
-    @Override
-    public IFAState getInitialState() {
-      return initialState;
-    }
-
-    private class SimpleNFAState implements IFAState, IFATransition {
-
-      private final int patternIndex;
-
-      SimpleNFAState(int patternIndex) {
-        this.patternIndex = patternIndex;
-      }
-
-      @Override
-      public boolean isInitial() {
-        return patternIndex == -1;
-      }
-
-      @Override
-      public boolean isFinal() {
-        return patternIndex >= nodes.length - 1;
-      }
-
-      @Override
-      public int getIndex() {
-        return patternIndex;
-      }
-
-      @Override
-      public String getValue() {
-        return nodes[patternIndex];
-      }
-
-      @Override
-      public boolean isMatch(String event) {
-        if (patternIndex == nodes.length) {
-          return true;
-        }
-        if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          return true;
-        }
-        if (nodes[patternIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
-          return true;
-        }
-        if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-          return Pattern.matches(nodes[patternIndex], event);
-        }
-        return nodes[patternIndex].equals(event);
-      }
-
-      @Override
-      public boolean isBatch() {
-        return patternIndex == nodes.length
-            || nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD);
-      }
-
-      @Override
-      public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        SimpleNFAState nfaState = (SimpleNFAState) o;
-        return patternIndex == nfaState.patternIndex;
-      }
-
-      @Override
-      public int hashCode() {
-        return Objects.hash(patternIndex);
       }
     }
   }
