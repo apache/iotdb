@@ -199,16 +199,16 @@ public class QueryUtils {
       QueryDataSource dataSource, String deviceId, boolean ascending) {
     List<TsFileResource> unseqResources = dataSource.getUnseqResources();
 
-    TreeMap<Long, Integer> intToOrderTimeMapV2 =
+    TreeMap<Long, Integer> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
     for (TsFileResource resource : unseqResources) {
-      intToOrderTimeMapV2.put(resource.getOrderTime(deviceId, ascending), index++);
+      orderTimeToIndexMap.put(resource.getOrderTime(deviceId, ascending), index++);
     }
 
     index = 0;
     int[] orderIndexes = new int[unseqResources.size()];
-    for (Integer orderIndex : intToOrderTimeMapV2.values()) {
+    for (Integer orderIndex : orderTimeToIndexMap.values()) {
       orderIndexes[index++] = orderIndex;
     }
     dataSource.setUnSeqFileOrderIndex(orderIndexes);

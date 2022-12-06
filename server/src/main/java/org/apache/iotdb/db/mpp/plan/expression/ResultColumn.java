@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.Objects;
 
 /**
  * {@code ResultColumn} is used to represent a result column of a query.
@@ -68,10 +66,6 @@ public class ResultColumn {
   private final Expression expression;
   private final String alias;
 
-  private TSDataType dataType;
-
-  private List<PartialPath> allPathsInExpression;
-
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
     this.alias = alias;
@@ -79,17 +73,12 @@ public class ResultColumn {
 
   public ResultColumn(Expression expression) {
     this.expression = expression;
-    alias = null;
+    this.alias = null;
   }
 
   public ResultColumn(ByteBuffer byteBuffer) {
     expression = Expression.deserialize(byteBuffer);
     alias = ReadWriteIOUtils.readString(byteBuffer);
-    dataType = TSDataType.deserializeFrom(byteBuffer);
-  }
-
-  public List<PartialPath> collectPaths() {
-    throw new UnsupportedOperationException("");
   }
 
   public Expression getExpression() {
@@ -112,40 +101,31 @@ public class ResultColumn {
     return expression.getExpressionString();
   }
 
-  public void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
-  }
-
-  public TSDataType getDataType() {
-    return dataType;
-  }
-
   @Override
   public String toString() {
     return "ResultColumn{" + "expression=" + expression + ", alias='" + alias + '\'' + '}';
   }
 
   @Override
-  public final int hashCode() {
-    return alias == null ? getResultColumnName().hashCode() : alias.hashCode();
-  }
-
-  @Override
-  public final boolean equals(Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-
-    if (!(o instanceof ResultColumn)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
+    ResultColumn that = (ResultColumn) o;
+    return expression.equals(that.expression) && Objects.equals(alias, that.alias);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(expression, alias);
   }
 
   public static void serialize(ResultColumn resultColumn, ByteBuffer byteBuffer) {
     Expression.serialize(resultColumn.expression, byteBuffer);
     ReadWriteIOUtils.write(resultColumn.alias, byteBuffer);
-    resultColumn.dataType.serializeTo(byteBuffer);
   }
 
   public static ResultColumn deserialize(ByteBuffer byteBuffer) {

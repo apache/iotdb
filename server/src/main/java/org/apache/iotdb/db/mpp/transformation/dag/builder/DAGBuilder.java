@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.transformation.dag.builder;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.OldIntermediateLayerVisitor;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
@@ -104,10 +103,7 @@ public class DAGBuilder {
   }
 
   public DAGBuilder setDataSetResultColumnDataTypes() {
-    for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
-      resultColumn.setDataType(expressionDataTypeMap.get(resultColumn.getExpression()));
-    }
-    return this;
+    throw new UnsupportedOperationException("");
   }
 
   public LayerPointReader[] getResultColumnPointReaders() {
