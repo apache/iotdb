@@ -639,10 +639,10 @@ public class TsFileResource {
   }
 
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
-  public boolean isSatisfied(
+  public boolean unsatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     if (deviceId == null) {
-      return isSatisfied(timeFilter, isSeq, ttl, debug);
+      return !isSatisfied(timeFilter, isSeq, ttl, debug);
     }
 
     long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
@@ -653,17 +653,17 @@ public class TsFileResource {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
       }
-      return false;
+      return true;
     }
 
     long startTime = startAndEndTime[0];
     long endTime = isClosed() || !isSeq ? startAndEndTime[1] : Long.MAX_VALUE;
 
-    if (!isAlive(endTime, ttl)) {
+    if (notAlive(endTime, ttl)) {
       if (debug) {
         DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
       }
-      return false;
+      return true;
     }
 
     if (timeFilter != null) {
@@ -672,9 +672,9 @@ public class TsFileResource {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
       }
-      return res;
+      return !res;
     }
-    return true;
+    return false;
   }
 
   /** @return true if the TsFile lives beyond TTL */
@@ -682,7 +682,7 @@ public class TsFileResource {
     long startTime = getFileStartTime();
     long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
-    if (!isAlive(endTime, ttl)) {
+    if (notAlive(endTime, ttl)) {
       if (debug) {
         DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
       }
@@ -733,8 +733,8 @@ public class TsFileResource {
   }
 
   /** @return whether the given time falls in ttl */
-  private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
+  private boolean notAlive(long time, long dataTTL) {
+    return dataTTL != Long.MAX_VALUE && (DateTimeUtils.currentTime() - time) > dataTTL;
   }
 
   public void setProcessor(TsFileProcessor processor) {

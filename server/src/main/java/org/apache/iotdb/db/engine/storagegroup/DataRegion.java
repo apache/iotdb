@@ -1788,7 +1788,7 @@ public class DataRegion {
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(
+      if (tsFileResource.unsatisfied(
           singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
@@ -1801,7 +1801,7 @@ public class DataRegion {
     }
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(
+      if (tsFileResource.unsatisfied(
           singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }

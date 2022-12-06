@@ -29,10 +29,9 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import java.util.TreeMap;
 
 public class QueryUtils {
 
@@ -194,26 +193,24 @@ public class QueryUtils {
     }
   }
 
+  private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
+
   public static void fillOrderIndexes(
       QueryDataSource dataSource, String deviceId, boolean ascending) {
     List<TsFileResource> unseqResources = dataSource.getUnseqResources();
-    int[] orderIndex = new int[unseqResources.size()];
-    AtomicInteger index = new AtomicInteger();
-    Map<Integer, Long> intToOrderTimeMap =
-        unseqResources.stream()
-            .collect(
-                Collectors.toMap(
-                    key -> index.getAndIncrement(),
-                    resource -> resource.getOrderTime(deviceId, ascending)));
-    index.set(0);
-    intToOrderTimeMap.entrySet().stream()
-        .sorted(
-            (t1, t2) ->
-                ascending
-                    ? Long.compare(t1.getValue(), t2.getValue())
-                    : Long.compare(t2.getValue(), t1.getValue()))
-        .collect(Collectors.toList())
-        .forEach(item -> orderIndex[index.getAndIncrement()] = item.getKey());
-    dataSource.setUnSeqFileOrderIndex(orderIndex);
+
+    TreeMap<Long, Integer> intToOrderTimeMapV2 =
+        ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
+    int index = 0;
+    for (TsFileResource resource : unseqResources) {
+      intToOrderTimeMapV2.put(resource.getOrderTime(deviceId, ascending), index++);
+    }
+
+    index = 0;
+    int[] orderIndexes = new int[unseqResources.size()];
+    for (Integer orderIndex : intToOrderTimeMapV2.values()) {
+      orderIndexes[index++] = orderIndex;
+    }
+    dataSource.setUnSeqFileOrderIndex(orderIndexes);
   }
 }

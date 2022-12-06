@@ -24,6 +24,7 @@ import com.google.common.primitives.Bytes;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -116,8 +117,11 @@ public class DatasetHeader {
 
   public int getOutputValueColumnCount() {
     if (outputValueColumnCount == null) {
-      outputValueColumnCount =
-          (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
+      HashSet<String> columnNameSet = new HashSet<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        columnNameSet.add(columnHeader.getColumnName());
+      }
+      outputValueColumnCount = columnNameSet.size();
     }
     return outputValueColumnCount;
   }

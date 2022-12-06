@@ -35,7 +35,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
@@ -87,8 +86,7 @@ public class PathPatternTree {
     }
     if (!isExist) {
       // remove duplicate path in pathPatternList
-      pathPatternList.removeAll(
-          pathPatternList.stream().filter(pathPattern::include).collect(Collectors.toList()));
+      pathPatternList.removeIf(p -> p.include(pathPattern));
       pathPatternList.add(pathPattern);
     }
   }

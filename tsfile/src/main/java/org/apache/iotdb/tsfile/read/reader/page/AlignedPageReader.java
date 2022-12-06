@@ -115,6 +115,10 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
+    if (!isModified()) {
+      return getAllSatisfiedDataWithoutModified();
+    }
+
     builder.reset();
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
@@ -181,6 +185,46 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       if (pageReader != null) {
         pageReader.writeColumnBuilderWithNextBatch(
             timeBatch, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
+      } else {
+        for (int j = 0; j < timeBatch.length; j++) {
+          if (keepCurrentRow[j]) {
+            builder.getColumnBuilder(i).appendNull();
+          }
+        }
+      }
+    }
+    return builder.build();
+  }
+
+  public TsBlock getAllSatisfiedDataWithoutModified() throws IOException {
+    builder.reset();
+    long[] timeBatch = timePageReader.getNextTimeBatch();
+
+    // if all the sub sensors' value are null in current row, just discard it
+    // if !filter.satisfy, discard this row
+    boolean[] keepCurrentRow = new boolean[timeBatch.length];
+    if (filter == null) {
+      Arrays.fill(keepCurrentRow, true);
+    } else {
+      for (int i = 0, n = timeBatch.length; i < n; i++) {
+        keepCurrentRow[i] = filter.satisfy(timeBatch[i], null);
+      }
+    }
+
+    // construct time column
+    for (int i = 0; i < timeBatch.length; i++) {
+      if (keepCurrentRow[i]) {
+        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+        builder.declarePosition();
+      }
+    }
+
+    // construct value columns
+    for (int i = 0; i < valueCount; i++) {
+      ValuePageReader pageReader = valuePageReaderList.get(i);
+      if (pageReader != null) {
+        pageReader.writeColumnBuilderWithNextBatch(
+            timeBatch, builder.getColumnBuilder(i), keepCurrentRow);
       } else {
         for (int j = 0; j < timeBatch.length; j++) {
           if (keepCurrentRow[j]) {

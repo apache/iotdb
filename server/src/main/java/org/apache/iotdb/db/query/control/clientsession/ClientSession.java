@@ -55,7 +55,7 @@ public class ClientSession extends IClientSession {
 
   @Override
   String getConnectionId() {
-    return String.format("%s:%s", getClientAddress(), getClientPort());
+    return getClientAddress() + ':' + getClientPort();
   }
 
   @Override

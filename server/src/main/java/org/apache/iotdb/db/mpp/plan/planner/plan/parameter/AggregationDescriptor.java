@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -125,22 +126,22 @@ public class AggregationDescriptor {
     if (isPartial) {
       switch (aggregationType) {
         case AVG:
-          outputAggregationNames.add(AggregationType.COUNT.name().toLowerCase());
-          outputAggregationNames.add(AggregationType.SUM.name().toLowerCase());
+          outputAggregationNames.add(SQLConstant.COUNT);
+          outputAggregationNames.add(SQLConstant.SUM);
           break;
         case FIRST_VALUE:
-          outputAggregationNames.add(AggregationType.FIRST_VALUE.name().toLowerCase());
-          outputAggregationNames.add(AggregationType.MIN_TIME.name().toLowerCase());
+          outputAggregationNames.add(SQLConstant.FIRST_VALUE);
+          outputAggregationNames.add(SQLConstant.MIN_TIME);
           break;
         case LAST_VALUE:
-          outputAggregationNames.add(AggregationType.LAST_VALUE.name().toLowerCase());
-          outputAggregationNames.add(AggregationType.MAX_TIME.name().toLowerCase());
+          outputAggregationNames.add(SQLConstant.LAST_VALUE);
+          outputAggregationNames.add(SQLConstant.MAX_TIME);
           break;
         default:
-          outputAggregationNames.add(aggregationFuncName.toLowerCase());
+          outputAggregationNames.add(aggregationFuncName);
       }
     } else {
-      outputAggregationNames.add(aggregationFuncName.toLowerCase());
+      outputAggregationNames.add(aggregationFuncName);
     }
     return outputAggregationNames;
   }

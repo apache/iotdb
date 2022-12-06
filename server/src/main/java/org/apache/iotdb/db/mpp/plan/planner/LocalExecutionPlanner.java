@@ -133,10 +133,12 @@ public class LocalExecutionPlanner {
             TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.debug(
-            String.format(
-                "[ConsumeMemory] consume: %d, current remaining memory: %d",
-                estimatedMemorySize, freeMemoryForOperators));
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[ConsumeMemory] consume: {}, current remaining memory: {}",
+              estimatedMemorySize,
+              freeMemoryForOperators);
+        }
       }
     }
 
@@ -147,10 +149,12 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.debug(
-                    String.format(
-                        "[ReleaseMemory] release: %d, current remaining memory: %d",
-                        estimatedMemorySize, freeMemoryForOperators));
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(
+                      "[ReleaseMemory] release: {}, current remaining memory: {}",
+                      estimatedMemorySize,
+                      freeMemoryForOperators);
+                }
               }
             }
           }
