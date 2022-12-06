@@ -123,6 +123,8 @@ public class ConsensusManager {
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          CONF.getConfigNodeRatisPreserveLogsWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
