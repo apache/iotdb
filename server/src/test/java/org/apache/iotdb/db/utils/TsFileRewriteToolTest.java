@@ -30,6 +30,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -179,9 +181,9 @@ public class TsFileRewriteToolTest {
     deviceSensorsMap.put(DEVICE1, sensors);
     createOneTsFileWithOnlyOnePage(deviceSensorsMap);
     // try load the tsfile
-    String sql = String.format("load '%s'", path);
     try {
-      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
+      queryExecutor.processNonQuery(
+          new OperateFilePlan(new File(path), Operator.OperatorType.LOAD_FILES));
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }

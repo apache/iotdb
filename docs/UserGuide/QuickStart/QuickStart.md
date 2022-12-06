@@ -35,7 +35,7 @@ To use IoTDB, you need to have:
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
@@ -59,47 +59,21 @@ For more, see [Config](../Reference/DataNode-Config-Manual.md) in detail.
 You can go through the following step to test the installation, if there is no error after execution, the installation is completed. 
 
 ### Start IoTDB
+IoTDB is a database based on distributed system. To launch IoTDB, you can first start standalone mode (i.e. 1 ConfigNode and 1 DataNode) to check.
 
-Users can start IoTDB by the start-server script under the sbin folder.
+Users can start IoTDB standalone mode by the start-standalone script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh -b
+> bash sbin/start-standalone.sh
 ```
-or
-```shell
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-```
-
-parameters:
-- by default, iotdb will run in the background
-- "-v": show iotdb version
-- "-f": run iotdb on the foreground and print logs on the console (by default)
-- "-d": run iotdb in the background which does not print logs on the console
-- "-p \<pidfile\>": save the pid into target pidfile
-- "-h": help
-- "printgc"(must be at the end of the command): print the GC log 
-- "-g": print the GC log
-- "-c \<config folder\>": set IOTDB_CONF parameter
-- "-D <a=b>": set system variables to IoTDB program.
-- "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
-- "-E <\filePath\> save error file of JVM to \<filePath\>"
-- "-X \<command\> equal to -XX:\<command\>"
-
 ```
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
 
-Notice that Windows OS only support -v, -c, -f and -b.
-if you want to use JMX to connect IOTDB, you may need to add/modify 
-
-```
--Dcom.sun.management.jmxremote.rmi.port=<PORT> -Djava.rmi.server.hostname=<IP> 
-```
-to $IOTDB_JMX_OPTS in datanode-env.sh. or datanode-env.bat
-
-
+Note: Currently, To run standalone mode, you need to ensure that all addresses are set to 127.0.0.1, and replication factors set to 1, which is by now the default setting.
+Besides, it's recommended to use SimpleConsensus in this mode, since it brings additional efficiency.
 ### Use Cli
 
 IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
@@ -112,7 +86,7 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
 > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
@@ -129,7 +103,7 @@ The command line client is interactive so if everything is ready you should see 
 |_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 IoTDB>
 ```
 
@@ -238,11 +212,25 @@ The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> bash sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
+Note: In Linux, please add the "sudo" as far as possible, or else the stopping process may fail.
+More explanations are in Cluster/Cluster-setup.md.
+
+### Administration management
+
+There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
+
+You can alter the password of root using the following command：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+More about administration management：[Administration Management](https://iotdb.apache.org/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 
 ## Basic configuration

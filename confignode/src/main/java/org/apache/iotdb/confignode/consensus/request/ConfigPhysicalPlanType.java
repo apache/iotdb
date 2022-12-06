@@ -39,7 +39,7 @@ public enum ConfigPhysicalPlanType {
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
   SetTimePartitionInterval((short) 204),
-  AdjustMaxRegionGroupCount((short) 205),
+  AdjustMaxRegionGroupNum((short) 205),
   DeleteStorageGroup((short) 206),
   PreDeleteStorageGroup((short) 207),
   GetStorageGroup((short) 208),
@@ -119,6 +119,7 @@ public enum ConfigPhysicalPlanType {
   SetPipeStatus((short) 904),
   DropPipe((short) 905),
   ShowPipe((short) 906),
+  RecordPipeMessage((short) 907),
 
   /** Trigger */
   AddTriggerInTable((short) 1000),

@@ -219,7 +219,7 @@ public class QueryExecution implements IQueryExecution {
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
-      logger.error("interrupted when waiting retry");
+      logger.warn("interrupted when waiting retry");
       Thread.currentThread().interrupt();
     }
     retryCount++;
@@ -292,7 +292,7 @@ public class QueryExecution implements IQueryExecution {
   public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
-    if (isQuery()) {
+    if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }

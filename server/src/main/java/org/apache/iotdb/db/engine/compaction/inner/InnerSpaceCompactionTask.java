@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -178,6 +178,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             false);
       }
 
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+          && !CompactionUtils.validateTsFileResources(
+              tsFileManager, storageGroupName, timePartition)) {
+        LOGGER.error(
+            "Failed to pass compaction validation, source files is: {}, target files is {}",
+            selectedTsFileResourceList,
+            targetTsFileList);
+        throw new RuntimeException("Failed to pass compaction validation");
+      }
+
       LOGGER.info(
           "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
           storageGroupName,
@@ -206,13 +216,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId);
       // delete the old files
+      long totalSizeOfDeletedFile = 0L;
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        totalSizeOfDeletedFile += resource.getTsFileSize();
+      }
       CompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileMetricManager.getInstance().deleteFile(resource.getTsFile().length(), sequence);
-      }
+      TsFileMetricManager.getInstance()
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
       // inner space compaction task has only one target file
       if (targetTsFileList.get(0) != null) {
         TsFileMetricManager.getInstance()
@@ -231,15 +244,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
             subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
             subTaskSummary.PAGE_FAKE_OVERLAP);
-      } else {
-        SubCompactionTaskSummary taskSummary =
-            ((ReadChunkCompactionPerformer) performer).getSummary();
-        LOGGER.info(
-            "CHUNK_NONE_OVERLAP num is {},CHUNK_NON_DESERIALIZE num is {}, CHUNK_DESERIALIZE_INTO_PAGES num is {}, CHUNK_DESERIALIZE_INTO_POINTS num is {}.",
-            taskSummary.CHUNK_NONE_OVERLAP,
-            taskSummary.CHUNK_NON_DESERIALIZE,
-            taskSummary.CHUNK_DESERIALIZE_INTO_PAGES,
-            taskSummary.CHUNK_DESERIALIZE_INTO_POINTS);
       }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;

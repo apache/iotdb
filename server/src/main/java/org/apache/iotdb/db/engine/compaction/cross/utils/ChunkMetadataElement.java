@@ -28,7 +28,7 @@ public class ChunkMetadataElement {
 
   public long priority;
 
-  public boolean isOverlaped = false;
+  public boolean isSelected = false;
 
   public long startTime;
 

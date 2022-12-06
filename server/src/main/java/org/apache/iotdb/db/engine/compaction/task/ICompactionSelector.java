@@ -64,7 +64,6 @@ public interface ICompactionSelector {
       CrossCompactionPerformer compactionPerformer, boolean isInnerSpace) {
     switch (compactionPerformer) {
       case READ_POINT:
-      case FAST:
         if (!isInnerSpace) {
           return new ReadPointCrossCompactionEstimator();
         }

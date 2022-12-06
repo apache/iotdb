@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Operation;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -71,7 +72,6 @@ import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -320,7 +320,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
-          resp.setMetadataInJson(IoTDB.schemaProcessor.getMetadataInString());
+          resp.setMetadataInJson("{}");
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
@@ -1375,7 +1375,8 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return SyncService.getInstance().handshake(info);
+    return SyncService.getInstance()
+        .handshake(info, SESSION_MANAGER.getCurrSession().getClientAddress(), null, null);
   }
 
   @Override
@@ -1411,16 +1412,12 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricService.getInstance()
-          .histogram(
-              System.currentTimeMillis() - startTime,
-              "operation_histogram",
-              MetricLevel.IMPORTANT,
-              "name",
-              operation.getName());
-      MetricService.getInstance()
-          .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
-    }
+    MetricService.getInstance()
+        .histogram(
+            System.currentTimeMillis() - startTime,
+            Metric.OPERATION.toString(),
+            MetricLevel.IMPORTANT,
+            "name",
+            operation.getName());
   }
 }

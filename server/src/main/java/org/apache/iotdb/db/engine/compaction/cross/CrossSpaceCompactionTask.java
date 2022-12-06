@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -124,11 +125,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files : {}, unsequence files : {} . Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
           storageGroupName,
           dataRegionId,
           selectedSequenceFiles.size(),
           selectedUnsequenceFiles.size(),
+          selectedSequenceFiles,
+          selectedUnsequenceFiles,
           selectedSeqFileSize / 1024 / 1024,
           selectedUnseqFileSize / 1024 / 1024,
           (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
@@ -167,18 +170,27 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+            && !CompactionUtils.validateTsFileResources(
+                tsFileManager, storageGroupName, timePartition)) {
+          LOGGER.error(
+              "Failed to pass compaction validation, source sequence files is: {}, unsequence files is {}, target files is {}",
+              selectedSequenceFiles,
+              selectedUnsequenceFiles,
+              targetTsfileResourceList);
+          throw new RuntimeException("Failed to pass compaction validation");
+        }
+
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
 
-        deleteOldFiles(selectedSequenceFiles);
-        deleteOldFiles(selectedUnsequenceFiles);
+        long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
+        long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
-        for (TsFileResource seqResource : selectedSequenceFiles) {
-          TsFileMetricManager.getInstance().deleteFile(seqResource.getTsFileSize(), true);
-        }
-        for (TsFileResource unseqResource : selectedUnsequenceFiles) {
-          TsFileMetricManager.getInstance().deleteFile(unseqResource.getTsFileSize(), false);
-        }
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource != null) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
@@ -316,14 +328,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
   }
 
-  private void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+  private long deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+    long totalSize = 0;
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      totalSize += tsFileResource.getTsFileSize();
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
+    return totalSize;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {

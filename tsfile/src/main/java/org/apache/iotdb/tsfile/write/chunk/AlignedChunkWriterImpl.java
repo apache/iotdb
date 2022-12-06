@@ -361,8 +361,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean flag) {
-    if ((flag && timeChunkWriter.getPointNum() == 0)
+  public boolean checkIsChunkSizeOverThreshold(
+      long size, long pointNum, boolean returnTrueIfChunkEmpty) {
+    if ((returnTrueIfChunkEmpty && timeChunkWriter.getPointNum() == 0)
         || (timeChunkWriter.getPointNum() >= pointNum
             || timeChunkWriter.estimateMaxSeriesMemSize() >= size)) {
       return true;
@@ -376,8 +377,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum, boolean flag) {
-    if ((flag && timeChunkWriter.getPageWriter().getPointNumber() == 0)
+  public boolean checkIsUnsealedPageOverThreshold(
+      long size, long pointNum, boolean returnTrueIfPageEmpty) {
+    if ((returnTrueIfPageEmpty && timeChunkWriter.getPageWriter().getPointNumber() == 0)
         || timeChunkWriter.checkIsUnsealedPageOverThreshold(size, pointNum)) {
       return true;
     }
@@ -401,9 +403,5 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   /** Test only */
   public List<ValueChunkWriter> getValueChunkWriterList() {
     return valueChunkWriterList;
-  }
-
-  public TSDataType getCurrentValueChunkType() {
-    return valueChunkWriterList.get(valueIndex).getDataType();
   }
 }

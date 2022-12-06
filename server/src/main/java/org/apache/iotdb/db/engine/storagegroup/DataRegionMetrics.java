@@ -39,22 +39,22 @@ public class DataRegionMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
         dataRegion,
         DataRegion::getMemCost,
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override

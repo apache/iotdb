@@ -85,9 +85,9 @@ public class ErrorHandlingUtils {
             String.format(
                 "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
-          LOGGER.error(message);
+          LOGGER.warn(message);
         } else {
-          LOGGER.error(message, e);
+          LOGGER.warn(message, e);
         }
       }
       return status;

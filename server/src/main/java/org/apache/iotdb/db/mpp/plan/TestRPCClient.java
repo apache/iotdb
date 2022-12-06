@@ -26,13 +26,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.consensus.config.MultiLeaderConfig;
-import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool;
-import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
-import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
-import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
-import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
-import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerReq;
+import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerRes;
+import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
+import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -50,14 +50,14 @@ public class TestRPCClient {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
+  private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
 
   public TestRPCClient() {
     syncClientManager =
-        new IClientManager.Factory<TEndPoint, SyncMultiLeaderServiceClient>()
+        new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
-                new MultiLeaderConsensusClientPool.SyncMultiLeaderServiceClientPoolFactory(
-                    new MultiLeaderConfig.Builder().build()));
+                new IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory(
+                    new IoTConsensusConfig.Builder().build()));
   }
 
   public static void main(String args[]) {
@@ -68,7 +68,7 @@ public class TestRPCClient {
   }
 
   private void loadSnapshot() {
-    try (SyncMultiLeaderServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40011))) {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
@@ -81,7 +81,7 @@ public class TestRPCClient {
   }
 
   private void testAddPeer() {
-    try (SyncMultiLeaderServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
       TInactivatePeerRes res =
           client.inactivatePeer(

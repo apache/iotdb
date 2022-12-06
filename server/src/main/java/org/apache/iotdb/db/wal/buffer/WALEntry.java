@@ -118,8 +118,8 @@ public abstract class WALEntry implements SerializedSize {
   }
 
   /**
-   * This deserialization method is only for multi-leader consensus and just deserializes
-   * InsertRowNode and InsertTabletNode
+   * This deserialization method is only for iot consensus and just deserializes InsertRowNode and
+   * InsertTabletNode
    */
   public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(

@@ -34,20 +34,20 @@ public class JvmThreadMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
-    metricService.getOrCreateAutoGauge(
-        "jvm.threads.peak.threads",
+    metricService.createAutoGauge(
+        "jvm_threads_peak_threads",
         MetricLevel.IMPORTANT,
         threadBean,
         ThreadMXBean::getPeakThreadCount);
 
-    metricService.getOrCreateAutoGauge(
-        "jvm.threads.daemon.threads",
+    metricService.createAutoGauge(
+        "jvm_threads_daemon_threads",
         MetricLevel.IMPORTANT,
         threadBean,
         ThreadMXBean::getDaemonThreadCount);
 
-    metricService.getOrCreateAutoGauge(
-        "jvm.threads.live.threads",
+    metricService.createAutoGauge(
+        "jvm_threads_live_threads",
         MetricLevel.IMPORTANT,
         threadBean,
         ThreadMXBean::getThreadCount);
@@ -55,8 +55,8 @@ public class JvmThreadMetrics implements IMetricSet {
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
-        metricService.getOrCreateAutoGauge(
-            "jvm.threads.states.threads",
+        metricService.createAutoGauge(
+            "jvm_threads_states_threads",
             MetricLevel.IMPORTANT,
             threadBean,
             (bean) -> getThreadStateCount(bean, state),
@@ -73,15 +73,15 @@ public class JvmThreadMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
-    metricService.remove(MetricType.GAUGE, "jvm.threads.peak.threads");
-    metricService.remove(MetricType.GAUGE, "jvm.threads.daemon.threads");
-    metricService.remove(MetricType.GAUGE, "jvm.threads.live.threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_peak_threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_daemon_threads");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_live_threads");
 
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
         metricService.remove(
-            MetricType.GAUGE, "jvm.threads.states.threads", "state", getStateTagValue(state));
+            MetricType.AUTO_GAUGE, "jvm_threads_states_threads", "state", getStateTagValue(state));
       }
     } catch (Error error) {
       // An error will be thrown for unsupported operations

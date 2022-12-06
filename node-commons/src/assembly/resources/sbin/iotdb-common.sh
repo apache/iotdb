@@ -164,7 +164,7 @@ initEnv() {
         . "${IOTDB_HOME}/conf/datanode-env.sh"
       fi
   else
-      echo "can't find $IOTDB_CONF/datanode-env.sh"
+      echo "Can't find $IOTDB_CONF/datanode-env.sh"
   fi
 }
 

@@ -113,7 +113,7 @@ public abstract class SeriesCompactionExecutor {
             });
   }
 
-  public abstract void excute()
+  public abstract void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException;
 
   protected abstract void compactFiles()
@@ -124,15 +124,15 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!chunkMetadataQueue.isEmpty()) {
       ChunkMetadataElement firstChunkMetadataElement = chunkMetadataQueue.peek();
-      List<ChunkMetadataElement> overlappedChunkMetadatas =
+      List<ChunkMetadataElement> overlappedChunkMetadataList =
           findOverlapChunkMetadatas(firstChunkMetadataElement);
-      boolean isChunkOverlap = overlappedChunkMetadatas.size() > 1;
-      boolean isModified = isChunkModified(firstChunkMetadataElement);
+      boolean isChunkOverlap = overlappedChunkMetadataList.size() > 1;
+      boolean isModified = firstChunkMetadataElement.chunkMetadata.isModified();
 
       if (isChunkOverlap || isModified) {
         // has overlap or modified chunk, then deserialize it
-        summary.CHUNK_OVERLAP_OR_MODIFIED += overlappedChunkMetadatas.size();
-        compactWithOverlapChunks(overlappedChunkMetadatas);
+        summary.CHUNK_OVERLAP_OR_MODIFIED += overlappedChunkMetadataList.size();
+        compactWithOverlapChunks(overlappedChunkMetadataList);
       } else {
         // has none overlap or modified chunk, flush it to file writer directly
         summary.CHUNK_NONE_OVERLAP += 1;
@@ -147,9 +147,9 @@ public abstract class SeriesCompactionExecutor {
    * chunk 2, while chunk 2 overlap with chunk 3, chunk 3 overlap with chunk 4,and so on, there are
    * 10 chunks in total. This method will merge all 10 chunks.
    */
-  private void compactWithOverlapChunks(List<ChunkMetadataElement> overlappedChunkMetadatas)
+  private void compactWithOverlapChunks(List<ChunkMetadataElement> overlappedChunkMetadataList)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    for (ChunkMetadataElement overlappedChunkMetadata : overlappedChunkMetadatas) {
+    for (ChunkMetadataElement overlappedChunkMetadata : overlappedChunkMetadataList) {
       readChunk(overlappedChunkMetadata);
       deserializeChunkIntoQueue(overlappedChunkMetadata);
     }
@@ -279,7 +279,7 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithOverlapPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    checkAndCompactOverlappePages();
+    checkAndCompactOverlapPages();
 
     // write remaining data points, of which point.time >= the last overlapped page.startTime
     while (pointPriorityReader.hasNext()) {
@@ -290,7 +290,7 @@ public abstract class SeriesCompactionExecutor {
       if (candidateOverlappedPages.size() > 0) {
         // finish compacting the first page or there are new chunks being deserialized and find
         // the new overlapped pages, then start compacting them
-        checkAndCompactOverlappePages();
+        checkAndCompactOverlapPages();
       }
     }
   }
@@ -300,7 +300,7 @@ public abstract class SeriesCompactionExecutor {
    * another page, then this page is fake overlap, which can be flushed to chunk writer directly.
    * Otherwise, deserialize this page into point priority reader.
    */
-  private void checkAndCompactOverlappePages()
+  private void checkAndCompactOverlapPages()
       throws IllegalPathException, IOException, WriteProcessException, PageException {
     // write point.time < the last overlapped page.startTime
     while (candidateOverlappedPages.size() > 0) {
@@ -377,9 +377,9 @@ public abstract class SeriesCompactionExecutor {
     long endTime = page.pageHeader.getEndTime();
     for (PageElement element : pageQueue) {
       if (element.startTime <= endTime) {
-        if (!element.isOverlaped) {
+        if (!element.isSelected) {
           elements.add(element);
-          element.isOverlaped = true;
+          element.isSelected = true;
         }
       }
     }
@@ -398,9 +398,9 @@ public abstract class SeriesCompactionExecutor {
     long endTime = chunkMetadataElement.chunkMetadata.getEndTime();
     for (ChunkMetadataElement element : chunkMetadataQueue) {
       if (element.chunkMetadata.getStartTime() <= endTime) {
-        if (!element.isOverlaped) {
+        if (!element.isSelected) {
           elements.add(element);
-          element.isOverlaped = true;
+          element.isSelected = true;
         }
       }
     }
@@ -418,9 +418,9 @@ public abstract class SeriesCompactionExecutor {
     long endTime = file.resource.getEndTime(deviceId);
     for (FileElement fileElement : fileList) {
       if (fileElement.resource.getStartTime(deviceId) <= endTime) {
-        if (!fileElement.isOverlap) {
+        if (!fileElement.isSelected) {
           overlappedFiles.add(fileElement);
-          fileElement.isOverlap = true;
+          fileElement.isSelected = true;
         }
       } else {
         break;
@@ -443,16 +443,6 @@ public abstract class SeriesCompactionExecutor {
       }
     }
     return false;
-  }
-
-  /**
-   * Check whether the chunk is modified.
-   *
-   * <p>Notice: if is aligned chunk, return true if any of value chunk has data been deleted. Return
-   * false if and only if all value chunks has no data been deleted.
-   */
-  protected boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
-    return chunkMetadataElement.chunkMetadata.isModified();
   }
 
   /**

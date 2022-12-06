@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -44,7 +43,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
@@ -329,7 +327,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException("constructSchemaBlackList");
   }
 
@@ -350,15 +348,12 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {}
-
-  @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
     throw new UnsupportedOperationException("isPathExist");
   }
 
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     int res = 0;
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
@@ -374,27 +369,27 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     throw new UnsupportedOperationException("getAllTimeseriesCount");
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
     throw new UnsupportedOperationException("getAllTimeseriesCount");
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -406,7 +401,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     synchronized (idTableWithDeviceIDList) {
       if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
@@ -418,18 +413,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getNodesCountInGivenLevel");
-  }
-
-  @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getNodesListInGivenLevel");
   }
 
@@ -819,7 +804,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException("constructSchemaBlackListWithTemplate");
   }
@@ -836,19 +821,9 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
     return 0;
-  }
-
-  @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException("getMNodeForTrigger");
-  }
-
-  @Override
-  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    throw new UnsupportedOperationException("releaseMNodeAfterDropTrigger");
   }
 
   @Override

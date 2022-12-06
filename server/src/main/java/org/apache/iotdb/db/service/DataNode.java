@@ -53,7 +53,7 @@ import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -66,6 +66,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
@@ -74,6 +75,8 @@ import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -159,6 +162,19 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      registerManager.register(MetricService.getInstance());
+
+      // init metric service
+      if (MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .getInternalReportType()
+          .equals(InternalReporterType.IOTDB)) {
+        MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
+      }
+      MetricService.getInstance().startInternalReporter();
+      // bind predefined metrics
+      DataNodeMetricsHelper.bind();
+
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
@@ -175,7 +191,7 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private void prepareDataNode() throws StartupException {
     // check iotdb server first
-    StartupChecks checks = new StartupChecks().withDefaultTest();
+    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     checks.verify();
 
     // Register services
@@ -194,6 +210,7 @@ public class DataNode implements DataNodeMBean {
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
+        logger.info(dataNodeRegisterResp.getStatus().getMessage());
         // store config node lists from resp
         List<TEndPoint> configNodeList = new ArrayList<>();
         for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
@@ -210,13 +227,12 @@ public class DataNode implements DataNodeMBean {
         getTriggerInformationList(dataNodeRegisterResp.getAllTriggerInformation());
 
         // store ttl information
-        StorageEngineV2.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
+        StorageEngine.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
             IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
@@ -241,10 +257,10 @@ public class DataNode implements DataNodeMBean {
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
           }
 
-          // In current implementation, only MultiLeader need separated memory from Consensus
+          // In current implementation, only IoTConsensus need separated memory from Consensus
           if (!config
               .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.MULTI_LEADER_CONSENSUS)) {
+              .equals(ConsensusFactory.IOT_CONSENSUS)) {
             IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
 
@@ -252,6 +268,10 @@ public class DataNode implements DataNodeMBean {
 
           logger.info("Register to the cluster successfully");
           return;
+        } else if (dataNodeRegisterResp.getStatus().getCode()
+            == TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode()) {
+          logger.error(dataNodeRegisterResp.getStatus().getMessage());
+          throw new StartupException("Cannot register to the cluster.");
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
@@ -335,7 +355,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
-    registerManager.register(StorageEngineV2.getInstance());
+    registerManager.register(StorageEngine.getInstance());
     registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
@@ -344,7 +364,7 @@ public class DataNode implements DataNodeMBean {
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
-    while (!StorageEngineV2.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -359,17 +379,11 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    // registerManager.register(SettleService.getINSTANCE());
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
-    registerManager.register(MetricService.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
-    // bind predefined metrics
-    DataNodeMetricsHelper.bind();
   }
 
   /** set up RPC and protocols after DataNode is available */
@@ -653,8 +667,12 @@ public class DataNode implements DataNodeMBean {
 
     try {
       MetricService.getInstance().stop();
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
+      if (SchemaRegionConsensusImpl.getInstance() != null) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (DataRegionConsensusImpl.getInstance() != null) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }

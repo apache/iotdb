@@ -85,7 +85,7 @@ public class NodePathsCountOperator implements ProcessOperator {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(nodePaths.size());
+    tsBlockBuilder.getColumnBuilder(0).writeLong(nodePaths.size());
     tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }

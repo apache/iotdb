@@ -68,10 +68,25 @@ public class StatementMemorySourceVisitor
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
+  private boolean sourceNotExist(StatementMemorySourceContext context) {
+    return (context.getAnalysis().getSourceExpressions() == null
+            || context.getAnalysis().getSourceExpressions().isEmpty())
+        && (context.getAnalysis().getDeviceToSourceExpressions() == null
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
+  }
+
   @Override
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getQueryStatement());
+    DatasetHeader header =
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
+            true);
+    if (sourceNotExist(context)) {
+      return new StatementMemorySource(new TsBlock(0), header);
+    }
     LogicalQueryPlan logicalPlan =
         new LogicalPlanner(context.getQueryContext(), new ArrayList<>())
             .plan(context.getAnalysis());
@@ -88,11 +103,7 @@ public class StatementMemorySourceVisitor
           builder.declarePosition();
         });
     TsBlock tsBlock = builder.build();
-    DatasetHeader header =
-        new DatasetHeader(
-            Collections.singletonList(
-                new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
-            true);
+
     return new StatementMemorySource(tsBlock, header);
   }
 
@@ -187,7 +198,7 @@ public class StatementMemorySourceVisitor
             .map(TSchemaNode::getNodeName)
             .collect(Collectors.toSet());
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
+    tsBlockBuilder.getColumnBuilder(0).writeLong(matchedChildNodes.size());
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
@@ -202,7 +213,7 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(0);
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
@@ -217,7 +228,7 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(0);
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

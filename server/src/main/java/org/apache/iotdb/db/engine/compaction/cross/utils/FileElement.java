@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 public class FileElement {
   public TsFileResource resource;
 
-  public boolean isOverlap = false;
+  public boolean isSelected = false;
 
   public FileElement(TsFileResource resource) {
     this.resource = resource;

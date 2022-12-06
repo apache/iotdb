@@ -32,11 +32,14 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
@@ -106,8 +109,12 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Transport Layer
 
-  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
-    return receiverManager.handshake(identityInfo);
+  public TSStatus handshake(
+      TSyncIdentityInfo identityInfo,
+      String remoteAddress,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    return receiverManager.handshake(identityInfo, remoteAddress, partitionFetcher, schemaFetcher);
   }
 
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
@@ -340,7 +347,7 @@ public class SyncService implements IService {
     }
   }
 
-  public synchronized void recordMessage(String pipeName, PipeMessage message) {
+  public void recordMessage(String pipeName, PipeMessage message) {
     if (!pipes.containsKey(pipeName)) {
       logger.warn(String.format("No running PIPE for message %s.", message));
       return;
@@ -348,17 +355,13 @@ public class SyncService implements IService {
     TSStatus status = null;
     switch (message.getType()) {
       case ERROR:
-        logger.error("{}", message);
+        logger.error(
+            "Error occurred when executing PIPE [{}] because {}.", pipeName, message.getMessage());
         status = syncInfoFetcher.recordMsg(pipeName, message);
-        try {
-          stopPipe(pipeName);
-        } catch (PipeException e) {
-          logger.error(
-              String.format("Stop PIPE %s when meeting error in sender service.", pipeName), e);
-        }
         break;
       case WARN:
-        logger.warn("{}", message);
+        logger.error(
+            "Warn occurred when executing PIPE [{}] because {}.", pipeName, message.getMessage());
         status = syncInfoFetcher.recordMsg(pipeName, message);
         break;
       default:
@@ -391,14 +394,14 @@ public class SyncService implements IService {
   public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
     boolean showAll = StringUtils.isEmpty(pipeName);
     List<TShowPipeInfo> list = new ArrayList<>();
-    for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
+    for (SyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
       if (showAll || pipeName.equals(identityInfo.getPipeName())) {
         TShowPipeInfo tPipeInfo =
             new TShowPipeInfo(
                 identityInfo.getCreateTime(),
                 identityInfo.getPipeName(),
                 SyncConstant.ROLE_RECEIVER,
-                identityInfo.getAddress(),
+                identityInfo.getRemoteAddress(),
                 PipeStatus.RUNNING.name(),
                 String.format("Database='%s'", identityInfo.getDatabase()),
                 // TODO: implement receiver message
@@ -478,7 +481,7 @@ public class SyncService implements IService {
     try {
       recover();
     } catch (Exception e) {
-      logger.error("Recover from disk error.", e);
+      logger.error("Recovery error.", e);
       throw new StartupException(e);
     }
   }

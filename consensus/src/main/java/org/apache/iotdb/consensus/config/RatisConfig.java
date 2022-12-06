@@ -781,19 +781,26 @@ public class RatisConfig {
     private final long clientRetryInitialSleepTimeMs;
     private final long clientRetryMaxSleepTimeMs;
 
+    private final long triggerSnapshotTime;
+    private final long triggerSnapshotFileSize;
+
     private RatisConsensus(
         int retryTimesMax,
         long retryWaitMillis,
         long clientRequestTimeoutMillis,
         int clientMaxRetryAttempt,
         long clientRetryInitialSleepTimeMs,
-        long clientRetryMaxSleepTimeMs) {
+        long clientRetryMaxSleepTimeMs,
+        long triggerSnapshotTime,
+        long triggerSnapshotFileSize) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
       this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
       this.clientMaxRetryAttempt = clientMaxRetryAttempt;
       this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
       this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+      this.triggerSnapshotTime = triggerSnapshotTime;
+      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
     }
 
     public int getRetryTimesMax() {
@@ -820,6 +827,14 @@ public class RatisConfig {
       return clientRetryMaxSleepTimeMs;
     }
 
+    public long getTriggerSnapshotTime() {
+      return triggerSnapshotTime;
+    }
+
+    public long getTriggerSnapshotFileSize() {
+      return triggerSnapshotFileSize;
+    }
+
     public static RatisConsensus.Builder newBuilder() {
       return new Builder();
     }
@@ -833,6 +848,11 @@ public class RatisConfig {
       private long clientRetryInitialSleepTimeMs = 100;
       private long clientRetryMaxSleepTimeMs = 10000;
 
+      // 120s
+      private long triggerSnapshotTime = 120;
+      // 20GB
+      private long triggerSnapshotFileSize = 20L << 30;
+
       public RatisConsensus build() {
         return new RatisConsensus(
             retryTimesMax,
@@ -840,7 +860,9 @@ public class RatisConfig {
             clientRequestTimeoutMillis,
             clientMaxRetryAttempt,
             clientRetryInitialSleepTimeMs,
-            clientRetryMaxSleepTimeMs);
+            clientRetryMaxSleepTimeMs,
+            triggerSnapshotTime,
+            triggerSnapshotFileSize);
       }
 
       public RatisConsensus.Builder setRetryTimesMax(int retryTimesMax) {
@@ -871,6 +893,16 @@ public class RatisConfig {
 
       public RatisConsensus.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
         this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+        return this;
+      }
+
+      public RatisConsensus.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
+        this.triggerSnapshotTime = triggerSnapshotTime;
+        return this;
+      }
+
+      public RatisConsensus.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
+        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
         return this;
       }
     }

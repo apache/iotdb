@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionTest;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -88,7 +88,7 @@ public class StandaloneSchedulerTest {
     configNode.init();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
-    StorageEngineV2.getInstance().start();
+    StorageEngine.getInstance().start();
     LocalDataPartitionTable.DataRegionIdGenerator.getInstance().reset();
   }
 
@@ -96,7 +96,7 @@ public class StandaloneSchedulerTest {
   public void tearDown() throws Exception {
     configNode.clear();
     WALManager.getInstance().stop();
-    StorageEngineV2.getInstance().stop();
+    StorageEngine.getInstance().stop();
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);

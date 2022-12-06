@@ -38,14 +38,14 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
         l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
         Tag.NAME.toString(),
         "timeSeriesMeta");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
@@ -57,9 +57,9 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
   }
 
   @Override

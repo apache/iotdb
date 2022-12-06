@@ -24,14 +24,15 @@ import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.Test;
 
@@ -54,17 +55,14 @@ public class MetricServiceTest {
 
   @Test
   public void testMetricService() {
-    for (MonitorType type : MonitorType.values()) {
+    for (MetricFrameType type : MetricFrameType.values()) {
       // init metric service
-      metricConfig.setEnableMetric(true);
-      metricConfig.setMonitorType(type);
+      metricConfig.setMetricFrameType(type);
       metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
       metricService = new DoNothingMetricService();
       metricService.startService();
 
       // test metric service
-      assertTrue(metricService.isEnable());
-      assertTrue(metricService.getMetricManager().isEnableMetric());
       assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
       assertTrue(
           metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
@@ -102,13 +100,13 @@ public class MetricServiceTest {
     assertNotEquals(counter1, counter2);
     counter2 = metricService.getOrCreateCounter("counter5", MetricLevel.NORMAL, "tag", "value");
     assertEquals(DoNothingMetricManager.doNothingCounter, counter2);
-    assertEquals(4, metricService.getAllCounters().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.COUNTER).size());
     metricService.count(10, "counter6", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, metricService.getAllCounters().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.COUNTER).size());
     metricService.remove(MetricType.COUNTER, "counter6");
-    assertEquals(5, metricService.getAllCounters().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.COUNTER).size());
     metricService.remove(MetricType.COUNTER, "counter6", "tag", "value");
-    assertEquals(4, metricService.getAllCounters().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.COUNTER).size());
     assertEquals(4, metricService.getAllMetricKeys().size());
 
     // test gauge
@@ -128,19 +126,19 @@ public class MetricServiceTest {
     assertNotEquals(gauge1, gauge2);
     gauge2 = metricService.getOrCreateGauge("gauge5", MetricLevel.NORMAL, "tag", "value");
     assertEquals(DoNothingMetricManager.doNothingGauge, gauge2);
-    assertEquals(4, metricService.getAllGauges().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     metricService.gauge(10, "gauge6", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, metricService.getAllGauges().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.GAUGE).size());
     metricService.remove(MetricType.GAUGE, "gauge6");
-    assertEquals(5, metricService.getAllGauges().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.GAUGE).size());
     metricService.remove(MetricType.GAUGE, "gauge6", "tag", "value");
-    assertEquals(4, metricService.getAllGauges().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(8, metricService.getAllMetricKeys().size());
 
     // test auto gauge
     List<Integer> list = new ArrayList<>();
-    Gauge autoGauge =
-        metricService.getOrCreateAutoGauge(
+    AutoGauge autoGauge =
+        metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
     assertEquals(0L, autoGauge.value());
     list.add(1);
@@ -152,9 +150,10 @@ public class MetricServiceTest {
     list = null;
     System.gc();
     assertEquals(0L, autoGauge.value());
-    assertEquals(5, metricService.getAllGauges().size());
-    metricService.remove(MetricType.GAUGE, "autoGauge", "tag", "value");
-    assertEquals(4, metricService.getAllGauges().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
+    assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
+    metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
+    assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(8, metricService.getAllMetricKeys().size());
 
     // test rate
@@ -175,14 +174,14 @@ public class MetricServiceTest {
             "rate4", MetricLevel.IMPORTANT, "tag", "value", "tag2", "value");
     assertNotEquals(rate1, rate2);
     rate2 = metricService.getOrCreateRate("rate5", MetricLevel.NORMAL, "tag", "value");
-    assertEquals(4, metricService.getAllRates().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.RATE).size());
     assertEquals(DoNothingMetricManager.doNothingRate, rate2);
     metricService.rate(10, "rate6", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, metricService.getAllRates().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.RATE).size());
     metricService.remove(MetricType.RATE, "rate6");
-    assertEquals(5, metricService.getAllRates().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.RATE).size());
     metricService.remove(MetricType.RATE, "rate6", "tag", "value");
-    assertEquals(4, metricService.getAllRates().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.RATE).size());
     assertEquals(12, metricService.getAllMetricKeys().size());
 
     // test histogram
@@ -213,23 +212,23 @@ public class MetricServiceTest {
     histogram2 =
         metricService.getOrCreateHistogram("histogram5", MetricLevel.NORMAL, "tag", "value");
     assertEquals(DoNothingMetricManager.doNothingHistogram, histogram2);
-    assertEquals(4, metricService.getAllHistograms().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
     metricService.histogram(10, "histogram6", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, metricService.getAllHistograms().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
     metricService.remove(MetricType.HISTOGRAM, "histogram6");
-    assertEquals(5, metricService.getAllHistograms().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
     metricService.remove(MetricType.HISTOGRAM, "histogram6", "tag", "value");
-    assertEquals(4, metricService.getAllHistograms().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
     assertEquals(16, metricService.getAllMetricKeys().size());
 
     // test timer
     Timer timer1 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(timer1);
-    metricService.timer(2, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    metricService.timer(4, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    metricService.timer(6, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    metricService.timer(8, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    metricService.timer(10, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
+    metricService.timer(2, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
+    metricService.timer(4, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
+    metricService.timer(6, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
+    metricService.timer(8, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
+    metricService.timer(10, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, timer1.getImmutableRate().getCount());
     assertEquals(5, timer1.takeSnapshot().size());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
@@ -244,13 +243,13 @@ public class MetricServiceTest {
     assertNotEquals(timer1, timer2);
     timer2 = metricService.getOrCreateTimer("timer5", MetricLevel.NORMAL, "tag", "value");
     assertNotEquals(timer1, timer2);
-    assertEquals(4, metricService.getAllTimers().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.TIMER).size());
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer6", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, metricService.getAllTimers().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.TIMER).size());
     metricService.remove(MetricType.TIMER, "timer6");
-    assertEquals(5, metricService.getAllTimers().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.TIMER).size());
     metricService.remove(MetricType.TIMER, "timer6", "tag", "value");
-    assertEquals(4, metricService.getAllTimers().size());
+    assertEquals(4, metricService.getMetricsByType(MetricType.TIMER).size());
     assertEquals(20, metricService.getAllMetricKeys().size());
 
     // test remove same key and different value counter
@@ -260,15 +259,15 @@ public class MetricServiceTest {
     Counter removeCounter2 =
         metricService.getOrCreateCounter("remove", MetricLevel.IMPORTANT, "tag", "value2");
     assertNotNull(removeCounter2);
-    assertEquals(6, metricService.getAllCounters().size());
+    assertEquals(6, metricService.getMetricsByType(MetricType.COUNTER).size());
     assertEquals(22, metricService.getAllMetricKeys().size());
     metricService.remove(MetricType.COUNTER, "remove", "tag", "value1");
-    assertEquals(5, metricService.getAllCounters().size());
+    assertEquals(5, metricService.getMetricsByType(MetricType.COUNTER).size());
     assertEquals(21, metricService.getAllMetricKeys().size());
     removeCounter2 =
         metricService.getOrCreateCounter("remove", MetricLevel.IMPORTANT, "tag", "value1");
     assertNotNull(removeCounter2);
-    assertEquals(6, metricService.getAllCounters().size());
+    assertEquals(6, metricService.getMetricsByType(MetricType.COUNTER).size());
     assertEquals(22, metricService.getAllMetricKeys().size());
   }
 

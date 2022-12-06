@@ -371,6 +371,12 @@ public class Util {
       }
 
       @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return ANALYSIS.getDataPartitionInfo();
+      }
+
+      @Override
       public DataPartition getOrCreateDataPartition(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();

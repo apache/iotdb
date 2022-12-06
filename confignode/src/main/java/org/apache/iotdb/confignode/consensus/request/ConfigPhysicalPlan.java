@@ -64,7 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -177,8 +178,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetTimePartitionInterval:
           plan = new SetTimePartitionIntervalPlan();
           break;
-        case AdjustMaxRegionGroupCount:
-          plan = new AdjustMaxRegionGroupCountPlan();
+        case AdjustMaxRegionGroupNum:
+          plan = new AdjustMaxRegionGroupNumPlan();
           break;
         case CountStorageGroup:
           plan = new CountStorageGroupPlan();
@@ -339,6 +340,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowPipe:
           plan = new ShowPipePlan();
+          break;
+        case RecordPipeMessage:
+          plan = new RecordPipeMessagePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
@@ -29,8 +28,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
-
-import java.io.IOException;
 
 public class RInternalMNode extends RMNode {
 
@@ -170,10 +167,5 @@ public class RInternalMNode extends RMNode {
   @Override
   public void setUseTemplate(boolean useTemplate) {
     this.useTemplate = useTemplate;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
   }
 }

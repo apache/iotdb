@@ -73,7 +73,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   }
 
   @Override
-  public void excute()
+  public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactionWriter.startMeasurement(measurementSchemas, subTaskId);
     compactFiles();

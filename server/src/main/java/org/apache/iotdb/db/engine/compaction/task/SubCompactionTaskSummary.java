@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 public class SubCompactionTaskSummary {
-  // fast performer
   public int CHUNK_NONE_OVERLAP;
   public int CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
   public int CHUNK_OVERLAP_OR_MODIFIED;
@@ -29,13 +28,6 @@ public class SubCompactionTaskSummary {
   public int PAGE_FAKE_OVERLAP;
   public int PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
 
-  // read chunk performer
-  public int CHUNK_DESERIALIZE_INTO_POINTS;
-
-  public int CHUNK_DESERIALIZE_INTO_PAGES;
-
-  public int CHUNK_NON_DESERIALIZE;
-
   public void increase(SubCompactionTaskSummary summary) {
     this.CHUNK_NONE_OVERLAP += summary.CHUNK_NONE_OVERLAP;
     this.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
@@ -44,8 +36,5 @@ public class SubCompactionTaskSummary {
     this.PAGE_OVERLAP_OR_MODIFIED += summary.PAGE_OVERLAP_OR_MODIFIED;
     this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
     this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
-    this.CHUNK_DESERIALIZE_INTO_POINTS += summary.CHUNK_DESERIALIZE_INTO_POINTS;
-    this.CHUNK_DESERIALIZE_INTO_PAGES += summary.CHUNK_DESERIALIZE_INTO_PAGES;
-    this.CHUNK_NON_DESERIALIZE += summary.CHUNK_NON_DESERIALIZE;
   }
 }

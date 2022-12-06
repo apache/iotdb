@@ -102,7 +102,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
@@ -289,24 +288,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
-    Map<PartialPath, Integer> countResults = getTimeseriesCountGroupByLevel(countPlan);
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(
-                new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    for (PartialPath columnPath : countResults.keySet()) {
-      RowRecord record = new RowRecord(0);
-      Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.INT32);
-      // get the count of every group
-      field1.setIntV(countResults.get(columnPath));
-      record.addField(field);
-      record.addField(field1);
-      listDataSet.putRecord(record);
-    }
-    return listDataSet;
+    return new ListDataSet(
+        Arrays.asList(new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
   }
 
   private QueryDataSet processCountDevices(CountPlan countPlan) throws MetadataException {
@@ -372,17 +356,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
     return IoTDB.schemaProcessor.getMeasurementPaths(path);
-  }
-
-  protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
-      throws MetadataException {
-    return IoTDB.schemaProcessor.getNodesListInGivenLevel(schemaPattern, level);
-  }
-
-  private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
-      throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementCountGroupByLevel(
-        countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {

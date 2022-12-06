@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -93,14 +92,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // overlapped or not
   protected long pagePointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction / 10;
 
-  private final boolean enableMetrics =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
-
   protected boolean isAlign;
 
   protected String deviceId;
 
-  protected String measurementId;
+  protected String[] measurementId = new String[subTaskNum];
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -111,10 +107,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
-      measurementId = "";
+      measurementId[subTaskId] = "";
     } else {
       chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
-      measurementId = measurementSchemaList.get(0).getMeasurementId();
+      measurementId[subTaskId] = measurementSchemaList.get(0).getMeasurementId();
     }
   }
 
@@ -298,15 +294,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, iChunkWriter, subTaskId);
         lastCheckIndex = 0;
-        if (enableMetrics) {
-          CompactionMetricsRecorder.recordWriteInfo(
-              isCrossSpace
-                  ? CompactionType.CROSS_COMPACTION
-                  : CompactionType.INNER_UNSEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              isAlign,
-              iChunkWriter.estimateMaxSeriesMemSize());
-        }
+        CompactionMetricsRecorder.recordWriteInfo(
+            isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            isAlign,
+            iChunkWriter.estimateMaxSeriesMemSize());
       }
     }
   }

@@ -47,7 +47,7 @@ public class PageElement {
 
   public long startTime;
 
-  public boolean isOverlaped = false;
+  public boolean isSelected = false;
 
   public boolean isLastPage;
 

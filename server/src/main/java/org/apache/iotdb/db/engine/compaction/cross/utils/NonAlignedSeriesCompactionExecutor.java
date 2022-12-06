@@ -67,7 +67,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   }
 
   @Override
-  public void excute()
+  public void execute()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactFiles();
     if (hasStartMeasurement) {
@@ -75,8 +75,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
     }
   }
 
-  public void startNewtMeasurement(
-      Map<TsFileResource, Pair<Long, Long>> timeseriesMetadataOffsetMap) {
+  public void setNewMeasurement(Map<TsFileResource, Pair<Long, Long>> timeseriesMetadataOffsetMap) {
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.

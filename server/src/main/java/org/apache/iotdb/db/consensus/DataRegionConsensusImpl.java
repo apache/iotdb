@@ -24,14 +24,14 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.config.MultiLeaderConfig;
-import org.apache.iotdb.consensus.config.MultiLeaderConfig.RPC;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
@@ -65,8 +65,8 @@ public class DataRegionConsensusImpl {
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
-                      .setMultiLeaderConfig(
-                          MultiLeaderConfig.newBuilder()
+                      .setIoTConsensusConfig(
+                          IoTConsensusConfig.newBuilder()
                               .setRpc(
                                   RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
@@ -84,7 +84,7 @@ public class DataRegionConsensusImpl {
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
                                       .build())
                               .setReplication(
-                                  MultiLeaderConfig.Replication.newBuilder()
+                                  IoTConsensusConfig.Replication.newBuilder()
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
@@ -157,12 +157,14 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           conf.getDataRatisConsensusMaxSleepTimeMs())
+                                      .setTriggerSnapshotFileSize(
+                                          conf.getDataRatisLogMaxMB() * 1024 * 1024)
                                       .build())
                               .build())
                       .build(),
                   gid ->
                       new DataRegionStateMachine(
-                          StorageEngineV2.getInstance().getDataRegion((DataRegionId) gid)))
+                          StorageEngine.getInstance().getDataRegion((DataRegionId) gid)))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(

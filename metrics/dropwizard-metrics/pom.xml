@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-metrics</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>dropwizard-metrics</artifactId>
@@ -42,11 +42,6 @@
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jmx</artifactId>
             <version>${dropwizard.metrics.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty-http</artifactId>
-            <version>${reactor-netty-http.version}</version>
         </dependency>
     </dependencies>
     <properties>

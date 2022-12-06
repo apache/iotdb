@@ -25,9 +25,9 @@ import java.util.Map;
 /**
  * When update this class, remember to update the following files
  *
- * <p>docs/UserGuide/API/Status-Codes.md
+ * <p>docs/UserGuide/Reference/Status-Codes.md
  *
- * <p>docs/zh/UserGuide/API/Status-Codes.md
+ * <p>docs/zh/UserGuide/Reference/Status-Codes.md
  */
 public enum TSStatusCode {
   SUCCESS_STATUS(200),
@@ -133,7 +133,7 @@ public enum TSStatusCode {
   DATANODE_NOT_EXIST(1004),
   DATANODE_STOP_ERROR(1005),
   REMOVE_DATANODE_ERROR(1006),
-  REGISTER_REMOVED_DATANODE(1007),
+  REGISTER_DATANODE_WITH_WRONG_ID(1007),
   CAN_NOT_CONNECT_DATANODE(1008),
 
   // Sync, Load TsFile

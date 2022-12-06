@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.ref.WeakReference;
 import java.util.function.ToLongFunction;
 
-public class MicrometerAutoGauge<T> implements Gauge {
+public class MicrometerAutoGauge<T> implements AutoGauge {
   private final WeakReference<T> refObject;
   private final ToLongFunction<T> mapper;
 
@@ -46,25 +46,10 @@ public class MicrometerAutoGauge<T> implements Gauge {
   }
 
   @Override
-  public void set(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
   public long value() {
     if (refObject.get() == null) {
       return 0L;
     }
     return mapper.applyAsLong(refObject.get());
-  }
-
-  @Override
-  public void incr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
-  }
-
-  @Override
-  public void decr(long value) {
-    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }

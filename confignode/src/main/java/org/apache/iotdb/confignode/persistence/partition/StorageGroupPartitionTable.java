@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -194,8 +196,7 @@ public class StorageGroupPartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
-      DataPartitionTable dataPartition) {
+      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots, DataPartitionTable dataPartition) {
     return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }
 
@@ -285,8 +286,8 @@ public class StorageGroupPartitionTable {
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
    */
-  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
+  public Map<TSeriesPartitionSlot, TTimeSlotList> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots) {
     return dataPartitionTable.filterUnassignedDataPartitionSlots(partitionSlots);
   }
 
@@ -413,6 +414,7 @@ public class StorageGroupPartitionTable {
                 schemaPartitionTable.getSeriesSlotList().stream(),
                 dataPartitionTable.getSeriesSlotList().stream())
             .distinct()
+            .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
             .collect(Collectors.toList());
     }
   }

@@ -79,7 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
@@ -112,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -248,13 +249,13 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void AdjustMaxRegionGroupCountPlanTest() throws IOException {
-    AdjustMaxRegionGroupCountPlan req0 = new AdjustMaxRegionGroupCountPlan();
+    AdjustMaxRegionGroupNumPlan req0 = new AdjustMaxRegionGroupNumPlan();
     for (int i = 0; i < 3; i++) {
       req0.putEntry("root.sg" + i, new Pair<>(i, i));
     }
 
-    AdjustMaxRegionGroupCountPlan req1 =
-        (AdjustMaxRegionGroupCountPlan)
+    AdjustMaxRegionGroupNumPlan req1 =
+        (AdjustMaxRegionGroupNumPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
@@ -434,11 +435,16 @@ public class ConfigPhysicalPlanSerDeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
 
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-    partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
+    partitionSlotsMap
+        .get(storageGroup)
+        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
+    partitionSlotsMap
+        .get(storageGroup)
+        .get(seriesPartitionSlot)
+        .getTimePartitionSlots()
+        .add(timePartitionSlot);
 
     GetDataPartitionPlan req0 = new GetDataPartitionPlan(partitionSlotsMap);
     GetDataPartitionPlan req1 =
@@ -452,11 +458,16 @@ public class ConfigPhysicalPlanSerDeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
 
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-    partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
+    partitionSlotsMap
+        .get(storageGroup)
+        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
+    partitionSlotsMap
+        .get(storageGroup)
+        .get(seriesPartitionSlot)
+        .getTimePartitionSlots()
+        .add(timePartitionSlot);
 
     GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan(partitionSlotsMap);
     GetOrCreateDataPartitionPlan req1 =

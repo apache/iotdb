@@ -431,7 +431,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
               "(%s, %s, %s),",
               getKeyByIndex(i), keyOffset(getPointerByIndex(i)), pageIndex(getPointerByIndex(i))));
     }
-    builder.append("]");
+    builder.append("]\n");
     return builder.toString();
   }
 

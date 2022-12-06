@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
@@ -75,7 +74,6 @@ public class ReadChunkCompactionPerformerAlignedTest {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
     IoTDB.configManager.init();
-    CompactionTaskManager.getInstance().start();
   }
 
   @After
@@ -85,7 +83,6 @@ public class ReadChunkCompactionPerformerAlignedTest {
     IoTDB.configManager.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
   }
 

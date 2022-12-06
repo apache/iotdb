@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -34,7 +35,6 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -51,7 +51,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
@@ -80,10 +81,10 @@ public class ConsensusManager {
     // There is only one ConfigNodeGroup
     consensusGroupId = new ConfigNodeRegionId(CONF.getConfigNodeRegionId());
 
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+    if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
-                  ConsensusFactory.SIMPLE_CONSENSUS,
+                  SIMPLE_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
@@ -93,9 +94,7 @@ public class ConsensusManager {
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(
-                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              ConsensusFactory.SIMPLE_CONSENSUS)));
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, SIMPLE_CONSENSUS)));
     } else {
       // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
@@ -124,6 +123,8 @@ public class ConsensusManager {
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          CONF.getConfigNodeRatisPreserveLogsWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -166,6 +167,8 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
+                                      .setTriggerSnapshotFileSize(
+                                          CONF.getConfigNodeRatisLogMaxMB() * 1024 * 1024)
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
@@ -181,6 +184,16 @@ public class ConsensusManager {
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
       // TODO: Check and notify if current ConfigNode's ip or port has changed
+
+      if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+        // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
+        // but RATIS_CONSENSUS doesn't need it
+        try {
+          createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
+        } catch (BadNodeUrlException e) {
+          throw new IOException(e);
+        }
+      }
       LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
@@ -200,11 +213,6 @@ public class ConsensusManager {
    * @param configNodeLocations All registered ConfigNodes
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is empty, createPeerForConsensusGroup failed.");
-      return;
-    }
-
     LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();
@@ -219,37 +227,24 @@ public class ConsensusManager {
   }
 
   /**
-   * Tell the group to [create a new Peer on new node] and [add this member to join the group].
+   * Add a new ConfigNode Peer into ConfigNodeRegion
    *
-   * <p>Using this method to replace `createPeer` and `addPeer`.
-   *
-   * @param originalConfigNodes the original members of the existed group
-   * @param newConfigNode the new member
+   * @param configNodeLocation The new ConfigNode
+   * @throws AddPeerException When addPeer doesn't success
    */
-  public void addNewNodeToExistedGroup(
-      List<TConfigNodeLocation> originalConfigNodes, TConfigNodeLocation newConfigNode)
-      throws AddPeerException {
-    Peer newPeer =
-        new Peer(
-            consensusGroupId,
-            newConfigNode.getConfigNodeId(),
-            newConfigNode.getConsensusEndPoint());
+  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
+    boolean result =
+        consensusImpl
+            .addPeer(
+                consensusGroupId,
+                new Peer(
+                    consensusGroupId,
+                    configNodeLocation.getConfigNodeId(),
+                    configNodeLocation.getConsensusEndPoint()))
+            .isSuccess();
 
-    List<Peer> originalPeers =
-        originalConfigNodes.stream()
-            .map(
-                node ->
-                    new Peer(consensusGroupId, node.getConfigNodeId(), node.getConsensusEndPoint()))
-            .collect(Collectors.toList());
-
-    LOGGER.info("AddNewNodeToExistedGroup, newPeer: {}, originalPeers: {}", newPeer, originalPeers);
-
-    ConsensusGenericResponse response =
-        consensusImpl.addNewNodeToExistedGroup(consensusGroupId, newPeer, originalPeers);
-    if (!response.isSuccess()) {
-      LOGGER.error(
-          "Execute addNewNodeToExistedGroup for ConfigNode failed, response: {}", response);
-      throw new AddPeerException(newConfigNode);
+    if (!result) {
+      throw new AddPeerException(configNodeLocation);
     }
   }
 
