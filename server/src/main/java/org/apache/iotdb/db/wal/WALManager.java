@@ -59,6 +59,8 @@ public class WALManager implements IService {
   private ScheduledExecutorService walDeleteThread;
   /** total disk usage of wal files */
   private final AtomicLong totalDiskUsage = new AtomicLong();
+  /** total number of wal files */
+  private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
     if (config.isClusterMode()
@@ -197,6 +199,18 @@ public class WALManager implements IService {
 
   public void subtractTotalDiskUsage(long size) {
     totalDiskUsage.accumulateAndGet(size, (x, y) -> x - y);
+  }
+
+  public long getTotalFileNum() {
+    return totalFileNum.get();
+  }
+
+  public void addTotalFileNum(long size) {
+    totalFileNum.accumulateAndGet(size, Long::sum);
+  }
+
+  public void subtractTotalFileNum(long size) {
+    totalFileNum.accumulateAndGet(size, (x, y) -> x - y);
   }
 
   @Override
