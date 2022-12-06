@@ -52,16 +52,16 @@ public class ConfigNodeConfig {
   private int configNodeRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** Schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
 
   /** Data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 1;
