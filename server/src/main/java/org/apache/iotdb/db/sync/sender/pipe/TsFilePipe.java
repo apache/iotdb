@@ -157,7 +157,7 @@ public class TsFilePipe implements Pipe {
       logger.info(
           logFormat(
               "init syncManager for %s-%s",
-              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+              dataRegion.getDatabaseName(), dataRegion.getDataRegionId()));
       getOrCreateSyncManager(dataRegion.getDataRegionId());
     }
     try {
