@@ -903,6 +903,14 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "select_into_insert_tablet_plan_row_limit",
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+    conf.setIntoOperationExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "into_operation_execution_thread_count",
+                String.valueOf(conf.getIntoOperationExecutionThreadCount()))));
+    if (conf.getIntoOperationExecutionThreadCount() <= 0) {
+      conf.setIntoOperationExecutionThreadCount(2);
+    }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1982,8 +1990,8 @@ public class IoTDBDescriptor {
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
 
-    conf.setSchemaRatisLogMaxMB(ratisConfig.getSchemaRegionRatisLogMax());
-    conf.setDataRatisLogMaxMB(ratisConfig.getDataRegionRatisLogMax());
+    conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -41,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -724,7 +722,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
     return configManager.recordPipeMessage(req);
   }
 
@@ -733,12 +731,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
       return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
     }
-    TTimePartitionSlot timePartitionSlot =
-        req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);
-    GetRegionIdPlan plan =
-        new GetRegionIdPlan(
-            req.getStorageGroup(), req.getType(), req.getSeriesSlotId(), timePartitionSlot);
-    return configManager.getRegionId(plan);
+    return configManager.getRegionId(req);
   }
 
   @Override

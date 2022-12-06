@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
@@ -75,6 +76,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPrevi
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -144,11 +146,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -172,6 +176,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
@@ -1377,7 +1382,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sourceColumnToInputLocationMap,
         context.getTypeProvider());
 
+    int rowLimit =
+        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+    long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
+
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
     return new IntoOperator(
         operatorContext,
         child,
@@ -1385,7 +1395,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         targetPathToDataTypeMap,
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
         intoPathDescriptor.getSourceTargetPathPairList(),
-        sourceColumnToInputLocationMap);
+        sourceColumnToInputLocationMap,
+        context.getIntoOperationExecutor(),
+        maxStatementSize);
   }
 
   @Override
@@ -1410,6 +1422,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         new HashMap<>();
     Map<String, Map<PartialPath, Map<String, String>>> sourceDeviceToTargetPathMap =
         deviceViewIntoPathDescriptor.getSourceDeviceToTargetPathMap();
+    long statementSizePerLine = 0L;
     for (Map.Entry<String, Map<PartialPath, Map<String, String>>> deviceEntry :
         sourceDeviceToTargetPathMap.entrySet()) {
       String sourceDevice = deviceEntry.getKey();
@@ -1425,7 +1438,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       deviceToTargetPathSourceInputLocationMap.put(
           sourceDevice, targetPathToSourceInputLocationMap);
       deviceToTargetPathDataTypeMap.put(sourceDevice, targetPathToDataTypeMap);
+      statementSizePerLine += calculateStatementSizePerLine(targetPathToDataTypeMap);
     }
+
+    int rowLimit =
+        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+    long maxStatementSize = statementSizePerLine * rowLimit;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new DeviceViewIntoOperator(
@@ -1435,7 +1453,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         deviceToTargetPathDataTypeMap,
         deviceViewIntoPathDescriptor.getTargetDeviceToAlignedMap(),
         deviceViewIntoPathDescriptor.getDeviceToSourceTargetPathPairListMap(),
-        sourceColumnToInputLocationMap);
+        sourceColumnToInputLocationMap,
+        context.getIntoOperationExecutor(),
+        maxStatementSize);
   }
 
   private Map<String, InputLocation> constructSourceColumnToInputLocationMap(PlanNode node) {
@@ -1469,6 +1489,38 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
+  private long calculateStatementSizePerLine(
+      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap) {
+    long maxStatementSize = Long.BYTES;
+    List<TSDataType> dataTypes =
+        targetPathToDataTypeMap.values().stream()
+            .flatMap(stringTSDataTypeMap -> stringTSDataTypeMap.values().stream())
+            .collect(Collectors.toList());
+    for (TSDataType dataType : dataTypes) {
+      maxStatementSize += getValueSizePerLine(dataType);
+    }
+    return maxStatementSize;
+  }
+
+  private static long getValueSizePerLine(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case INT32:
+        return Integer.BYTES;
+      case INT64:
+        return Long.BYTES;
+      case FLOAT:
+        return Float.BYTES;
+      case DOUBLE:
+        return Double.BYTES;
+      case BOOLEAN:
+        return Byte.BYTES;
+      case TEXT:
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(new PartialPath());
+      default:
+        throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+    }
+  }
+
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children =
@@ -1484,7 +1536,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 TimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
-    List<OutputColumn> outputColumns = generateOutputColumns(node);
+    List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
@@ -1498,7 +1550,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         timeComparator);
   }
 
-  private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+  @Override
+  public Operator visitVerticallyConcat(
+      VerticallyConcatNode node, LocalExecutionPlanContext context) {
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                VerticallyConcatOperator.class.getSimpleName());
+    List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new VerticallyConcatOperator(operatorContext, children, outputColumnTypes);
+  }
+
+  private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
     // TODO we should also sort the InputLocation for each column if they are not overlapped
     return makeLayout(node).values().stream()
         .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))

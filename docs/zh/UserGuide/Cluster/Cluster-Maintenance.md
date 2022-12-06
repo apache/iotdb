@@ -316,6 +316,11 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 
 展示一个数据分区（或一个序列槽下的所有数据分区）所在的 DataRegion:
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+  
+其中，”SERIESSLOTID=s0”可以被替换为”DEVICEID=xxx.xx.xx“. 这样的话，sql会自动计算对应该设备id的序列槽。
+
+同样的，"TIMESLOTID=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳对应的时间槽，也就是时间段包含该时间戳的时间槽。
+
 
 示例:
 ```
@@ -343,6 +348,8 @@ It costs 0.006s
 
 展示一个元数据分区所在的 SchemaRegion：
 - `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+
+同样的，”SERIESSLOTID“与”TIMESLOTID“依然是可替换的。
 
 示例:
 ```

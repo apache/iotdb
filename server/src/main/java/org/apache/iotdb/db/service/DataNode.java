@@ -667,8 +667,12 @@ public class DataNode implements DataNodeMBean {
 
     try {
       MetricService.getInstance().stop();
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
+      if (SchemaRegionConsensusImpl.getInstance() != null) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (DataRegionConsensusImpl.getInstance() != null) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }
