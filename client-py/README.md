@@ -21,6 +21,7 @@
 
 # Apache IoTDB
 
+[![Python Client](https://github.com/apache/iotdb/actions/workflows/client-python.yml/badge.svg?branch=master)](https://github.com/apache/iotdb/actions/workflows/client-python.yml)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
