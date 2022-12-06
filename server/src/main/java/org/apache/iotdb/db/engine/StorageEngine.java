@@ -508,7 +508,7 @@ public class StorageEngine implements IService {
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
+      if (dataRegion.getDatabaseName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
             tasks.add(
@@ -655,13 +655,13 @@ public class StorageEngine implements IService {
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
           WALManager.getInstance()
               .deleteWALNode(
-                  region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
         SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
-            region.getStorageGroupName(),
+            region.getDatabaseName(),
             region.getDataRegionId(),
             e);
       } finally {
