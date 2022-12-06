@@ -156,7 +156,7 @@
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.49.v20220914</jetty.version>
-        <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
+        <dropwizard.metrics.version>4.2.13</dropwizard.metrics.version>
         <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.8</felix.version>
