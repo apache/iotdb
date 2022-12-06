@@ -824,7 +824,7 @@ public class DataRegionTest {
       List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
       List<DataRegion> regionsToBeDeleted = new ArrayList<>();
       for (DataRegion region : dataRegions) {
-        if (region.getStorageGroupName().equals(storageGroup)) {
+        if (region.getDatabaseName().equals(storageGroup)) {
           regionsToBeDeleted.add(region);
         }
       }
@@ -1012,7 +1012,7 @@ public class DataRegionTest {
     List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegion> regionsToBeDeleted = new ArrayList<>();
     for (DataRegion region : dataRegions) {
-      if (region.getStorageGroupName().equals(storageGroup)) {
+      if (region.getDatabaseName().equals(storageGroup)) {
         regionsToBeDeleted.add(region);
       }
     }
