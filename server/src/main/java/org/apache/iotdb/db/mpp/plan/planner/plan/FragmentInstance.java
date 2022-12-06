@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.partition.ExecutorType;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -55,8 +56,8 @@ public class FragmentInstance implements IConsensusRequest {
   // The reference of PlanFragment which this instance is generated from
   private final PlanFragment fragment;
 
-  // The Region where the FragmentInstance should run
-  private TRegionReplicaSet regionReplicaSet;
+  // Where the FragmentInstance should run
+  private ExecutorType executorType;
 
   private TDataNodeLocation hostDataNode;
 
@@ -99,25 +100,12 @@ public class FragmentInstance implements IConsensusRequest {
     this.isRoot = isRoot;
   }
 
-  public TRegionReplicaSet getDataRegionId() {
-    return regionReplicaSet;
-  }
-
-  public void setDataRegionAndHost(TRegionReplicaSet regionReplicaSet) {
-    if (regionReplicaSet == null) {
+  public void setExecutorAndHost(ExecutorType executorType) {
+    if (executorType == null) {
       return;
     }
-    this.regionReplicaSet = regionReplicaSet;
-    // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
-    // instance
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
-    } else {
-      // Although the logic to set hostDataNode for standalone is the same as
-      // cluster mode currently, it may be made different in later change.
-      // So we keep the conditions here.
-      this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
-    }
+    this.executorType = executorType;
+    this.hostDataNode = executorType.getDataNodeLocation();
   }
 
   // Although the HostDataNode is set in method setDataRegionAndHost(),
@@ -126,12 +114,20 @@ public class FragmentInstance implements IConsensusRequest {
     this.hostDataNode = hostDataNode;
   }
 
+  public ExecutorType getExecutorType() {
+    return executorType;
+  }
+
+  public void setExecutorType(ExecutorType executorType) {
+    this.executorType = executorType;
+  }
+
   public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
+    return executorType.getRegionReplicaSet();
   }
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
+    this.executorType.setRegionReplicaSet(regionReplicaSet);
   }
 
   public PlanFragment getFragment() {
@@ -241,14 +237,14 @@ public class FragmentInstance implements IConsensusRequest {
     return Objects.equals(id, instance.id)
         && type == instance.type
         && Objects.equals(fragment, instance.fragment)
-        && Objects.equals(regionReplicaSet, instance.regionReplicaSet)
+        && Objects.equals(executorType, instance.executorType)
         && Objects.equals(hostDataNode, instance.hostDataNode)
         && Objects.equals(timeFilter, instance.timeFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, type, fragment, regionReplicaSet, hostDataNode, timeFilter);
+    return Objects.hash(id, type, fragment, executorType, hostDataNode, timeFilter);
   }
 
   public TDataNodeLocation getHostDataNode() {

@@ -204,24 +204,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    // deserialize ConsensusGroupId
-    ConsensusGroupId groupId;
-    try {
-      groupId =
-          ConsensusGroupId.Factory.createFromTConsensusGroupId(
-              instance.getRegionReplicaSet().getRegionId());
-    } catch (Throwable t) {
-      logger.warn("Deserialize ConsensusGroupId failed. ", t);
-      throw new FragmentInstanceDispatchException(
-          RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR,
-              "Deserialize ConsensusGroupId failed: " + t.getMessage()));
-    }
-
     switch (instance.getType()) {
       case READ:
         RegionReadExecutor readExecutor = new RegionReadExecutor();
-        RegionExecutionResult readResult = readExecutor.execute(groupId, instance);
+        RegionExecutionResult readResult =
+            readExecutor.execute(instance.getExecutorType(), instance);
         if (!readResult.isAccepted()) {
           logger.warn(readResult.getMessage());
           throw new FragmentInstanceDispatchException(
@@ -229,6 +216,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         break;
       case WRITE:
+        // deserialize ConsensusGroupId
+        ConsensusGroupId groupId;
+        try {
+          groupId =
+              ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                  instance.getRegionReplicaSet().getRegionId());
+        } catch (Throwable t) {
+          logger.warn("Deserialize ConsensusGroupId failed. ", t);
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  "Deserialize ConsensusGroupId failed: " + t.getMessage()));
+        }
+
         PlanNode planNode = instance.getFragment().getPlanNodeTree();
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
