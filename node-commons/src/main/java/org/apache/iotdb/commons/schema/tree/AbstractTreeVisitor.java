@@ -181,6 +181,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     return nodeNames.toArray(new String[0]);
   }
 
+  protected N getParentOfNextMatchedNode() {
+    if (shouldVisitSubtree) {
+      return ancestorStack.get(ancestorStack.size() - 2).getNode();
+    } else {
+      return ancestorStack.get(ancestorStack.size() - 1).getNode();
+    }
+  }
+
   /**
    * Check whether the given node is an internal node of this tree. Return true if the given node is
    * an internal node. Return false if the given node is a leaf node.
