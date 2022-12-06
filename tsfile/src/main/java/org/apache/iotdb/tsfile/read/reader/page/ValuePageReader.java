@@ -328,6 +328,67 @@ public class ValuePageReader {
     }
   }
 
+  public void writeColumnBuilderWithNextBatch(
+      long[] timeBatch, ColumnBuilder columnBuilder, boolean[] keepCurrentRow) {
+    if (valueBuffer == null) {
+      for (int i = 0, n = timeBatch.length; i < n; i++) {
+        if (keepCurrentRow[i]) {
+          columnBuilder.appendNull();
+        }
+      }
+      return;
+    }
+
+    for (int i = 0, n = timeBatch.length; i < n; i++) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+        if (keepCurrentRow[i]) {
+          columnBuilder.appendNull();
+        }
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeBoolean(aBoolean);
+          }
+          break;
+        case INT32:
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeInt(anInt);
+          }
+          break;
+        case INT64:
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeLong(aLong);
+          }
+          break;
+        case FLOAT:
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeFloat(aFloat);
+          }
+          break;
+        case DOUBLE:
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeDouble(aDouble);
+          }
+          break;
+        case TEXT:
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeBinary(aBinary);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
+  }
+
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }
@@ -358,8 +419,12 @@ public class ValuePageReader {
   }
 
   public void fillIsDeleted(long[] timestamp, boolean[] isDeleted) {
-    for (int i = 0, n = timestamp.length; i < n; i++) {
-      isDeleted[i] = isDeleted(timestamp[i]);
+    if (deleteIntervalList == null) {
+      Arrays.fill(isDeleted, false);
+    } else {
+      for (int i = 0, n = timestamp.length; i < n; i++) {
+        isDeleted[i] = isDeleted(timestamp[i]);
+      }
     }
   }
 
