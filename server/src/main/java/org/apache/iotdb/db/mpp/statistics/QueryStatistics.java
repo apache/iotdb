@@ -84,6 +84,13 @@ public class QueryStatistics {
 
   public static final String SERVER_RPC_RT = "ServerRpcRT";
 
+  public static final String LOAD_TIME_SERIES_METADATA_ALIGNED = "loadTimeSeriesMetadata-aligned";
+  public static final String LOAD_TIME_SERIES_METADATA = "loadTimeSeriesMetadata";
+  public static final String LOAD_CHUNK_METADATA_LIST = "loadChunkMetadataList";
+  public static final String LOAD_PAGE_READER_LIST = "loadPageReaderList";
+  public static final String TIME_SERIES_METADATA_CACHE_MISS = "TimeSeriesMetadataCacheMiss";
+  public static final String CHUNK_CACHE_MISS = "ChunkCacheMiss";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");

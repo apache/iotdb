@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -71,6 +72,7 @@ public class ChunkCache {
             .recordStats()
             .build(
                 chunkMetadata -> {
+                  long startTime = System.nanoTime();
                   try {
                     TsFileSequenceReader reader =
                         FileReaderManager.getInstance()
@@ -79,6 +81,9 @@ public class ChunkCache {
                   } catch (IOException e) {
                     logger.error("Something wrong happened in reading {}", chunkMetadata, e);
                     throw e;
+                  } finally {
+                    QueryStatistics.getInstance()
+                        .addCost(QueryStatistics.CHUNK_CACHE_MISS, System.nanoTime() - startTime);
                   }
                 });
 
