@@ -46,7 +46,7 @@ public class PointPriorityReader {
 
   private TimeValuePair currentPoint;
 
-  private boolean shouldReadNextPoint = true;
+  private boolean shouldReadPointFromQueue = true;
 
   private long nextPageStartTime = Long.MAX_VALUE;
 
@@ -63,20 +63,18 @@ public class PointPriorityReader {
   }
 
   public TimeValuePair currentPoint() {
-    if (shouldReadNextPoint) {
-      // get the highest priority point
-      if (currentPointElement == null) {
-        // the current point is overlapped with other pages
-        currentPoint = pointQueue.peek().timeValuePair;
+    if (shouldReadPointFromQueue && currentPointElement == null) {
+      // if the current point is overlapped with other pages, then get the highest priority point
+      // from queue
+      currentPoint = pointQueue.peek().timeValuePair;
+      lastTime = currentPoint.getTimestamp();
 
-        lastTime = currentPoint.getTimestamp();
-
-        // fill aligned null value with the same timestamp
-        if (currentPoint.getValue().getDataType().equals(TSDataType.VECTOR)) {
-          fillAlignedNullValue();
-        }
+      // fill aligned null value with the same timestamp
+      if (currentPoint.getValue().getDataType().equals(TSDataType.VECTOR)) {
+        fillAlignedNullValue();
       }
-      shouldReadNextPoint = false;
+
+      shouldReadPointFromQueue = false;
     }
     return currentPoint;
   }
@@ -94,7 +92,7 @@ public class PointPriorityReader {
     int nullValueNum = currentValues.length;
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
-        // the smallest time of all pages is later then the last time, then break the loop
+        // the smallest time of all pages is later than the last time, then break the loop
         break;
       } else {
         // find the data points in other pages that has the same timestamp
@@ -156,7 +154,7 @@ public class PointPriorityReader {
             pointElement.setPoint(pointReader.nextTimeValuePair());
             nextPageStartTime =
                 pointQueue.size() > 0 ? pointQueue.peek().pageElement.startTime : Long.MAX_VALUE;
-            if (pointElement.timestamp > lastTime && pointElement.timestamp < nextPageStartTime) {
+            if (pointElement.timestamp < nextPageStartTime) {
               currentPointElement = pointElement;
               currentPoint = currentPointElement.timeValuePair;
             } else {
@@ -169,7 +167,7 @@ public class PointPriorityReader {
         }
       }
     }
-    shouldReadNextPoint = true;
+    shouldReadPointFromQueue = true;
   }
 
   public boolean hasNext() {
@@ -188,6 +186,6 @@ public class PointPriorityReader {
     }
     pageElement.deserializePage();
     pointQueue.add(new PointElement(pageElement));
-    shouldReadNextPoint = true;
+    shouldReadPointFromQueue = true;
   }
 }
