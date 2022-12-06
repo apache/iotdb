@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -179,7 +178,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public int hashCode() {
-      return Objects.hash(patternIndex);
+      return patternIndex;
     }
   }
 }
