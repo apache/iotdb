@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -44,7 +45,7 @@ public class PathPatternTree {
 
   public PathPatternTree() {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
-    this.pathPatternList = new ArrayList<>();
+    this.pathPatternList = new LinkedList<>();
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {

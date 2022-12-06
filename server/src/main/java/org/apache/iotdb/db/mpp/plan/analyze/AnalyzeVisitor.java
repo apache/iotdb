@@ -253,15 +253,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
             analyzeSelect(analysis, queryStatement, schemaTree);
+
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
+
         analyzeHaving(analysis, queryStatement, schemaTree);
         analyzeGroupByLevel(analysis, queryStatement, outputExpressionMap, outputExpressions);
         analyzeGroupByTag(analysis, queryStatement, outputExpressions, schemaTree);
-        Set<Expression> selectExpressions =
-            outputExpressions.stream()
-                .map(Pair::getLeft)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Set<Expression> selectExpressions = new LinkedHashSet<>();
+        for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
+          selectExpressions.add(outputExpressionAndAlias.left);
+        }
         analysis.setSelectExpressions(selectExpressions);
 
         analyzeAggregation(analysis, queryStatement);
@@ -1076,16 +1079,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.isAlignByDevice()) {
       columnHeaders.add(new ColumnHeader(DEVICE, TSDataType.TEXT, null));
     }
-    columnHeaders.addAll(
-        outputExpressions.stream()
-            .map(
-                expressionAliasPair -> {
-                  String columnName = expressionAliasPair.left.getExpressionString();
-                  String alias = expressionAliasPair.right;
-                  return new ColumnHeader(
-                      columnName, analysis.getType(expressionAliasPair.left), alias);
-                })
-            .collect(Collectors.toList()));
+    for (Pair<Expression, String> expressionAliasPair : outputExpressions) {
+      columnHeaders.add(
+          new ColumnHeader(
+              expressionAliasPair.left.getExpressionString(),
+              analysis.getType(expressionAliasPair.left),
+              expressionAliasPair.right));
+    }
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
   }
 

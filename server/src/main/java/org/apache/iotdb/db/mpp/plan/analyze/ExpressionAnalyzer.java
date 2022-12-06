@@ -1105,33 +1105,10 @@ public class ExpressionAnalyzer {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      String DeviceName =
-          getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
-      }
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getThirdExpression());
-      }
-      return DeviceName;
-    } else if (expression instanceof BinaryExpression) {
-      String leftDeviceName =
-          getDeviceNameInSourceExpression(((BinaryExpression) expression).getLeftExpression());
-      if (leftDeviceName != null) {
-        return leftDeviceName;
-      }
-      return getDeviceNameInSourceExpression(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      return getDeviceNameInSourceExpression(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof TimeSeriesOperand) {
+    if (expression instanceof TimeSeriesOperand) {
       return ((TimeSeriesOperand) expression).getPath().getDevice();
     } else if (expression instanceof FunctionExpression) {
       return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      return null;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
