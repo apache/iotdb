@@ -34,7 +34,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -58,7 +58,7 @@ public class DataNodeRegionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRegionManager.class);
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final Map<SchemaRegionId, ReentrantReadWriteLock> schemaRegionLockMap =
       new ConcurrentHashMap<>();

@@ -1008,6 +1008,16 @@ Different configuration parameters take effect in the following three ways:
 |Default| 4                                                                         |
 |Effective| After restart system                                                      |
 
+* enable\_compaction\_validation
+
+|Name| enable\_compaction\_validation                                  |
+|:---:|:----------------------------------------------------------------|
+|Description| Enable the check of sequence tsfile time range after compaction |
+|Type| Boolean                                                         |
+|Default| true                                                            |
+|Effective| After restart system                                            |
+
+
 ### Write Ahead Log Configuration
 
 * wal\_mode
@@ -1227,9 +1237,9 @@ Different configuration parameters take effect in the following three ways:
 | :--------------------: | :------------------------------------------------------ |
 |      Description       | the class name of the authorization service             |
 |          Type          | String                                                  |
-|        Default         | org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|        Default         | org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer |
 |       Effective        | After restarting system                                 |
-| Other available values | org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer    |
+| Other available values | org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer    |
 
 * openID\_url
 
@@ -1373,6 +1383,15 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | int32                                                        |
 |   Default   | 10000                                                        |
 |  Effective  | hot-load                                                      |
+
+* into\_operation\_execution\_thread\_count
+
+|    Name     | into\_operation\_execution\_thread\_count                     |
+| :---------: | :------------------------------------------------------------ |
+| Description | The number of threads in the thread pool that execute insert-tablet tasks |
+|    Type     | int32                                                         |
+|   Default   | 2                                                             |
+|  Effective  | After restarting system                                       |
 
 ### Continuous Query
 

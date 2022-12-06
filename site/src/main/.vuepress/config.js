@@ -18,6 +18,7 @@
 
 var config = {
     plugins: [
+        '@vuepress/back-to-top',
         ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
@@ -67,12 +68,18 @@ var config = {
 
 		sidebarDepth: 0,
 
+    editLinks: true,
+
+    docsRepo: 'apache/iotdb',
+
+    docsDir: 'docs',
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
 			label: 'English',
 			ariaLabel: 'Languages',
-			editLinkText: 'Edit this page on GitHub',
+			editLinkText: 'Found Error, Edit this page on GitHub',
 			serviceWorker: {
 			  updatePopup: {
 				message: "New content is available.",
@@ -85,6 +92,7 @@ var config = {
 					text: 'Documentation',
 					items: [
 						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v1.0.x', link: '/UserGuide/V1.0.x/QuickStart/QuickStart' },
 						{ text: 'v0.13.x', link: '/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
@@ -1033,7 +1041,9 @@ var config = {
 						title: 'Cluster',
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1265,7 +1275,9 @@ var config = {
 						title: 'Cluster',
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1294,7 +1306,7 @@ var config = {
 			// 该语言在下拉菜单中的标签
 			label: '简体中文',
 			// 编辑链接文字
-			editLinkText: '在 GitHub 上编辑此页',
+			editLinkText: '发现错误？在 GitHub 上编辑此页',
 			// Service Worker 的配置
 			serviceWorker: {
 			  updatePopup: {
@@ -1310,6 +1322,7 @@ var config = {
 					text: '文档',
 					items: [
 						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v1.0.x', link: '/zh/UserGuide/V1.0.x/QuickStart/QuickStart' },
 						{ text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },
 						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
 						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
@@ -2239,7 +2252,9 @@ var config = {
 						title: '分布式',
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
-							['Cluster/Cluster-Setup','分布式部署']
+							['Cluster/Cluster-Setup','分布式部署'],
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
@@ -2471,7 +2486,9 @@ var config = {
 						title: '分布式',
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
-							['Cluster/Cluster-Setup','分布式部署']
+							['Cluster/Cluster-Setup','分布式部署'],
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{

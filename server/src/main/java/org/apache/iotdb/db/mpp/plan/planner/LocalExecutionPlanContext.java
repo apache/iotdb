@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -168,5 +169,9 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public ExecutorService getIntoOperationExecutor() {
+    return instanceContext.getIntoOperationExecutor();
   }
 }

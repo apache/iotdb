@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -57,7 +57,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(StandalonePartitionFetcher.class);
   private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(

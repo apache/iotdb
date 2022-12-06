@@ -1344,11 +1344,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetRegionIdReq tGetRegionIdReq =
           new TGetRegionIdReq(
-              getRegionIdStatement.getStorageGroup(),
-              getRegionIdStatement.getPartitionType(),
-              getRegionIdStatement.getSeriesSlotId());
+              getRegionIdStatement.getStorageGroup(), getRegionIdStatement.getPartitionType());
+      if (getRegionIdStatement.getSeriesSlotId() != null) {
+        tGetRegionIdReq.setSeriesSlotId(getRegionIdStatement.getSeriesSlotId());
+      } else {
+        tGetRegionIdReq.setDeviceId(getRegionIdStatement.getDeviceId());
+      }
       if (getRegionIdStatement.getTimeSlotId() != null) {
         tGetRegionIdReq.setTimeSlotId(getRegionIdStatement.getTimeSlotId());
+      } else if (getRegionIdStatement.getTimeStamp() != -1) {
+        tGetRegionIdReq.setTimeStamp(getRegionIdStatement.getTimeStamp());
       }
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

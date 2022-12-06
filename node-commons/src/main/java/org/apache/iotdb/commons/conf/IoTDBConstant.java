@@ -47,9 +47,12 @@ public class IoTDBConstant {
 
   public static final String BUILD_INFO;
 
-  public static final String ENV_FILE_NAME = "datanode-env";
+  public static final String DN_ENV_FILE_NAME = "datanode-env";
+  public static final String CN_ENV_FILE_NAME = "confignode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String CN_ROLE = "confignode";
+  public static final String DN_ROLE = "datanode";
 
   public static final String DN_RPC_ADDRESS = "dn_rpc_address";
   public static final String DN_RPC_PORT = "dn_rpc_port";
@@ -83,7 +86,8 @@ public class IoTDBConstant {
 
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
-  public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
+  public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
+  public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";

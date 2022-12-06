@@ -359,7 +359,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
     analysis.setSourceExpressions(sourceExpressions);
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
