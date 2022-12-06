@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
@@ -71,7 +72,7 @@ public class IoTDB implements IoTDBMBean {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException, MetadataException {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
@@ -82,6 +83,8 @@ public class IoTDB implements IoTDBMBean {
     IoTDB daemon = IoTDB.getInstance();
 
     daemon.active();
+
+    MManager.getInstance().exportSchema(new File("/Users/chenyanze/Desktop/exportSchema"));
   }
 
   public static void setMetaManager(MManager metaManager) {

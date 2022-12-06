@@ -248,6 +248,7 @@ public class MLogLoader {
   }
 
   public static void main(String[] args) {
+    args = new String[] {"-mlog", "/Users/chenyanze/Downloads/mlog.bin"};
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
@@ -282,6 +283,7 @@ public class MLogLoader {
       session.open(false);
       while (mLogReader.hasNext()) {
         PhysicalPlan plan = mLogReader.next();
+        System.out.println(plan);
         try {
           switch (plan.getOperatorType()) {
             case CREATE_TIMESERIES:

@@ -81,4 +81,9 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
 
     this.index = buffer.getLong();
   }
+
+  @Override
+  public String toString() {
+    return "DeleteStorageGroupPlan{" + "deletePathList=" + deletePathList + '}';
+  }
 }

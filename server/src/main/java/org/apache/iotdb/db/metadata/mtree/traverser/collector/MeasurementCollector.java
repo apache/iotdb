@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -96,5 +97,9 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
         new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
     retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
+  }
+
+  protected IEntityMNode getParentEntityMNodeIfExist() {
+    return traverseContext.peek().getAsEntityMNode();
   }
 }

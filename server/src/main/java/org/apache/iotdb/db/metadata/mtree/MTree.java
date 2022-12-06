@@ -63,6 +63,8 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -87,6 +89,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.ws.Holder;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -108,6 +112,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -227,6 +233,104 @@ public class MTree implements Serializable {
   public void serializeTo(String snapshotPath) throws IOException {
     try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
       root.serializeTo(mLogWriter);
+    }
+  }
+
+  public void exportSchema(
+      MLogWriter mLogWriter,
+      Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeGetter)
+      throws MetadataException, IOException {
+    Holder<PartialPath> entityPath = new Holder<>();
+    List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
+        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
+            root, new PartialPath("root.**")) {
+          IEntityMNode entityNode;
+
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            try {
+              IMeasurementSchema measurementSchema = node.getSchema();
+              IEntityMNode entityMNode = getParentEntityMNodeIfExist();
+              checkAndWriteCreateAlignedTimeseries(entityMNode);
+              if (!entityMNode.isAligned()) {
+                Map<String, String> tags = null;
+                Map<String, String> attributes = null;
+                if (node.getOffset() != -1) {
+                  Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
+                      tagAndAttributeGetter.apply(node.getOffset());
+                  tags = tagAndAttribute.left;
+                  attributes = tagAndAttribute.right;
+                }
+                CreateTimeSeriesPlan createTimeSeriesPlan =
+                    new CreateTimeSeriesPlan(
+                        getCurrentPartialPath(node),
+                        measurementSchema.getType(),
+                        measurementSchema.getTimeTSEncoding(),
+                        measurementSchema.getCompressor(),
+                        measurementSchema.getProps(),
+                        tags,
+                        attributes,
+                        node.getAlias());
+                mLogWriter.createTimeseries(createTimeSeriesPlan);
+              } else {
+                alignedMeasurementSchemas.add(measurementSchema);
+              }
+            } catch (IOException e) {
+              e.printStackTrace();
+            }
+          }
+
+          private void checkAndWriteCreateAlignedTimeseries(IEntityMNode curEntityMNode)
+              throws IllegalPathException, IOException {
+            if (curEntityMNode != entityNode) {
+              if (!alignedMeasurementSchemas.isEmpty()) {
+                CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+                    new CreateAlignedTimeSeriesPlan(
+                        entityPath.value,
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getMeasurementId)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getType)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getTimeTSEncoding)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getCompressor)
+                            .collect(Collectors.toList()),
+                        Collections.emptyList());
+                mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
+              }
+              if (curEntityMNode.isAligned()) {
+                entityPath.value = getCurrentPartialPath(curEntityMNode);
+              }
+              // clear
+              entityNode = curEntityMNode;
+              alignedMeasurementSchemas.clear();
+            }
+          }
+        };
+    collector.traverse();
+    if (!alignedMeasurementSchemas.isEmpty()) {
+      CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+          new CreateAlignedTimeSeriesPlan(
+              entityPath.value,
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getMeasurementId)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getType)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getTimeTSEncoding)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getCompressor)
+                  .collect(Collectors.toList()),
+              Collections.emptyList());
+      mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
     }
   }
 

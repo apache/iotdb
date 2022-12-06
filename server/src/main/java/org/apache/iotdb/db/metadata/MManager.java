@@ -1336,6 +1336,17 @@ public class MManager {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
+  public void exportSchema(File dir) throws IOException, MetadataException {
+    MLogWriter mLogWriter = new MLogWriter(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG);
+    // export storage group
+    for (PartialPath sg : mtree.getAllStorageGroupPaths()) {
+      mLogWriter.setStorageGroup(sg);
+    }
+    // export timeseries
+    mtree.exportSchema(mLogWriter, tagManager::readTagFile);
+    // export tag
+  }
+
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     // show timeseries with index
