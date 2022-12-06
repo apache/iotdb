@@ -207,12 +207,12 @@ public class IoTDBDescriptor {
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
 
-    // TODO: Use FQDN  to identify our nodes afterwards
-    try {
-      replaceHostnameWithIP();
-    } catch (Exception e) {
-      logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
-    }
+//    // TODO: Use FQDN  to identify our nodes afterwards
+//    try {
+//      replaceHostnameWithIP();
+//    } catch (Exception e) {
+//      logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
+//    }
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
