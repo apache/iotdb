@@ -275,6 +275,11 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
+  public void abort(Throwable t) {
+    abort();
+  }
+
+  @Override
   public synchronized void close() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (aborted || closed) {
@@ -416,7 +421,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
 
-            logger.error(
+            logger.warn(
                 "failed to get data block [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
@@ -480,7 +485,7 @@ public class SourceHandle implements ISourceHandle {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
           } catch (Throwable e) {
-            logger.error(
+            logger.warn(
                 "failed to send ack data block event [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,

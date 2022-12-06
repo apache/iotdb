@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -46,9 +47,12 @@ public class IoTDBConstant {
 
   public static final String BUILD_INFO;
 
-  public static final String ENV_FILE_NAME = "datanode-env";
+  public static final String DN_ENV_FILE_NAME = "datanode-env";
+  public static final String CN_ENV_FILE_NAME = "confignode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String CN_ROLE = "confignode";
+  public static final String DN_ROLE = "datanode";
 
   public static final String DN_RPC_ADDRESS = "dn_rpc_address";
   public static final String DN_RPC_PORT = "dn_rpc_port";
@@ -79,7 +83,8 @@ public class IoTDBConstant {
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
-  public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
+  public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
+  public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
@@ -175,6 +180,23 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+  public static final String[] SDT_PARAMETERS =
+      new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
+
+  public static final String DEADBAND = "deadband";
+  public static final String MAX_POINT_NUMBER = "max_point_number";
+  public static final String MAX_STRING_LENGTH = "max_string_length";
+  public static final Set<String> ALLOWED_SCHEMA_PROPS =
+      new HashSet<>(
+          Arrays.asList(
+              DEADBAND,
+              LOSS,
+              SDT,
+              SDT_COMP_DEV,
+              SDT_COMP_MIN_TIME,
+              SDT_COMP_MAX_TIME,
+              MAX_POINT_NUMBER,
+              MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
   public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
@@ -259,4 +281,6 @@ public class IoTDBConstant {
   // select into
   public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
   public static final String DOUBLE_COLONS = "::";
+
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
 }

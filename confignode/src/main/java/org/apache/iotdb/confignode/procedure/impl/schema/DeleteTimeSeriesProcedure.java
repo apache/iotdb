@@ -102,7 +102,8 @@ public class DeleteTimeSeriesProcedure
                     new PathNotExistException(
                         patternTree.getAllPathPatterns().stream()
                             .map(PartialPath::getFullPath)
-                            .collect(Collectors.toList()))));
+                            .collect(Collectors.toList()),
+                        false)));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
@@ -131,7 +132,7 @@ public class DeleteTimeSeriesProcedure
   }
 
   // return the total num of timeseries in schema black list
-  private int constructBlackList(ConfigNodeProcedureEnv env) {
+  private long constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
     if (targetSchemaRegionGroup.isEmpty()) {
@@ -171,10 +172,10 @@ public class DeleteTimeSeriesProcedure
       return 0;
     }
 
-    int preDeletedNum = 0;
+    long preDeletedNum = 0;
     for (List<TSStatus> respList : constructBlackListTask.getResponseMap().values()) {
       for (TSStatus resp : respList) {
-        preDeletedNum += Integer.parseInt(resp.getMessage());
+        preDeletedNum += Long.parseLong(resp.getMessage());
       }
     }
     return preDeletedNum;

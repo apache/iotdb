@@ -18,14 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.performer;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * CompactionPerformer is used to compact multiple files into one or multiple files. Different
@@ -35,9 +31,7 @@ import java.util.concurrent.ExecutionException;
  */
 public interface ICompactionPerformer {
 
-  void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException,
-          ExecutionException;
+  void perform() throws Exception;
 
   void setTargetFiles(List<TsFileResource> targetFiles);
 

@@ -40,7 +40,7 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
             memCost,
@@ -53,7 +53,7 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);

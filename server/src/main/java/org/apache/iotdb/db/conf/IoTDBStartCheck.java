@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
-import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -77,14 +76,11 @@ public class IoTDBStartCheck {
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
   private static String timestampPrecision = config.getTimestampPrecision();
 
-  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval_for_storage";
-  private static long timePartitionIntervalForStorage = config.getTimePartitionIntervalForStorage();
+  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
+  private static long timePartitionInterval = config.getTimePartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
   private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
-
-  private static final String ENABLE_PARTITION_STRING = "enable_partition";
-  private static boolean enablePartition = config.isEnablePartition();
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
   private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
@@ -180,22 +176,10 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
-    if (!enablePartition) {
-      timePartitionIntervalForStorage = Long.MAX_VALUE;
-    }
-
-    // check partition interval
-    if (timePartitionIntervalForStorage <= 0) {
-      logger.error("Partition interval must larger than 0!");
-      System.exit(-1);
-    }
-
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    systemProperties.put(
-        PARTITION_INTERVAL_STRING, String.valueOf(timePartitionIntervalForStorage));
+    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(timePartitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-    systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
@@ -309,7 +293,6 @@ public class IoTDBStartCheck {
     } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
       checkWALNotExists();
       upgradePropertiesFile();
-      MetadataUpgrader.upgrade();
     }
     checkProperties();
   }
@@ -405,15 +388,6 @@ public class IoTDBStartCheck {
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
       throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    }
-
-    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
-      throwException(ENABLE_PARTITION_STRING, enablePartition);
-    }
-
-    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
-        != timePartitionIntervalForStorage) {
-      throwException(PARTITION_INTERVAL_STRING, timePartitionIntervalForStorage);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {

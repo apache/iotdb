@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -28,12 +27,10 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,40 +152,7 @@ public class QueryResourceManager {
   public QueryDataSource getQueryDataSource(
       PartialPath selectedPath, QueryContext context, Filter timeFilter, boolean ascending)
       throws StorageEngineException, QueryProcessException {
-
-    long queryId = context.getQueryId();
-    String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
-    String deviceId = selectedPath.getDevice();
-
-    // get cached QueryDataSource
-    QueryDataSource cachedQueryDataSource;
-    if (cachedQueryDataSourcesMap.containsKey(queryId)
-        && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
-      cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
-    } else {
-      // QueryDataSource is never cached in cluster mode
-      DataRegion processor = StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
-      PartialPath translatedPath = IDTable.translateQueryPath(selectedPath);
-      cachedQueryDataSource =
-          processor.query(
-              Collections.singletonList(translatedPath),
-              translatedPath.getDevice(),
-              context,
-              filePathsManager,
-              timeFilter);
-    }
-
-    // construct QueryDataSource for selectedPath
-    QueryDataSource queryDataSource =
-        new QueryDataSource(
-            cachedQueryDataSource.getSeqResources(), cachedQueryDataSource.getUnseqResources());
-
-    queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
-
-    // calculate the read order of unseqResources
-    QueryUtils.fillOrderIndexes(queryDataSource, deviceId, ascending);
-
-    return queryDataSource;
+    return null;
   }
 
   /**

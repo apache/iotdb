@@ -20,14 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -189,7 +187,7 @@ public class RecordUtils {
       resNode.setUseTemplate(usingTemplate);
       resNode.setSchemaTemplateId(templateId);
 
-      return paddingTemplate(resNode, templateId);
+      return resNode;
     } else {
       // measurement node
       short recLenth = ReadWriteIOUtils.readShort(buffer);
@@ -321,16 +319,6 @@ public class RecordUtils {
     return node.getOffset();
   }
 
-  private static IMNode paddingTemplate(IMNode node, int templateId) {
-    // TODO: Remove this conditional judgment after removing the standalone version
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      if (templateId > 0) {
-        node.setSchemaTemplate(ClusterTemplateManager.getInstance().getTemplate(templateId));
-      }
-    }
-    return node;
-  }
-
   /** Including schema and pre-delete flag of a measurement, could be expanded further. */
   private static long convertMeasStat2Long(IMeasurementMNode node) {
     byte dataType = node.getSchema().getTypeInByte();
@@ -353,7 +341,7 @@ public class RecordUtils {
             nodeName,
             TSDataType.values()[dataType],
             TSEncoding.values()[encoding],
-            CompressionType.values()[compressor]);
+            CompressionType.deserialize(compressor));
 
     IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
     res.getAsMeasurementMNode().setOffset(tagIndex);

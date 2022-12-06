@@ -663,8 +663,6 @@ public class IoTDBAggregationByLevelIT {
    * Test group by level without aggregation function used in select clause. The expected situation
    * is throwing an exception.
    */
-  // TODO
-  @Ignore
   @Test
   public void TestGroupByLevelWithoutAggregationFunc() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

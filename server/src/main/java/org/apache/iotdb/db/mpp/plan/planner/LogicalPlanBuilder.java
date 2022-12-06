@@ -192,18 +192,22 @@ public class LogicalPlanBuilder {
       Filter globalTimeFilter,
       OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Expression sourceExpression : sourceExpressions) {
-      MeasurementPath selectPath =
-          (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-      if (selectPath.isUnderAlignedEntity()) {
+    List<PartialPath> selectedPaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toList());
+    List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
+    for (PartialPath path : groupedPaths) {
+      if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
-            new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), (MeasurementPath) path));
+      } else if (path instanceof AlignedPath) { // aligned series
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(context.getQueryId().genPlanNodeId(), (AlignedPath) path));
       } else {
-        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+        throw new IllegalArgumentException("unexpected path type");
       }
     }
-    updateTypeProvider(sourceExpressions);
 
     this.root =
         new LastQueryNode(

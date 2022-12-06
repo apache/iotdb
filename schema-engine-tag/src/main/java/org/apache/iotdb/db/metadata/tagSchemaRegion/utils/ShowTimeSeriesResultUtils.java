@@ -44,9 +44,11 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getTSDataType(),
         schemaEntry.getTSEncoding(),
         schemaEntry.getCompressionType(),
-        schemaEntry.getLastTime(),
+        Long.MAX_VALUE,
         new HashMap<>(),
-        new HashMap<>());
+        new HashMap<>(),
+        null,
+        null);
   }
 
   /**
@@ -66,8 +68,10 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getTSDataType(),
         schemaEntry.getTSEncoding(),
         schemaEntry.getCompressionType(),
-        schemaEntry.getLastTime(),
+        Long.MAX_VALUE,
         new HashMap<>(),
-        new HashMap<>());
+        new HashMap<>(),
+        null,
+        null);
   }
 }

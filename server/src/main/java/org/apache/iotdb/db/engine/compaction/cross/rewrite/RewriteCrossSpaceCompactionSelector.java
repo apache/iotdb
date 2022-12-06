@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -47,6 +48,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static boolean hasPrintLog = false;
   private final int SELECT_WARN_THRESHOLD = 10;
   protected String logicalStorageGroupName;
   protected String dataRegionId;
@@ -260,9 +263,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
-          || resource.getSeqFiles().get(seqIdx).isCompacting()
-          || !resource.getSeqFiles().get(seqIdx).isClosed()
+      if (resource.getSeqFiles().get(seqIdx).getStatus() != TsFileResourceStatus.CLOSED
           || !resource.getSeqFiles().get(seqIdx).getTsFile().exists()) {
         return false;
       }
@@ -389,12 +390,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     try {
       List[] mergeFiles = select();
       if (mergeFiles.length == 0) {
+        if (!hasPrintLog) {
+          LOGGER.info(
+              "{} [Compaction] Cannot select any files, because source files may be occupied by other compaction threads.",
+              logicalStorageGroupName + "-" + dataRegionId);
+          hasPrintLog = true;
+        }
         return Collections.emptyList();
       }
-      LOGGER.info(
-          "select files for cross compaction, sequence files: {}, unsequence files {}",
-          mergeFiles[0],
-          mergeFiles[1]);
+      hasPrintLog = false;
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         LOGGER.info(

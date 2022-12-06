@@ -44,7 +44,7 @@ import java.io.PrintWriter;
 public class SchemaFileSketchTool {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFileSketchTool.class);
-  private static final String SFST_CLI_PREFIX = "SchemaFileSketchTool";
+  private static final String SFST_CLI_PREFIX = "print-schema-file";
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "schema file";
@@ -97,13 +97,6 @@ public class SchemaFileSketchTool {
   }
 
   public static void main(String[] args) {
-    args =
-        new String[] {
-          "-f",
-          "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/server/target/tmp/system/schema/snapshot/schema_file.pst.snapshot"
-        };
-    //    args = new
-    // String[]{"-f","/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/server/target/tmp/system/schema/root.sg/0/schema_file.pst"};
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
@@ -161,9 +154,8 @@ public class SchemaFileSketchTool {
     pw = new PrintWriter(new FileWriter(outputFile, false));
     ISchemaFile sf = SchemaFile.loadSchemaFile(SystemFileFactory.INSTANCE.getFile(inputFile));
     try {
-      String res = ((SchemaFile) sf).inspect();
+      String res = ((SchemaFile) sf).inspect(pw);
       System.out.println(res);
-      pw.print(res);
     } finally {
       sf.close();
       pw.close();

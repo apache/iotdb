@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -94,7 +94,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
             } catch (Throwable t) {
-              logger.error("cannot dispatch FI for load operation", t);
+              logger.warn("cannot dispatch FI for load operation", t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
@@ -132,13 +132,13 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
               instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
+        logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -157,24 +157,23 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
       if (pieceNode == null) {
         throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
       }
       TSStatus resultStatus =
-          StorageEngineV2.getInstance()
-              .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
+          StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need split
       try {
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
                 ((LoadSingleTsFileNode) planNode).getTsFileResource(),
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad());
       } catch (LoadFileException e) {
-        logger.error(String.format("Load TsFile Node %s error.", planNode), e);
+        logger.warn(String.format("Load TsFile Node %s error.", planNode), e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
@@ -204,7 +203,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.error("cannot dispatch LoadCommand for load operation", t);
+        logger.warn("cannot dispatch LoadCommand for load operation", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -220,14 +219,16 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         internalServiceClientManager.borrowClient(endPoint)) {
       TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
       if (!loadResp.isAccepted()) {
-        logger.error(loadResp.message);
+        logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
-      logger.error("can't connect to node {}", endPoint, e);
+      logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
+      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setMessage(
+          "can't connect to node {}, please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
+              + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
   }
@@ -235,7 +236,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
                 loadCommandReq.uuid);

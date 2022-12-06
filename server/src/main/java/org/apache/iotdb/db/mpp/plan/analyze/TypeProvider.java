@@ -29,8 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkState;
-
 public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
@@ -44,15 +42,10 @@ public class TypeProvider {
   }
 
   public TSDataType getType(String symbol) {
-    checkState(
-        typeMap.containsKey(symbol), String.format("no data type found for symbol: %s", symbol));
     return typeMap.get(symbol);
   }
 
   public void setType(String symbol, TSDataType dataType) {
-    checkState(
-        !typeMap.containsKey(symbol) || typeMap.get(symbol) == dataType,
-        String.format("inconsistent data type for symbol: %s", symbol));
     this.typeMap.put(symbol, dataType);
   }
 

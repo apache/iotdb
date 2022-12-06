@@ -27,14 +27,14 @@ import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 // This class define the count as traversal result.
 public abstract class CounterTraverser extends Traverser {
 
-  protected int count;
+  protected long count;
 
   public CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }
 
-  public int getCount() {
+  public long getCount() {
     return count;
   }
 }

@@ -22,10 +22,10 @@ package org.apache.iotdb.db.it.withoutNull;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,9 +38,8 @@ import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Ignore // TODO When filtering data after group by is supported
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class}) // TODO After old StandAlone remove
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBWithoutAllNullIT {
 
   private static final String[] dataSet =
@@ -96,7 +95,7 @@ public class IoTDBWithoutAllNullIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)")) {
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) having last_value(s1) is not null || last_value(s2) is not null || last_value(s3) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -127,7 +126,7 @@ public class IoTDBWithoutAllNullIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms) limit 1 offset 1")) {
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) having last_value(s1) is not null || last_value(s2) is not null || last_value(s3) is not null limit 1 offset 1")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -158,7 +157,7 @@ public class IoTDBWithoutAllNullIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)")) {
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) having last_value(s1) is not null and last_value(s2) is not null and last_value(s3) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -189,7 +188,7 @@ public class IoTDBWithoutAllNullIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms) LIMIT 1 OFFSET 1 ALIGN BY DEVICE")) {
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) having last_value(s1) is not null || last_value(s2) is not null || last_value(s3) is not null LIMIT 1 OFFSET 1 ALIGN BY DEVICE")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -222,7 +221,7 @@ public class IoTDBWithoutAllNullIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)"
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) having last_value(s1) is not null || last_value(s2) is not null || last_value(s3) is not null "
                   + "ORDER BY TIME DESC LIMIT 1 OFFSET 1 ALIGN BY DEVICE")) {
         cnt = 0;
         while (resultSet.next()) {

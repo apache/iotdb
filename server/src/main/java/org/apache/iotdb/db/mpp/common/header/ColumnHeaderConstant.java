@@ -44,6 +44,8 @@ public class ColumnHeaderConstant {
   public static final String COMPRESSION = "Compression";
   public static final String TAGS = "Tags";
   public static final String ATTRIBUTES = "Attributes";
+  public static final String DEADBAND = "Deadband";
+  public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
   public static final String COUNT = "Count";
   public static final String COLUMN_TTL = "TTL(ms)";
@@ -94,8 +96,8 @@ public class ColumnHeaderConstant {
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
   public static final String DATA_NODE_ID = "DataNodeId";
-  public static final String SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String ROLE = "Role";
 
   // column names for show datanodes
@@ -138,7 +140,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ENCODING, TSDataType.TEXT),
           new ColumnHeader(COMPRESSION, TSDataType.TEXT),
           new ColumnHeader(TAGS, TSDataType.TEXT),
-          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT));
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
+          new ColumnHeader(DEADBAND, TSDataType.TEXT),
+          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
@@ -192,18 +196,18 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> countDevicesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_DEVICES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_DEVICES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countNodesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_NODES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_NODES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countLevelTimeSeriesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN, TSDataType.TEXT),
-          new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
+          new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
   public static final List<ColumnHeader> countStorageGroupColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));
@@ -214,10 +218,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
-          new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
+          new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32),
+          new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(ROLE, TSDataType.TEXT));
 
@@ -225,7 +229,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
@@ -234,7 +238,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
           new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(HOST, TSDataType.TEXT),
+          new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_PORT, TSDataType.INT32),
           new ColumnHeader(ROLE, TSDataType.TEXT));
 
@@ -315,10 +319,10 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
       ImmutableList.of(

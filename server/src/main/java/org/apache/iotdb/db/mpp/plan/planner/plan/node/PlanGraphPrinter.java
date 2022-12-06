@@ -39,9 +39,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
@@ -343,6 +349,57 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
                   ? "[ALIGNED]"
                   : ""));
     }
+  }
+
+  @Override
+  public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAlignedLastQueryScan(
+      AlignedLastQueryScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AlignedLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQuery(LastQueryNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQuery-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQueryMerge(LastQueryMergeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryMerge-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQueryCollect(LastQueryCollectNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryCollect-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitVerticallyConcat(VerticallyConcatNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("VerticallyConcat-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {

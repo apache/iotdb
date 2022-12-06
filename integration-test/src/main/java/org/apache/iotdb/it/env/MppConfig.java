@@ -80,15 +80,7 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty(
-        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
-    return this;
-  }
-
-  @Override
-  public BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
-    engineProperties.setProperty(
-        "time_partition_interval_for_storage", String.valueOf(partitionInterval));
+    engineProperties.setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -108,20 +100,14 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
+        "dn_rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
-    return this;
-  }
-
-  @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
+        "dn_rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
@@ -236,9 +222,44 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "data_region_group_extension_policy", dataRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
   public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     confignodeProperties.setProperty(
         "schema_replication_factor", String.valueOf(schemaReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    confignodeProperties.setProperty(
+        "enable_data_partition_inherit_policy", String.valueOf(enableDataPartitionInheritPolicy));
     return this;
   }
 
@@ -250,9 +271,16 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
     confignodeProperties.setProperty(
-        "time_partition_interval_for_routing", String.valueOf(timePartitionInterval));
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+    confignodeProperties.setProperty(
+        "time_partition_interval", String.valueOf(timePartitionInterval));
     return this;
   }
 
@@ -328,9 +356,36 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setEnableLeaderBalancing(boolean enableLeaderBalancing) {
+  public BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
     confignodeProperties.setProperty(
-        "enable_leader_balancing", String.valueOf(enableLeaderBalancing));
+        "enable_auto_leader_balance_for_ratis_consensus",
+        String.valueOf(enableAutoLeaderBalanceForRatisConsensus));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_iot_consensus",
+        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    confignodeProperties.setProperty(
+        "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
     return this;
   }
 }

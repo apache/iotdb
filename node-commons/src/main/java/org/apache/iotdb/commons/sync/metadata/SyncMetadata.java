@@ -92,7 +92,7 @@ public class SyncMetadata implements SnapshotProcessor {
     return pipeSinks.containsKey(name);
   }
 
-  public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
+  public void checkPipeSinkNoExist(String pipeSinkName) throws PipeSinkException {
     if (isPipeSinkExist(pipeSinkName)) {
       throw new PipeSinkAlreadyExistException(pipeSinkName);
     }
@@ -157,6 +157,9 @@ public class SyncMetadata implements SnapshotProcessor {
 
   public void setPipeStatus(String pipeName, PipeStatus status) {
     pipes.get(pipeName).setStatus(status);
+    if (status.equals(PipeStatus.RUNNING)) {
+      pipes.get(pipeName).setMessageType(PipeMessage.PipeMessageType.NORMAL);
+    }
   }
 
   public PipeInfo getPipeInfo(String pipeName) {

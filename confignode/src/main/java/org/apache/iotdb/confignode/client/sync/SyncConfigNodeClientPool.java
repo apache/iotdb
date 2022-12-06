@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -73,6 +74,8 @@ public class SyncConfigNodeClientPool {
           case REGISTER_CONFIG_NODE:
             // Only use registerConfigNode when the ConfigNode is first startup.
             return client.registerConfigNode((TConfigNodeRegisterReq) req);
+          case ADD_CONSENSUS_GROUP:
+            return client.addConsensusGroup((TAddConsensusGroupReq) req);
           case NOTIFY_REGISTER_SUCCESS:
             client.notifyRegisterSuccess();
             return null;
@@ -80,8 +83,6 @@ public class SyncConfigNodeClientPool {
             return removeConfigNode((TConfigNodeLocation) req, client);
           case DELETE_CONFIG_NODE_PEER:
             return client.deleteConfigNodePeer((TConfigNodeLocation) req);
-          case QUERY_CONSENSUS_MANAGER_STATUS:
-            return client.isConsensusInitialized();
           case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.
             return client.stopConfigNode((TConfigNodeLocation) req);
@@ -102,7 +103,8 @@ public class SyncConfigNodeClientPool {
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
     return RpcUtils.getStatus(
-        TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to: " + lastException.getMessage());
+        TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR,
+        "All retry failed due to: " + lastException.getMessage());
   }
 
   /**
@@ -115,7 +117,7 @@ public class SyncConfigNodeClientPool {
       TConfigNodeLocation configNodeLocation, SyncConfigNodeIServiceClient client)
       throws TException, IOException, InterruptedException {
     TSStatus status = client.removeConfigNode(configNodeLocation);
-    while (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
       try (SyncConfigNodeIServiceClient clientLeader =

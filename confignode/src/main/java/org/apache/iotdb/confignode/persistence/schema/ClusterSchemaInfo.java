@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplate
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
@@ -184,7 +184,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
               .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
@@ -210,7 +210,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
               .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
@@ -233,13 +233,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         }
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
         result.setMessage("StorageGroup does not exist");
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -259,12 +259,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .setSchemaReplicationFactor(plan.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -284,12 +284,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .setDataReplicationFactor(plan.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -309,12 +309,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .setTimePartitionInterval(plan.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
           .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -328,22 +328,22 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param plan AdjustMaxRegionGroupCountPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupCountPlan plan) {
+  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupNumPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       for (Map.Entry<String, Pair<Integer, Integer>> entry :
-          plan.getMaxRegionGroupCountMap().entrySet()) {
+          plan.getMaxRegionGroupNumMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
         TStorageGroupSchema storageGroupSchema =
             mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
-        storageGroupSchema.setMaxSchemaRegionGroupCount(entry.getValue().getLeft());
-        storageGroupSchema.setMaxDataRegionGroupCount(entry.getValue().getRight());
+        storageGroupSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
+        storageGroupSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -437,13 +437,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the maxRegionGroupCount of specific StorageGroup.
+   * Only leader use this interface. Get the maxRegionGroupNum of specific StorageGroup.
    *
    * @param storageGroup StorageGroupName
    * @param consensusGroupType SchemaRegion or DataRegion
-   * @return maxSchemaRegionGroupCount or maxDataRegionGroupCount
+   * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMaxRegionGroupCount(String storageGroup, TConsensusGroupType consensusGroupType) {
+  public int getMaxRegionGroupNum(String storageGroup, TConsensusGroupType consensusGroupType) {
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath path = new PartialPath(storageGroup);
@@ -451,10 +451,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
-          return storageGroupSchema.getMaxSchemaRegionGroupCount();
+          return storageGroupSchema.getMaxSchemaRegionGroupNum();
         case DataRegion:
         default:
-          return storageGroupSchema.getMaxDataRegionGroupCount();
+          return storageGroupSchema.getMaxDataRegionGroupNum();
       }
     } catch (MetadataException e) {
       LOGGER.warn("Error StorageGroup name", e);
@@ -535,7 +535,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         new Pair(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true, null);
+      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in given level.", e);
     } finally {

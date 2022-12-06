@@ -28,13 +28,13 @@ public class StorageGroupNotSetException extends MetadataException {
 
   public StorageGroupNotSetException(String path) {
     super(String.format("Database is not set for current seriesPath: [%s]", path));
-    this.errorCode = TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode();
+    this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
   }
 
   public StorageGroupNotSetException(String path, boolean isUserException) {
     super(String.format("Database is not set for current seriesPath: [%s]", path));
     this.isUserException = isUserException;
-    this.errorCode = TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode();
+    this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
   }
 
   public StorageGroupNotSetException(String path, String reason) {

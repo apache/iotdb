@@ -49,7 +49,7 @@ Two machines A and B, which are installed with iotdb, we want to continuously sy
 - When one or more senders send data to a receiver, there should be no intersection between the respective device path sets of these senders and receivers, otherwise unexpected errors may occur.
   - e.g. When sender A includes path `root.sg.d.s`, sender B also includes the path `root.sg.d.s`, sender A deletes database `root.sg` will also delete all data of B stored in the path `root.sg.d.s` at receiver.
 - The two "ends" do not support synchronization with each other.
-- The Sync Tool only synchronizes insertions, delete data, delete timeseires. If no database is created on the receiver, a database of the same level as the sender will be automatically created. Do not support TTL settings, trigger and other operations.
+- The Sync Tool only synchronizes insertions. If no database is created on the receiver, a database of the same level as the sender will be automatically created. Currently, deletion operation is not guaranteed to be synchronized and do not support TTL settings, trigger and other operations.
   - If TTL is set on the sender side, all unexpired data in the IoTDB and all future data writes and deletions will be synchronized to the receiver side when Pipe is started.
 - When operating a synchronization task, ensure that all DataNode nodes in `SHOW DATANODES` that are in the Running state are connected, otherwise the execution will fail.
 
@@ -105,7 +105,7 @@ IoTDB> DROP PIPE my_pipe
 
 ## 5.Parameter Configuration
 
-All parameters are in `$IOTDB_ HOME$/conf/iotdb-engine`, after all modifications are completed, execute `load configuration` and it will take effect immediately.
+All parameters are in `$IOTDB_ HOME$/conf/iotdb-common.properties`, after all modifications are completed, execute `load configuration` and it will take effect immediately.
 
 ### 5.1 Sender
 
@@ -121,9 +121,9 @@ All parameters are in `$IOTDB_ HOME$/conf/iotdb-engine`, after all modifications
 
 | **Parameter Name** | **ip_white_list**                                            |
 | ------------------ | ------------------------------------------------------------ |
-| Description        | Set the white list of IP addresses of the sending end of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiving end accepts the synchronization request of all IP addresses. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
+| Description        | Set the white list of IP addresses of the sender of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiver rejects the synchronization request of all IP addresses except 127.0.0.1. When configuring this parameter, please ensure that all DataNode addresses on the sender are set. |
 | Data type          | String                                                       |
-| Default value      | 0.0.0.0/0                                                    |
+| Default value      | 127.0.0.1/32                                                    |
 
 ## 6.SQL
 
@@ -146,7 +146,7 @@ IoTDB>
 * Create a PipeSink with IoTDB type, where IP and port are optional parameters.
 
 ```
-IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(ip='127.0.0.1',port=6670);]
+IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(ip='127.0.0.1',port=6667);]
 ```
 
 ### DROP PIPESINK
@@ -168,7 +168,7 @@ IoTDB>
 +-----------+-----+------------------------+
 |       name| type|              attributes|
 +-----------+-----+------------------------+
-|my_pipesink|IoTDB|ip='127.0.0.1',port=6670|
+|my_pipesink|IoTDB|ip='127.0.0.1',port=6667|
 +-----------+-----+------------------------+
 ```
 
@@ -177,12 +177,10 @@ IoTDB>
 - Create a pipe.
 
   - At present, the SELECT statement only supports `**` (i.e. data in all timeseries), the FROM statement only supports `root`, and the WHERE statement only supports the start time of the specified time. The start time can be specified in the form of yyyy-mm-dd HH:MM:SS or a timestamp.
-
-  - If the `SyncDelOp` parameter is true, the deletions of sender will not be synchronized to receiver. Default is false.
-
+  
 
 ```
-IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )] [WITH SyncDelOp=true]
+IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )]
 ```
 
 ### STOP PIPE
@@ -233,21 +231,22 @@ IoTDB> DROP PIPE <PipeName>
     - When role is sender, the value of this field is the synchronization start time of the Pipe and whether to synchronize the delete operation.
     - When role is receiver, the value of this field is the name of the database corresponding to the synchronization connection created on this DataNode.
 
-  - `message`: the status message of this pipe. When pipe runs normally, this column is usually empty. When an exception occurs, messages may appear in  following two states.
+  - `message`: the status message of this pipe. When pipe runs normally, this column is NORMAL. When an exception occurs, messages may appear in  following two states.
     - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
-    - ERROR, this indicates that the network is interrupted for a long time or there is a problem at the receiving end. The pipe is stopped and set to STOP state.
+    - ERROR, This indicates a problem where the network connection works but the data cannot be transferred, for example, the IP of the sender is not in the whitelist of the receiver or the version of the sender is not compatible with that of the receiver.
+    - When the ERROR status appears, it is recommended to check the DataNode logs after STOP PIPE, check the receiver configuration or network conditions, and then START PIPE again.
 
 
 ```
 IoTDB> SHOW PIPES
 IoTDB>
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
-|            create time|   name |    role|       remote|   status|                         attributes|message|
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
-|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|syncDelOp=true,dataStartTimestamp=0|       |
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+ 
-|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|        storageGroup='root.vehicle'|       |
-+-----------------------+--------+--------+-------------+---------+-----------------------------------+-------+
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
+|            create time|   name |    role|       remote|   status|                          attributes|message|
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
+|2022-03-30T20:58:30.689|my_pipe1|  sender|  my_pipesink|     STOP|SyncDelOp=false,DataStartTimestamp=0| NORMAL|
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+ 
+|2022-03-31T12:55:28.129|my_pipe2|receiver|192.168.11.11|  RUNNING|             Database='root.vehicle'| NORMAL|
++-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
 ```
 
 - Show the pipe status with PipeName. When the PipeName is empty，it is the same with `Show PIPES`.
@@ -267,32 +266,32 @@ IoTDB> SHOW PIPE [PipeName]
 
 ### Receiver
 
-- `vi conf/iotdb-datanode.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
+- `vi conf/iotdb-common.properties`  to config the parameters，set the IP white list to 192.168.0.1/32 to receive and only receive data from sender.
 
 ```
 ####################
 ### PIPE Server Configuration
 ####################
 # White IP list of Sync client.
-# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+# Please use the form of IPv4 network segment to present the range of IP, for example: 192.168.0.0/16
 # If there are more than one IP segment, please separate them by commas
-# The default is to allow all IP to sync
+# The default is to reject all IP to sync except 0.0.0.0
 # Datatype: String
-ip_white_list=192.168.0.1/1
+ip_white_list=192.168.0.1/32
 ```
 
 ### Sender
 
-- Create PipeSink with IoTDB type, input ip address 192.168.0.1, port 6670.
+- Create PipeSink with IoTDB type, input ip address 192.168.0.1, port 6667.
 
 ```
-IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.2'，PORT=6670)
+IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.2'，PORT=6667)
 ```
 
-- Create Pipe connect to my_iotdb, input the start time 2022-03-30 00:00:00 in WHERE statments, set the `SyncDelOp` to false. The following two SQL statements are equivalent
+- Create Pipe connect to my_iotdb, input the start time 2022-03-30 00:00:00 in WHERE statments. The following two SQL statements are equivalent
 
 ```
-IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00') WITH SyncDelOp=false
+IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00')
 IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>= 1648569600000)
 ```
 
@@ -371,3 +370,6 @@ It costs 0.134s
 - Execute `DROP PIPE p`  get message  `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}. Please execute [DROP PIPE p] later to retry.`
   - Cause by: There are some DataNodes with the status Running cannot be connected. Pipe has been deleted on some nodes and the status has been set to ***DROP***.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
+- Sync.log prompts `org.apache.iotdb.commons.exception.IoTDBException: root.** already been created as database`
+  - Cause by: The synchronization tool attempts to automatically create a database at the sender at the receiver. This is a normal phenomenon.
+  - Solution: No intervention is required.

@@ -69,14 +69,14 @@ public class SyncMetadataTest {
     Assert.assertFalse(syncMetadata.isPipeSinkExist(PIPESINK_NAME_1));
     // check and add ioTDBPipeSink1
     try {
-      syncMetadata.checkAddPipeSink(PIPESINK_NAME_1);
+      syncMetadata.checkPipeSinkNoExist(PIPESINK_NAME_1);
     } catch (PipeSinkException e) {
       Assert.fail(e.getMessage());
     }
     syncMetadata.addPipeSink(ioTDBPipeSink1);
     Assert.assertTrue(syncMetadata.isPipeSinkExist(PIPESINK_NAME_1));
     try {
-      syncMetadata.checkAddPipeSink(PIPESINK_NAME_1);
+      syncMetadata.checkPipeSinkNoExist(PIPESINK_NAME_1);
       Assert.fail();
     } catch (PipeSinkException e) {
       Assert.assertTrue(e instanceof PipeSinkAlreadyExistException);

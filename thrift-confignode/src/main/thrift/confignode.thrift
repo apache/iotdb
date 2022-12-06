@@ -39,6 +39,7 @@ struct TDataNodeRegisterResp {
   7: optional list<binary> allTriggerInformation
   8: optional TCQConfig cqConfig
   9: optional list<binary> allUDFInformation
+  10: optional binary allTTLInformation
 }
 
 struct TGlobalConfig {
@@ -88,6 +89,9 @@ struct TRatisConfig {
 
   25: required i64 firstElectionTimeoutMin
   26: required i64 firstElectionTimeoutMax
+
+  27: required i64 schemaRegionRatisLogMax
+  28: required i64 dataRegionRatisLogMax
 }
 
 struct TCQConfig {
@@ -169,8 +173,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupCount
-  7: optional i32 maxDataRegionGroupCount
+  6: optional i32 maxSchemaRegionGroupNum
+  7: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -197,10 +201,16 @@ struct TSchemaNodeManagementResp {
   3: optional set<common.TSchemaNode> matchedNode
 }
 
+struct TTimeSlotList {
+  1: required list<common.TTimePartitionSlot> timePartitionSlots
+  2: required bool needLeftAll
+  3: required bool needRightAll
+}
+
 // Data
 struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
+  1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
@@ -212,8 +222,10 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
-    3: required common.TSeriesPartitionSlot seriesSlotId
-    4: optional common.TTimePartitionSlot timeSlotId
+    3: optional common.TSeriesPartitionSlot seriesSlotId
+    4: optional string deviceId
+    5: optional common.TTimePartitionSlot timeSlotId
+    6: optional i64 timeStamp
 }
 
 struct TGetRegionIdResp {
@@ -264,6 +276,7 @@ struct TUserResp {
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
+  5: required bool isOpenIdUser
 }
 
 struct TRoleResp {
@@ -305,6 +318,7 @@ struct TConfigNodeRegisterReq {
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
   13: required double diskSpaceWarningThreshold
+  14: required i32 leastDataRegionGroupNum
 }
 
 struct TConfigNodeRegisterResp {
@@ -403,6 +417,7 @@ struct TDataNodeInfo {
   4: required i32 rpcPort
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
+  7: optional i32 cpuCoreNum
 }
 
 struct TShowDataNodesResp {
@@ -501,6 +516,11 @@ struct TGetPathsSetTemplatesResp {
 }
 
 // SYNC
+struct TRecordPipeMessageReq{
+  1: required string pipeName
+  2: required binary message
+}
+
 struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
@@ -809,9 +829,6 @@ service IConfigNodeRPCService {
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
 
-  /** The ConfigNode-leader using this method to query that if the Non-Seed-ConfigNode has initialized the ConsensusManager */
-  common.TSStatus isConsensusInitialized()
-
   /**
    * Remove the specific ConfigNode from the cluster
    *
@@ -1040,6 +1057,9 @@ service IConfigNodeRPCService {
 
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   // ======================================================
   // TestTools

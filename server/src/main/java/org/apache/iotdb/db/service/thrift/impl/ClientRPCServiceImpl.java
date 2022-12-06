@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Operation;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -65,7 +66,6 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -222,7 +222,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -470,7 +470,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return new TSStatus(
         !SESSION_MANAGER.closeSession(
                 SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
-            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
@@ -868,7 +868,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
-        LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
+        LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
         TSStatus status =
             onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
         if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
@@ -1518,7 +1518,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               config.getQueryTimeoutThreshold());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && executionResult.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+          && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         resp.setStatus(executionResult.status);
         return resp;
       }
@@ -1693,7 +1693,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
     // TODO(sync): Check permissions here
-    return SyncService.getInstance().handshake(info);
+    return SyncService.getInstance()
+        .handshake(
+            info,
+            SESSION_MANAGER.getCurrSession().getClientAddress(),
+            PARTITION_FETCHER,
+            SCHEMA_FETCHER);
   }
 
   @Override
@@ -1774,23 +1779,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN_ERROR,
+        TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricService.getInstance()
-          .histogram(
-              System.currentTimeMillis() - startTime,
-              "operation_histogram",
-              MetricLevel.IMPORTANT,
-              "name",
-              operation.getName());
-      MetricService.getInstance()
-          .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
-    }
+    MetricService.getInstance()
+        .histogram(
+            System.currentTimeMillis() - startTime,
+            Metric.OPERATION.toString(),
+            MetricLevel.IMPORTANT,
+            "name",
+            operation.getName());
   }
 
   @Override

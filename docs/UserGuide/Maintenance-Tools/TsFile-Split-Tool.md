@@ -21,33 +21,26 @@
 
 # TsFile Split Tool
 
-IoTDB version 0.12 could produce large files, which leads to difficulties in maintenance. Therefore, since version 0.12.5 and 0.13, TsFile split tool is provided. The split tool can split the large TsFile into several small TsFile according to the configuration.
+TsFile split tool is used to split a TsFile into multiple TsFiles. The location is tools/tsfile/split-tsfile-tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
-
-Command:
+How to use:
 
 For Windows:
 
 ```
-.\split-tsfile-tool.bat <path of your TsFile> (-level <LEVEL of the target files>) (-size <SIZE of the target files>)
+.\split-tsfile-tool.bat <path of your TsFile> (-level <inner space compaction num in new file name, default is 10>) (-size <size of new files in byte, default is 1048576000>)
 ```
 
 For Linux or MacOs:
 
 ```
-./split-tsfile-tool.sh <path of your TsFile> (-level <LEVEL of the target files>) (-size <SIZE of the target files>)
+./split-tsfile-tool.sh <path of your TsFile> (-level <inner space compaction num in new file name, default is 10>) (-size <size of new files in byte, default is 1048576000>)
 ```
 
-> Note that if `-level` is not set, the default level of target files is 10; if `-size` is not set, the default size of target files is about 1GB. The unit of `-size` is byte.
-> For example, if the target files size is 100MB, and the level is 6, the command would be `./split-tsfile-tool.sh test.tsfile -level 6 -size 1048576000` (Linux or MacOs)
-
-Here are some configurations:
-
-1. The size of target files could be configured by the input param, which is 1GB by default. This configuration is also the target file size in compaction in 0.13. File size could determine whether the compaction is proceeded in 0.13, so this configuration could make sure there is no compaction after restarting.
-2. The level of target files is determined by the input param, which is 10 by default. File level could determine whether the compaction is proceeded in 0.12, so this configuration could make sure there is no compaction after restarting.
-3. The points number of chunk could be configured by `chunk_point_num_lower_bound_in_compaction`, which is 100 by default. This configuration is also the points number of target file in compaction in 0.13.
+> For example, if the new files size is 100MB, and the compaction num is 6, the command is `./split-tsfile-tool.sh test.tsfile -level 6 -size 1048576000` (Linux or MacOs)
 
 Here are some more tips:
-1. TsFile split tool is offline maintenance tool. Before splitting a file, you should make sure the file to be split is closed (aka with `tsFile.resource`) and IoTDB is shut down. After splitting, restart IoTDB.
-2. TsFile split tool doesn't support splitting TsFile with deletion interval (aka with `.mods` file) and with aligned timeseries.
+1. TsFile split tool is for one closed TsFile, need to ensure this TsFile is closed. If the TsFile is in IoTDB, a `.resource` file represent it is closed.
+2. When doing split, make sure the TsFile is not in a running IoTDB.
+3. Currently, we do not resolve the corresponding mods file, if you wish to put the new files into the IoTDB data dir and be loaded by restarting, you need to copy the related mods file(if exist) and rename them, make sure each new file has one mods.
+4. This tools do not support aligned timeseries currently.

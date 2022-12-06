@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -49,7 +49,7 @@ public class IoTDBShutdownHook extends Thread {
 
     // flush data to Tsfile and remove WAL log files
     if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      StorageEngineV2.getInstance().syncCloseAllProcessor();
+      StorageEngine.getInstance().syncCloseAllProcessor();
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
@@ -58,6 +58,7 @@ public class IoTDBShutdownHook extends Thread {
       // even if there are frequent restarts
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
+          .parallelStream()
           .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
     }
 

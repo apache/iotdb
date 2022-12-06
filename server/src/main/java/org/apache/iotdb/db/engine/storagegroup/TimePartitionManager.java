@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -105,7 +105,7 @@ public class TimePartitionManager {
         TimePartitionInfo timePartitionInfo = treeSet.first();
         memCost -= timePartitionInfo.memSize;
         DataRegion dataRegion =
-            StorageEngineV2.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
+            StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
           dataRegion.releaseFlushTimeMap(timePartitionInfo.partitionId);
         }

@@ -367,8 +367,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 |privilege Name|Interpretation|Example|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|create database; set/unset database ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
-|DELETE\_STORAGE\_GROUP|delete databases; path dependent|Eg: `delete database root.ln;`|
+|CREATE\_DATABASE|create database; set/unset database ttl; path dependent|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
+|DELETE\_DATABASE|delete databases; path dependent|Eg: `delete database root.ln;`|
 |CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|alter timeseries; path dependent|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
@@ -393,10 +393,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DROP_TRIGGER|drop triggers; path dependent|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
-|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|Eg1: `create schema template t1(s1 int32)`
-|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
-|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
-|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+|UPDATE_TEMPLATE|create and drop schema template; path independent|Eg1: `create schema template t1(s1 int32)`<br />Eg2: `drop schema template t1`|
+|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`| 
+|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `unset schema template t1 from root.sg.d`<br/>Eg3: `create timeseries of schema template on root.sg.d`<br/>Eg4: `delete timeseries of schema template on root.sg.d`|
+|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`|
 
 Note that path dependent privileges can only be granted or revoked on root.**;
 

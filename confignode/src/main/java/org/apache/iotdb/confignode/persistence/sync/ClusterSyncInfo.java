@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
@@ -68,11 +69,15 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   /**
    * Check PipeSink before create operation
    *
-   * @param pipeSinkName name
-   * @throws PipeSinkException if there is PipeSink with the same name exists
+   * @param createPipeSinkPlan createPipeSinkPlan
+   * @throws PipeSinkException if there is PipeSink with the same name exists or attributes is
+   *     unsupported
    */
-  public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
-    syncMetadata.checkAddPipeSink(pipeSinkName);
+  public void checkAddPipeSink(CreatePipeSinkPlan createPipeSinkPlan) throws PipeSinkException {
+    // check no exist
+    syncMetadata.checkPipeSinkNoExist(createPipeSinkPlan.getPipeSinkInfo().getPipeSinkName());
+    // check attributes
+    SyncPipeUtil.parseTPipeSinkInfoAsPipeSink(createPipeSinkPlan.getPipeSinkInfo());
   }
 
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
@@ -82,7 +87,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (PipeSinkException e) {
       LOGGER.error("failed to execute CreatePipeSinkPlan {} on ClusterSyncInfo", plan, e);
-      status.setCode(TSStatusCode.PIPESINK_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode());
       LOGGER.error(e.getMessage());
     }
     return status;
@@ -146,6 +151,12 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  public TSStatus recordPipeMessage(RecordPipeMessagePlan physicalPlan) {
+    syncMetadata.changePipeMessage(
+        physicalPlan.getPipeName(), physicalPlan.getPipeMessage().getType());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   public PipeResp showPipe(ShowPipePlan plan) {
     PipeResp resp = new PipeResp();
     if (StringUtils.isEmpty(plan.getPipeName())) {
@@ -180,7 +191,7 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   // endregion
 
   // ======================================================
-  // region Implement of Snapshot
+  // region Implement of Lock and Unlock
   // ======================================================
 
   public void lockSyncMetadata() {

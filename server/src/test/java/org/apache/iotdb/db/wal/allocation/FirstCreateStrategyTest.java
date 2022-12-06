@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Before;
@@ -54,8 +55,8 @@ public class FirstCreateStrategyTest {
   @Before
   public void setUp() throws Exception {
     prevWalDirs = commonConfig.getWalDirs();
-    commonConfig.setWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
+    commonConfig.setWalDirs(walDirs);
   }
 
   @After
@@ -150,13 +151,13 @@ public class FirstCreateStrategyTest {
           TSDataType.TEXT
         };
 
-    String[] columns = new String[6];
-    columns[0] = 1.0 + "";
-    columns[1] = 2 + "";
-    columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
+    Object[] columns = new Object[6];
+    columns[0] = 1.0;
+    columns[1] = 2.0F;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0);
 
     return new InsertRowNode(
         new PlanNodeId("0"),

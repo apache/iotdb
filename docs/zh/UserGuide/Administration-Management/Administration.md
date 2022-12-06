@@ -366,8 +366,8 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 
 |权限名称|说明|示例|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|创建 database。包含设置 database 的权限和TTL。路径相关|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
-|DELETE\_STORAGE\_GROUP|删除 database。路径相关|Eg: `delete database root.ln;`|
+|CREATE\_DATABASE|创建 database。包含设置 database 的权限和TTL。路径相关|Eg1: `CREATE DATABASE root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
+|DELETE\_DATABASE|删除 database。路径相关|Eg: `delete database root.ln;`|
 |CREATE\_TIMESERIES|创建时间序列。路径相关|Eg1: 创建时间序列<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: 创建对齐时间序列<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|插入数据。路径相关|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|修改时间序列标签。路径相关|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
@@ -392,10 +392,10 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |DROP_TRIGGER|卸载触发器。路径相关|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
-|UPDATE_TEMPLATE|创建、删除、修改模板。路径无关。|Eg1: `create schema template t1(s1 int32)`
-|READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`
-|APPLY_TEMPLATE|挂载、卸载、激活模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
-|READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+|UPDATE_TEMPLATE|创建、删除模板。路径无关。|Eg1: `create schema template t1(s1 int32)`<br />Eg2: `drop schema template t1`|
+|READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`|
+|APPLY_TEMPLATE|挂载、卸载、激活、解除模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `unset schema template t1 from root.sg.d`<br/>Eg3: `create timeseries of schema template on root.sg.d`<br/>Eg4: `delete timeseries of schema template on root.sg.d`|
+|READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`|
 
 注意： 路径无关的权限只能在路径root.**下赋予或撤销；
 

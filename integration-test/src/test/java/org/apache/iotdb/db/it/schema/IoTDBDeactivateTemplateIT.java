@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -143,7 +144,7 @@ public class IoTDBDeactivateTemplateIT {
       }
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.sg1.*");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.*");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -160,7 +161,7 @@ public class IoTDBDeactivateTemplateIT {
       }
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.*.d1");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.*.d1");
     String[] retArray =
         new String[] {"1,1,1.0,1,1.0,", "2,2,2.0,2,2.0,", "3,3,3.0,3,3.0,", "4,4,4.0,4,4.0,"};
     int cnt = 0;
@@ -178,7 +179,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.assertEquals(retArray.length, cnt);
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.**, root.sg1.*");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**, root.sg1.*");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -198,11 +199,27 @@ public class IoTDBDeactivateTemplateIT {
 
   @Test
   public void deactivateNoneUsageTemplateTest() throws Exception {
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+    try {
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()
+              + ": Schema Template t1 is not set on any prefix path of [root.sg5.d1]",
+          e.getMessage());
+    }
 
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+    statement.execute("CREATE DATABASE root.sg5");
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg5 ");
+    try {
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+      Assert.fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
+              + ": Target schema Template is not activated on any path matched by given path pattern",
+          e.getMessage());
+    }
   }
 
   @Test
@@ -221,7 +238,7 @@ public class IoTDBDeactivateTemplateIT {
       Assert.assertFalse(resultSet.next());
     }
 
-    statement.execute("DEACTIVATE TEMPLATE FROM root.**");
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**");
     try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Assert.assertEquals(1, resultSetMetaData.getColumnCount());

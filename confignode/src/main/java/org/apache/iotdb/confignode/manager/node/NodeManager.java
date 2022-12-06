@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -61,7 +60,6 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -155,7 +153,7 @@ public class NodeManager {
         configNodeConfig.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
         configNodeConfig.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         configNodeConfig.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
@@ -198,16 +196,21 @@ public class NodeManager {
     ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
     ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
 
+    ratisConfig.setDataMaxRetryAttempts(conf.getDataRegionRatisMaxRetryAttempts());
     ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
     ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
-    ratisConfig.setSchemaPreserveWhenPurge(conf.getConfigNodeRatisPreserveLogsWhenPurge());
+    ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
 
     ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
     ratisConfig.setFirstElectionTimeoutMax(conf.getRatisFirstElectionTimeoutMaxMs());
+
+    ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMaxMB());
+    ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMaxMB());
 
     dataSet.setRatisConfig(ratisConfig);
   }
@@ -244,13 +247,14 @@ public class NodeManager {
       getConsensusManager().write(registerDataNodePlan);
 
       // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupCount();
+      getClusterSchemaManager().adjustMaxRegionGroupNum();
 
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     } else {
-      status.setCode(TSStatusCode.REJECT_REMOVED_DATANODE.getStatusCode());
-      status.setMessage("Cannot register datanode, maybe this datanode is already removed.");
+      status.setCode(TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode());
+      status.setMessage(
+          "Cannot register datanode with wrong id. Maybe it's already removed, or it has another datanode's run-time properties.");
     }
 
     dataSet.setStatus(status);
@@ -279,22 +283,23 @@ public class NodeManager {
         dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
-          "The remove DataNode request check failed.  req: {}, check result: {}",
+          "The remove DataNode request check failed. req: {}, check result: {}",
           removeDataNodePlan,
           preCheckStatus.getStatus());
       return preCheckStatus;
     }
 
+    // Do transfer of the DataNodes before remove
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    // do transfer of the DataNodes before remove
     if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataSet.setStatus(
-          new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode())
+          new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
               .setMessage("Fail to do transfer of the DataNodes"));
       return dataSet;
     }
-    // if add request to queue, then return to client
+
+    // Add request to queue, then return to client
     boolean registerSucceed =
         configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
@@ -302,12 +307,14 @@ public class NodeManager {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("Server accepted the request");
     } else {
-      status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
     dataSet.setStatus(status);
 
-    LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info(
+        "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+        removeDataNodePlan);
     return dataSet;
   }
 
@@ -455,16 +462,19 @@ public class NodeManager {
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
-          (dataNodeInfo) -> {
-            TDataNodeInfo info = new TDataNodeInfo();
-            int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
-            info.setDataNodeId(dataNodeId);
-            info.setStatus(getNodeStatusWithReason(dataNodeId));
-            info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
-            info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
-            info.setDataRegionNum(0);
-            info.setSchemaRegionNum(0);
-            dataNodeInfoList.add(info);
+          (registeredDataNode) -> {
+            TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+            int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+            dataNodeInfo.setDataNodeId(dataNodeId);
+            dataNodeInfo.setStatus(getNodeStatusWithReason(dataNodeId));
+            dataNodeInfo.setRpcAddresss(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
+            dataNodeInfo.setRpcPort(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            dataNodeInfo.setDataRegionNum(0);
+            dataNodeInfo.setSchemaRegionNum(0);
+            dataNodeInfo.setCpuCoreNum(registeredDataNode.getResource().getCpuCoreNum());
+            dataNodeInfoList.add(dataNodeInfo);
           });
     }
 
@@ -544,10 +554,6 @@ public class NodeManager {
     getConsensusManager().write(applyConfigNodePlan);
   }
 
-  public void addMetrics() {
-    MetricService.getInstance().addMetricSet(new NodeInfoMetrics(nodeInfo));
-  }
-
   /**
    * Only leader use this interface, check the ConfigNode before remove it
    *
@@ -558,21 +564,21 @@ public class NodeManager {
     try {
       // Check OnlineConfigNodes number
       if (filterConfigNodeThroughStatus(NodeStatus.Running).size() <= 1) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
       if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
       }
 
       // Check whether the remove ConfigNode is leader
       TConfigNodeLocation leader = getConsensusManager().getLeader();
       if (leader == null) {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
                 "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
       }
@@ -606,10 +612,10 @@ public class NodeManager {
                 groupId,
                 new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
     if (!resp.isSuccess()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
     }
-    return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+    return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
         .setMessage(
             "The ConfigNode to be removed is leader, already transfer Leader to "
@@ -923,6 +929,18 @@ public class NodeManager {
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
+  }
+
+  /**
+   * Get the free disk space of the specified DataNode
+   *
+   * @param dataNodeId The index of the specified DataNode
+   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
+   */
+  public long getFreeDiskSpace(int dataNodeId) {
+    DataNodeHeartbeatCache dataNodeHeartbeatCache =
+        (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
+    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
   }
 
   /**

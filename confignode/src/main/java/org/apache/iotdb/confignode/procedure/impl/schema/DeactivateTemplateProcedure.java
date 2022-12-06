@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -97,6 +98,11 @@ public class DeactivateTemplateProcedure
             setNextState(DeactivateTemplateState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
           } else {
+            setFailure(
+                new ProcedureException(
+                    new IoTDBException(
+                        "Target schema Template is not activated on any path matched by given path pattern",
+                        TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
@@ -125,7 +131,7 @@ public class DeactivateTemplateProcedure
   }
 
   // return the total num of timeseries in schema black list
-  private int constructBlackList(ConfigNodeProcedureEnv env) {
+  private long constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree);
     if (targetSchemaRegionGroup.isEmpty()) {
@@ -166,10 +172,10 @@ public class DeactivateTemplateProcedure
       return 0;
     }
 
-    int preDeletedNum = 0;
+    long preDeletedNum = 0;
     for (List<TSStatus> respList : constructBlackListTask.getResponseMap().values()) {
       for (TSStatus resp : respList) {
-        preDeletedNum += Integer.parseInt(resp.getMessage());
+        preDeletedNum += Long.parseLong(resp.getMessage());
       }
     }
     return preDeletedNum;

@@ -21,7 +21,9 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -52,28 +54,60 @@ public class ConfigNodeConfig {
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = 1.0;
+  /** Default number of SchemaRegion replicas */
+  private int schemaReplicationFactor = 1;
 
-  /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
+  /** Data region consensus protocol */
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
-  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
-  private double dataRegionPerProcessor = 0.5;
-
-  /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
-      RegionBalancer.RegionAllocateStrategy.GREEDY;
+  /** Default number of DataRegion replicas */
+  private int dataReplicationFactor = 1;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
-  private int seriesPartitionSlotNum = 10000;
+  private int seriesSlotNum = 10000;
 
   /** SeriesPartitionSlot executor class */
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+
+  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = schemaReplicationFactor;
+
+  /** The policy of extension SchemaRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
+
+  /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
+  private int schemaRegionGroupPerDatabase = 1;
+
+  /** The policy of extension DataRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
+
+  /** The number of DataRegionGroups for each Database when using CUSTOM extension policy */
+  private int dataRegionGroupPerDatabase = 1;
+
+  /** The maximum number of DataRegions expected to be managed by each DataNode. */
+  private double dataRegionPerProcessor = 1.0;
+
+  /** The least number of SchemaRegionGroup for each Database. */
+  private int leastSchemaRegionGroupNum = 1;
+
+  /** The least number of DataRegionGroup for each Database. */
+  private int leastDataRegionGroupNum = 5;
+
+  /** RegionGroup allocate policy. */
+  private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
+      RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
+
+  /**
+   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
+   * previous TimePartitionSlot if set true
+   */
+  private boolean enableDataPartitionInheritPolicy = false;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -119,12 +153,6 @@ public class ConfigNodeConfig {
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
 
-  /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 1;
-
-  /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 1;
-
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;
 
@@ -141,11 +169,17 @@ public class ConfigNodeConfig {
   /** The unknown DataNode detect interval in milliseconds */
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
-  /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.LEADER_POLICY;
+  /** The policy of cluster RegionGroups' leader distribution */
+  private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
 
-  /** The ConfigNode-leader will automatically balance leader distribution if set true */
-  private boolean enableLeaderBalancing = false;
+  /** Whether to enable auto leader balance for Ratis consensus protocol */
+  private boolean enableAutoLeaderBalanceForRatisConsensus = false;
+
+  /** Whether to enable auto leader balance for IoTConsensus protocol */
+  private boolean enableAutoLeaderBalanceForIoTConsensus = true;
+
+  /** The route priority policy of cluster read/write requests */
+  private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
   private String readConsistencyLevel = "strong";
 
@@ -162,7 +196,6 @@ public class ConfigNodeConfig {
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long configNodeRatisSnapshotTriggerThreshold = 400000L;
-  private long configNodeSimpleConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
@@ -228,6 +261,10 @@ public class ConfigNodeConfig {
   /* first election timeout shares between 3 regions */
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
+
+  private long configNodeRatisLogMaxMB = 2 * 1024;
+  private long schemaRegionRatisLogMaxMB = 2 * 1024;
+  private long dataRegionRatisLogMaxMB = 20 * 1024;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -307,12 +344,12 @@ public class ConfigNodeConfig {
     this.configNodeRegionId = configNodeRegionId;
   }
 
-  public int getSeriesPartitionSlotNum() {
-    return seriesPartitionSlotNum;
+  public int getSeriesSlotNum() {
+    return seriesSlotNum;
   }
 
-  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+  public void setSeriesSlotNum(int seriesSlotNum) {
+    this.seriesSlotNum = seriesSlotNum;
   }
 
   public String getSeriesPartitionExecutorClass() {
@@ -387,6 +424,40 @@ public class ConfigNodeConfig {
     this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
+  public RegionGroupExtensionPolicy getSchemaRegionGroupExtensionPolicy() {
+    return schemaRegionGroupExtensionPolicy;
+  }
+
+  public void setSchemaRegionGroupExtensionPolicy(
+      RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy) {
+    this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
+  }
+
+  public int getSchemaRegionGroupPerDatabase() {
+    return schemaRegionGroupPerDatabase;
+  }
+
+  public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    this.schemaRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+  }
+
+  public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
+    return dataRegionGroupExtensionPolicy;
+  }
+
+  public void setDataRegionGroupExtensionPolicy(
+      RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
+    this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
+  }
+
+  public int getDataRegionGroupPerDatabase() {
+    return dataRegionGroupPerDatabase;
+  }
+
+  public void setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    this.dataRegionGroupPerDatabase = dataRegionGroupPerDatabase;
+  }
+
   public double getSchemaRegionPerDataNode() {
     return schemaRegionPerDataNode;
   }
@@ -411,13 +482,37 @@ public class ConfigNodeConfig {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
   }
 
-  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
-    return regionAllocateStrategy;
+  public int getLeastSchemaRegionGroupNum() {
+    return leastSchemaRegionGroupNum;
+  }
+
+  public void setLeastSchemaRegionGroupNum(int leastSchemaRegionGroupNum) {
+    this.leastSchemaRegionGroupNum = leastSchemaRegionGroupNum;
+  }
+
+  public int getLeastDataRegionGroupNum() {
+    return leastDataRegionGroupNum;
+  }
+
+  public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    this.leastDataRegionGroupNum = leastDataRegionGroupNum;
+  }
+
+  public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {
+    return regionGroupAllocatePolicy;
   }
 
   public void setRegionAllocateStrategy(
-      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
-    this.regionAllocateStrategy = regionAllocateStrategy;
+      RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
+    this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
+  }
+
+  public boolean isEnableDataPartitionInheritPolicy() {
+    return enableDataPartitionInheritPolicy;
+  }
+
+  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -534,20 +629,38 @@ public class ConfigNodeConfig {
     this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
-  public String getRoutingPolicy() {
-    return routingPolicy;
+  public String getLeaderDistributionPolicy() {
+    return leaderDistributionPolicy;
   }
 
-  public void setRoutingPolicy(String routingPolicy) {
-    this.routingPolicy = routingPolicy;
+  public void setLeaderDistributionPolicy(String leaderDistributionPolicy) {
+    this.leaderDistributionPolicy = leaderDistributionPolicy;
   }
 
-  public boolean isEnableLeaderBalancing() {
-    return enableLeaderBalancing;
+  public boolean isEnableAutoLeaderBalanceForRatisConsensus() {
+    return enableAutoLeaderBalanceForRatisConsensus;
   }
 
-  public void setEnableLeaderBalancing(boolean enableLeaderBalancing) {
-    this.enableLeaderBalancing = enableLeaderBalancing;
+  public void setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
+    this.enableAutoLeaderBalanceForRatisConsensus = enableAutoLeaderBalanceForRatisConsensus;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return enableAutoLeaderBalanceForIoTConsensus;
+  }
+
+  public void setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    this.enableAutoLeaderBalanceForIoTConsensus = enableAutoLeaderBalanceForIoTConsensus;
+  }
+
+  public String getRoutePriorityPolicy() {
+    return routePriorityPolicy;
+  }
+
+  public void setRoutePriorityPolicy(String routePriorityPolicy) {
+    this.routePriorityPolicy = routePriorityPolicy;
   }
 
   public String getReadConsistencyLevel() {
@@ -638,16 +751,6 @@ public class ConfigNodeConfig {
   public void setConfigNodeRatisSnapshotTriggerThreshold(
       long configNodeRatisSnapshotTriggerThreshold) {
     this.configNodeRatisSnapshotTriggerThreshold = configNodeRatisSnapshotTriggerThreshold;
-  }
-
-  public long getConfigNodeSimpleConsensusSnapshotTriggerThreshold() {
-    return configNodeSimpleConsensusSnapshotTriggerThreshold;
-  }
-
-  public void setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-      long configNodeSimpleConsensusSnapshotTriggerThreshold) {
-    this.configNodeSimpleConsensusSnapshotTriggerThreshold =
-        configNodeSimpleConsensusSnapshotTriggerThreshold;
   }
 
   public boolean isConfigNodeRatisLogUnsafeFlushEnable() {
@@ -919,5 +1022,29 @@ public class ConfigNodeConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public long getConfigNodeRatisLogMaxMB() {
+    return configNodeRatisLogMaxMB;
+  }
+
+  public void setConfigNodeRatisLogMaxMB(long configNodeRatisLogMaxMB) {
+    this.configNodeRatisLogMaxMB = configNodeRatisLogMaxMB;
+  }
+
+  public long getSchemaRegionRatisLogMaxMB() {
+    return schemaRegionRatisLogMaxMB;
+  }
+
+  public void setSchemaRegionRatisLogMaxMB(long schemaRegionRatisLogMaxMB) {
+    this.schemaRegionRatisLogMaxMB = schemaRegionRatisLogMaxMB;
+  }
+
+  public long getDataRegionRatisLogMaxMB() {
+    return dataRegionRatisLogMaxMB;
+  }
+
+  public void setDataRegionRatisLogMaxMB(long dataRegionRatisLogMaxMB) {
+    this.dataRegionRatisLogMaxMB = dataRegionRatisLogMaxMB;
   }
 }

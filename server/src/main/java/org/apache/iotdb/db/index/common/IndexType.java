@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.index.common;
 
-import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public enum IndexType {
@@ -72,13 +71,8 @@ public enum IndexType {
     }
   }
 
-  public static IndexType getIndexType(String indexTypeString)
-      throws UnsupportedIndexTypeException {
+  public static IndexType getIndexType(String indexTypeString) {
     String normalized = indexTypeString.toUpperCase();
-    try {
-      return IndexType.valueOf(normalized);
-    } catch (IllegalArgumentException e) {
-      throw new UnsupportedIndexTypeException(indexTypeString);
-    }
+    return IndexType.valueOf(normalized);
   }
 }

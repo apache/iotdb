@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -55,7 +55,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public class StandaloneScheduler implements IScheduler {
 
-  private static final StorageEngineV2 STORAGE_ENGINE = StorageEngineV2.getInstance();
+  private static final StorageEngine STORAGE_ENGINE = StorageEngine.getInstance();
 
   private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
@@ -100,8 +100,7 @@ public class StandaloneScheduler implements IScheduler {
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
             if (groupId instanceof DataRegionId) {
-              DataRegion region =
-                  StorageEngineV2.getInstance().getDataRegion((DataRegionId) groupId);
+              DataRegion region = StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
               FragmentInstanceInfo info =
                   FragmentInstanceManager.getInstance()
                       .execDataQueryFragmentInstance(fragmentInstance, region);
@@ -132,7 +131,7 @@ public class StandaloneScheduler implements IScheduler {
       case WRITE:
         // reject non-query operations when system is read-only
         if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-          TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+          TSStatus failedStatus = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
           failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
           stateMachine.transitionToFailed(failedStatus);
           return;

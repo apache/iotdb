@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -91,7 +92,8 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+            TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()
+                + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
             e.getMessage());
       }
 
@@ -387,7 +389,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(15, count);
 
       // no sdt encoding when merging
-      //      statement.execute("merge");
+      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -441,7 +443,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(18, count);
 
       // no sdt encoding when merging
-      //      statement.execute("merge");
+      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -927,7 +929,10 @@ public class IoTDBSimpleQueryIT {
             "CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("303: encoding TS_2DIFF does not support BOOLEAN", e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": encoding TS_2DIFF does not support BOOLEAN",
+            e.getMessage());
       }
 
       try {
@@ -935,14 +940,20 @@ public class IoTDBSimpleQueryIT {
             "CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("303: encoding REGULAR does not support DOUBLE", e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": encoding REGULAR does not support DOUBLE",
+            e.getMessage());
       }
 
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
         fail();
       } catch (Exception e) {
-        Assert.assertEquals("303: encoding TS_2DIFF does not support TEXT", e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.METADATA_ERROR.getStatusCode()
+                + ": encoding TS_2DIFF does not support TEXT",
+            e.getMessage());
       }
 
     } catch (SQLException e) {

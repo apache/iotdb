@@ -61,19 +61,14 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
-  public boolean isEnablePartition() {
-    return IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
-  }
-
-  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForStorage(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
     return this;
   }
 
   @Override
   public long getPartitionInterval() {
-    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage();
+    return IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
   @Override
@@ -103,12 +98,6 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
-    return this;
-  }
-
-  @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 
@@ -347,5 +336,19 @@ public class StandaloneEnvConfig implements BaseConfig {
   @Override
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+  }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setQueryThreadCount(queryThreadCount);
+    return this;
+  }
+
+  @Override
+  public int getQueryThreadCount() {
+    return IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
   }
 }

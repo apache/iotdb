@@ -43,6 +43,8 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
+set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Diotdb.jmx.local=%JMX_LOCAL%
+
 for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
 	set system_cpu_cores=%%b
 )
@@ -97,7 +99,7 @@ set temp_buffer_pool_size=1024
 @REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
 set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
 
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"%IOTDB_HOME%\gc.log"
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 

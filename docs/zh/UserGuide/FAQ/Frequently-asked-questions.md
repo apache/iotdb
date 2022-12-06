@@ -89,7 +89,7 @@ Readme.md
 
 **在哪里可以找到 IoTDB 的数据文件**
 
-在默认的设置里，数据文件（包含 TsFile，metadata，WAL）被存储在```IOTDB_HOME/data```文件夹。
+在默认的设置里，数据文件（包含 TsFile，metadata，WAL）被存储在```IOTDB_HOME/data/datanode```文件夹。
 
 **如何知道 IoTDB 中存储了多少时间序列**
 
@@ -151,3 +151,8 @@ IoTDB 客户端默认显示的时间是人类可读的（比如：```1970-01-01T
 ```
 > $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableISO8601
 ```
+
+**怎么处理来自`org.apache.ratis.grpc.server.GrpcLogAppender`的`IndexOutOfBoundsException`**
+
+这是我们的依赖Ratis 2.4.1的一个内部错误日志，不会对数据写入和读取造成任何影响。
+已经报告给Ratis社区，并会在未来的版本中修复。

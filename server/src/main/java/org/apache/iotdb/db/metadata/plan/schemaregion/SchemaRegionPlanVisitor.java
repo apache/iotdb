@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion;
 
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -32,8 +31,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 
 public abstract class SchemaRegionPlanVisitor<R, C> {
 
@@ -42,10 +39,6 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitActivateTemplateInCluster(
       IActivateTemplateInClusterPlan activateTemplateInClusterPlan, C context) {
     return visitSchemaRegionPlan(activateTemplateInClusterPlan, context);
-  }
-
-  public R visitActivateTemplate(IActivateTemplatePlan activateTemplatePlan, C context) {
-    return visitSchemaRegionPlan(activateTemplatePlan, context);
   }
 
   public R visitAutoCreateDeviceMNode(
@@ -81,14 +74,6 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitRollbackPreDeleteTimeSeries(
       IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan, C context) {
     return visitSchemaRegionPlan(rollbackPreDeleteTimeSeriesPlan, context);
-  }
-
-  public R visitSetTemplate(ISetTemplatePlan setTemplatePlan, C context) {
-    return visitSchemaRegionPlan(setTemplatePlan, context);
-  }
-
-  public R visitUnsetTemplate(IUnsetTemplatePlan unsetTemplatePlan, C context) {
-    return visitSchemaRegionPlan(unsetTemplatePlan, context);
   }
 
   public R visitPreDeactivateTemplate(

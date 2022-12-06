@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -48,7 +49,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -117,6 +118,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -131,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -264,6 +267,7 @@ public class ConfigManager implements IManager {
         dataSet.setTriggerInformation(
             triggerManager.getTriggerTable(false).getAllTriggerInformation());
         dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
+        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
       } finally {
         triggerManager.getTriggerInfo().releaseTriggerTableLock();
         udfManager.getUdfInfo().releaseUDFTableLock();
@@ -423,7 +427,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  public synchronized TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setStorageGroup(setStorageGroupPlan);
@@ -433,7 +437,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(List<String> deletedPaths) {
+  public synchronized TSStatus deleteStorageGroups(List<String> deletedPaths) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
@@ -441,7 +445,7 @@ public class ConfigManager implements IManager {
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
@@ -482,26 +486,30 @@ public class ConfigManager implements IManager {
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<PartialPath> allStorageGroupPaths = new ArrayList<>();
+    for (String storageGroup : allStorageGroups) {
+      try {
+        allStorageGroupPaths.add(new PartialPath(storageGroup));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
     Map<String, Boolean> scanAllRegions = new HashMap<>();
     for (PartialPath path : relatedPaths) {
-      for (String storageGroup : allStorageGroups) {
-        try {
-          PartialPath storageGroupPath = new PartialPath(storageGroup);
-          if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-              && !scanAllRegions.containsKey(storageGroup)) {
-            List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
-            if (relatedSlot.isEmpty()) {
-              scanAllRegions.put(storageGroup, true);
-              partitionSlotsMap.put(storageGroup, new HashSet<>());
-            } else {
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                  .addAll(relatedSlot);
-            }
+      for (int i = 0; i < allStorageGroups.size(); i++) {
+        String storageGroup = allStorageGroups.get(i);
+        PartialPath storageGroupPath = allStorageGroupPaths.get(i);
+        if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            && !scanAllRegions.containsKey(storageGroup)) {
+          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+          if (relatedSlot.isEmpty()) {
+            scanAllRegions.put(storageGroup, true);
+            partitionSlotsMap.put(storageGroup, new HashSet<>());
+          } else {
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                .addAll(relatedSlot);
           }
-        } catch (IllegalPathException e) {
-          // this line won't be reached in general
-          throw new RuntimeException(e);
         }
       }
     }
@@ -736,7 +744,7 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
@@ -747,7 +755,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(
           errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
-    if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
+    if (req.getSeriesPartitionSlotNum() != conf.getSeriesSlotNum()) {
       return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
     if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
@@ -757,8 +765,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(
-          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
@@ -789,7 +796,8 @@ public class ConfigManager implements IManager {
         if (consensusManager == null) {
           Thread.sleep(1000);
         } else {
-          consensusManager.createPeerForConsensusGroup(configNodeLocations);
+          // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
+          consensusManager.createPeerForConsensusGroup(Collections.emptyList());
           return StatusUtils.OK;
         }
       } catch (InterruptedException e) {
@@ -1039,7 +1047,6 @@ public class ConfigManager implements IManager {
   @Override
   public void addMetrics() {
     partitionManager.addMetrics();
-    nodeManager.addMetrics();
   }
 
   @Override
@@ -1112,7 +1119,11 @@ public class ConfigManager implements IManager {
 
     Map<PartialPath, List<Template>> templateSetInfo = templateSetInfoResp.getPatternTemplateMap();
     if (templateSetInfo.isEmpty()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return RpcUtils.getStatus(
+          TSStatusCode.TEMPLATE_NOT_SET,
+          String.format(
+              "Schema Template %s is not set on any prefix path of %s",
+              req.getTemplateName(), patternList));
     }
 
     if (!req.getTemplateName().equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1127,7 +1138,11 @@ public class ConfigManager implements IManager {
       }
 
       if (filteredTemplateSetInfo.isEmpty()) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        return RpcUtils.getStatus(
+            TSStatusCode.TEMPLATE_NOT_SET,
+            String.format(
+                "Schema Template %s is not set on any prefix path of %s",
+                req.getTemplateName(), patternList));
       }
 
       templateSetInfo = filteredTemplateSetInfo;
@@ -1269,10 +1284,21 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetRegionIdResp getRegionId(GetRegionIdPlan plan) {
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.recordPipeMessage(
+          req.getPipeName(), PipeMessage.deserialize(ByteBuffer.wrap(req.getMessage())));
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? partitionManager.getRegionId(plan).convertToRpcGetRegionIdResp()
+        ? partitionManager.getRegionId(req).convertToRpcGetRegionIdResp()
         : new TGetRegionIdResp(status);
   }
 
@@ -1347,12 +1373,16 @@ public class ConfigManager implements IManager {
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
-          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
-          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
+          value
+              .keySet()
+              .forEach(
+                  slot ->
+                      slotListMap.put(
+                          slot, new TTimeSlotList(Collections.emptyList(), true, true)));
           partitionSlotsMap.put(key, slotListMap);
         });
 
