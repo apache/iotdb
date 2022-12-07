@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
@@ -673,6 +673,12 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
+    conf.setEnableCompactionValidation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_validation",
+                Boolean.toString(conf.isEnableCompactionValidation()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -897,6 +903,14 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "select_into_insert_tablet_plan_row_limit",
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+    conf.setIntoOperationExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "into_operation_execution_thread_count",
+                String.valueOf(conf.getIntoOperationExecutionThreadCount()))));
+    if (conf.getIntoOperationExecutionThreadCount() <= 0) {
+      conf.setIntoOperationExecutionThreadCount(2);
+    }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1425,7 +1439,7 @@ public class IoTDBDescriptor {
 
       // update timed flush & close conf
       loadTimedService(properties);
-      StorageEngineV2.getInstance().rebootTimedService();
+      StorageEngine.getInstance().rebootTimedService();
 
       long memTableSizeThreshold =
           Long.parseLong(
@@ -1975,6 +1989,9 @@ public class IoTDBDescriptor {
 
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
+
+    conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

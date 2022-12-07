@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -34,6 +35,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.Utils.MemorizedFileSizeCalc;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -83,6 +85,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -119,8 +122,11 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final ExecutorService addExecutor;
+  private final ScheduledExecutorService diskGuardian;
 
   private final RatisConfig config;
+
+  private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -133,6 +139,8 @@ class RatisConsensus implements IConsensus {
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool("ratis-add");
+    diskGuardian =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("ratis-bg-disk-guardian");
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
@@ -154,13 +162,16 @@ class RatisConsensus implements IConsensus {
   @Override
   public void start() throws IOException {
     server.start();
+    startSnapshotGuardian();
   }
 
   @Override
   public void stop() throws IOException {
     addExecutor.shutdown();
+    diskGuardian.shutdown();
     try {
       addExecutor.awaitTermination(5, TimeUnit.SECONDS);
+      diskGuardian.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
       Thread.currentThread().interrupt();
@@ -330,9 +341,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // add RaftPeer myself to this RaftGroup
-    ConsensusGenericResponse reply = addNewGroupToServer(group, myself);
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+    return addNewGroupToServer(group, myself);
   }
 
   private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
@@ -465,7 +474,7 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
@@ -482,7 +491,7 @@ class RatisConsensus implements IConsensus {
     try {
       reply = sendReconfiguration(raftGroup);
     } catch (RatisRequestFailedException e) {
-      return failed(new RatisRequestFailedException(e));
+      return failed(e);
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
@@ -665,11 +674,51 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
+      if (!reply.isSuccess()) {
+        return failed(new RatisRequestFailedException(reply.getException()));
+      }
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+  }
+
+  private void triggerSnapshotByCustomize() {
+
+    Iterable<RaftGroupId> groupIds = server.getGroupIds();
+
+    for (RaftGroupId raftGroupId : groupIds) {
+      File currentDir = null;
+
+      try {
+        currentDir =
+            server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
+      } catch (IOException e) {
+        logger.warn("Get division failed: ", e);
+        continue;
+      }
+
+      final long currentDirLength =
+          calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
+      final long triggerSnapshotFileSize = config.getRatisConsensus().getTriggerSnapshotFileSize();
+
+      if (currentDirLength >= triggerSnapshotFileSize) {
+        ConsensusGenericResponse consensusGenericResponse =
+            triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        if (consensusGenericResponse.isSuccess()) {
+          logger.info("Raft group " + raftGroupId + " took snapshot successfully");
+        } else {
+          logger.warn("Raft group " + raftGroupId + " failed to take snapshot");
+        }
+      }
+    }
+  }
+
+  private void startSnapshotGuardian() {
+    final long delay = config.getRatisConsensus().getTriggerSnapshotTime();
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

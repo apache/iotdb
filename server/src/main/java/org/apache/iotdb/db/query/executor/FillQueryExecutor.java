@@ -21,15 +21,12 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
@@ -39,12 +36,10 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,69 +82,7 @@ public class FillQueryExecutor {
    */
   public QueryDataSet execute(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    RowRecord record = new RowRecord(queryTime);
-
-    Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
-
-    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
-        StorageEngine.getInstance().mergeLock(selectedSeries);
-    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
-        lockListAndProcessorToSeriesMapPair.right;
-
-    try {
-      // init QueryDataSource Cache
-      QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-    } catch (Exception e) {
-      logger.error("Meet error when init QueryDataSource ", e);
-      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(lockList);
-    }
-
-    List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      TSDataType dataType = dataTypes.get(i);
-
-      if (timeValuePairs.get(i) != null) {
-        // No need to fill
-        record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
-        continue;
-      }
-
-      IFill fill = fillExecutors[i];
-
-      if (fill instanceof LinearFill
-          && (dataType == TSDataType.VECTOR
-              || dataType == TSDataType.BOOLEAN
-              || dataType == TSDataType.TEXT)) {
-        record.addField(null);
-        logger.info("Linear fill doesn't support the " + i + "-th column in SQL.");
-        continue;
-      }
-
-      TimeValuePair timeValuePair;
-      try {
-        timeValuePair = fill.getFillResult();
-        if (timeValuePair == null && fill instanceof ValueFill) {
-          timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
-        }
-      } catch (QueryProcessException | NumberFormatException ignored) {
-        record.addField(null);
-        logger.info("Value fill doesn't support the " + i + "-th column in SQL.");
-        continue;
-      }
-      if (timeValuePair == null || timeValuePair.getValue() == null) {
-        record.addField(null);
-      } else {
-        record.addField(timeValuePair.getValue().getValue(), dataType);
-      }
-    }
-
-    SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
-    dataSet.setRecord(record);
-    return dataSet;
+    return null;
   }
 
   private Filter initFillExecutorsAndContructTimeFilter(QueryContext context)

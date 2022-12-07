@@ -60,7 +60,6 @@ Linux 系统与 MacOS 系统启动命令如下：
 ```
 > bash sbin/start-standalone.sh
 ```
-这里最好使用sudo，如果不使用 sudo，可能会提示后台日志无权限写入。
 
 Windows 系统启动命令如下：
 
@@ -237,7 +236,7 @@ IoTDB> exit
 
 ### 停止 IoTDB
 
-用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-server 脚本停止 IoTDB。
+用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-standalone 脚本停止 IoTDB。
 
 Linux 系统与 MacOS 系统停止命令如下：
 
@@ -251,6 +250,18 @@ Windows 系统停止命令如下：
 > sbin\stop-standalone.bat
 ```
 注意：在 Linux 下，执行停止脚本时，请尽量加上 sudo 语句，不然停止可能会失败。更多的解释在分布式/分布式部署中。
+
+### IoTDB 的权限管理
+
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
+
+您可以通过以下命令修改其密码：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 ## 基础配置
 

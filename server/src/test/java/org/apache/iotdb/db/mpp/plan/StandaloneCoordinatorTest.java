@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -72,7 +72,7 @@ public class StandaloneCoordinatorTest {
     configNode.init();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
-    StorageEngineV2.getInstance().start();
+    StorageEngine.getInstance().start();
   }
 
   @After
@@ -81,7 +81,7 @@ public class StandaloneCoordinatorTest {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
     WALManager.getInstance().stop();
-    StorageEngineV2.getInstance().stop();
+    StorageEngine.getInstance().stop();
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);

@@ -203,11 +203,14 @@ public class NodeManager {
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
 
-    ratisConfig.setSchemaPreserveWhenPurge(conf.getConfigNodeRatisPreserveLogsWhenPurge());
+    ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
 
     ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
     ratisConfig.setFirstElectionTimeoutMax(conf.getRatisFirstElectionTimeoutMaxMs());
+
+    ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
+    ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
 
     dataSet.setRatisConfig(ratisConfig);
   }
@@ -459,16 +462,19 @@ public class NodeManager {
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
-          (dataNodeInfo) -> {
-            TDataNodeInfo info = new TDataNodeInfo();
-            int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
-            info.setDataNodeId(dataNodeId);
-            info.setStatus(getNodeStatusWithReason(dataNodeId));
-            info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
-            info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
-            info.setDataRegionNum(0);
-            info.setSchemaRegionNum(0);
-            dataNodeInfoList.add(info);
+          (registeredDataNode) -> {
+            TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+            int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+            dataNodeInfo.setDataNodeId(dataNodeId);
+            dataNodeInfo.setStatus(getNodeStatusWithReason(dataNodeId));
+            dataNodeInfo.setRpcAddresss(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
+            dataNodeInfo.setRpcPort(
+                registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            dataNodeInfo.setDataRegionNum(0);
+            dataNodeInfo.setSchemaRegionNum(0);
+            dataNodeInfo.setCpuCoreNum(registeredDataNode.getResource().getCpuCoreNum());
+            dataNodeInfoList.add(dataNodeInfo);
           });
     }
 

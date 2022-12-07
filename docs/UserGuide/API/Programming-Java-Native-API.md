@@ -40,7 +40,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -551,7 +551,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```

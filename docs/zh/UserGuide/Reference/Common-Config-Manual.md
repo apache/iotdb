@@ -1063,6 +1063,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 4 |
 |改后生效方式| 重启服务生效|
 
+* enable\_compaction\_validation
+
+|名字| enable\_compaction\_validation |
+|:---:|:--|
+|描述| 开启合并结束后对顺序文件时间范围的检查 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式| 重启服务生效|
+
 ### 写前日志配置
 
 * wal\_mode
@@ -1282,9 +1291,9 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 | :----------: | :------------------------------------------------------ |
 |     描述     | 权限服务的类名                                          |
 |     类型     | String                                                  |
-|    默认值    | org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|    默认值    | org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer |
 | 改后生效方式 | 重启服务生效                                            |
-|  其他可选值  | org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer    |
+|  其他可选值  | org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer    |
 
 * openID\_url
 
@@ -1418,6 +1427,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     类型     | int32                                                        |
 |    默认值    | 10000                                                        |
 | 改后生效方式 | 热加载                                                     |
+
+* into\_operation\_execution\_thread\_count
+
+|     名字     | into\_operation\_execution\_thread\_count |
+| :---------: | :---------------------------------------- |
+|     描述     | SELECT INTO 中执行写入任务的线程池的线程数      |
+|     类型     | int32                                     |
+|    默认值    | 2                                         |
+| 改后生效方式  | 重启服务生效                                 |
 
 ### 连续查询配置
 

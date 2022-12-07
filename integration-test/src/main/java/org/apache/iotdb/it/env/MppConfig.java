@@ -222,6 +222,20 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
   public BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
     confignodeProperties.setProperty(
         "data_region_group_extension_policy", dataRegionGroupExtensionPolicy);
@@ -363,6 +377,15 @@ public class MppConfig implements BaseConfig {
   public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
     confignodeProperties.setProperty(
         "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
     return this;
   }
 }

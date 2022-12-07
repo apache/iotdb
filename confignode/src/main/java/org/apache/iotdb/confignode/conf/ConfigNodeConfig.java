@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
-import org.apache.iotdb.confignode.manager.partition.DataRegionGroupExtensionPolicy;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -76,12 +76,19 @@ public class ConfigNodeConfig {
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = schemaReplicationFactor;
 
-  /** The policy of extension DataRegionGroup for each Database. */
-  private DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      DataRegionGroupExtensionPolicy.AUTO;
+  /** The policy of extension SchemaRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of DataRegionGroups for each Database */
-  private int dataRegionGroupPerDatabase = 10;
+  /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
+  private int schemaRegionGroupPerDatabase = 1;
+
+  /** The policy of extension DataRegionGroup for each Database. */
+  private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
+      RegionGroupExtensionPolicy.AUTO;
+
+  /** The number of DataRegionGroups for each Database when using CUSTOM extension policy */
+  private int dataRegionGroupPerDatabase = 1;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 1.0;
@@ -255,6 +262,10 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
+  private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -413,12 +424,29 @@ public class ConfigNodeConfig {
     this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
-  public DataRegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
+  public RegionGroupExtensionPolicy getSchemaRegionGroupExtensionPolicy() {
+    return schemaRegionGroupExtensionPolicy;
+  }
+
+  public void setSchemaRegionGroupExtensionPolicy(
+      RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy) {
+    this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
+  }
+
+  public int getSchemaRegionGroupPerDatabase() {
+    return schemaRegionGroupPerDatabase;
+  }
+
+  public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    this.schemaRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+  }
+
+  public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
     return dataRegionGroupExtensionPolicy;
   }
 
   public void setDataRegionGroupExtensionPolicy(
-      DataRegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
+      RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy) {
     this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
   }
 
@@ -994,5 +1022,29 @@ public class ConfigNodeConfig {
 
   public void setRatisFirstElectionTimeoutMaxMs(long ratisFirstElectionTimeoutMaxMs) {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
+  }
+
+  public long getConfigNodeRatisLogMax() {
+    return configNodeRatisLogMax;
+  }
+
+  public void setConfigNodeRatisLogMax(long configNodeRatisLogMax) {
+    this.configNodeRatisLogMax = configNodeRatisLogMax;
+  }
+
+  public long getSchemaRegionRatisLogMax() {
+    return schemaRegionRatisLogMax;
+  }
+
+  public void setSchemaRegionRatisLogMax(long schemaRegionRatisLogMax) {
+    this.schemaRegionRatisLogMax = schemaRegionRatisLogMax;
+  }
+
+  public long getDataRegionRatisLogMax() {
+    return dataRegionRatisLogMax;
+  }
+
+  public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
+    this.dataRegionRatisLogMax = dataRegionRatisLogMax;
   }
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.FolderManager;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
@@ -66,7 +66,7 @@ public class SnapshotLoader {
               + File.separator
               + storageGroupName,
           dataRegionId,
-          StorageEngineV2.getInstance().getFileFlushPolicy(),
+          StorageEngine.getInstance().getFileFlushPolicy(),
           storageGroupName);
     } catch (Exception e) {
       LOGGER.error("Exception occurs while load snapshot from {}", snapshotPath, e);
@@ -326,6 +326,10 @@ public class SnapshotLoader {
               + File.separator
               + IoTDBConstant.SNAPSHOT_FOLDER_NAME
               + File.separator
+              + storageGroupName
+              + "-"
+              + dataRegionId
+              + File.separator
               + snapshotId;
       fileCnt += takeHardLinksFromSnapshotToDataDir(dataDir, new File(snapshotDir), fileInfoSet);
     }
@@ -457,6 +461,10 @@ public class SnapshotLoader {
             dataDir
                 + File.separator
                 + IoTDBConstant.SNAPSHOT_FOLDER_NAME
+                + File.separator
+                + storageGroupName
+                + "-"
+                + dataRegionId
                 + File.separator
                 + snapshotId;
         fileList.addAll(searchDataFilesRecursively(snapshotDir));

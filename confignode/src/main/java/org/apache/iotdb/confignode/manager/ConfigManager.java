@@ -49,7 +49,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -111,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -133,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -785,9 +786,6 @@ public class ConfigManager implements IManager {
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
-    if (req.getLeastDataRegionGroupNum() != conf.getLeastDataRegionGroupNum()) {
-      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
-    }
     return null;
   }
 
@@ -1297,10 +1295,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetRegionIdResp getRegionId(GetRegionIdPlan plan) {
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? partitionManager.getRegionId(plan).convertToRpcGetRegionIdResp()
+        ? partitionManager.getRegionId(req).convertToRpcGetRegionIdResp()
         : new TGetRegionIdResp(status);
   }
 
@@ -1375,12 +1373,16 @@ public class ConfigManager implements IManager {
         getSchemaPartition(patternTree).getSchemaPartitionTable();
 
     // Construct request for getting data partition
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
         (key, value) -> {
-          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
-          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
+          value
+              .keySet()
+              .forEach(
+                  slot ->
+                      slotListMap.put(
+                          slot, new TTimeSlotList(Collections.emptyList(), true, true)));
           partitionSlotsMap.put(key, slotListMap);
         });
 

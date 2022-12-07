@@ -130,8 +130,32 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    hasCandidateResult = true;
-    firstValue.setObject(finalResult.getObject(0));
+    if (!finalResult.isNull(0)) {
+      hasCandidateResult = true;
+      switch (seriesDataType) {
+        case INT32:
+          firstValue.setInt(finalResult.getInt(0));
+          break;
+        case INT64:
+          firstValue.setLong(finalResult.getLong(0));
+          break;
+        case FLOAT:
+          firstValue.setFloat(finalResult.getFloat(0));
+          break;
+        case DOUBLE:
+          firstValue.setDouble(finalResult.getDouble(0));
+          break;
+        case TEXT:
+          firstValue.setBinary(finalResult.getBinary(0));
+          break;
+        case BOOLEAN:
+          firstValue.setBoolean(finalResult.getBoolean(0));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+      }
+    }
   }
 
   // columnBuilder should be double in FirstValueAccumulator

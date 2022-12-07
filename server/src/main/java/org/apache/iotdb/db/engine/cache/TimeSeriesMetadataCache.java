@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -49,6 +50,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.TIME_SERIES_METADATA_CACHE_MISS;
 
 /**
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
@@ -137,6 +140,7 @@ public class TimeSeriesMetadataCache {
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
 
     if (timeseriesMetadata == null) {
+      long startTime = System.nanoTime();
       if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
@@ -180,6 +184,8 @@ public class TimeSeriesMetadataCache {
           }
         }
       }
+      QueryStatistics.getInstance()
+          .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
     }
     if (timeseriesMetadata == null) {
       if (debug) {

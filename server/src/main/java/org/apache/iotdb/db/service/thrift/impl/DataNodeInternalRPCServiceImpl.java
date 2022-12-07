@@ -56,7 +56,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -221,7 +221,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
 
@@ -245,7 +245,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     } catch (Throwable t) {
-      LOGGER.error("Deserialize ConsensusGroupId failed. ", t);
+      LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
       resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
       return resp;
@@ -257,7 +257,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
     } catch (Throwable t) {
-      LOGGER.error("Deserialize FragmentInstance failed.", t);
+      LOGGER.warn("Deserialize FragmentInstance failed.", t);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
       resp.setMessage("Deserialize FragmentInstance failed: " + t.getMessage());
       return resp;
@@ -352,7 +352,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
 
     return createTLoadResp(resultStatus);
@@ -362,7 +362,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
     return createTLoadResp(resultStatus);
@@ -506,7 +506,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           result.appendFullPath(path);
         }
       } catch (MetadataException e) {
-        LOGGER.error(e.getMessage(), e);
+        LOGGER.warn(e.getMessage(), e);
         resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         return resp;
       }
@@ -753,7 +753,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
         result += schemaRegion.countPathsUsingTemplate(req.getTemplateId(), filteredPatternTree);
       } catch (MetadataException e) {
-        LOGGER.error(e.getMessage(), e);
+        LOGGER.warn(e.getMessage(), e);
         resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         return resp;
       } finally {
@@ -1021,7 +1021,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         result += gauge.value();
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to get memory from metric because {}", e.getMessage());
+      LOGGER.warn("Failed to get memory from metric because: ", e);
       return 0;
     }
     return result;
@@ -1208,7 +1208,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     if (!resp.isSuccess()) {
-      LOGGER.error(
+      LOGGER.warn(
           "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}",
           regionId,
           resp.getException());
@@ -1231,7 +1231,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (regionId instanceof SchemaRegionId) {
       return SchemaRegionConsensusImpl.getInstance().isLeader(regionId);
     }
-    LOGGER.error("region {} type is illegal", regionId);
+    LOGGER.warn("region {} type is illegal", regionId);
     return false;
   }
 
@@ -1359,7 +1359,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
@@ -1374,7 +1374,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Error occurred when try to inactive trigger instance for trigger: {}. The cause is {}. ",
           req.triggerName,
           e);
@@ -1390,7 +1390,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
     } catch (Exception e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Error occurred when dropping trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
@@ -1406,7 +1406,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TriggerManagementService.getInstance()
           .updateLocationOfStatefulTrigger(req.triggerName, req.newLocation);
     } catch (Exception e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Error occurred when updating Location for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
@@ -1470,7 +1470,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
     }
     if (!resp.isSuccess()) {
-      LOGGER.error(
+      LOGGER.warn(
           "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
           REGION_MIGRATE_PROCESS,
           peers,
@@ -1512,7 +1512,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               try {
                 TimeUnit.SECONDS.sleep(20);
               } catch (InterruptedException e) {
-                LOGGER.error("Meets InterruptedException in stopDataNode RPC method");
+                LOGGER.warn("Meets InterruptedException in stopDataNode RPC method");
               } finally {
                 LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 20 seconds");
                 System.exit(0);
@@ -1524,7 +1524,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");
     } catch (Exception e) {
-      LOGGER.error("Stop Data Node error", e);
+      LOGGER.warn("Stop Data Node error", e);
       status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
