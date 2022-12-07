@@ -82,6 +82,18 @@ public class QueryStatistics {
   public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
   public static final String DISPATCHER = "Dispatcher";
 
+  public static final String WAIT_FOR_DISPATCH = "WaitForDispatch";
+
+  public static final String DISPATCH_READ = "DispatchRead";
+
+  public static final String DRIVER_CLOSE = "CloseDriver";
+
+  public static final String DRIVER_INTERNAL_PROCESS = "DriverInternalProcess";
+
+  public static final String SEND_TSBLOCK = "SendTsBlock";
+
+  public static final String SET_NO_MORE_TSBLOCK = "SetNoMoreTsBlock";
+
   public static final String SERVER_RPC_RT = "ServerRpcRT";
 
   public static final String LOAD_TIME_SERIES_METADATA_ALIGNED = "loadTimeSeriesMetadata-aligned";
