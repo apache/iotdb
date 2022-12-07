@@ -273,7 +273,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   public PlanNode visitGroupByTag(GroupByTagNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
-  
+
   @Override
   public PlanNode visitVerticallyConcat(VerticallyConcatNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);

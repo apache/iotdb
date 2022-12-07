@@ -329,7 +329,7 @@ public abstract class PlanVisitor<R, C> {
   public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
     return visitPlan(node, context);
   }
-  
+
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
     return visitPlan(node, context);
   }

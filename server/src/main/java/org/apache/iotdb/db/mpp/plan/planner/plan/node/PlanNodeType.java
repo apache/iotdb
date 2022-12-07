@@ -154,10 +154,9 @@ public enum PlanNodeType {
   DEACTIVATE_TEMPLATE_NODE((short) 61),
   INTO((short) 62),
   DEVICE_VIEW_INTO((short) 63),
-  VERTICALLY_CONCAT((short) 64);
+  VERTICALLY_CONCAT((short) 64),
   SINGLE_DEVICE_VIEW((short) 65),
   MERGE_SORT((short) 66);
-
 
   public static final int BYTES = Short.BYTES;
 
