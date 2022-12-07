@@ -8,9 +8,8 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-
-
 import java.util.Random;
+
 
 public class UDTFSample implements UDTF {
   double rate;

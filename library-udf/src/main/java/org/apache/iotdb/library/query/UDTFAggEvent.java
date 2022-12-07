@@ -9,7 +9,11 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.util.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Comparator;
 
 public class UDTFAggEvent implements UDTF {
 
