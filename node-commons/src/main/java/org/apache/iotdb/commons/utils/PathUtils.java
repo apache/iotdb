@@ -27,9 +27,9 @@ import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class PathUtils {
 
@@ -66,11 +66,11 @@ public class PathUtils {
     if (measurementLists == null) {
       return null;
     }
-    // use set to skip checking duplicated measurements
-    Set<String> measurementSet = new HashSet<>();
+    // skip checking duplicated measurements
+    Map<String, String> checkedMeasurements = new HashMap<>();
     List<List<String>> res = new ArrayList<>();
     for (List<String> measurements : measurementLists) {
-      res.add(checkLegalSingleMeasurementsAndSkipDuplicate(measurements, measurementSet));
+      res.add(checkLegalSingleMeasurementsAndSkipDuplicate(measurements, checkedMeasurements));
     }
     return res;
   }
@@ -80,7 +80,7 @@ public class PathUtils {
    * single node name, use set to skip checking duplicated measurements
    */
   public static List<String> checkLegalSingleMeasurementsAndSkipDuplicate(
-      List<String> measurements, Set<String> measurementSet) throws MetadataException {
+      List<String> measurements, Map<String, String> checkedMeasurements) throws MetadataException {
     if (measurements == null) {
       return null;
     }
@@ -90,12 +90,12 @@ public class PathUtils {
         res.add(null);
         continue;
       }
-      if (measurementSet.contains(measurement)) {
-        res.add(measurement);
+      if (checkedMeasurements.get(measurement) != null) {
+        res.add(checkedMeasurements.get(measurement));
         continue;
       }
       String checked = checkAndReturnSingleMeasurement(measurement);
-      measurementSet.add(checked);
+      checkedMeasurements.put(measurement, checked);
       res.add(checked);
     }
     return res;
