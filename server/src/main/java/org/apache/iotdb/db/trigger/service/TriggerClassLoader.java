@@ -21,15 +21,16 @@ package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.HashSet;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TriggerClassLoader extends URLClassLoader {
 
@@ -45,11 +46,11 @@ public class TriggerClassLoader extends URLClassLoader {
   }
 
   private void addURLs() throws IOException {
-    HashSet<File> fileSet =
-        new HashSet<>(FileUtils.listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true));
-    URL[] urls = FileUtils.toURLs(fileSet.toArray(new File[0]));
-    for (URL url : urls) {
-      super.addURL(url);
+    try (Stream<Path> pathStream =
+        Files.walk(SystemFileFactory.INSTANCE.getFile(libRoot).toPath())) {
+      for (Path path : pathStream.collect(Collectors.toList())) {
+        super.addURL(path.toUri().toURL());
+      }
     }
   }
 }
