@@ -379,4 +379,13 @@ public class MppConfig implements BaseConfig {
         "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
     return this;
   }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
 }

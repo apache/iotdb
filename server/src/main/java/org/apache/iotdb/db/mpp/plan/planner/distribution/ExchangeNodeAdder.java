@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -268,12 +269,19 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processOneChildNode(node, context);
   }
 
+  @Override
   public PlanNode visitGroupByTag(GroupByTagNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+  
+  @Override
+  public PlanNode visitVerticallyConcat(VerticallyConcatNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
   private Map<TRegionReplicaSet, DeviceViewGroup> getDeviceViewGroup(
       PlanNode node, NodeGroupContext context, List<String> devices) {
+    // group all the children by DataRegion distribution
     Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap = new HashMap<>();
     for (int i = 0; i < devices.size(); i++) {
       String device = devices.get(i);

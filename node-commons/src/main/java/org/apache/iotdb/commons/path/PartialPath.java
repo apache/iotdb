@@ -66,6 +66,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
+    if (nodes.length == 0) {
+      throw new IllegalPathException(path);
+    }
     // path is root.sg.`abc`, fullPath is root.sg.abc
     // path is root.sg.`select`, fullPath is root.sg.select
     // path is root.sg.`111`, fullPath is root.sg.`111`

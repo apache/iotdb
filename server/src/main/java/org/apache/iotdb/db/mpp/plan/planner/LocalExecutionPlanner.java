@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
@@ -61,7 +61,7 @@ public class LocalExecutionPlanner {
       TypeProvider types,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      DataRegion dataRegion)
+      IDataRegionForQuery dataRegion)
       throws MemoryNotEnoughException {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());

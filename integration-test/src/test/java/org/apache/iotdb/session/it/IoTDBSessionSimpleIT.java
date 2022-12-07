@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -1443,6 +1444,36 @@ public class IoTDBSessionSimpleIT {
         }
       }
       dataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void illegalDatabaseNameTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createDatabase("root.db");
+      try {
+        session.createDatabase("");
+        fail();
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+      }
+
+      try {
+        session.deleteDatabases(Arrays.asList("root.db", ""));
+        fail();
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+      }
+
+      session.deleteDatabase("root.db");
+
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES");
+      assertFalse(dataSet.hasNext());
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

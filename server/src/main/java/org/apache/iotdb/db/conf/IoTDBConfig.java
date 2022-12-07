@@ -317,7 +317,7 @@ public class IoTDBConfig {
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Math.max(4, Runtime.getRuntime().availableProcessors());
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -685,6 +685,9 @@ public class IoTDBConfig {
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
+  /** The number of threads in the thread pool that execute insert-tablet tasks. */
+  private int intoOperationExecutionThreadCount = 2;
+
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -1037,8 +1040,8 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMinMs = 50L;
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
-  private long dataRatisLogMaxMB = 20 * 1024;
-  private long schemaRatisLogMaxMB = 2 * 1024;
+  private long dataRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
+  private long schemaRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -1900,6 +1903,14 @@ public class IoTDBConfig {
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public int getIntoOperationExecutionThreadCount() {
+    return intoOperationExecutionThreadCount;
+  }
+
+  public void setIntoOperationExecutionThreadCount(int intoOperationExecutionThreadCount) {
+    this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {
@@ -3564,20 +3575,20 @@ public class IoTDBConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getDataRatisLogMaxMB() {
-    return dataRatisLogMaxMB;
+  public long getDataRatisLogMax() {
+    return dataRatisLogMax;
   }
 
-  public void setDataRatisLogMaxMB(long dataRatisLogMaxMB) {
-    this.dataRatisLogMaxMB = dataRatisLogMaxMB;
+  public void setDataRatisLogMax(long dataRatisLogMax) {
+    this.dataRatisLogMax = dataRatisLogMax;
   }
 
-  public long getSchemaRatisLogMaxMB() {
-    return schemaRatisLogMaxMB;
+  public long getSchemaRatisLogMax() {
+    return schemaRatisLogMax;
   }
 
-  public void setSchemaRatisLogMaxMB(long schemaRatisLogMaxMB) {
-    this.schemaRatisLogMaxMB = schemaRatisLogMaxMB;
+  public void setSchemaRatisLogMax(long schemaRatisLogMax) {
+    this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
   public boolean isEnableCompactionValidation() {

@@ -20,9 +20,7 @@ package org.apache.iotdb.db.query.timegenerator;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -41,15 +39,12 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 from root where
@@ -81,28 +76,7 @@ public class ServerTimeGenerator extends TimeGenerator {
   }
 
   public void serverConstructNode(IExpression expression)
-      throws IOException, StorageEngineException, QueryProcessException {
-    List<PartialPath> pathList = new ArrayList<>();
-    timeFilter = getPathListAndConstructTimeFilterFromExpression(expression, pathList);
-
-    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
-        StorageEngine.getInstance().mergeLock(pathList);
-    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
-        lockListAndProcessorToSeriesMapPair.right;
-
-    try {
-      // init QueryDataSource Cache
-      QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-    } catch (Exception e) {
-      logger.error("Meet error when init QueryDataSource ", e);
-      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(lockList);
-    }
-    operatorNode = construct(expression);
-  }
+      throws IOException, StorageEngineException, QueryProcessException {}
 
   /**
    * collect PartialPath from Expression and transform MeasurementPath whose isUnderAlignedEntity is

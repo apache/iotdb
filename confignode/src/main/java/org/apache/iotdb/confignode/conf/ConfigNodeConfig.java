@@ -78,7 +78,7 @@ public class ConfigNodeConfig {
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.CUSTOM;
+      RegionGroupExtensionPolicy.AUTO;
 
   /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
   private int schemaRegionGroupPerDatabase = 1;
@@ -262,9 +262,9 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
-  private long configNodeRatisLogMaxMB = 2 * 1024;
-  private long schemaRegionRatisLogMaxMB = 2 * 1024;
-  private long dataRegionRatisLogMaxMB = 20 * 1024;
+  private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -1024,27 +1024,27 @@ public class ConfigNodeConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getConfigNodeRatisLogMaxMB() {
-    return configNodeRatisLogMaxMB;
+  public long getConfigNodeRatisLogMax() {
+    return configNodeRatisLogMax;
   }
 
-  public void setConfigNodeRatisLogMaxMB(long configNodeRatisLogMaxMB) {
-    this.configNodeRatisLogMaxMB = configNodeRatisLogMaxMB;
+  public void setConfigNodeRatisLogMax(long configNodeRatisLogMax) {
+    this.configNodeRatisLogMax = configNodeRatisLogMax;
   }
 
-  public long getSchemaRegionRatisLogMaxMB() {
-    return schemaRegionRatisLogMaxMB;
+  public long getSchemaRegionRatisLogMax() {
+    return schemaRegionRatisLogMax;
   }
 
-  public void setSchemaRegionRatisLogMaxMB(long schemaRegionRatisLogMaxMB) {
-    this.schemaRegionRatisLogMaxMB = schemaRegionRatisLogMaxMB;
+  public void setSchemaRegionRatisLogMax(long schemaRegionRatisLogMax) {
+    this.schemaRegionRatisLogMax = schemaRegionRatisLogMax;
   }
 
-  public long getDataRegionRatisLogMaxMB() {
-    return dataRegionRatisLogMaxMB;
+  public long getDataRegionRatisLogMax() {
+    return dataRegionRatisLogMax;
   }
 
-  public void setDataRegionRatisLogMaxMB(long dataRegionRatisLogMaxMB) {
-    this.dataRegionRatisLogMaxMB = dataRegionRatisLogMaxMB;
+  public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
+    this.dataRegionRatisLogMax = dataRegionRatisLogMax;
   }
 }
