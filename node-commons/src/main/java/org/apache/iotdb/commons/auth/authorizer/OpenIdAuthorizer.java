@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -74,17 +75,20 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       providerKey = RSAKey.parse(jwk).toRSAPublicKey();
     } catch (java.text.ParseException | JOSEException e) {
-      throw new AuthException("Unable to get OIDC Provider Key from JWK " + jwk, e);
+      throw new AuthException(
+          TSStatusCode.UNINITIALIZED_AUTH_ERROR,
+          "Unable to get OIDC Provider Key from JWK " + jwk,
+          e);
     }
     logger.info("Initialized with providerKey: {}", providerKey);
   }
 
   public OpenIdAuthorizer(String providerUrl)
       throws AuthException, URISyntaxException, ParseException, IOException {
-    this(getJWKFromProvider(providerUrl));
+    this(getJwkFromProvider(providerUrl));
   }
 
-  private static JSONObject getJWKFromProvider(String providerUrl)
+  private static JSONObject getJwkFromProvider(String providerUrl)
       throws URISyntaxException, IOException, ParseException, AuthException {
     if (providerUrl == null) {
       throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
@@ -98,13 +102,13 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       URL url = new URI(providerMetadata.getJWKSetURI().toString()).toURL();
       logger.debug("Using url {}", url);
-      return getProviderRSAJWK(url.openStream());
+      return getProviderRsaJwk(url.openStream());
     } catch (IOException e) {
-      throw new AuthException("Unable to start the Auth", e);
+      throw new AuthException(TSStatusCode.UNINITIALIZED_AUTH_ERROR, "Unable to start the Auth", e);
     }
   }
 
-  private static JSONObject getProviderRSAJWK(InputStream is) throws ParseException {
+  private static JSONObject getProviderRsaJwk(InputStream is) throws ParseException {
     // Read all data from stream
     StringBuilder sb = new StringBuilder();
     try (Scanner scanner = new Scanner(is)) {
@@ -128,11 +132,11 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     return null;
   }
 
-  static OIDCProviderMetadata fetchMetadata(String providerUrl)
+  private static OIDCProviderMetadata fetchMetadata(String providerUrl)
       throws URISyntaxException, IOException, ParseException {
-    URI issuerURI = new URI(providerUrl);
-    URL providerConfigurationURL = issuerURI.resolve(".well-known/openid-configuration").toURL();
-    InputStream stream = providerConfigurationURL.openStream();
+    URI issuerUri = new URI(providerUrl);
+    URL providerConfigurationUrl = issuerUri.resolve(".well-known/openid-configuration").toURL();
+    InputStream stream = providerConfigurationUrl.openStream();
     // Read all data from URL
     String providerInfo;
     try (java.util.Scanner s = new java.util.Scanner(stream)) {
@@ -180,7 +184,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   public String getIoTDBUserName(String token) {
-
     Claims claims = validateToken(token);
     logger.debug("JWT was validated successfully!");
     logger.debug("ID: {}", claims.getId());

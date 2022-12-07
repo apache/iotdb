@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,10 +61,11 @@ public class AuthUtils {
   public static void validatePassword(String password) throws AuthException {
     if (password.length() < MIN_PASSWORD_LENGTH) {
       throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
           "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
     }
     if (password.contains(" ")) {
-      throw new AuthException("Password cannot contain spaces");
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Password cannot contain spaces");
     }
   }
 
@@ -89,10 +91,11 @@ public class AuthUtils {
   public static void validateUsername(String username) throws AuthException {
     if (username.length() < MIN_USERNAME_LENGTH) {
       throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
           "Username's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
     if (username.contains(" ")) {
-      throw new AuthException("Username cannot contain spaces");
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Username cannot contain spaces");
     }
   }
 
@@ -105,10 +108,11 @@ public class AuthUtils {
   public static void validateRolename(String rolename) throws AuthException {
     if (rolename.length() < MIN_ROLENAME_LENGTH) {
       throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
           "Role name's size must be greater than or equal to " + MIN_ROLENAME_LENGTH);
     }
     if (rolename.contains(" ")) {
-      throw new AuthException("Role name cannot contain spaces");
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Role name cannot contain spaces");
     }
   }
 
@@ -120,7 +124,8 @@ public class AuthUtils {
    */
   public static void validatePrivilege(int privilegeId) throws AuthException {
     if (privilegeId < 0 || privilegeId >= PrivilegeType.values().length) {
-      throw new AuthException(String.format("Invalid privilegeId %d", privilegeId));
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, String.format("Invalid privilegeId %d", privilegeId));
     }
   }
 
@@ -133,6 +138,7 @@ public class AuthUtils {
   public static void validatePath(String path) throws AuthException {
     if (!path.startsWith(ROOT_PREFIX)) {
       throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
               "Illegal seriesPath %s, seriesPath should start with \"%s\"", path, ROOT_PREFIX));
     }
@@ -166,6 +172,7 @@ public class AuthUtils {
           return;
         default:
           throw new AuthException(
+              TSStatusCode.UNKNOWN_AUTH_PRIVILEGE,
               String.format("Illegal privilege %s on seriesPath %s", type, path));
       }
     } else {
@@ -213,7 +220,7 @@ public class AuthUtils {
       PartialPath partialPathB = new PartialPath(pathB);
       return partialPathB.matchFullPath(partialPathA);
     } catch (IllegalPathException e) {
-      throw new AuthException(e);
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
     }
   }
 
@@ -394,7 +401,8 @@ public class AuthUtils {
         }
       }
       if (!legal) {
-        throw new AuthException("No such privilege " + authorization);
+        throw new AuthException(
+            TSStatusCode.UNKNOWN_AUTH_PRIVILEGE, "No such privilege " + authorization);
       }
     }
     return result;

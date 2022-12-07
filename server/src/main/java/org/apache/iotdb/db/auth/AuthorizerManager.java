@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -374,7 +373,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** Check the user */
-  public TSStatus checkUser(String username, String password) throws ConfigNodeConnectionException {
+  public TSStatus checkUser(String username, String password) {
     authReadWriteLock.readLock().lock();
     try {
       return authorityFetcher.checkUser(username, password);

@@ -138,7 +138,7 @@ public class AuthorityChecker {
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e);
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
     }
     return false;
   }
