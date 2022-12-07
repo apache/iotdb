@@ -80,7 +80,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
    */
   public static IAuthorizer getInstance() throws AuthException {
     if (InstanceHolder.instance == null) {
-      throw new AuthException(TSStatusCode.UNINITIALIZED_AUTH_ERROR, "Authorizer uninitialized");
+      throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Authorizer uninitialized");
     }
     return InstanceHolder.instance;
   }

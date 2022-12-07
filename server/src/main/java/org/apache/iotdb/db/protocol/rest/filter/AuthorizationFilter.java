@@ -73,8 +73,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode())
-                      .message(TSStatusCode.UNINITIALIZED_AUTH_ERROR.name()))
+                      .code(TSStatusCode.INIT_AUTH_ERROR.getStatusCode())
+                      .message(TSStatusCode.INIT_AUTH_ERROR.name()))
               .build();
       containerRequestContext.abortWith(resp);
       return;

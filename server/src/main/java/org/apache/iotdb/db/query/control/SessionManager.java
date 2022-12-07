@@ -268,7 +268,7 @@ public class SessionManager implements SessionManagerMBean {
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);
-      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);

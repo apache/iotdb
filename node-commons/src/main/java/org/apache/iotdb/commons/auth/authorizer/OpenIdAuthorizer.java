@@ -76,9 +76,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       providerKey = RSAKey.parse(jwk).toRSAPublicKey();
     } catch (java.text.ParseException | JOSEException e) {
       throw new AuthException(
-          TSStatusCode.UNINITIALIZED_AUTH_ERROR,
-          "Unable to get OIDC Provider Key from JWK " + jwk,
-          e);
+          TSStatusCode.INIT_AUTH_ERROR, "Unable to get OIDC Provider Key from JWK " + jwk, e);
     }
     logger.info("Initialized with providerKey: {}", providerKey);
   }
@@ -104,7 +102,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       logger.debug("Using url {}", url);
       return getProviderRsaJwk(url.openStream());
     } catch (IOException e) {
-      throw new AuthException(TSStatusCode.UNINITIALIZED_AUTH_ERROR, "Unable to start the Auth", e);
+      throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Unable to start the Auth", e);
     }
   }
 
