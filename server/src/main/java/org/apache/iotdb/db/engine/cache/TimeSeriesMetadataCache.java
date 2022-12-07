@@ -187,7 +187,7 @@ public class TimeSeriesMetadataCache {
         }
 
         QueryStatistics.getInstance()
-                .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
+            .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
       }
     }
     if (timeseriesMetadata == null) {
