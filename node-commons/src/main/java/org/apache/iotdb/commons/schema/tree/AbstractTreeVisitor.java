@@ -165,7 +165,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private void pushChildren(N parent) {
     Iterator<N> childrenIterator;
     if (currentStateMatchInfo.indexOfTraceback > -1) {
-      childrenIterator = new ChildrenIterator(parent, currentStateMatchInfo);
+      childrenIterator = new TraceBackChildrenIterator(parent, currentStateMatchInfo);
     } else if (currentStateMatchInfo.hasBatchMatchTransition) {
       childrenIterator =
           new NonTraceBackChildrenIterator(
@@ -525,13 +525,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  private class ChildrenIterator extends AbstractChildrenIterator {
+  private class TraceBackChildrenIterator extends AbstractChildrenIterator {
 
     private final Iterator<N> iterator;
 
     private final StateMatchInfo sourceStateMatchInfo;
 
-    ChildrenIterator(N parent, StateMatchInfo sourceStateMatchInfo) {
+    TraceBackChildrenIterator(N parent, StateMatchInfo sourceStateMatchInfo) {
       this.sourceStateMatchInfo = sourceStateMatchInfo;
       this.iterator = getChildrenIterator(parent);
     }
@@ -558,26 +558,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           batchMatchTransitionList = patternFA.getBatchMatchTransition(sourceState);
 
           if (!preciseMatchTransitionMap.isEmpty()) {
-            if (!hasResult) {
-              targetTransition =
-                  getMatchedTransition(child, sourceState, preciseMatchTransitionMap);
-              if (targetTransition != null) {
-                hasResult = true;
-                matchedState = patternFA.getNextState(sourceState, targetTransition);
-                matchedStateSet.add(matchedState);
-              }
-            }
-
-            if (hasResult) {
-              for (IFATransition transition : preciseMatchTransitionMap.values()) {
-                if (transition.equals(targetTransition)) {
-                  continue;
-                }
-                if (checkIsMatch(child, sourceState, transition)) {
-                  matchedState = patternFA.getNextState(sourceState, transition);
-                  matchedStateSet.add(matchedState);
-                }
-              }
+            targetTransition = getMatchedTransition(child, sourceState, preciseMatchTransitionMap);
+            if (targetTransition != null) {
+              hasResult = true;
+              matchedState = patternFA.getNextState(sourceState, targetTransition);
+              matchedStateSet.add(matchedState);
             }
           }
           for (IFATransition transition : batchMatchTransitionList) {
