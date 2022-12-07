@@ -243,7 +243,6 @@ public class AuthUtils {
         if (pathPrivilege.getPath() != null
             && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())
             && pathPrivilege.getPrivileges().contains(privilegeId)) {
-          // @TODO spricoder check whether privilege path can be invalid
           return true;
         }
       } else {
