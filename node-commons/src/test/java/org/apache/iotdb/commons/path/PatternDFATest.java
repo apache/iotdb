@@ -25,9 +25,11 @@ import org.apache.iotdb.commons.path.dfa.IPatternFA;
 import org.apache.iotdb.commons.path.dfa.PatternDFA;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Map;
 
 public class PatternDFATest {
   @Test
@@ -84,6 +86,7 @@ public class PatternDFATest {
 
   // TODO: remove this
   @Test
+  @Ignore
   public void test() throws IllegalPathException {
 
     Assert.assertFalse(
@@ -96,7 +99,17 @@ public class PatternDFATest {
     IPatternFA patternDFA = new PatternDFA.Builder().pattern(pattern).build();
     IFAState curState = patternDFA.getInitialState();
     for (String node : fullPath.getNodes()) {
+      Map<String, IFATransition> preciseMatchTransitionMap =
+          patternDFA.getPreciseMatchTransition(curState);
+      List<IFATransition> batchMatchTransitionList = patternDFA.getBatchMatchTransition(curState);
       List<IFATransition> transitionList = patternDFA.getTransition(curState);
+      for (IFATransition transition : batchMatchTransitionList) {
+        Assert.assertTrue(transitionList.contains(transition));
+      }
+      for (IFATransition transition : preciseMatchTransitionMap.values()) {
+        Assert.assertTrue(transitionList.contains(transition));
+      }
+
       if (transitionList.isEmpty()) {
         return false;
       }

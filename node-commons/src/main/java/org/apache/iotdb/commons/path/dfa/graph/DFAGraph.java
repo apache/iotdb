@@ -126,6 +126,16 @@ public class DFAGraph {
     return res;
   }
 
+  public List<IFATransition> getTransition(IFAState state, List<IFATransition> transitionList) {
+    List<IFATransition> res = new ArrayList<>();
+    for (IFATransition transition : transitionList) {
+      if (dfaTransitionTable.get(transition).get(state.getIndex()) != null) {
+        res.add(transition);
+      }
+    }
+    return res;
+  }
+
   public IFAState getNextState(IFAState currentState, IFATransition transition) {
     return dfaTransitionTable.get(transition).get(currentState.getIndex());
   }

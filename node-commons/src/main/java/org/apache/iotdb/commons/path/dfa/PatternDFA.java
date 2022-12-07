@@ -32,8 +32,15 @@ import java.util.Map;
 public class PatternDFA implements IPatternFA {
 
   // TODO: maybe transitionMap can be represented as List
+  private final List<IFATransition> preciseMatchTransitionList = new ArrayList<>();
+  private final List<IFATransition> batchMatchTransitionList = new ArrayList<>();
   private final Map<String, IFATransition> transitionMap = new HashMap<>();
   private final DFAGraph dfaGraph;
+
+  // cached
+  private final Map<IFAState, Map<String, IFATransition>> preciseMatchTransitionCached =
+      new HashMap<>();
+  private final Map<IFAState, List<IFATransition>> batchMatchTransitionCached = new HashMap<>();
 
   private PatternDFA(Builder builder) {
     System.out.println(builder.pathPattern);
@@ -46,7 +53,12 @@ public class PatternDFA implements IPatternFA {
         wildcard = true;
       } else {
         DFATransition transition = new DFATransition(node);
-        transitionMap.put(transition.getAcceptEvent(), transition);
+        transitionMap.computeIfAbsent(
+            transition.getAcceptEvent(),
+            i -> {
+              preciseMatchTransitionList.add(transition);
+              return transition;
+            });
       }
     }
     if (wildcard) {
@@ -54,6 +66,7 @@ public class PatternDFA implements IPatternFA {
           new DFATransition(
               IoTDBConstant.ONE_LEVEL_PATH_WILDCARD, new ArrayList<>(transitionMap.keySet()));
       transitionMap.put(transition.getAcceptEvent(), transition);
+      batchMatchTransitionList.add(transition);
     }
 
     // 2. build NFA
@@ -72,14 +85,21 @@ public class PatternDFA implements IPatternFA {
 
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
-    // todo
-    return null;
+    return preciseMatchTransitionCached.computeIfAbsent(
+        state,
+        i -> {
+          Map<String, IFATransition> map = new HashMap<>();
+          dfaGraph
+              .getTransition(state, preciseMatchTransitionList)
+              .forEach(trans -> map.put(trans.getValue(), trans));
+          return map;
+        });
   }
 
   @Override
   public List<IFATransition> getBatchMatchTransition(IFAState state) {
-    // todo
-    return null;
+    return batchMatchTransitionCached.computeIfAbsent(
+        state, i -> dfaGraph.getTransition(state, preciseMatchTransitionList));
   }
 
   @Override
