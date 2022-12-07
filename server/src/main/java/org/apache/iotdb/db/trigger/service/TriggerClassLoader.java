@@ -48,7 +48,8 @@ public class TriggerClassLoader extends URLClassLoader {
   private void addURLs() throws IOException {
     try (Stream<Path> pathStream =
         Files.walk(SystemFileFactory.INSTANCE.getFile(libRoot).toPath())) {
-      for (Path path : pathStream.collect(Collectors.toList())) {
+      for (Path path :
+          pathStream.filter(path -> !path.toFile().isDirectory()).collect(Collectors.toList())) {
         super.addURL(path.toUri().toURL());
       }
     }
