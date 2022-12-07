@@ -454,11 +454,6 @@ public class Session implements ISession {
   }
 
   @Override
-  public void setEnableAudit(boolean enableAudit) {
-    this.enableAudit = enableAudit;
-  }
-
-  @Override
   public synchronized void open() throws IoTDBConnectionException {
     open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
