@@ -75,7 +75,7 @@
       </p>
     </div>
     
-    <p style="text-align: center; color: #909399; font-size: 12px; margin: 0 30px;">
+    <p style="text-align: center; color: #909399; font-size: 16px; margin: 0 30px;">
       <a
         :href="editLink"
         target="_blank"

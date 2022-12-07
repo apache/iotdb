@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerforme
 import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
-import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -58,7 +56,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +63,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -206,13 +201,6 @@ public class IoTDBDescriptor {
 
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
-
-    // TODO: Use FQDN  to identify our nodes afterwards
-    try {
-      replaceHostnameWithIP();
-    } catch (Exception e) {
-      logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
-    }
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
@@ -1028,33 +1016,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
-  }
-
-  // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
-    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
-    if (!isInvalidRpcIp) {
-      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
-    }
-
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
-    if (!isInvalidInternalIp) {
-      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
-    }
-
-    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
-      if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
-        configNode.setIp(newNodeIP);
-      }
-    }
-
-    logger.debug(
-        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
-        conf.getRpcAddress(),
-        conf.getInternalAddress(),
-        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1989,8 +1950,8 @@ public class IoTDBDescriptor {
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
 
-    conf.setSchemaRatisLogMaxMB(ratisConfig.getSchemaRegionRatisLogMax());
-    conf.setDataRatisLogMaxMB(ratisConfig.getDataRegionRatisLogMax());
+    conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

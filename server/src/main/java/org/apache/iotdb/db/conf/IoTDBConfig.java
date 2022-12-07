@@ -1040,8 +1040,8 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMinMs = 50L;
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
-  private long dataRatisLogMaxMB = 20 * 1024;
-  private long schemaRatisLogMaxMB = 2 * 1024;
+  private long dataRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
+  private long schemaRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -3575,20 +3575,20 @@ public class IoTDBConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getDataRatisLogMaxMB() {
-    return dataRatisLogMaxMB;
+  public long getDataRatisLogMax() {
+    return dataRatisLogMax;
   }
 
-  public void setDataRatisLogMaxMB(long dataRatisLogMaxMB) {
-    this.dataRatisLogMaxMB = dataRatisLogMaxMB;
+  public void setDataRatisLogMax(long dataRatisLogMax) {
+    this.dataRatisLogMax = dataRatisLogMax;
   }
 
-  public long getSchemaRatisLogMaxMB() {
-    return schemaRatisLogMaxMB;
+  public long getSchemaRatisLogMax() {
+    return schemaRatisLogMax;
   }
 
-  public void setSchemaRatisLogMaxMB(long schemaRatisLogMaxMB) {
-    this.schemaRatisLogMaxMB = schemaRatisLogMaxMB;
+  public void setSchemaRatisLogMax(long schemaRatisLogMax) {
+    this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
   public boolean isEnableCompactionValidation() {

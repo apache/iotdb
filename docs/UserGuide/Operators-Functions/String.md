@@ -131,13 +131,13 @@ Output series:
 +-----------------------------+--------------+----------------------+
 ```
 
-## StrLocate
+## Locate
 
 ### Usage
 
 The function is used to get the position of the first occurrence of substring `target` in input series. Returns -1 if there are no `target` in input.
 
-**Name:** LENGTH
+**Name:** LOCATE
 
 **Input Series:** Only support a single input series. The data type is TEXT.
 
