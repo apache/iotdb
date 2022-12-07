@@ -19,39 +19,50 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/** deletion for MemChunk */
-@DeletionProcessor(level = 3)
-public class MemChunkDeletion extends DeleteLevelProcessor<MemChunk, Object, DeletionRequest> {
+/** deletion for MemTagValueGroup */
+@DeletionProcessor(level = 2)
+public class MemTagValueGroupDeletion
+    extends DeleteLevelProcessor<MemTagValueGroup, MemChunkGroup, DeletionRequest> {
 
   /**
-   * MemChunk is the last layer of memory nodes, no children
+   * get all MemChunkGroups that need to be processed in the current MemTagValueGroup
    *
    * @param memNode memory node
    * @param context request context
-   * @return null
+   * @return A list of saved MemChunks
    */
   @Override
-  public List<Object> getChildren(
-      MemChunk memNode, DeletionRequest request, DeleteRequestContext context) {
-    return null;
+  public List<MemChunkGroup> getChildren(
+      MemTagValueGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
+    List<MemChunkGroup> memChunkGroups = new ArrayList<>();
+    String tagValue = deletionRequest.getKey(context);
+    MemChunkGroup child = memNode.get(tagValue);
+    if (child != null) memChunkGroups.add(child);
+    return memChunkGroups;
   }
 
   /**
-   * the delete method corresponding to the MemChunk node
+   * the delete method corresponding to the MemTagValueGroup node
    *
    * @param memNode memory node
    * @param context deletion request context
    */
   @Override
-  public void delete(MemChunk memNode, DeletionRequest request, DeleteRequestContext context) {
-    Integer deviceID = request.getValue();
-    memNode.remove(deviceID);
+  public void delete(
+      MemTagValueGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
+    String tagValue = deletionRequest.getKey(context);
+    MemChunkGroup child = memNode.get(tagValue);
+    if (child == null || child.isEmpty()) {
+      memNode.remove(tagValue);
+    }
   }
 }

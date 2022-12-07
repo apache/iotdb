@@ -19,34 +19,31 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
-import java.util.ArrayList;
+import org.roaringbitmap.RoaringBitmap;
+
 import java.util.List;
 
 /** query for MemChunkGroup */
-@QueryProcessor(level = 2)
-public class MemChunkGroupQuery extends QueryLevelProcessor<MemChunkGroup, MemChunk, QueryRequest> {
+@QueryProcessor(level = 3)
+public class MemChunkGroupQuery extends QueryLevelProcessor<MemChunkGroup, Object, QueryRequest> {
 
   /**
-   * get all MemChunks that need to be processed in the current MemChunkGroup
+   * MemChunkGroup is the last layer of memory nodes, no children
    *
    * @param memNode memory node
    * @param context request context
-   * @return A list of saved MemChunks
+   * @return null
    */
   @Override
-  public List<MemChunk> getChildren(
+  public List<Object> getChildren(
       MemChunkGroup memNode, QueryRequest queryRequest, QueryRequestContext context) {
-    List<MemChunk> memChunks = new ArrayList<>();
-    String tagValue = queryRequest.getKey(context);
-    MemChunk child = memNode.get(tagValue);
-    if (child != null) memChunks.add(child);
-    return memChunks;
+    return null;
   }
 
   /**
@@ -56,6 +53,15 @@ public class MemChunkGroupQuery extends QueryLevelProcessor<MemChunkGroup, MemCh
    * @param context query request context
    */
   @Override
-  public void query(
-      MemChunkGroup memNode, QueryRequest queryRequest, QueryRequestContext context) {}
+  public void query(MemChunkGroup memNode, QueryRequest queryRequest, QueryRequestContext context) {
+    QueryResponse response = context.getResponse();
+    if (response == null) {
+      response = new QueryResponse();
+      context.setResponse(response);
+    }
+    RoaringBitmap roaringBitmap = context.getValue();
+    if (roaringBitmap == null) roaringBitmap = new RoaringBitmap();
+    RoaringBitmap now = RoaringBitmap.or(roaringBitmap, memNode.getRoaringBitmap());
+    context.setValue(now);
+  }
 }

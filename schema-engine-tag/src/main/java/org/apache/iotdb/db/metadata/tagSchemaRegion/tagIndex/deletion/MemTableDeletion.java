@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
@@ -32,24 +32,24 @@ import java.util.Set;
 /** deletion for MemTable */
 @DeletionProcessor(level = 1)
 public class MemTableDeletion
-    extends DeleteLevelProcessor<MemTable, MemChunkGroup, DeletionRequest> {
+    extends DeleteLevelProcessor<MemTable, MemTagValueGroup, DeletionRequest> {
 
   /**
-   * get all MemChunkGroups that need to be processed in the current MemTable
+   * get all MemTagValueGroups that need to be processed in the current MemTable
    *
    * @param memNode memory node
    * @param context request context
    * @return A list of saved MemChunkGroups
    */
   @Override
-  public List<MemChunkGroup> getChildren(
+  public List<MemTagValueGroup> getChildren(
       MemTable memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
     if (memNode.isImmutable()) return new ArrayList<>();
-    List<MemChunkGroup> memChunkGroups = new ArrayList<>();
+    List<MemTagValueGroup> memTagValueGroups = new ArrayList<>();
     String tagKey = deletionRequest.getKey(context);
-    MemChunkGroup child = memNode.get(tagKey);
-    if (child != null) memChunkGroups.add(child);
-    return memChunkGroups;
+    MemTagValueGroup child = memNode.get(tagKey);
+    if (child != null) memTagValueGroups.add(child);
+    return memTagValueGroups;
   }
 
   /**
@@ -69,7 +69,7 @@ public class MemTableDeletion
       return;
     }
     String tagKey = deletionRequest.getKey(context);
-    MemChunkGroup child = memNode.get(tagKey);
+    MemTagValueGroup child = memNode.get(tagKey);
     if (child == null || child.isEmpty()) {
       memNode.remove(tagKey);
     }

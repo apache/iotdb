@@ -19,49 +19,44 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
 
-import org.roaringbitmap.RoaringBitmap;
-
+import java.util.ArrayList;
 import java.util.List;
 
-/** query for MemChunk */
-@QueryProcessor(level = 3)
-public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, QueryRequest> {
+/** query for MemTagValueGroup */
+@QueryProcessor(level = 2)
+public class MemTagValueGroupQuery
+    extends QueryLevelProcessor<MemTagValueGroup, MemChunkGroup, QueryRequest> {
 
   /**
-   * MemChunk is the last layer of memory nodes, no children
+   * get all MemChunkGroups that need to be processed in the current MemTagValueGroup
    *
    * @param memNode memory node
    * @param context request context
-   * @return null
+   * @return A list of saved MemChunks
    */
   @Override
-  public List<Object> getChildren(
-      MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
-    return null;
+  public List<MemChunkGroup> getChildren(
+      MemTagValueGroup memNode, QueryRequest queryRequest, QueryRequestContext context) {
+    List<MemChunkGroup> memChunkGroups = new ArrayList<>();
+    String tagValue = queryRequest.getKey(context);
+    MemChunkGroup child = memNode.get(tagValue);
+    if (child != null) memChunkGroups.add(child);
+    return memChunkGroups;
   }
 
   /**
-   * the query method corresponding to the MemChunk node
+   * the query method corresponding to the MemTagValueGroup node
    *
    * @param memNode memory node
    * @param context query request context
    */
   @Override
-  public void query(MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
-    QueryResponse response = context.getResponse();
-    if (response == null) {
-      response = new QueryResponse();
-      context.setResponse(response);
-    }
-    RoaringBitmap roaringBitmap = context.getValue();
-    if (roaringBitmap == null) roaringBitmap = new RoaringBitmap();
-    RoaringBitmap now = RoaringBitmap.or(roaringBitmap, memNode.getRoaringBitmap());
-    context.setValue(now);
-  }
+  public void query(
+      MemTagValueGroup memNode, QueryRequest queryRequest, QueryRequestContext context) {}
 }

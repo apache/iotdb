@@ -18,39 +18,37 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.roaringbitmap.RoaringBitmap;
 
-/** used to manage tagValue -> MemChunk */
+/** used to manage the device id collection */
 public class MemChunkGroup {
 
-  // manage tagValue -> MemChunk
-  private Map<String, MemChunk> memChunkMap;
+  // manage the device id collection, see: https://github.com/RoaringBitmap/RoaringBitmap
+  private RoaringBitmap roaringBitmap;
 
   public MemChunkGroup() {
-    memChunkMap = new HashMap<>();
+    roaringBitmap = new RoaringBitmap();
   }
 
-  public void put(String tagValue) {
-    if (!memChunkMap.containsKey(tagValue)) {
-      memChunkMap.put(tagValue, new MemChunk());
-    }
+  public boolean isEmpty() {
+    if (roaringBitmap == null) return true;
+    return roaringBitmap.isEmpty();
   }
 
   @Override
   public String toString() {
-    return memChunkMap.toString();
+    return roaringBitmap.toString();
   }
 
-  public MemChunk get(String tagValue) {
-    return memChunkMap.get(tagValue);
+  public void put(int id) {
+    roaringBitmap.add(id);
   }
 
-  public void remove(String tagValue) {
-    memChunkMap.remove(tagValue);
+  public void remove(int id) {
+    roaringBitmap.remove(id);
   }
 
-  public boolean isEmpty() {
-    return memChunkMap.isEmpty();
+  public RoaringBitmap getRoaringBitmap() {
+    return this.roaringBitmap;
   }
 }
