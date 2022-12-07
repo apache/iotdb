@@ -74,6 +74,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   // run time variables
   protected final Deque<VisitorStackEntry> visitorStack = new ArrayDeque<>();
   protected final List<AncestorStackEntry> ancestorStack = new ArrayList<>();
+  private int startIndexOfTraceback = -1;
   protected boolean shouldVisitSubtree;
 
   protected StateMatchInfo currentStateMatchInfo;
@@ -164,7 +165,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private void pushChildren(N parent) {
     Iterator<N> childrenIterator;
-    if (currentStateMatchInfo.indexOfTraceback > -1) {
+    if (startIndexOfTraceback > -1) {
       childrenIterator = new TraceBackChildrenIterator(parent, currentStateMatchInfo);
     } else if (currentStateMatchInfo.hasBatchMatchTransition) {
       childrenIterator =
@@ -185,6 +186,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     // batch.
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
       ancestorStack.remove(ancestorStack.size() - 1);
+      if (ancestorStack.size() == startIndexOfTraceback) {
+        startIndexOfTraceback = -1;
+      }
     }
   }
 
@@ -261,11 +265,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     N childNode;
     StateMatchInfo parentStateMatchInfo = result, childStateMatchInfo;
     Set<IFAState> addedState;
-    for (int i = ancestorStack.size() - 1, end = currentStateMatchInfo.indexOfTraceback;
-        i >= end;
-        i--) {
+    for (int i = ancestorStack.size() - 1; i >= startIndexOfTraceback; i--) {
       childStateMatchInfo = parentStateMatchInfo;
       parentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
+      if (parentStateMatchInfo.matchedStateSet.size() == 1) {
+        continue;
+      }
       addedState = new HashSet<>();
       for (IFAState sourceState : parentStateMatchInfo.matchedStateSet) {
         if (!childStateMatchInfo.checkedSourceStateSet.contains(sourceState)) {
@@ -338,8 +343,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     private boolean hasBatchMatchTransition = false;
 
     private boolean hasFinalState = false;
-
-    private int indexOfTraceback = -1;
 
     StateMatchInfo() {
       matchedStateSet = new HashSet<>();
@@ -494,7 +497,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         StateMatchInfo stateMatchInfo =
             new StateMatchInfo(matchedStateSet, Collections.singleton(sourceState));
         if (stateMatchInfo.matchedStateSet.size() > 1) {
-          stateMatchInfo.indexOfTraceback = ancestorStack.size();
+          startIndexOfTraceback = ancestorStack.size();
         }
         saveResult(child, stateMatchInfo);
         return;
@@ -554,7 +557,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (!matchedStateSet.isEmpty()) {
           stateMatchInfo = new StateMatchInfo(matchedStateSet, checkedSourceStateSet);
         } else {
-          if (sourceStateMatchInfo.indexOfTraceback > -1) {
+          if (startIndexOfTraceback > -1) {
             stateMatchInfo = traceback(child, sourceStateMatchInfo);
             if (!stateMatchInfo.matchedStateSet.isEmpty()) {
               saveResult(child, stateMatchInfo);
@@ -563,10 +566,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (stateMatchInfo != null) {
-          if (sourceStateMatchInfo.indexOfTraceback > -1) {
-            stateMatchInfo.indexOfTraceback = sourceStateMatchInfo.indexOfTraceback;
-          } else if (stateMatchInfo.matchedStateSet.size() > 1) {
-            stateMatchInfo.indexOfTraceback = ancestorStack.size();
+          if (startIndexOfTraceback == -1) {
+            startIndexOfTraceback = ancestorStack.size();
           }
           saveResult(child, stateMatchInfo);
           return;
