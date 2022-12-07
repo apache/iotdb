@@ -140,15 +140,17 @@ public class TimeSeriesMetadataCache {
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
 
     if (timeseriesMetadata == null) {
-      long startTime = System.nanoTime();
       if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
         DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
       }
+
       // allow for the parallelism of different devices
       synchronized (
           devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
+        long startTime = System.nanoTime();
+
         // double check
         timeseriesMetadata = lruCache.getIfPresent(key);
         if (timeseriesMetadata == null) {
@@ -183,9 +185,10 @@ public class TimeSeriesMetadataCache {
             }
           }
         }
+
+        QueryStatistics.getInstance()
+                .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
       }
-      QueryStatistics.getInstance()
-          .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
     }
     if (timeseriesMetadata == null) {
       if (debug) {
