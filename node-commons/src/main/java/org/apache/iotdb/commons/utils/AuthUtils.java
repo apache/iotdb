@@ -344,17 +344,22 @@ public class AuthUtils {
    */
   public static void removePrivilege(
       String path, int privilegeId, List<PathPrivilege> privilegeList) {
+    PathPrivilege targetPathPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
-        if (privilegeId == PrivilegeType.ALL.ordinal()) {
-          // remove all privileges on target path
-          privilegeList.remove(pathPrivilege);
-        } else {
-          // remove privilege on target path
-          pathPrivilege.getPrivileges().remove(privilegeId);
-          if (pathPrivilege.getPrivileges().isEmpty()) {
-            privilegeList.remove(pathPrivilege);
-          }
+        targetPathPrivilege = pathPrivilege;
+        break;
+      }
+    }
+    if (targetPathPrivilege != null) {
+      if (privilegeId == PrivilegeType.ALL.ordinal()) {
+        // remove all privileges on target path
+        privilegeList.remove(targetPathPrivilege);
+      } else {
+        // remove privilege on target path
+        targetPathPrivilege.getPrivileges().remove(privilegeId);
+        if (targetPathPrivilege.getPrivileges().isEmpty()) {
+          privilegeList.remove(targetPathPrivilege);
         }
       }
     }
