@@ -29,7 +29,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -325,8 +324,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         List<N> list = new ArrayList<>();
         N child;
         for (IFAState sourceState : sourceStateMatchInfo.matchedStateSet) {
-          for (String childName :
-              sourceStateMatchInfo.preciseMatchTransitionsMap.get(sourceState).keySet()) {
+          for (String childName : patternFA.getPreciseMatchTransition(sourceState).keySet()) {
             child = getChild(parent, childName);
             if (child != null) {
               list.add(child);
@@ -377,9 +375,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       while (iterator.hasNext()) {
         child = iterator.next();
         for (IFAState sourceState : sourceStateMatchInfo.matchedStateSet) {
-          preciseMatchTransitionMap =
-              sourceStateMatchInfo.preciseMatchTransitionsMap.get(sourceState);
-          batchMatchTransitionList = sourceStateMatchInfo.batchMatchTransitionsMap.get(sourceState);
+          preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
+          batchMatchTransitionList = patternFA.getBatchMatchTransition(sourceState);
 
           if (!preciseMatchTransitionMap.isEmpty()) {
             targetTransition = getMatchedTransition(child, sourceState, preciseMatchTransitionMap);
@@ -472,11 +469,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     /** SourceState, matched by parent */
     private final Set<IFAState> checkedSourceStateSet;
 
-    private final Map<IFAState, Map<String, IFATransition>> preciseMatchTransitionsMap =
-        new HashMap<>();
-
-    private final Map<IFAState, List<IFATransition>> batchMatchTransitionsMap = new HashMap<>();
-
     private boolean hasBatchMatchTransition = false;
 
     private boolean hasFinalState = false;
@@ -494,7 +486,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (state.isFinal()) {
           hasFinalState = true;
         }
-        processTransitionOfState(state);
+        if (patternFA.getBatchMatchTransition(state).size() > 0) {
+          hasBatchMatchTransition = true;
+        }
       }
       this.checkedSourceStateSet = checkedSourceStateSet;
     }
@@ -504,23 +498,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       if (state.isFinal()) {
         hasFinalState = true;
       }
-      processTransitionOfState(state);
-    }
-
-    private void processTransitionOfState(IFAState state) {
-      List<IFATransition> transitionList = patternFA.getTransition(state);
-      Map<String, IFATransition> preciseMatchTransitions = new HashMap<>();
-      List<IFATransition> batchMatchTransitions = new ArrayList<>();
-      for (IFATransition transition : transitionList) {
-        if (transition.isBatch()) {
-          batchMatchTransitions.add(transition);
-        } else {
-          preciseMatchTransitions.put(transition.getValue(), transition);
-        }
-      }
-      preciseMatchTransitionsMap.put(state, preciseMatchTransitions);
-      batchMatchTransitionsMap.put(state, batchMatchTransitions);
-      if (!batchMatchTransitions.isEmpty()) {
+      if (patternFA.getBatchMatchTransition(state).size() > 0) {
         hasBatchMatchTransition = true;
       }
     }

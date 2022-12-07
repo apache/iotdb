@@ -20,10 +20,15 @@
 package org.apache.iotdb.commons.path.dfa;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IPatternFA {
 
   List<IFATransition> getTransition(IFAState state);
+
+  Map<String, IFATransition> getPreciseMatchTransition(IFAState state);
+
+  List<IFATransition> getBatchMatchTransition(IFAState state);
 
   IFAState getNextState(IFAState currentState, IFATransition transition);
 

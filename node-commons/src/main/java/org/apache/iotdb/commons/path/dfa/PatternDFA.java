@@ -71,6 +71,18 @@ public class PatternDFA implements IPatternFA {
   }
 
   @Override
+  public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
+    // todo
+    return null;
+  }
+
+  @Override
+  public List<IFATransition> getBatchMatchTransition(IFAState state) {
+    // todo
+    return null;
+  }
+
+  @Override
   public IFAState getNextState(IFAState currentState, IFATransition transition) {
     return dfaGraph.getNextState(currentState, transition);
   }
