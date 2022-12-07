@@ -67,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
@@ -238,16 +239,57 @@ public class MTree implements Serializable {
 
   public void exportSchema(
       MLogWriter mLogWriter,
-      Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeGetter)
+      Function<IMeasurementMNode, Pair<Map<String, String>, Map<String, String>>>
+          tagAndAttributeGetter)
       throws MetadataException, IOException {
     Holder<PartialPath> entityPath = new Holder<>();
     List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
-        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
-            root, new PartialPath("root.**")) {
+    Traverser collector =
+        new Traverser(root, new PartialPath("root.**")) {
           IEntityMNode entityNode;
 
           @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (node.getSchemaTemplate() != null) {
+              try {
+                mLogWriter.setSchemaTemplate(
+                    new SetTemplatePlan(
+                        node.getSchemaTemplate().getName(),
+                        getCurrentPartialPath(node).getFullPath()));
+                if (node.isUseTemplate()) {
+                  mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
+                }
+              } catch (IOException e) {
+                logger.error(e.getMessage());
+              }
+            }
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (!node.isMeasurement()) {
+              if (node.getSchemaTemplate() != null) {
+                try {
+                  mLogWriter.setSchemaTemplate(
+                      new SetTemplatePlan(
+                          node.getSchemaTemplate().getName(),
+                          getCurrentPartialPath(node).getFullPath()));
+                  if (node.isUseTemplate()) {
+                    mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
+                  }
+                } catch (IOException e) {
+                  logger.error(e.getMessage());
+                }
+              }
+              return false;
+            }
+            collectMeasurement(node.getAsMeasurementMNode());
+            return true;
+          }
+
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             try {
               IMeasurementSchema measurementSchema = node.getSchema();
@@ -257,8 +299,9 @@ public class MTree implements Serializable {
                 Map<String, String> tags = null;
                 Map<String, String> attributes = null;
                 if (node.getOffset() != -1) {
+                  // TODO：这个似乎不太需要，但是有的话更好？
                   Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
-                      tagAndAttributeGetter.apply(node.getOffset());
+                      tagAndAttributeGetter.apply(node);
                   tags = tagAndAttribute.left;
                   attributes = tagAndAttribute.right;
                 }
@@ -266,12 +309,13 @@ public class MTree implements Serializable {
                     new CreateTimeSeriesPlan(
                         getCurrentPartialPath(node),
                         measurementSchema.getType(),
-                        measurementSchema.getTimeTSEncoding(),
+                        measurementSchema.getEncodingType(),
                         measurementSchema.getCompressor(),
                         measurementSchema.getProps(),
                         tags,
                         attributes,
                         node.getAlias());
+                createTimeSeriesPlan.setTagOffset(node.getOffset());
                 mLogWriter.createTimeseries(createTimeSeriesPlan);
               } else {
                 alignedMeasurementSchemas.add(measurementSchema);
@@ -295,12 +339,12 @@ public class MTree implements Serializable {
                             .map(IMeasurementSchema::getType)
                             .collect(Collectors.toList()),
                         alignedMeasurementSchemas.stream()
-                            .map(IMeasurementSchema::getTimeTSEncoding)
+                            .map(IMeasurementSchema::getEncodingType)
                             .collect(Collectors.toList()),
                         alignedMeasurementSchemas.stream()
                             .map(IMeasurementSchema::getCompressor)
                             .collect(Collectors.toList()),
-                        Collections.emptyList());
+                        null);
                 mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
               }
               if (curEntityMNode.isAligned()) {
@@ -311,7 +355,12 @@ public class MTree implements Serializable {
               alignedMeasurementSchemas.clear();
             }
           }
+
+          private IEntityMNode getParentEntityMNodeIfExist() {
+            return traverseContext.peek().getAsEntityMNode();
+          }
         };
+    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     if (!alignedMeasurementSchemas.isEmpty()) {
       CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
@@ -324,12 +373,12 @@ public class MTree implements Serializable {
                   .map(IMeasurementSchema::getType)
                   .collect(Collectors.toList()),
               alignedMeasurementSchemas.stream()
-                  .map(IMeasurementSchema::getTimeTSEncoding)
+                  .map(IMeasurementSchema::getEncodingType)
                   .collect(Collectors.toList()),
               alignedMeasurementSchemas.stream()
                   .map(IMeasurementSchema::getCompressor)
                   .collect(Collectors.toList()),
-              Collections.emptyList());
+              null);
       mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
     }
   }

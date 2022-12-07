@@ -111,6 +111,13 @@ public class MLogParser {
   }
 
   public static void main(String[] args) {
+    args =
+        new String[] {
+          "-f",
+          "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/system/schema/mlog.bin",
+          "-o",
+          "/Users/chenyanze/Desktop/exportSchema/out"
+        };
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);

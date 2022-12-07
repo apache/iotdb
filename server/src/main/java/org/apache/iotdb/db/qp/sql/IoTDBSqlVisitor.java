@@ -2302,6 +2302,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new File(parseFilePath(ctx.dstFileDir.getText())));
   }
 
+  // Export Schema
+
+  @Override
+  public Operator visitExportSchema(IoTDBSqlParser.ExportSchemaContext ctx) {
+    return new ExportSchemaOperator(new File(parseFilePath(ctx.dstDir.getText())));
+  }
+
   /** 6. Common Clauses */
 
   // IoTDB Objects

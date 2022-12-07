@@ -83,8 +83,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB daemon = IoTDB.getInstance();
 
     daemon.active();
-
-    MManager.getInstance().exportSchema(new File("/Users/chenyanze/Desktop/exportSchema"));
   }
 
   public static void setMetaManager(MManager metaManager) {

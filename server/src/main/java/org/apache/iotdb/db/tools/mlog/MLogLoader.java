@@ -248,7 +248,7 @@ public class MLogLoader {
   }
 
   public static void main(String[] args) {
-    args = new String[] {"-mlog", "/Users/chenyanze/Downloads/mlog.bin"};
+    args = new String[] {"-mlog", "/Users/chenyanze/Desktop/exportSchema/1mlog.bin"};
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);

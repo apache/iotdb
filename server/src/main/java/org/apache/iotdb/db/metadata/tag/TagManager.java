@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -565,19 +566,26 @@ public class TagManager {
   }
 
   /**
-   * Read the tags of this node.
+   * Read tags and attributes from tag file
    *
    * @param node the node to query.
-   * @return the tag key-value map.
-   * @throws RuntimeException If any IOException happens.
+   * @return tagAndAttributePair
    */
-  public Map<String, String> readTags(IMeasurementMNode node) {
+  public Pair<Map<String, String>, Map<String, String>> readTagsAndAttributes(
+      IMeasurementMNode node) {
     try {
-      return readTagFile(node.getOffset()).getLeft();
+      return readTagFile(node.getOffset());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
+
+  /**
+   * Copy tagFile to dir
+   *
+   * @param dir directory path
+   */
+  public void exportSchema(File dir) {}
 
   public void clear() throws IOException {
     this.tagIndex.clear();

@@ -110,6 +110,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1337,14 +1340,76 @@ public class MManager {
   }
 
   public void exportSchema(File dir) throws IOException, MetadataException {
-    MLogWriter mLogWriter = new MLogWriter(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG);
-    // export storage group
-    for (PartialPath sg : mtree.getAllStorageGroupPaths()) {
-      mLogWriter.setStorageGroup(sg);
+    if (!dir.exists()) {
+      dir.mkdirs();
+    } else {
+      if (!dir.isDirectory()) {
+        throw new IOException(String.format("%s is not a directory.", dir.getAbsolutePath()));
+      }
     }
-    // export timeseries
-    mtree.exportSchema(mLogWriter, tagManager::readTagFile);
-    // export tag
+    Files.deleteIfExists(
+        FileSystems.getDefault()
+            .getPath(
+                new File(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG).getAbsolutePath()));
+    Files.deleteIfExists(
+        FileSystems.getDefault()
+            .getPath(new File(dir.getAbsolutePath(), MetadataConstant.TAG_LOG).getAbsolutePath()));
+
+    try (MLogWriter mLogWriter =
+        new MLogWriter(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG)) {
+      // export storage group
+      for (PartialPath sg : mtree.getAllStorageGroupPaths()) {
+        mLogWriter.setStorageGroup(sg);
+      }
+      // export template
+      for (Map.Entry<String, Template> entry : templateManager.getTemplateMap().entrySet()) {
+        if (entry.getValue().isDirectAligned()) {
+          mLogWriter.createSchemaTemplate(
+              new CreateTemplatePlan(
+                  entry.getKey(),
+                  Collections.singletonList(
+                      entry.getValue().getSchemaMap().values().stream()
+                          .map(IMeasurementSchema::getMeasurementId)
+                          .collect(Collectors.toList())),
+                  Collections.singletonList(
+                      entry.getValue().getSchemaMap().values().stream()
+                          .map(IMeasurementSchema::getType)
+                          .collect(Collectors.toList())),
+                  Collections.singletonList(
+                      entry.getValue().getSchemaMap().values().stream()
+                          .map(IMeasurementSchema::getEncodingType)
+                          .collect(Collectors.toList())),
+                  Collections.singletonList(
+                      entry.getValue().getSchemaMap().values().stream()
+                          .map(IMeasurementSchema::getCompressor)
+                          .collect(Collectors.toList()))));
+        } else {
+          mLogWriter.createSchemaTemplate(
+              new CreateTemplatePlan(
+                  entry.getKey(),
+                  entry.getValue().getSchemaMap().values().stream()
+                      .map(i -> Collections.singletonList(i.getMeasurementId()))
+                      .collect(Collectors.toList()),
+                  entry.getValue().getSchemaMap().values().stream()
+                      .map(i -> Collections.singletonList(i.getType()))
+                      .collect(Collectors.toList()),
+                  entry.getValue().getSchemaMap().values().stream()
+                      .map(i -> Collections.singletonList(i.getEncodingType()))
+                      .collect(Collectors.toList()),
+                  entry.getValue().getSchemaMap().values().stream()
+                      .map(i -> Collections.singletonList(i.getCompressor()))
+                      .collect(Collectors.toList())));
+        }
+      }
+      // export timeseries
+      mtree.exportSchema(mLogWriter, tagManager::readTagsAndAttributes);
+      // export tag
+      File tagTargetFile = new File(dir, MetadataConstant.TAG_LOG);
+      File tagSourceFile = new File(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+      Path sourcePath = FileSystems.getDefault().getPath(tagSourceFile.getAbsolutePath());
+      Path targetPath = FileSystems.getDefault().getPath(tagTargetFile.getAbsolutePath());
+      Files.createLink(targetPath, sourcePath);
+    }
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
