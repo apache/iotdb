@@ -90,8 +90,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.ws.Holder;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -237,7 +235,7 @@ public class MTree implements Serializable {
   }
 
   public void exportSchema(MLogWriter mLogWriter) throws MetadataException, IOException {
-    Holder<PartialPath> entityPath = new Holder<>();
+    PartialPath[] entityPath = new PartialPath[1];
     List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
     Traverser collector =
         new Traverser(root, new PartialPath("root.**")) {
@@ -317,7 +315,7 @@ public class MTree implements Serializable {
               if (!alignedMeasurementSchemas.isEmpty()) {
                 CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
                     new CreateAlignedTimeSeriesPlan(
-                        entityPath.value,
+                        entityPath[0],
                         alignedMeasurementSchemas.stream()
                             .map(IMeasurementSchema::getMeasurementId)
                             .collect(Collectors.toList()),
@@ -334,7 +332,7 @@ public class MTree implements Serializable {
                 mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
               }
               if (curEntityMNode.isAligned()) {
-                entityPath.value = getCurrentPartialPath(curEntityMNode);
+                entityPath[0] = getCurrentPartialPath(curEntityMNode);
               }
               // clear
               entityNode = curEntityMNode;
@@ -351,7 +349,7 @@ public class MTree implements Serializable {
     if (!alignedMeasurementSchemas.isEmpty()) {
       CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
           new CreateAlignedTimeSeriesPlan(
-              entityPath.value,
+              entityPath[0],
               alignedMeasurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),

@@ -69,7 +69,7 @@ public class IoTDBExportSchemaIT {
     FileUtils.deleteDirectory(targetDir);
   }
 
-  private void prepareSchema() throws SQLException {
+  private void prepareSchema() {
     try (Statement statement = connection.createStatement()) {
       // create storage group
       statement.execute("CREATE STORAGE GROUP root.ln");
@@ -107,7 +107,7 @@ public class IoTDBExportSchemaIT {
     }
   }
 
-  private void saveExpectedResult() throws Exception {
+  private void saveExpectedResult() {
     Set<String>[] sets =
         new Set[] {
           showTimeseriesResultSet,
@@ -139,7 +139,6 @@ public class IoTDBExportSchemaIT {
               stringBuilder.append(resultSet.getString(j)).append(",");
             }
             sets[i].add(stringBuilder.toString());
-            System.out.println(stringBuilder);
           }
         }
       }
@@ -148,7 +147,7 @@ public class IoTDBExportSchemaIT {
     }
   }
 
-  private void checkExpectedResult() throws Exception {
+  private void checkExpectedResult() {
     Set<String>[] sets =
         new Set[] {
           showTimeseriesResultSet,
