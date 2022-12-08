@@ -169,11 +169,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
-    String sortInfo = "Order";
+    StringBuilder sortInfo = new StringBuilder("Order:");
     for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      sortInfo += sortItem.getSortKey() + " " + sortItem.getOrdering();
+      sortInfo.append(" ");
+      sortInfo.append(sortItem.getSortKey()).append(" ").append(sortItem.getOrdering());
     }
-    boxValue.add(sortInfo);
+    boxValue.add(sortInfo.toString());
     return render(node, boxValue, context);
   }
 

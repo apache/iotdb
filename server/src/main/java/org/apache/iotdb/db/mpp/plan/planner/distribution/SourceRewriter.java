@@ -107,6 +107,15 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitSingleDeviceView(
       SingleDeviceViewNode node, DistributionPlanContext context) {
 
+    if (isAggregationQuery()) {
+      List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
+      if (rewroteChildren.size() != 1) {
+        throw new IllegalStateException("SingleDeviceViewNode have only one child");
+      }
+      node.setChild(rewroteChildren.get(0));
+      return Collections.singletonList(node);
+    }
+
     String device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
         analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
