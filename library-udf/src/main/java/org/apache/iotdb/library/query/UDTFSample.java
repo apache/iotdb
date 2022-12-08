@@ -10,6 +10,10 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.Random;
 
+/**
+ * Sampling with fixed range coverage on 1d series, the tuple in each ranged window is taken
+ * randomly.
+ */
 public class UDTFSample implements UDTF {
   double rate;
   Random rd = new Random(System.currentTimeMillis());

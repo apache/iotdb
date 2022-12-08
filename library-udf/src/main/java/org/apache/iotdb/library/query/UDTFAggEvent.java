@@ -15,6 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Aggregation by events/general aggregation, find the e.g. averaged series value on each event tag
+ */
 public class UDTFAggEvent implements UDTF {
 
   List<Temporal> temporal_data = new ArrayList<>();

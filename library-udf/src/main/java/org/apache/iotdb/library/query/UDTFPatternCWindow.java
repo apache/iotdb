@@ -16,6 +16,10 @@ import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Find distance between matching patterns and a continuous subsequence of time-series, the length
+ * of subseq is equal to the size of the pattern.
+ */
 public class UDTFPatternCWindow implements UDTF {
   private List<Double> pattern = new ArrayList<>();
 

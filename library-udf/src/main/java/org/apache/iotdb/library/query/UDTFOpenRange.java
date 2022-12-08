@@ -8,6 +8,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+/** Find subsequence of time-series data satisfying T < tb || T > ta, ta > tb. */
 public class UDTFOpenRange implements UDTF {
   private double lessThan, greaterThan;
 

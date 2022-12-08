@@ -9,6 +9,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+/** Joining >=3 series with the tolerance on matching timestamps, defined by eps. */
 public class UDTFSimAlignMulti implements UDTF {
   double eps;
 

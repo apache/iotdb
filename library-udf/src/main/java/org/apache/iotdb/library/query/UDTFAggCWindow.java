@@ -10,6 +10,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
+/** Aggregation by sliding windows, each window has a fixed number of tuples. */
 public class UDTFAggCWindow implements UDTF {
   private String func;
 

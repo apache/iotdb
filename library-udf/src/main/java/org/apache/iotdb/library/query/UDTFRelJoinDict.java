@@ -11,6 +11,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.HashMap;
 import java.util.Map;
 
+/** Joining a series with a relational table, joining dimension: series value */
 public class UDTFRelJoinDict implements UDTF {
   Map<Integer, Double> dic = new HashMap<>();
 

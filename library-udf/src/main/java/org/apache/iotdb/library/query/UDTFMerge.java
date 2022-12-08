@@ -8,6 +8,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+/** Merge two series with priority. */
 public class UDTFMerge implements UDTF {
   long imx;
 

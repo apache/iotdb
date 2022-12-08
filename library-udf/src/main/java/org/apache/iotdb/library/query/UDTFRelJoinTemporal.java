@@ -11,6 +11,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Joining a series with a temporal table, joining dimension: series time */
 public class UDTFRelJoinTemporal implements UDTF {
   List<Temporal> temporal_data = new ArrayList<>();
 

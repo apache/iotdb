@@ -10,6 +10,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
+/** Conversion. */
 public class UDTFAggMap implements UDTF {
   private String func;
   long st, ed;
