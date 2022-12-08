@@ -151,11 +151,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       switch (instance.getType()) {
         case READ:
           TSendFragmentInstanceReq sendFragmentInstanceReq =
-              new TSendFragmentInstanceReq(
-                  new TFragmentInstance(instance.serializeToByteBuffer()),
-                  instance.getExecutorType().isStorageExecutor()
-                      ? instance.getRegionReplicaSet().getRegionId()
-                      : null);
+              new TSendFragmentInstanceReq(new TFragmentInstance(instance.serializeToByteBuffer()));
+          if (instance.getExecutorType().isStorageExecutor()) {
+            sendFragmentInstanceReq.setConsensusGroupId(
+                instance.getRegionReplicaSet().getRegionId());
+          }
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
