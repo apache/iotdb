@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
@@ -41,6 +42,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.WAIT_FOR_DISPATCH;
+
 /**
  * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will
  * continue to collect and monitor the query execution before the query is finished.
@@ -50,6 +53,8 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 public class ClusterScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(ClusterScheduler.class);
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private final QueryStateMachine stateMachine;
@@ -103,6 +108,7 @@ public class ClusterScheduler implements IScheduler {
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
+    long startTime = System.nanoTime();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
@@ -124,6 +130,8 @@ public class ClusterScheduler implements IScheduler {
       }
       stateMachine.transitionToFailed(e);
       return;
+    } finally {
+      QUERY_STATISTICS.addCost(WAIT_FOR_DISPATCH, System.nanoTime() - startTime);
     }
 
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
