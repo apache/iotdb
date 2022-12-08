@@ -1,10 +1,10 @@
 package org.apache.iotdb.library.query;
 
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -15,9 +15,7 @@ public class UDTFMerge implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     imx = parameters.getLong("pivot");
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(Type.DOUBLE);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
   }
 
   @Override

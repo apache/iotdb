@@ -1,15 +1,15 @@
 package org.apache.iotdb.library.query;
 
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class UDTFRelJoinDict implements UDTF {
   Map<Integer, Double> dic = new HashMap<>();
@@ -24,9 +24,7 @@ public class UDTFRelJoinDict implements UDTF {
         dic.put(Integer.parseInt(app[0]), Double.parseDouble(app[1]));
       }
     }
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(Type.DOUBLE);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
   }
 
   @Override
