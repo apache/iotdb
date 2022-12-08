@@ -149,11 +149,10 @@ public class TimeSeriesMetadataCache {
       // allow for the parallelism of different devices
       synchronized (
           devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
-        long startTime = System.nanoTime();
-
         // double check
         timeseriesMetadata = lruCache.getIfPresent(key);
         if (timeseriesMetadata == null) {
+          long startTime = System.nanoTime();
           Path path = new Path(key.device, key.measurement, true);
           // bloom filter part
           BloomFilter bloomFilter =
@@ -184,10 +183,10 @@ public class TimeSeriesMetadataCache {
               timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
             }
           }
-        }
 
-        QueryStatistics.getInstance()
-            .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
+          QueryStatistics.getInstance()
+              .addCost(TIME_SERIES_METADATA_CACHE_MISS, System.nanoTime() - startTime);
+        }
       }
     }
     if (timeseriesMetadata == null) {
