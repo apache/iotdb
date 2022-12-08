@@ -46,7 +46,7 @@ struct InfluxOpenSessionResp {
 // Open a session (connection) on the server against which operations may be executed.
 struct InfluxOpenSessionReq {
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }

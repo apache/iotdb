@@ -156,8 +156,8 @@ public class StatusUtils {
       case NO_PERMISSION:
         status.setMessage("No permissions for this operation, please add privilege.");
         break;
-      case UNINITIALIZED_AUTH_ERROR:
-        status.setMessage("Uninitialized authorizer.");
+      case INIT_AUTH_ERROR:
+        status.setMessage("Failed to init authorizer.");
         break;
       case UNSUPPORTED_OPERATION:
         status.setMessage("Unsupported operation.");
