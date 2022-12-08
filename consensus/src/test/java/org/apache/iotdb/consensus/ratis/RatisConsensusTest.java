@@ -238,6 +238,19 @@ public class RatisConsensusTest {
     Assert.assertEquals((leaderIndex + 1) % 3, newLeaderIndex);
   }
 
+  @Test
+  public void transferSnapshot() throws Exception {
+    servers.get(0).createPeer(gid, peers.subList(0, 1));
+
+    doConsensus(servers.get(0), gid, 10, 10);
+    Assert.assertTrue(servers.get(0).triggerSnapshot(gid).isSuccess());
+
+    servers.get(1).createPeer(gid, Collections.emptyList());
+    servers.get(0).addPeer(gid, peers.get(1));
+
+    doConsensus(servers.get(1), gid, 10, 20);
+  }
+
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 
