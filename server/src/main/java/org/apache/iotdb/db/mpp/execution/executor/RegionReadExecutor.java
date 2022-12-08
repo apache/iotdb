@@ -21,18 +21,14 @@ package org.apache.iotdb.db.mpp.execution.executor;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.ExecutorType;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.storagegroup.VirtualDataRegion;
-import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,61 +38,59 @@ public class RegionReadExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionReadExecutor.class);
 
   public RegionExecutionResult execute(
-      ExecutorType executorType, FragmentInstance fragmentInstance) {
+      ConsensusGroupId groupId, FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
     ConsensusReadResponse readResponse;
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
-      RegionExecutionResult resp = new RegionExecutionResult();
-      if (executorType.isStorageExecutor()) {
-        // FI with storageExecutor will be executed by Consensus
-        ConsensusGroupId groupId;
-        try {
-          groupId =
-              ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                  fragmentInstance.getRegionReplicaSet().getRegionId());
-        } catch (Throwable t) {
-          LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
-          throw new FragmentInstanceDispatchException(
-              RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                  "Deserialize ConsensusGroupId failed: " + t.getMessage()));
-        }
-        if (groupId instanceof DataRegionId) {
-          readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
-        } else {
-          readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
-        }
-        if (readResponse == null) {
-          LOGGER.error("ReadResponse is null");
-          resp.setAccepted(false);
-          resp.setMessage("ReadResponse is null");
-        } else if (!readResponse.isSuccess()) {
-          LOGGER.error(
-              "Execute FragmentInstance in ConsensusGroup {} failed.",
-              groupId,
-              readResponse.getException());
-          resp.setAccepted(false);
-          resp.setMessage(
-              "Execute FragmentInstance failed: "
-                  + (readResponse.getException() == null
-                      ? ""
-                      : readResponse.getException().getMessage()));
-        } else {
-          FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
-          resp.setAccepted(!info.getState().isFailed());
-          resp.setMessage(info.getMessage());
-        }
+      if (groupId instanceof DataRegionId) {
+        readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
       } else {
-        // FI with queryExecutor will be executed directly
-        FragmentInstanceInfo info =
-            FragmentInstanceManager.getInstance()
-                .execDataQueryFragmentInstance(fragmentInstance, VirtualDataRegion.getInstance());
+        readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+      }
+      RegionExecutionResult resp = new RegionExecutionResult();
+      if (readResponse == null) {
+        LOGGER.error("ReadResponse is null");
+        resp.setAccepted(false);
+        resp.setMessage("ReadResponse is null");
+      } else if (!readResponse.isSuccess()) {
+        LOGGER.error(
+            "Execute FragmentInstance in ConsensusGroup {} failed.",
+            groupId,
+            readResponse.getException());
+        resp.setAccepted(false);
+        resp.setMessage(
+            "Execute FragmentInstance failed: "
+                + (readResponse.getException() == null
+                    ? ""
+                    : readResponse.getException().getMessage()));
+      } else {
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
         resp.setAccepted(!info.getState().isFailed());
         resp.setMessage(info.getMessage());
       }
       return resp;
     } catch (Throwable t) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", executorType, t);
+      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);
+      RegionExecutionResult resp = new RegionExecutionResult();
+      resp.setAccepted(false);
+      resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());
+      return resp;
+    }
+  }
+
+  public RegionExecutionResult execute(FragmentInstance fragmentInstance) {
+    // execute fragment instance in state machine
+    try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
+      RegionExecutionResult resp = new RegionExecutionResult();
+      // FI with queryExecutor will be executed directly
+      FragmentInstanceInfo info =
+          FragmentInstanceManager.getInstance()
+              .execDataQueryFragmentInstance(fragmentInstance, VirtualDataRegion.getInstance());
+      resp.setAccepted(!info.getState().isFailed());
+      resp.setMessage(info.getMessage());
+      return resp;
+    } catch (Throwable t) {
+      LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
       RegionExecutionResult resp = new RegionExecutionResult();
       resp.setAccepted(false);
       resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());

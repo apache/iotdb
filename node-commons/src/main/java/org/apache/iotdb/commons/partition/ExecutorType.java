@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 /** The interface is used to indicate where to execute a FragmentInstance */
 public interface ExecutorType {
+
+  /** Indicate if ExecutorType is StorageExecutor */
   boolean isStorageExecutor();
 
   TDataNodeLocation getDataNodeLocation();

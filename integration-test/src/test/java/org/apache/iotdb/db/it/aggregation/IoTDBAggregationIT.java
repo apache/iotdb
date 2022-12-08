@@ -68,7 +68,7 @@ public class IoTDBAggregationIT {
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d0.noDataRegion WITH DATATYPE=INT32"
+        "CREATE TIMESERIES root.test.noDataRegion.s1 WITH DATATYPE=INT32"
       };
   private static final String[] dataSet2 =
       new String[] {
@@ -969,11 +969,9 @@ public class IoTDBAggregationIT {
   @Test
   public void noDataRegionTest() {
     String[] expectedHeader =
-        new String[] {count("root.vehicle.d0.noDataRegion"), sum("root.vehicle.d0.noDataRegion")};
+        new String[] {count("root.test.noDataRegion.s1"), sum("root.test.noDataRegion.s1")};
     String[] retArray = new String[] {"0,null,"};
     resultSetEqualWithDescOrderTest(
-        "select count(noDataRegion), sum(noDataRegion) from root.vehicle.d0",
-        expectedHeader,
-        retArray);
+        "select count(s1), sum(s1) from root.test.noDataRegion", expectedHeader, retArray);
   }
 }

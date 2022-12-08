@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.ExecutorType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -118,16 +119,13 @@ public class FragmentInstance implements IConsensusRequest {
     return executorType;
   }
 
+  @TestOnly
   public void setExecutorType(ExecutorType executorType) {
     this.executorType = executorType;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return executorType.getRegionReplicaSet();
-  }
-
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.executorType.setRegionReplicaSet(regionReplicaSet);
   }
 
   public PlanFragment getFragment() {

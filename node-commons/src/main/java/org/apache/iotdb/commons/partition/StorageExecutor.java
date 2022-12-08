@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.Objects;
 
+/** StorageExecutor indicates execution of this query need data from StorageEngine */
 public class StorageExecutor implements ExecutorType {
   private TRegionReplicaSet regionReplicaSet;
 

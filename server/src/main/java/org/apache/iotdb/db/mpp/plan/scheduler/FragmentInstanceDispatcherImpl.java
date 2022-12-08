@@ -153,7 +153,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendFragmentInstanceReq sendFragmentInstanceReq =
               new TSendFragmentInstanceReq(
                   new TFragmentInstance(instance.serializeToByteBuffer()),
-                  instance.getRegionReplicaSet().getRegionId());
+                  instance.getExecutorType().isStorageExecutor()
+                      ? instance.getRegionReplicaSet().getRegionId()
+                      : null);
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
@@ -204,11 +206,29 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
+    // deserialize ConsensusGroupId
+    ConsensusGroupId groupId = null;
+    if (instance.getExecutorType().isStorageExecutor()) {
+      try {
+        groupId =
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                instance.getRegionReplicaSet().getRegionId());
+      } catch (Throwable t) {
+        logger.warn("Deserialize ConsensusGroupId failed. ", t);
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Deserialize ConsensusGroupId failed: " + t.getMessage()));
+      }
+    }
+
     switch (instance.getType()) {
       case READ:
         RegionReadExecutor readExecutor = new RegionReadExecutor();
         RegionExecutionResult readResult =
-            readExecutor.execute(instance.getExecutorType(), instance);
+            groupId == null
+                ? readExecutor.execute(instance)
+                : readExecutor.execute(groupId, instance);
         if (!readResult.isAccepted()) {
           logger.warn(readResult.getMessage());
           throw new FragmentInstanceDispatchException(
@@ -216,20 +236,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         break;
       case WRITE:
-        // deserialize ConsensusGroupId
-        ConsensusGroupId groupId;
-        try {
-          groupId =
-              ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                  instance.getRegionReplicaSet().getRegionId());
-        } catch (Throwable t) {
-          logger.warn("Deserialize ConsensusGroupId failed. ", t);
-          throw new FragmentInstanceDispatchException(
-              RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                  "Deserialize ConsensusGroupId failed: " + t.getMessage()));
-        }
-
         PlanNode planNode = instance.getFragment().getPlanNodeTree();
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
