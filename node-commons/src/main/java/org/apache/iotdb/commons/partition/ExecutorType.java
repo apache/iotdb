@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-/** The interface is used to execute a FragmentInstance */
+/** The interface is used to indicate where to execute a FragmentInstance */
 public interface ExecutorType {
   boolean isStorageExecutor();
 
