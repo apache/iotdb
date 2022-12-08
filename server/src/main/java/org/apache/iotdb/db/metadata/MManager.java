@@ -1364,45 +1364,47 @@ public class MManager {
       // export template
       for (Map.Entry<String, Template> entry : templateManager.getTemplateMap().entrySet()) {
         if (entry.getValue().isDirectAligned()) {
+          List<List<String>> measurements = Collections.singletonList(new ArrayList<>());
+          List<List<TSDataType>> dataTypes = Collections.singletonList(new ArrayList<>());
+          List<List<TSEncoding>> encodings = Collections.singletonList(new ArrayList<>());
+          List<List<CompressionType>> compressions = Collections.singletonList(new ArrayList<>());
+          entry
+              .getValue()
+              .getSchemaMap()
+              .values()
+              .forEach(
+                  i -> {
+                    measurements.get(0).add(i.getMeasurementId());
+                    dataTypes.get(0).add(i.getType());
+                    encodings.get(0).add(i.getEncodingType());
+                    compressions.get(0).add(i.getCompressor());
+                  });
           mLogWriter.createSchemaTemplate(
               new CreateTemplatePlan(
-                  entry.getKey(),
-                  Collections.singletonList(
-                      entry.getValue().getSchemaMap().values().stream()
-                          .map(IMeasurementSchema::getMeasurementId)
-                          .collect(Collectors.toList())),
-                  Collections.singletonList(
-                      entry.getValue().getSchemaMap().values().stream()
-                          .map(IMeasurementSchema::getType)
-                          .collect(Collectors.toList())),
-                  Collections.singletonList(
-                      entry.getValue().getSchemaMap().values().stream()
-                          .map(IMeasurementSchema::getEncodingType)
-                          .collect(Collectors.toList())),
-                  Collections.singletonList(
-                      entry.getValue().getSchemaMap().values().stream()
-                          .map(IMeasurementSchema::getCompressor)
-                          .collect(Collectors.toList()))));
+                  entry.getKey(), measurements, dataTypes, encodings, compressions));
         } else {
+          List<List<String>> measurements = new ArrayList<>();
+          List<List<TSDataType>> dataTypes = new ArrayList<>();
+          List<List<TSEncoding>> encodings = new ArrayList<>();
+          List<List<CompressionType>> compressions = new ArrayList<>();
+          entry
+              .getValue()
+              .getSchemaMap()
+              .values()
+              .forEach(
+                  i -> {
+                    measurements.add(Collections.singletonList(i.getMeasurementId()));
+                    dataTypes.add(Collections.singletonList(i.getType()));
+                    encodings.add(Collections.singletonList(i.getEncodingType()));
+                    compressions.add(Collections.singletonList(i.getCompressor()));
+                  });
           mLogWriter.createSchemaTemplate(
               new CreateTemplatePlan(
-                  entry.getKey(),
-                  entry.getValue().getSchemaMap().values().stream()
-                      .map(i -> Collections.singletonList(i.getMeasurementId()))
-                      .collect(Collectors.toList()),
-                  entry.getValue().getSchemaMap().values().stream()
-                      .map(i -> Collections.singletonList(i.getType()))
-                      .collect(Collectors.toList()),
-                  entry.getValue().getSchemaMap().values().stream()
-                      .map(i -> Collections.singletonList(i.getEncodingType()))
-                      .collect(Collectors.toList()),
-                  entry.getValue().getSchemaMap().values().stream()
-                      .map(i -> Collections.singletonList(i.getCompressor()))
-                      .collect(Collectors.toList())));
+                  entry.getKey(), measurements, dataTypes, encodings, compressions));
         }
       }
       // export timeseries
-      mtree.exportSchema(mLogWriter, tagManager::readTagsAndAttributes);
+      mtree.exportSchema(mLogWriter);
       // export tag
       File tagTargetFile = new File(dir, MetadataConstant.TAG_LOG);
       File tagSourceFile = new File(config.getSchemaDir(), MetadataConstant.TAG_LOG);

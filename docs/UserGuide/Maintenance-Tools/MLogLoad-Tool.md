@@ -26,6 +26,8 @@
 The MLogLoad tool  is used to load the metadata from `mlog.bin` and tags and attributes from `tlog.txt` into the running IoTDB.
 Data to be loaded that conflicts with metadata in the running IoTDB will be skipped.
 
+If there is already metadata in the running IoTDB, it needs to be loaded using `mlog.bin` and `tlog.txt` obtained from the [export metadata operation](https://iotdb.apache.org/UserGuide/V0.13.x/Operate-Metadata/Export-Schema.html).
+
 ### How to Use
 
 Linux/MacOS

@@ -566,21 +566,6 @@ public class TagManager {
   }
 
   /**
-   * Read tags and attributes from tag file
-   *
-   * @param node the node to query.
-   * @return tagAndAttributePair
-   */
-  public Pair<Map<String, String>, Map<String, String>> readTagsAndAttributes(
-      IMeasurementMNode node) {
-    try {
-      return readTagFile(node.getOffset());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  /**
    * Copy tagFile to dir
    *
    * @param dir directory path

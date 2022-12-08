@@ -26,6 +26,8 @@
 MLogLoad 工具用于将 `mlog.bin` 中的元数据和 `tlog.txt`   中的标签和属性加载到正在运行的 IoTDB 中。
 与正在运行的 IoTDB 中的元数据存在冲突的待加载数据将会被跳过。
 
+若正在运行的 IoTDB 中已有元数据，需要使用[导出元数据操作](https://iotdb.apache.org/zh/UserGuide/V0.13.x/Operate-Metadata/Export-Schema.html) 得到的 `mlog.bin` 和 `tlog.txt` 进行加载。
+
 ### 使用方法
 
 Linux/MacOS

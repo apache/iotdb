@@ -113,7 +113,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -237,11 +236,7 @@ public class MTree implements Serializable {
     }
   }
 
-  public void exportSchema(
-      MLogWriter mLogWriter,
-      Function<IMeasurementMNode, Pair<Map<String, String>, Map<String, String>>>
-          tagAndAttributeGetter)
-      throws MetadataException, IOException {
+  public void exportSchema(MLogWriter mLogWriter) throws MetadataException, IOException {
     Holder<PartialPath> entityPath = new Holder<>();
     List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
     Traverser collector =
@@ -296,15 +291,6 @@ public class MTree implements Serializable {
               IEntityMNode entityMNode = getParentEntityMNodeIfExist();
               checkAndWriteCreateAlignedTimeseries(entityMNode);
               if (!entityMNode.isAligned()) {
-                Map<String, String> tags = null;
-                Map<String, String> attributes = null;
-                if (node.getOffset() != -1) {
-                  // TODO：这个似乎不太需要，但是有的话更好？
-                  Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
-                      tagAndAttributeGetter.apply(node);
-                  tags = tagAndAttribute.left;
-                  attributes = tagAndAttribute.right;
-                }
                 CreateTimeSeriesPlan createTimeSeriesPlan =
                     new CreateTimeSeriesPlan(
                         getCurrentPartialPath(node),
@@ -312,8 +298,8 @@ public class MTree implements Serializable {
                         measurementSchema.getEncodingType(),
                         measurementSchema.getCompressor(),
                         measurementSchema.getProps(),
-                        tags,
-                        attributes,
+                        null,
+                        null,
                         node.getAlias());
                 createTimeSeriesPlan.setTagOffset(node.getOffset());
                 mLogWriter.createTimeseries(createTimeSeriesPlan);
