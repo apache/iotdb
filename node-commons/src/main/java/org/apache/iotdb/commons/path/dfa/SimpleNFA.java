@@ -178,6 +178,16 @@ public class SimpleNFA implements IPatternFA {
     return initialState;
   }
 
+  @Override
+  public int getStateSize() {
+    return states.length;
+  }
+
+  @Override
+  public IFAState getState(int index) {
+    return states[index];
+  }
+
   private class SimpleNFAState implements IFAState, IFATransition {
 
     private final int patternIndex;

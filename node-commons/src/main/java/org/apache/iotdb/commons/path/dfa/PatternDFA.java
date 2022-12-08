@@ -112,6 +112,18 @@ public class PatternDFA implements IPatternFA {
     return dfaGraph.getInitialState();
   }
 
+  // todo
+  @Override
+  public int getStateSize() {
+    return 0;
+  }
+
+  // todo
+  @Override
+  public IFAState getState(int index) {
+    return null;
+  }
+
   public static final class Builder {
     private PartialPath pathPattern;
 

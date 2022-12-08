@@ -33,4 +33,8 @@ public interface IPatternFA {
   IFAState getNextState(IFAState currentState, IFATransition transition);
 
   IFAState getInitialState();
+
+  int getStateSize();
+
+  IFAState getState(int index);
 }
