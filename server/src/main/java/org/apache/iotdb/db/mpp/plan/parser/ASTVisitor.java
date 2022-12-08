@@ -1539,12 +1539,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeName(nodeName);
     return nodeName;
@@ -1556,12 +1551,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeNameInIntoPath(nodeName);
     return nodeName;

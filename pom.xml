@@ -192,7 +192,7 @@
         <lz4-java.version>1.8.0</lz4-java.version>
         <jackson-mapper-asl.version>1.9.13</jackson-mapper-asl.version>
         <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
-        <mockito-core.version>2.23.0</mockito-core.version>
+        <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
         <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
@@ -225,6 +225,9 @@
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
         <JTransforms.version>3.1</JTransforms.version>
+        <!-- codegen -->
+        <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
+        <codegen.phase>generate-sources</codegen.phase>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
