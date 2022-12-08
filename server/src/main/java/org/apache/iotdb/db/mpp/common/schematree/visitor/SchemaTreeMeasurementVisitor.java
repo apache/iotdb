@@ -38,41 +38,63 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
-  protected boolean checkIsMatch(SchemaNode node, IFAState sourceState, IFATransition transition) {
+  protected IFAState tryGetNextState(
+      SchemaNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
+    IFATransition transition;
+    IFAState state;
     if (node.isMeasurement()) {
       String alias = node.getAsMeasurementNode().getAlias();
       if (alias != null) {
-        if (transition.isMatch(alias)
-            && patternFA.getNextState(sourceState, transition).isFinal()) {
-          return true;
+        transition = preciseMatchTransitionMap.get(alias);
+        if (transition != null) {
+          state = patternFA.getNextState(sourceState, transition);
+          if (state.isFinal()) {
+            return state;
+          }
         }
       }
-      return transition.isMatch(node.getName())
-          && patternFA.getNextState(sourceState, transition).isFinal();
+      transition = preciseMatchTransitionMap.get(node.getName());
+      if (transition != null) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
+      }
+      return null;
     }
-    return transition.isMatch(node.getName());
+
+    transition = preciseMatchTransitionMap.get(node.getName());
+    if (transition == null) {
+      return null;
+    }
+    return patternFA.getNextState(sourceState, transition);
   }
 
   @Override
-  protected IFATransition getMatchedTransition(
-      SchemaNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
+  protected IFAState tryGetNextState(
+      SchemaNode node, IFAState sourceState, IFATransition transition) {
+    IFAState state;
     if (node.isMeasurement()) {
       String alias = node.getAsMeasurementNode().getAlias();
-      IFATransition transition = null;
-      if (alias != null) {
-        transition = preciseMatchTransitionMap.get(alias);
+      if (alias != null && transition.isMatch(alias)) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
       }
-      if (transition == null) {
-        transition = preciseMatchTransitionMap.get(node.getName());
+      if (transition.isMatch(node.getName())) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
       }
-
-      if (transition == null || !patternFA.getNextState(sourceState, transition).isFinal()) {
-        return null;
-      } else {
-        return transition;
-      }
+      return null;
     }
-    return preciseMatchTransitionMap.get(node.getName());
+
+    if (transition.isMatch(node.getName())) {
+      return patternFA.getNextState(sourceState, transition);
+    }
+    return null;
   }
 
   @Override
