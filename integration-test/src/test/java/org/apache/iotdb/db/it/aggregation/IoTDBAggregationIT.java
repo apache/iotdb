@@ -46,6 +46,8 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
@@ -65,7 +67,8 @@ public class IoTDBAggregationIT {
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d0.noDataRegion WITH DATATYPE=INT32"
       };
   private static final String[] dataSet2 =
       new String[] {
@@ -961,5 +964,16 @@ public class IoTDBAggregationIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void noDataRegionTest() {
+    String[] expectedHeader =
+        new String[] {count("root.vehicle.d0.noDataRegion"), sum("root.vehicle.d0.noDataRegion")};
+    String[] retArray = new String[] {"0,null,"};
+    resultSetEqualWithDescOrderTest(
+        "select count(noDataRegion), sum(noDataRegion) from root.vehicle.d0",
+        expectedHeader,
+        retArray);
   }
 }

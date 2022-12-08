@@ -63,6 +63,7 @@ public class IOTDBGroupByIT {
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d0.noDataRegion WITH DATATYPE=INT32",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(1, 1.1, false, 11)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(2, 2.2,  true, 22)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(3, 3.3, false, 33 )",
@@ -527,5 +528,19 @@ public class IOTDBGroupByIT {
             + "root.ln.wf01.wt01 where time > 3 "
             + "GROUP BY ([1, 30), -1ms)",
         "no viable alternative at input");
+  }
+
+  @Test
+  public void noDataRegionTest() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR, count("root.vehicle.d0.noDataRegion"), sum("root.vehicle.d0.noDataRegion")
+        };
+    String[] retArray = new String[] {"1,0,null,", "2,0,null,"};
+    resultSetEqualWithDescOrderTest(
+        "select count(noDataRegion), sum(noDataRegion) from root.vehicle.d0 "
+            + "GROUP BY ([1, 3), 1ms)",
+        expectedHeader,
+        retArray);
   }
 }
