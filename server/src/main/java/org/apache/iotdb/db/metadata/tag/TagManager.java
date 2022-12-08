@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -564,13 +563,6 @@ public class TagManager {
       throws IOException {
     return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
   }
-
-  /**
-   * Copy tagFile to dir
-   *
-   * @param dir directory path
-   */
-  public void exportSchema(File dir) {}
 
   public void clear() throws IOException {
     this.tagIndex.clear();
