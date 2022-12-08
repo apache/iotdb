@@ -217,11 +217,79 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
-    if (isAggregationQuery()) {
-      return processMergeSortWithAggregation(node, context);
+    // 1. Group children by dataRegion
+    Map<TRegionReplicaSet, List<PlanNode>> childrenGroupMap = new HashMap<>();
+    for (int i = 0; i < node.getChildren().size(); i++) {
+      PlanNode rawChildNode = node.getChildren().get(i);
+      PlanNode visitedChild = visit(rawChildNode, context);
+      TRegionReplicaSet region = context.getNodeDistribution(visitedChild.getPlanNodeId()).region;
+      if (childrenGroupMap.containsKey(region)) {
+        List<PlanNode> group = childrenGroupMap.get(region);
+        group.add(visitedChild);
+      } else {
+        List<PlanNode> group = new ArrayList<>();
+        group.add(visitedChild);
+        childrenGroupMap.put(region, group);
+      }
     }
-    return processMultiChildNode(node, context);
+
+    // 2.add mergeSortNode for each group
+    List<PlanNode> mergeSortNodeList = new ArrayList<>();
+    for (List<PlanNode> group : childrenGroupMap.values()) {
+      if (group.size() == 1) {
+        mergeSortNodeList.add(group.get(0));
+        continue;
+      }
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              node.getOutputColumnNames());
+      group.forEach(mergeSortNode::addChild);
+      context.putNodeDistribution(
+          mergeSortNode.getPlanNodeId(),
+          new NodeDistribution(
+              NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+              context.getNodeDistribution(mergeSortNode.getChildren().get(0).getPlanNodeId())
+                  .region));
+      mergeSortNodeList.add(mergeSortNode);
+    }
+
+    return groupPlanNodeByMergeSortNode(mergeSortNodeList,node.getMergeOrderParameter(),context);
   }
+
+  private PlanNode groupPlanNodeByMergeSortNode(List<PlanNode> mergeSortNodeList, OrderByParameter orderByParameter,
+                    NodeGroupContext context){
+    if (mergeSortNodeList.size() == 1) {
+      return mergeSortNodeList.get(0);
+    }
+
+    MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                    context.queryContext.getQueryId().genPlanNodeId(), orderByParameter);
+
+    // Each child has different TRegionReplicaSet, so we can select any one from
+    // its child
+    mergeSortNode.addChild(mergeSortNodeList.get(0));
+    context.putNodeDistribution(
+            mergeSortNode.getPlanNodeId(),
+            new NodeDistribution(
+                    NodeDistributionType.SAME_WITH_SOME_CHILD,
+                    context.getNodeDistribution(mergeSortNodeList.get(0).getPlanNodeId()).region));
+
+    //add ExchangeNode for other child
+    for (int i = 1; i < mergeSortNodeList.size(); i++) {
+      PlanNode child = mergeSortNodeList.get(i);
+      ExchangeNode exchangeNode =
+              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.setChild(child);
+      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+      mergeSortNode.addChild(exchangeNode);
+    }
+
+    return mergeSortNode;
+  }
+
 
   @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, NodeGroupContext context) {
@@ -279,61 +347,17 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processMultiChildNode(node, context);
   }
 
-  private Map<TRegionReplicaSet, DeviceViewGroup> getDeviceViewGroup(
-      PlanNode node, NodeGroupContext context, List<String> devices) {
+  private PlanNode processDeviceViewWithAggregation(DeviceViewNode node, NodeGroupContext context) {
     // group all the children by DataRegion distribution
     Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap = new HashMap<>();
-    for (int i = 0; i < devices.size(); i++) {
-      String device = devices.get(i);
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      String device = node.getDevices().get(i);
       PlanNode rawChildNode = node.getChildren().get(i);
       PlanNode visitedChild = visit(rawChildNode, context);
       TRegionReplicaSet region = context.getNodeDistribution(visitedChild.getPlanNodeId()).region;
       DeviceViewGroup group = deviceViewGroupMap.computeIfAbsent(region, DeviceViewGroup::new);
       group.addChild(device, visitedChild);
     }
-    return deviceViewGroupMap;
-  }
-
-  private PlanNode constructReturnResult(
-      OrderByParameter orderByParameter,
-      NodeGroupContext context,
-      List<String> devices,
-      List<PlanNode> deviceViewNodeList) {
-    if (deviceViewNodeList.size() == 1) {
-      return deviceViewNodeList.get(0);
-    }
-
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(), orderByParameter, devices);
-
-    // Each child has different TRegionReplicaSet, so we can select any one from
-    // its child
-    mergeSortNode.addChild(deviceViewNodeList.get(0));
-    context.putNodeDistribution(
-        mergeSortNode.getPlanNodeId(),
-        new NodeDistribution(
-            NodeDistributionType.SAME_WITH_SOME_CHILD,
-            context.getNodeDistribution(deviceViewNodeList.get(0).getPlanNodeId()).region));
-
-    // Add ExchangeNode for any other child except first one
-    for (int i = 1; i < deviceViewNodeList.size(); i++) {
-      PlanNode child = deviceViewNodeList.get(i);
-      ExchangeNode exchangeNode =
-          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-      exchangeNode.setChild(child);
-      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-      mergeSortNode.addChild(exchangeNode);
-    }
-    return mergeSortNode;
-  }
-
-  private PlanNode processDeviceViewWithAggregation(DeviceViewNode node, NodeGroupContext context) {
-    // group all the children by DataRegion distribution
-    List<String> devices = node.getDevices();
-    Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap =
-        getDeviceViewGroup(node, context, devices);
-
     // Generate DeviceViewNode for each group
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
     for (DeviceViewGroup group : deviceViewGroupMap.values()) {
@@ -355,41 +379,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       deviceViewNodeList.add(deviceViewNode);
     }
 
-    return constructReturnResult(
-        node.getMergeOrderParameter(), context, devices, deviceViewNodeList);
-  }
-
-  private PlanNode processMergeSortWithAggregation(MergeSortNode node, NodeGroupContext context) {
-    // group all the children by DataRegion distribution
-    List<String> devices = node.getDevices();
-    Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap =
-        getDeviceViewGroup(node, context, devices);
-
-    // Generate planNode for each group
-    List<PlanNode> planNodeList = new ArrayList<>();
-    for (DeviceViewGroup group : deviceViewGroupMap.values()) {
-      if (group.children.size() == 1) {
-        planNodeList.add(group.children.get(0));
-        continue;
-      }
-      MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrderParameter(),
-              devices);
-      for (int i = 0; i < group.devices.size(); i++) {
-        mergeSortNode.addChild(group.children.get(i));
-      }
-      context.putNodeDistribution(
-          mergeSortNode.getPlanNodeId(),
-          new NodeDistribution(
-              NodeDistributionType.SAME_WITH_ALL_CHILDREN,
-              context.getNodeDistribution(mergeSortNode.getChildren().get(0).getPlanNodeId())
-                  .region));
-      planNodeList.add(mergeSortNode);
-    }
-
-    return constructReturnResult(node.getMergeOrderParameter(), context, devices, planNodeList);
+    return groupPlanNodeByMergeSortNode(deviceViewNodeList,node.getMergeOrderParameter(),context);
   }
 
   private static class DeviceViewGroup {

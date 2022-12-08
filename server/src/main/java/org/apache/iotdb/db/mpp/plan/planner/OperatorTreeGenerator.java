@@ -664,7 +664,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
     List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
-    List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> outputColumnTypes = context.getCachedDataTypes();
+    if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
+      throw new IllegalStateException("OutputColumTypes should not be null/empty");
+    }
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new SingleDeviceViewOperator(
         operatorContext, node.getDevice(), child, deviceColumnIndex, outputColumnTypes);
@@ -738,11 +741,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 MergeSortOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    context.setCachedDataTypes(dataTypes);
     List<Operator> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .collect(Collectors.toList());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new MergeSortOperator(

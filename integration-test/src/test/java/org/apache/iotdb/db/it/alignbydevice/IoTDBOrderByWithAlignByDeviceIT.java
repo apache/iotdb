@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBOrderByWithAlignByDeviceIT {
   private static final String[] places =
       new String[] {
@@ -62,14 +63,13 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   private static final long startPrecipitation = 200;
   private static final double startTemperature = 20.0;
   private static final long startTime = 1668960000000L;
-  private static final int numOfTSInDevice = 20;
+  private static final int numOfPointsInDevice = 20;
   private static final long timeGap = 100L;
   private static final Map<String, Long> deviceToStartTimestamp = new HashMap<>();
-
-  public static final Map<String, Double[]> deviceToMaxTemperature = new HashMap<>();
-  public static final Map<String, Double[]> deviceToAvgTemperature = new HashMap<>();
-  public static final Map<String, Long[]> deviceToMaxPrecipitation = new HashMap<>();
-  public static final Map<String, Double[]> deviceToAvgPrecipitation = new HashMap<>();
+  public static final Map<String, double[]> deviceToMaxTemperature = new HashMap<>();
+  public static final Map<String, double[]> deviceToAvgTemperature = new HashMap<>();
+  public static final Map<String, long[]> deviceToMaxPrecipitation = new HashMap<>();
+  public static final Map<String, double[]> deviceToAvgPrecipitation = new HashMap<>();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -82,6 +82,13 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
+  /**
+   * This method generate test data with crossing time.
+   *
+   * <p>The data can be viewed in online doc:
+   *
+   * <p>https://docs.google.com/spreadsheets/d/18XlOIi27ZIIdRnar2WNXVMxkZwjgwlPZmzJLVpZRpAA/edit#gid=0
+   */
   private static void insertData() {
     try (Connection iotDBConnection = EnvFactory.getEnv().getConnection();
         Statement statement = iotDBConnection.createStatement()) {
@@ -103,7 +110,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
       for (int index = 0; index < places.length; index++) {
         String place = places[index];
 
-        for (int i = 0; i < numOfTSInDevice; i++) {
+        for (int i = 0; i < numOfPointsInDevice; i++) {
           long precipitation = startPrecipitation + place.hashCode() + (start + i * timeGap);
           double temperature = startTemperature + place.hashCode() + (start + i * timeGap);
           precipitations[index][(int) ((start - startTime) / timeGap) + i] = precipitation;
@@ -125,10 +132,10 @@ public class IoTDBOrderByWithAlignByDeviceIT {
       }
 
       for (int i = 0; i < places.length; i++) {
-        Double[] aT = new Double[3];
-        Double[] aP = new Double[3];
-        Double[] mT = new Double[3];
-        Long[] mP = new Long[3];
+        double[] aT = new double[3];
+        double[] aP = new double[3];
+        double[] mT = new double[3];
+        long[] mP = new long[3];
         double totalTemperature = 0;
         long totalPrecipitation = 0;
         double maxTemperature = -1;
@@ -170,7 +177,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   // ORDER BY DEVICE
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTest1() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
@@ -198,7 +204,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -212,7 +218,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTest2() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
@@ -240,7 +245,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -254,7 +259,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTest3() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC ALIGN BY DEVICE";
     Object[] expectedDevice =
@@ -283,7 +287,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -299,7 +303,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   // ORDER BY TIME
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeTest1() {
     String sql = "SELECT * FROM root.** ORDER BY TIME ALIGN BY DEVICE";
     int total = 0;
@@ -329,7 +332,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -338,7 +341,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeTest2() {
     String sql = "SELECT * FROM root.** ORDER BY TIME ASC ALIGN BY DEVICE";
     int total = 0;
@@ -368,7 +370,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -377,7 +379,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeTest3() {
     String sql = "SELECT * FROM root.** ORDER BY TIME DESC ALIGN BY DEVICE";
     int total = 0;
@@ -407,7 +408,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -418,7 +419,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   // ORDER BY DEVICE,TIME
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTimeTest1() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
@@ -436,7 +436,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           String actualDevice = resultSet.getString(2);
           assertEquals(expectedDevice[index], actualDevice);
           assertEquals(
-              deviceToStartTimestamp.get(actualDevice) + timeGap * (numOfTSInDevice - cnt - 1),
+              deviceToStartTimestamp.get(actualDevice) + timeGap * (numOfPointsInDevice - cnt - 1),
               actualTimeStamp);
 
           long actualPrecipitation = resultSet.getLong(3);
@@ -448,7 +448,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -462,7 +462,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTimeTest2() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC,TIME ASC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
@@ -490,7 +489,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -504,7 +503,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTimeTest3() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE";
     Object[] expectedDevice =
@@ -523,7 +521,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           String actualDevice = resultSet.getString(2);
           assertEquals(expectedDevice[index], actualDevice);
           assertEquals(
-              deviceToStartTimestamp.get(actualDevice) + timeGap * (numOfTSInDevice - cnt - 1),
+              deviceToStartTimestamp.get(actualDevice) + timeGap * (numOfPointsInDevice - cnt - 1),
               actualTimeStamp);
 
           long actualPrecipitation = resultSet.getLong(3);
@@ -535,7 +533,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -549,7 +547,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByDeviceTimeTest4() {
     String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC,TIME ASC ALIGN BY DEVICE";
     Object[] expectedDevice =
@@ -578,7 +575,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
 
           cnt++;
-          if (cnt % numOfTSInDevice == 0) {
+          if (cnt % numOfPointsInDevice == 0) {
             index++;
             cnt = 0;
           }
@@ -594,7 +591,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   // ORDER BY TIME,DEVICE
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeDeviceTest1() {
     String sql = "SELECT * FROM root.** ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE";
     int total = 0;
@@ -624,7 +620,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -633,7 +629,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeDeviceTest2() {
     String sql = "SELECT * FROM root.** ORDER BY TIME ASC,DEVICE ASC ALIGN BY DEVICE";
     int total = 0;
@@ -663,7 +658,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -672,7 +667,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeDeviceTest3() {
     String sql = "SELECT * FROM root.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
     int total = 0;
@@ -702,7 +696,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -711,7 +705,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void orderByTimeDeviceTest4() {
     String sql = "SELECT * FROM root.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE";
     int total = 0;
@@ -741,7 +734,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfTSInDevice * places.length, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -777,7 +770,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByDeviceTest1() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ALIGN BY DEVICE";
@@ -815,8 +807,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -831,7 +822,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByDeviceTest2() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY DEVICE DESC ALIGN BY DEVICE";
@@ -869,8 +859,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -885,7 +874,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByDeviceTest3() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE";
@@ -922,8 +910,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -938,7 +925,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByDeviceTest4() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE";
@@ -976,8 +962,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -992,7 +977,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByTimeTest1() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY TIME ALIGN BY DEVICE";
@@ -1027,8 +1011,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -1044,7 +1027,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByTimeTest2() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY TIME DESC ALIGN BY DEVICE";
@@ -1079,8 +1061,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -1096,7 +1077,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByTimeTest3() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE";
@@ -1131,8 +1111,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);
@@ -1148,7 +1127,6 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeOrderByTimeTest4() {
     String sql =
         "SELECT AVG(*),COUNT(*),MAX_VALUE(*) FROM root.weather.** GROUP BY([2022-11-21T00:00:00.000+08:00,2022-11-21T00:00:02.801+08:00),1000ms) ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
@@ -1183,8 +1161,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertEquals(getCountNum(actualDevice, cnt), countTemperature);
 
           long maxPrecipitation = resultSet.getLong(7);
-          assertEquals(
-              deviceToMaxPrecipitation.get(actualDevice)[cnt].longValue(), maxPrecipitation);
+          assertEquals(deviceToMaxPrecipitation.get(actualDevice)[cnt], maxPrecipitation);
 
           double maxTemperature = resultSet.getDouble(8);
           assertTrue(deviceToMaxTemperature.get(actualDevice)[cnt] - maxTemperature < 0.00001);

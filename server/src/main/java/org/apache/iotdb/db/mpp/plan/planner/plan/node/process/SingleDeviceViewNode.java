@@ -34,7 +34,7 @@ import java.util.Objects;
 public class SingleDeviceViewNode extends SingleChildProcessNode {
 
   private final String device;
-  private final List<String> outputColumnNames;
+  private List<String> outputColumnNames;
   private final List<Integer> deviceToMeasurementIndexes;
 
   public SingleDeviceViewNode(
@@ -45,6 +45,13 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     super(id);
     this.device = device;
     this.outputColumnNames = outputColumnNames;
+    this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
+  }
+
+  public SingleDeviceViewNode(
+      PlanNodeId id, String device, List<Integer> deviceToMeasurementIndexes) {
+    super(id);
+    this.device = device;
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
   }
 
@@ -75,10 +82,6 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(byteBuffer);
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String column : outputColumnNames) {
-      ReadWriteIOUtils.write(column, byteBuffer);
-    }
     ReadWriteIOUtils.write(device, byteBuffer);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), byteBuffer);
     for (Integer index : deviceToMeasurementIndexes) {
@@ -89,10 +92,6 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
-    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
-    for (String column : outputColumnNames) {
-      ReadWriteIOUtils.write(column, stream);
-    }
     ReadWriteIOUtils.write(device, stream);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), stream);
     for (Integer index : deviceToMeasurementIndexes) {
@@ -101,12 +100,6 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   }
 
   public static SingleDeviceViewNode deserialize(ByteBuffer byteBuffer) {
-    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
-    while (columnSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      columnSize--;
-    }
     String device = ReadWriteIOUtils.readString(byteBuffer);
     int listSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Integer> deviceToMeasurementIndexes = new ArrayList<>(listSize);
@@ -115,8 +108,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
       listSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SingleDeviceViewNode(
-        planNodeId, outputColumnNames, device, deviceToMeasurementIndexes);
+    return new SingleDeviceViewNode(planNodeId, device, deviceToMeasurementIndexes);
   }
 
   @Override
