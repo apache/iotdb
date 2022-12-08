@@ -31,7 +31,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
@@ -95,42 +94,33 @@ public class SessionManager implements SessionManagerMBean {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    try {
-      loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
-      if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // check the version compatibility
-        if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
-          openSessionResp
-              .sessionId(-1)
-              .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-              .setMessage(
-                  "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        } else {
-          supplySession(session, username, zoneId, clientVersion);
-
-          openSessionResp
-              .sessionId(session.getId())
-              .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              .setMessage("Login successfully");
-
-          LOGGER.info(
-              "{}: Login status: {}. User : {}, opens Session-{}",
-              IoTDBConstant.GLOBAL_DB_NAME,
-              openSessionResp.getMessage(),
-              username,
-              session);
-        }
+    loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
+    if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // check the version compatibility
+      if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
+        openSessionResp
+            .sessionId(-1)
+            .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+        supplySession(session, username, zoneId, clientVersion);
 
-        openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+        openSessionResp
+            .sessionId(session.getId())
+            .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setMessage("Login successfully");
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            session);
       }
-    } catch (ConfigNodeConnectionException e) {
-      LOGGER.error("Failed to connect to ConfigNode, because ", e);
-      openSessionResp
-          .sessionId(-1)
-          .setCode(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
-          .setMessage(e.getMessage());
+    } else {
+      AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+
+      openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
     }
 
     return openSessionResp;
@@ -278,7 +268,7 @@ public class SessionManager implements SessionManagerMBean {
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);
-      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);

@@ -96,7 +96,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }
