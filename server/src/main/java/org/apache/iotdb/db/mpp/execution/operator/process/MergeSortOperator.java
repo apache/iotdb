@@ -114,7 +114,7 @@ public class MergeSortOperator implements ProcessOperator {
                 mergeSortHeap.peek())
             < 0) {
       inputTsBlocks[minMergeSortKey.columnIndex] = null;
-      return minMergeSortKey.tsBlock;
+      return minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
     }
     mergeSortHeap.push(minMergeSortKey);
 
@@ -136,6 +136,7 @@ public class MergeSortOperator implements ProcessOperator {
       }
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
+        inputTsBlocks[mergeSortKey.columnIndex] = null;
         if (!mergeSortHeap.isEmpty()
             && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
           break;

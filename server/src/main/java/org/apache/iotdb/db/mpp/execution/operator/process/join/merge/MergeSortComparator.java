@@ -69,10 +69,13 @@ public class MergeSortComparator {
   }
 
   private static Comparator<MergeSortKey> getDeviceComparator(
-      Ordering timeOrdering, Ordering deviceOrdering) {
+      Ordering deviceOrdering, Ordering timeOrdering) {
     return (MergeSortKey o1, MergeSortKey o2) ->
-        o1.tsBlock.getColumn(0).getBinary(o1.rowIndex)
-                == o2.tsBlock.getColumn(0).getBinary(o2.rowIndex)
+        o1.tsBlock
+                    .getColumn(0)
+                    .getBinary(o1.rowIndex)
+                    .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex))
+                == 0
             ? (int)
                 (timeOrdering == Ordering.ASC
                     ? o1.tsBlock.getTimeByIndex(o1.rowIndex)

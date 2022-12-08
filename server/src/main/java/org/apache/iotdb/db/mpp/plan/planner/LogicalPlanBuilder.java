@@ -566,7 +566,8 @@ public class LogicalPlanBuilder {
               new OrderByParameter(
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))));
+                      new SortItem(SortKey.DEVICE, deviceOrdering))),
+              outputColumnNames);
       for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
         String deviceName = entry.getKey();
         PlanNode subPlan = entry.getValue();

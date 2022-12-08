@@ -185,7 +185,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         new MergeSortNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getMergeOrderParameter(),
-            node.getDevices());
+            node.getOutputColumnNames());
     for (PlanNode deviceViewNode : deviceViewNodeList) {
       mergeSortNode.addChild(deviceViewNode);
     }
