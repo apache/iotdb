@@ -275,15 +275,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
 
     BatchStateMatchInfo(
-        MatchedStateSet matchedStateSet, UncheckedSourceStateQueue uncheckedSourceStateQueue) {
+        MatchedStateSet matchedStateSet,
+        UncheckedSourceStateQueue uncheckedSourceStateQueue,
+        boolean hasFinalState) {
       this.matchedStateSet = matchedStateSet;
-      for (int i = 0; i < matchedStateSet.end; i++) {
-        if (patternFA.getState(matchedStateSet.existingState[i]).isFinal()) {
-          hasFinalState = true;
-          break;
-        }
-      }
       this.uncheckedSourceStateQueue = uncheckedSourceStateQueue;
+      this.hasFinalState = hasFinalState;
     }
 
     @Override
@@ -527,6 +524,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
       IFAState firstMatchedState = null;
       MatchedStateSet matchedStateSet = null;
+      boolean hasFinalState = false;
 
       IFAState matchedState;
       while (iterator.hasNext()) {
@@ -546,8 +544,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             if (matchedStateSet == null) {
               matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
               matchedStateSet.add(firstMatchedState);
+              if (firstMatchedState.isFinal()) {
+                hasFinalState = true;
+              }
             }
             matchedStateSet.add(matchedState);
+            if (matchedState.isFinal()) {
+              hasFinalState = true;
+            }
           }
         }
         if (firstMatchedState == null) {
@@ -559,7 +563,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           stateMatchInfo = new PreciseStateMatchInfo(firstMatchedState);
         } else {
           stateMatchInfo =
-              new BatchStateMatchInfo(matchedStateSet, new UncheckedSourceStateQueue());
+              new BatchStateMatchInfo(
+                  matchedStateSet, new UncheckedSourceStateQueue(), hasFinalState);
           startIndexOfTraceback = ancestorStack.size();
         }
 
@@ -590,6 +595,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       UncheckedSourceStateQueue uncheckedSourceStateQueue;
       MatchedStateSet matchedStateSet;
       IStateMatchInfo stateMatchInfo;
+      boolean hasFinalState = false;
 
       while (iterator.hasNext()) {
 
@@ -603,7 +609,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         for (int i = 0; i < sourceStateSet.end; i++) {
           sourceState = patternFA.getState(sourceStateSet.existingState[i]);
-          checkAllTransitionOfOneSourceState(child, sourceState, matchedStateSet);
+          hasFinalState = checkAllTransitionOfOneSourceState(child, sourceState, matchedStateSet);
           uncheckedSourceStateQueue.remove(sourceState);
           if (!matchedStateSet.isEmpty()) {
             break;
@@ -613,7 +619,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (matchedStateSet.isEmpty()) {
           stateMatchInfo = traceback(child);
         } else {
-          stateMatchInfo = new BatchStateMatchInfo(matchedStateSet, uncheckedSourceStateQueue);
+          stateMatchInfo =
+              new BatchStateMatchInfo(matchedStateSet, uncheckedSourceStateQueue, hasFinalState);
         }
 
         if (stateMatchInfo != null) {
@@ -624,25 +631,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  private void checkAllTransitionOfOneSourceState(
+  private boolean checkAllTransitionOfOneSourceState(
       N child, IFAState sourceState, MatchedStateSet matchedStateSet) {
     Map<String, IFATransition> preciseMatchTransitionMap =
         patternFA.getPreciseMatchTransition(sourceState);
     List<IFATransition> batchMatchTransitionList = patternFA.getBatchMatchTransition(sourceState);
+
+    boolean hasFinalState = false;
 
     IFAState matchedState;
     if (!preciseMatchTransitionMap.isEmpty()) {
       matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
       if (matchedState != null) {
         matchedStateSet.add(matchedState);
+        if (matchedState.isFinal()) {
+          hasFinalState = true;
+        }
       }
     }
     for (IFATransition transition : batchMatchTransitionList) {
       matchedState = tryGetNextState(child, sourceState, transition);
       if (matchedState != null) {
         matchedStateSet.add(matchedState);
+        if (matchedState.isFinal()) {
+          hasFinalState = true;
+        }
       }
     }
+    return hasFinalState;
   }
 
   private IStateMatchInfo traceback(N node) {
