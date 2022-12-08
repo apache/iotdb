@@ -244,19 +244,7 @@ public class MTree implements Serializable {
           @Override
           protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
               throws MetadataException {
-            if (node.getSchemaTemplate() != null) {
-              try {
-                mLogWriter.setSchemaTemplate(
-                    new SetTemplatePlan(
-                        node.getSchemaTemplate().getName(),
-                        getCurrentPartialPath(node).getFullPath()));
-                if (node.isUseTemplate()) {
-                  mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
-                }
-              } catch (IOException e) {
-                logger.error(e.getMessage());
-              }
-            }
+            extractTemplateIfSet(node);
             return false;
           }
 
@@ -264,26 +252,14 @@ public class MTree implements Serializable {
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
               throws MetadataException {
             if (!node.isMeasurement()) {
-              if (node.getSchemaTemplate() != null) {
-                try {
-                  mLogWriter.setSchemaTemplate(
-                      new SetTemplatePlan(
-                          node.getSchemaTemplate().getName(),
-                          getCurrentPartialPath(node).getFullPath()));
-                  if (node.isUseTemplate()) {
-                    mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
-                  }
-                } catch (IOException e) {
-                  logger.error(e.getMessage());
-                }
-              }
+              extractTemplateIfSet(node);
               return false;
             }
             collectMeasurement(node.getAsMeasurementMNode());
             return true;
           }
 
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          private void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             try {
               IMeasurementSchema measurementSchema = node.getSchema();
               IEntityMNode entityMNode = getParentEntityMNodeIfExist();
@@ -342,6 +318,22 @@ public class MTree implements Serializable {
 
           private IEntityMNode getParentEntityMNodeIfExist() {
             return traverseContext.peek().getAsEntityMNode();
+          }
+
+          private void extractTemplateIfSet(IMNode node) {
+            if (node.getSchemaTemplate() != null) {
+              try {
+                mLogWriter.setSchemaTemplate(
+                    new SetTemplatePlan(
+                        node.getSchemaTemplate().getName(),
+                        getCurrentPartialPath(node).getFullPath()));
+                if (node.isUseTemplate()) {
+                  mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
+                }
+              } catch (IOException | IllegalPathException e) {
+                logger.error(e.getMessage());
+              }
+            }
           }
         };
     collector.setShouldTraverseTemplate(false);

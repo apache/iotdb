@@ -196,6 +196,22 @@ public class IoTDBExportSchemaIT {
   }
 
   @Test
+  public void testExportSchemaFail() throws Exception {
+    File file = new File(targetDir, MetadataConstant.METADATA_LOG);
+    if (!targetDir.exists()) {
+      targetDir.mkdirs();
+    }
+    file.createNewFile();
+
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(String.format("export schema '%s'", targetDir.getAbsolutePath()));
+      Assert.fail("Expect failure but success");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("already exist"));
+    }
+  }
+
+  @Test
   public void testExportSchemaAndLoadToEmptyIoTDB() throws Exception {
     saveExpectedResult();
 

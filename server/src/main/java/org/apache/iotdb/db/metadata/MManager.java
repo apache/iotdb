@@ -103,6 +103,8 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -110,9 +112,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1340,20 +1339,29 @@ public class MManager {
   }
 
   public void exportSchema(File dir) throws IOException, MetadataException {
+    File tagTargetFile = new File(dir, MetadataConstant.TAG_LOG);
+    File mlogTargetFile = new File(dir, MetadataConstant.METADATA_LOG);
     if (!dir.exists()) {
       dir.mkdirs();
     } else {
       if (!dir.isDirectory()) {
         throw new IOException(String.format("%s is not a directory.", dir.getAbsolutePath()));
       }
+      if (mlogTargetFile.exists() || tagTargetFile.exists()) {
+        List<String> existedPath = new ArrayList<>();
+        if (mlogTargetFile.exists()) {
+          existedPath.add(mlogTargetFile.getAbsolutePath());
+          if (tagTargetFile.exists()) {
+            existedPath.add(tagTargetFile.getAbsolutePath());
+          }
+          throw new IOException(
+              String.format(
+                  "File %s already exist%s.",
+                  StringUtils.join(existedPath.toArray(), ","),
+                  existedPath.size() == 1 ? "s" : ""));
+        }
+      }
     }
-    Files.deleteIfExists(
-        FileSystems.getDefault()
-            .getPath(
-                new File(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG).getAbsolutePath()));
-    Files.deleteIfExists(
-        FileSystems.getDefault()
-            .getPath(new File(dir.getAbsolutePath(), MetadataConstant.TAG_LOG).getAbsolutePath()));
 
     try (MLogWriter mLogWriter =
         new MLogWriter(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG)) {
@@ -1406,11 +1414,7 @@ public class MManager {
       // export timeseries
       mtree.exportSchema(mLogWriter);
       // export tag
-      File tagTargetFile = new File(dir, MetadataConstant.TAG_LOG);
-      File tagSourceFile = new File(config.getSchemaDir(), MetadataConstant.TAG_LOG);
-      Path sourcePath = FileSystems.getDefault().getPath(tagSourceFile.getAbsolutePath());
-      Path targetPath = FileSystems.getDefault().getPath(tagTargetFile.getAbsolutePath());
-      Files.createLink(targetPath, sourcePath);
+      FileUtils.copyFile(new File(config.getSchemaDir(), MetadataConstant.TAG_LOG), tagTargetFile);
     }
   }
 
