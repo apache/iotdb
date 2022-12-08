@@ -255,6 +255,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     UncheckedSourceStateQueue getUncheckedSourceStateQueue();
 
+    void setHasFinalState();
+
     void addUncheckedSourceState(int start, MatchedStateSet stateSet);
 
     void removeUncheckedSourceState(IFAState state);
@@ -319,6 +321,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
 
     @Override
+    public void setHasFinalState() {
+      hasFinalState = true;
+    }
+
+    @Override
     public void addUncheckedSourceState(int start, MatchedStateSet stateSet) {
       if (uncheckedSourceStateQueue.isEmpty()) {
         uncheckedSourceStateQueue.addAll(start, stateSet);
@@ -373,6 +380,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     @Override
     public UncheckedSourceStateQueue getUncheckedSourceStateQueue() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setHasFinalState() {
       throw new UnsupportedOperationException();
     }
 
@@ -718,8 +730,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         currentMatchedStateSet = currentStateMatchInfo.getMatchedStateSet();
         startOfNewMatchedState = currentMatchedStateSet.end;
-        checkAllTransitionOfOneSourceState(
-            currentNode, uncheckedSourceState, currentMatchedStateSet);
+        if (checkAllTransitionOfOneSourceState(
+            currentNode, uncheckedSourceState, currentMatchedStateSet)) {
+          currentStateMatchInfo.setHasFinalState();
+        }
         currentStateMatchInfo.removeUncheckedSourceState(uncheckedSourceState);
 
         if (startOfNewMatchedState == currentMatchedStateSet.end) {
