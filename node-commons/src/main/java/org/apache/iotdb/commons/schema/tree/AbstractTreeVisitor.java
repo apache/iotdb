@@ -259,7 +259,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     MatchedStateSet getMatchedStateSet();
 
-    UncheckedSourceStateSet getUncheckedSourceStateSet();
+    UncheckedSourceStateQueue getUncheckedSourceStateQueue();
 
     void addUncheckedSourceState(int start, MatchedStateSet stateSet);
 
@@ -271,17 +271,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     private final MatchedStateSet matchedStateSet;
 
     /** SourceState, matched by parent */
-    private final UncheckedSourceStateSet uncheckedSourceStateSet;
+    private final UncheckedSourceStateQueue uncheckedSourceStateQueue;
 
     private boolean hasFinalState = false;
 
     BatchStateMatchInfo() {
       matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
-      uncheckedSourceStateSet = new UncheckedSourceStateSet();
+      uncheckedSourceStateQueue = new UncheckedSourceStateQueue();
     }
 
     BatchStateMatchInfo(
-        MatchedStateSet matchedStateSet, UncheckedSourceStateSet uncheckedSourceStateSet) {
+        MatchedStateSet matchedStateSet, UncheckedSourceStateQueue uncheckedSourceStateQueue) {
       this.matchedStateSet = matchedStateSet;
       for (int i = 0; i < matchedStateSet.end; i++) {
         if (patternFA.getState(matchedStateSet.existingState[i]).isFinal()) {
@@ -289,7 +289,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           break;
         }
       }
-      this.uncheckedSourceStateSet = uncheckedSourceStateSet;
+      this.uncheckedSourceStateQueue = uncheckedSourceStateQueue;
     }
 
     @Override
@@ -323,14 +323,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
 
     @Override
-    public UncheckedSourceStateSet getUncheckedSourceStateSet() {
-      return uncheckedSourceStateSet;
+    public UncheckedSourceStateQueue getUncheckedSourceStateQueue() {
+      return uncheckedSourceStateQueue;
     }
 
     @Override
     public void addUncheckedSourceState(int start, MatchedStateSet stateSet) {
-      if (uncheckedSourceStateSet.isEmpty()) {
-        uncheckedSourceStateSet.addAll(start, stateSet);
+      if (uncheckedSourceStateQueue.isEmpty()) {
+        uncheckedSourceStateQueue.addAll(start, stateSet);
       } else {
         throw new IllegalStateException();
       }
@@ -338,7 +338,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     @Override
     public void removeUncheckedSourceState(IFAState state) {
-      uncheckedSourceStateSet.remove(state);
+      uncheckedSourceStateQueue.remove(state);
     }
   }
 
@@ -381,7 +381,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
 
     @Override
-    public UncheckedSourceStateSet getUncheckedSourceStateSet() {
+    public UncheckedSourceStateQueue getUncheckedSourceStateQueue() {
       throw new UnsupportedOperationException();
     }
 
@@ -564,7 +564,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (matchedStateSet == null) {
           stateMatchInfo = new PreciseStateMatchInfo(firstMatchedState);
         } else {
-          stateMatchInfo = new BatchStateMatchInfo(matchedStateSet, new UncheckedSourceStateSet());
+          stateMatchInfo =
+              new BatchStateMatchInfo(matchedStateSet, new UncheckedSourceStateQueue());
           startIndexOfTraceback = ancestorStack.size();
         }
 
@@ -592,7 +593,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       MatchedStateSet sourceStateSet;
       IFAState sourceState;
 
-      UncheckedSourceStateSet uncheckedSourceStateSet;
+      UncheckedSourceStateQueue uncheckedSourceStateQueue;
       MatchedStateSet matchedStateSet;
       IStateMatchInfo stateMatchInfo;
 
@@ -600,8 +601,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         sourceStateSet = sourceStateMatchInfo.getMatchedStateSet();
 
-        uncheckedSourceStateSet =
-            new UncheckedSourceStateSet(sourceStateMatchInfo.getMatchedStateSet());
+        uncheckedSourceStateQueue =
+            new UncheckedSourceStateQueue(sourceStateMatchInfo.getMatchedStateSet());
         matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
 
         child = iterator.next();
@@ -609,7 +610,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         for (int i = 0; i < sourceStateSet.end; i++) {
           sourceState = patternFA.getState(sourceStateSet.existingState[i]);
           checkAllTransitionOfOneSourceState(child, sourceState, matchedStateSet);
-          uncheckedSourceStateSet.remove(sourceState);
+          uncheckedSourceStateQueue.remove(sourceState);
           if (!matchedStateSet.isEmpty()) {
             break;
           }
@@ -618,7 +619,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (matchedStateSet.isEmpty()) {
           stateMatchInfo = traceback(child);
         } else {
-          stateMatchInfo = new BatchStateMatchInfo(matchedStateSet, uncheckedSourceStateSet);
+          stateMatchInfo = new BatchStateMatchInfo(matchedStateSet, uncheckedSourceStateQueue);
         }
 
         if (stateMatchInfo != null) {
@@ -653,7 +654,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     IStateMatchInfo result = new BatchStateMatchInfo();
 
     Deque<Integer> uncheckedSourceStateIteratorStack;
-    int uncheckedSourceStateSetIndex;
+    int uncheckedSourceStateQueueIndex;
     IFAState uncheckedSourceState;
 
     N currentNode;
@@ -664,14 +665,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
 
       // there's no state not further searched
-      if (currentStateMatchInfo.getUncheckedSourceStateSet().isEmpty()) {
+      if (currentStateMatchInfo.getUncheckedSourceStateQueue().isEmpty()) {
         continue;
       }
 
       // there's some state not further searched, select them
       uncheckedSourceStateIteratorStack = new ArrayDeque<>(ancestorStack.size() - i + 1);
       uncheckedSourceStateIteratorStack.push(
-          currentStateMatchInfo.getUncheckedSourceStateSet().start);
+          currentStateMatchInfo.getUncheckedSourceStateQueue().start);
 
       // further search the selected state from current ancestor
       int index = i;
@@ -691,18 +692,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           childStateMatchInfo = ancestorStack.get(index + 1).stateMatchInfo;
         }
 
-        uncheckedSourceStateSetIndex = uncheckedSourceStateIteratorStack.pop();
-        if (uncheckedSourceStateSetIndex
-            == currentStateMatchInfo.getUncheckedSourceStateSet().existingState.length) {
+        uncheckedSourceStateQueueIndex = uncheckedSourceStateIteratorStack.pop();
+        if (uncheckedSourceStateQueueIndex
+            == currentStateMatchInfo.getUncheckedSourceStateQueue().existingState.length) {
           index--;
           continue;
         }
 
         uncheckedSourceState =
             patternFA.getState(
-                currentStateMatchInfo.getUncheckedSourceStateSet()
-                    .existingState[uncheckedSourceStateSetIndex++]);
-        uncheckedSourceStateIteratorStack.push(uncheckedSourceStateSetIndex);
+                currentStateMatchInfo.getUncheckedSourceStateQueue()
+                    .existingState[uncheckedSourceStateQueueIndex++]);
+        uncheckedSourceStateIteratorStack.push(uncheckedSourceStateQueueIndex);
 
         currentMatchedStateSet = currentStateMatchInfo.getMatchedStateSet();
         startOfNewMatchedState = currentMatchedStateSet.end;
@@ -721,7 +722,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           childStateMatchInfo.addUncheckedSourceState(
               startOfNewMatchedState, currentMatchedStateSet);
           uncheckedSourceStateIteratorStack.push(
-              childStateMatchInfo.getUncheckedSourceStateSet().start);
+              childStateMatchInfo.getUncheckedSourceStateQueue().start);
           index++;
         }
       }
@@ -777,19 +778,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  private static class UncheckedSourceStateSet {
+  private static class UncheckedSourceStateQueue {
     private static final int INITIAL_SIZE = 8;
 
     private int[] existingState;
 
     private int start;
 
-    public UncheckedSourceStateSet() {
+    public UncheckedSourceStateQueue() {
       existingState = new int[INITIAL_SIZE];
       start = INITIAL_SIZE;
     }
 
-    public UncheckedSourceStateSet(MatchedStateSet matchedStateSet) {
+    public UncheckedSourceStateQueue(MatchedStateSet matchedStateSet) {
       existingState = new int[matchedStateSet.existingState.length];
       start = existingState.length - matchedStateSet.end;
       System.arraycopy(matchedStateSet.existingState, 0, existingState, start, matchedStateSet.end);
