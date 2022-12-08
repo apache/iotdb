@@ -83,10 +83,10 @@ public class FragmentInstanceSerdeTest {
 
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
-    // Because the RegionReplicaSet won't be considered in serialization, we need to set it
+    assertNull(deserializeFragmentInstance.getExecutorType());
+    // Because the ExecutorType won't be considered in serialization, we need to set it
     // from original object before comparison.
-    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
+    deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 
@@ -117,8 +117,8 @@ public class FragmentInstanceSerdeTest {
 
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
-    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
+    assertNull(deserializeFragmentInstance.getExecutorType());
+    deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 
