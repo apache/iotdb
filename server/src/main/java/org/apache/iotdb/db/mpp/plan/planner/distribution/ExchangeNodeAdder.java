@@ -255,33 +255,34 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       mergeSortNodeList.add(mergeSortNode);
     }
 
-    return groupPlanNodeByMergeSortNode(mergeSortNodeList,node.getMergeOrderParameter(),context);
+    return groupPlanNodeByMergeSortNode(mergeSortNodeList, node.getMergeOrderParameter(), context);
   }
 
-  private PlanNode groupPlanNodeByMergeSortNode(List<PlanNode> mergeSortNodeList, OrderByParameter orderByParameter,
-                    NodeGroupContext context){
+  private PlanNode groupPlanNodeByMergeSortNode(
+      List<PlanNode> mergeSortNodeList,
+      OrderByParameter orderByParameter,
+      NodeGroupContext context) {
     if (mergeSortNodeList.size() == 1) {
       return mergeSortNodeList.get(0);
     }
 
     MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                    context.queryContext.getQueryId().genPlanNodeId(), orderByParameter);
+        new MergeSortNode(context.queryContext.getQueryId().genPlanNodeId(), orderByParameter);
 
     // Each child has different TRegionReplicaSet, so we can select any one from
     // its child
     mergeSortNode.addChild(mergeSortNodeList.get(0));
     context.putNodeDistribution(
-            mergeSortNode.getPlanNodeId(),
-            new NodeDistribution(
-                    NodeDistributionType.SAME_WITH_SOME_CHILD,
-                    context.getNodeDistribution(mergeSortNodeList.get(0).getPlanNodeId()).region));
+        mergeSortNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_SOME_CHILD,
+            context.getNodeDistribution(mergeSortNodeList.get(0).getPlanNodeId()).region));
 
-    //add ExchangeNode for other child
+    // add ExchangeNode for other child
     for (int i = 1; i < mergeSortNodeList.size(); i++) {
       PlanNode child = mergeSortNodeList.get(i);
       ExchangeNode exchangeNode =
-              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
       exchangeNode.setChild(child);
       exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
       mergeSortNode.addChild(exchangeNode);
@@ -289,7 +290,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     return mergeSortNode;
   }
-
 
   @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, NodeGroupContext context) {
@@ -379,7 +379,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       deviceViewNodeList.add(deviceViewNode);
     }
 
-    return groupPlanNodeByMergeSortNode(deviceViewNodeList,node.getMergeOrderParameter(),context);
+    return groupPlanNodeByMergeSortNode(deviceViewNodeList, node.getMergeOrderParameter(), context);
   }
 
   private static class DeviceViewGroup {
