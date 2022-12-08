@@ -21,12 +21,12 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -48,6 +48,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -56,6 +57,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
 
@@ -83,6 +85,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
+      processPid();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -126,6 +129,7 @@ public class ConfigNode implements ConfigNodeMBean {
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
+
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
         return;
@@ -173,6 +177,13 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
+  void processPid() {
+    String pidFile = System.getProperty(ConfigNodeConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
+  }
+
   private void initConfigManager() {
     try {
       configManager = new ConfigManager();
@@ -194,9 +205,6 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
-    // Setup UDFService
-    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
-
     registerManager.register(MetricService.getInstance());
     // bind predefined metric sets
     MetricService.getInstance().addMetricSet(new JvmMetrics());
@@ -217,16 +225,17 @@ public class ConfigNode implements ConfigNodeMBean {
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
             CONF.getDataRegionConsensusProtocolClass(),
             CONF.getSchemaRegionConsensusProtocolClass(),
-            CONF.getSeriesPartitionSlotNum(),
+            CONF.getSeriesSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            COMMON_CONF.getDefaultTTLInMs(),
             CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
             CONF.getDataReplicationFactor(),
             CONF.getDataRegionPerProcessor(),
             CONF.getReadConsistencyLevel(),
-            CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+            COMMON_CONF.getDiskSpaceWarningThreshold(),
+            CONF.getLeastDataRegionGroupNum());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -250,16 +259,25 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (resp == null) {
+          LOGGER.error("The result of register ConfigNode is empty!");
+          throw new StartupException("The result of register ConfigNode is empty!");
+        }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
-      } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+      } else if (status.getCode() == TSStatusCode.CONFIGURATION_ERROR.getStatusCode()) {
         LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
+      } else if (status.getCode() == TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new StartupException(
+            "The target ConfigNode is not started successfully, "
+                + "please check the cn_target_config_node_list config!");
       }
 
       try {

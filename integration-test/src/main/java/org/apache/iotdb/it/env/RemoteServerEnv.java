@@ -50,8 +50,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeClass() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -70,8 +70,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -176,22 +176,32 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void startConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownConfigNode(int index) {
-    getConfigNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper getDataNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void startDataNode(int index) {
-    getDataNodeWrapperList().get(index).start();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void shutdownDataNode(int index) {
-    getDataNodeWrapperList().get(index).stop();
+    throw new UnsupportedOperationException();
   }
 
   @Override

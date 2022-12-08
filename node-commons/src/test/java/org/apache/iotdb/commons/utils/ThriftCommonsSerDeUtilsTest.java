@@ -108,7 +108,7 @@ public class ThriftCommonsSerDeUtilsTest {
   @Test
   public void readWriteTConsensusGroupIdTest() throws IOException {
     TConsensusGroupId consensusGroupId0 =
-        new TConsensusGroupId(TConsensusGroupType.PartitionRegion, 0);
+        new TConsensusGroupId(TConsensusGroupType.ConfigNodeRegion, 0);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId0, outputStream);

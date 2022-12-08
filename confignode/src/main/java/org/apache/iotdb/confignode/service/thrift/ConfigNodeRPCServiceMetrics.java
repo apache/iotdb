@@ -37,9 +37,9 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.THRIFT_ACTIVE_THREADS.toString(),
-        MetricLevel.CORE,
+        MetricLevel.IMPORTANT,
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),
@@ -49,7 +49,7 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
         ThreadName.CONFIGNODE_RPC_SERVICE.getName());

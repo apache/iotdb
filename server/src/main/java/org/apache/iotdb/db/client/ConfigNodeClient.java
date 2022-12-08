@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -81,12 +81,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -132,6 +134,8 @@ public class ConfigNodeClient
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check server status";
 
+  private static final int retryIntervalMs = 1000;
+
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
   private IConfigNodeRPCService.Iface client;
@@ -148,9 +152,9 @@ public class ConfigNodeClient
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+  ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
 
-  PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
+  ConfigNodeRegionId configNodeRegionId = ConfigNodeInfo.configNodeRegionId;
 
   TProtocolFactory protocolFactory;
 
@@ -168,7 +172,7 @@ public class ConfigNodeClient
   public ConfigNodeClient(
       TProtocolFactory protocolFactory,
       long connectionTimeout,
-      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -179,7 +183,13 @@ public class ConfigNodeClient
   }
 
   public void init() throws TException {
-    reconnect();
+    try {
+      tryToConnect();
+    } catch (TException e) {
+      // can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect();
+    }
   }
 
   public void connect(TEndPoint endpoint) throws TException {
@@ -199,7 +209,16 @@ public class ConfigNodeClient
     client = new IConfigNodeRPCService.Client(protocolFactory.getProtocol(transport));
   }
 
-  private void reconnect() throws TException {
+  private void waitAndReconnect() throws TException {
+    try {
+      // wait to start the next try
+      Thread.sleep(retryIntervalMs);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new TException(
+          "Unexpected interruption when waiting to retry to connect to ConfigNode");
+    }
+
     try {
       tryToConnect();
     } catch (TException e) {
@@ -251,7 +270,7 @@ public class ConfigNodeClient
   @Override
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(partitionRegionId, this);
+      clientManager.returnClient(configNodeRegionId, this);
     } else {
       invalidate();
     }
@@ -264,11 +283,11 @@ public class ConfigNodeClient
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.partitionRegionId);
+    clientManager.clear(ConfigNodeInfo.configNodeRegionId);
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
             new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
@@ -308,7 +327,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -329,7 +348,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -345,7 +364,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -366,7 +385,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -387,7 +406,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -408,7 +427,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -429,7 +448,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -450,7 +469,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -471,7 +490,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -493,7 +512,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -516,7 +535,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -537,7 +556,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -558,7 +577,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -579,7 +598,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -600,7 +619,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -622,7 +641,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -644,7 +663,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -666,7 +685,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -687,7 +706,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -709,7 +728,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -730,7 +749,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -751,7 +770,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -772,7 +791,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -793,7 +812,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -844,7 +863,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -865,7 +884,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -886,7 +905,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -907,7 +926,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -928,9 +947,14 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
   }
 
   @Override
@@ -949,7 +973,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -971,7 +995,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -992,7 +1016,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1015,7 +1039,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1036,7 +1060,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1062,7 +1086,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1083,7 +1107,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1099,7 +1123,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1115,7 +1139,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1136,7 +1160,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1157,7 +1181,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1179,7 +1203,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1199,7 +1223,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1220,7 +1244,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1241,7 +1265,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1262,7 +1286,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1283,7 +1307,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1304,7 +1328,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1325,7 +1349,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1346,7 +1370,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1367,7 +1391,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1383,7 +1407,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1404,7 +1428,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1425,7 +1449,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1446,7 +1470,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1467,7 +1491,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1488,7 +1512,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1509,7 +1533,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1530,7 +1554,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1551,7 +1575,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1572,7 +1596,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1593,7 +1617,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1609,7 +1633,23 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.recordPipeMessage(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1630,7 +1670,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1651,7 +1691,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1672,7 +1712,7 @@ public class ConfigNodeClient
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1688,7 +1728,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1704,7 +1744,7 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -1720,27 +1760,27 @@ public class ConfigNodeClient
       } catch (TException e) {
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
+  public static class Factory extends BaseClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
 
     public Factory(
-        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
+        ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+    public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
         throws Exception {
       Constructor<ConfigNodeClient> constructor =
           ConfigNodeClient.class.getConstructor(
@@ -1756,7 +1796,7 @@ public class ConfigNodeClient
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }

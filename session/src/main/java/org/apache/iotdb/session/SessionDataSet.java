@@ -51,7 +51,8 @@ public class SessionDataSet implements AutoCloseable {
       IClientRPCService.Iface client,
       long sessionId,
       List<ByteBuffer> queryResult,
-      boolean ignoreTimeStamp) {
+      boolean ignoreTimeStamp,
+      boolean moreData) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -59,7 +60,7 @@ public class SessionDataSet implements AutoCloseable {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            true,
+            moreData,
             queryId,
             statementId,
             client,
@@ -80,7 +81,8 @@ public class SessionDataSet implements AutoCloseable {
       long sessionId,
       List<ByteBuffer> queryResult,
       boolean ignoreTimeStamp,
-      long timeout) {
+      long timeout,
+      boolean moreData) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -88,7 +90,7 @@ public class SessionDataSet implements AutoCloseable {
             columnTypeList,
             columnNameIndex,
             ignoreTimeStamp,
-            true,
+            moreData,
             queryId,
             statementId,
             client,
@@ -171,7 +173,7 @@ public class SessionDataSet implements AutoCloseable {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.getTimestamp().getTime(), outFields);
+    return new RowRecord(ioTDBRpcDataSet.time, outFields);
   }
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
@@ -325,7 +326,7 @@ public class OperatorMemoryTest {
   public void lastQueryOperatorTest() {
     TsBlockBuilder builder = Mockito.mock(TsBlockBuilder.class);
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(1024L);
-    List<UpdateLastCacheOperator> children = new ArrayList<>(4);
+    List<AbstractUpdateLastCacheOperator> children = new ArrayList<>(4);
     long expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
@@ -342,12 +343,12 @@ public class OperatorMemoryTest {
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 2 * 1024 * 1024L,
         lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, lastQueryOperator.calculateMaxReturnSize());
-    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
 
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(4 * 1024 * 1024L);
     assertEquals(4 * 1024 * 1024L + 2 * 1024 * 1024L, lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(4 * 1024 * 1024L, lastQueryOperator.calculateMaxReturnSize());
-    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -355,7 +356,7 @@ public class OperatorMemoryTest {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
-    List<UpdateLastCacheOperator> children = new ArrayList<>(4);
+    List<AbstractUpdateLastCacheOperator> children = new ArrayList<>(4);
 
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
@@ -492,7 +493,7 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     UpdateLastCacheOperator updateLastCacheOperator =
-        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, true);
+        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, false);
 
     assertEquals(2048, updateLastCacheOperator.calculateMaxPeekMemory());
     assertEquals(1024, updateLastCacheOperator.calculateMaxReturnSize());
@@ -583,13 +584,16 @@ public class OperatorMemoryTest {
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
       Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(1024L);
-      expectedMaxPeekMemory += 1024L;
       childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
-      expectedRetainedSizeAfterCallingNext += 1024L;
+      expectedRetainedSizeAfterCallingNext =
+          Math.max(
+              expectedRetainedSizeAfterCallingNext, child.calculateRetainedSizeAfterCallingNext());
       children.add(child);
     }
 
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory)
+            + expectedRetainedSizeAfterCallingNext;
 
     DeviceViewOperator deviceViewOperator =
         new DeviceViewOperator(

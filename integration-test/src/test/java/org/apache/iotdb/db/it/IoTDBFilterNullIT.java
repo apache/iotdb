@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,12 +38,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category(ClusterIT.class) // TODO After old StandAlone remove
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBFilterNullIT {
 
   private static final String[] createSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.testNullFilter",
+        "CREATE DATABASE root.testNullFilter",
         "CREATE TIMESERIES root.testNullFilter.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.testNullFilter.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.testNullFilter.d1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN"
@@ -63,10 +65,9 @@ public class IoTDBFilterNullIT {
       }
 
       for (String insertSql : insertSqls) {
-        // TODO statement.addBatch(insertSql);
-        statement.execute(insertSql);
+        statement.addBatch(insertSql);
       }
-      // TODO statement.executeBatch();
+      statement.executeBatch();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -94,7 +95,7 @@ public class IoTDBFilterNullIT {
           statementIsNull.executeQuery("select * from root.testNullFilter.d1 where s1 is null")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString("Time")
+              resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
                   + resultSet.getString("root.testNullFilter.d1.s1")
                   + ","
@@ -113,7 +114,7 @@ public class IoTDBFilterNullIT {
                 "select * from root.testNullFilter.d1 where s1 is not null")) {
           while (resultSet.next()) {
             String ans =
-                resultSet.getString("Time")
+                resultSet.getString(ColumnHeaderConstant.TIME)
                     + ","
                     + resultSet.getString("root.testNullFilter.d1.s1")
                     + ","

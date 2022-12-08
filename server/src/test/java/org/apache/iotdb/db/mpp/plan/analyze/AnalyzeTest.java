@@ -60,7 +60,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -212,7 +212,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -277,7 +277,7 @@ public class AnalyzeTest {
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -314,7 +314,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new AdditionExpression(
                   new FunctionExpression(
                       "count",
@@ -450,7 +450,7 @@ public class AnalyzeTest {
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
-                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
+                  new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new FunctionExpression(
                   "sum",
                   new LinkedHashMap<>(),
@@ -768,7 +768,7 @@ public class AnalyzeTest {
       return analyzer.analyze(statement);
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      fail(sql + ", " + e.getMessage());
     }
     fail();
     return null;

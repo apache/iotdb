@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.trigger;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -43,8 +44,7 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-// todo: add LocalStandalone when trigger is supported in Standalone version
-@Category(ClusterIT.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTriggerExecutionIT {
 
   private static final String TRIGGER_COUNTER_PREFIX =
@@ -86,7 +86,7 @@ public class IoTDBTriggerExecutionIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.test");
+      statement.execute("CREATE DATABASE root.test");
       statement.execute(
           "CREATE TIMESERIES root.test.stateless.a with datatype=INT32,encoding=PLAIN");
       statement.execute(

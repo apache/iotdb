@@ -71,7 +71,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=FLOAT,encoding=PLAIN");
@@ -1045,7 +1045,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testStringFunctions() {
     String[] createSQLs =
         new String[] {
-          "SET STORAGE GROUP TO root.testStringFunctions",
+          "CREATE DATABASE root.testStringFunctions",
           "CREATE TIMESERIES root.testStringFunctions.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testStringFunctions.d1.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         };
@@ -1060,14 +1060,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
 
       for (String createSQL : createSQLs) {
-        statement.execute(createSQL);
+        statement.addBatch(createSQL);
       }
 
       for (String insertSQL : insertSQLs) {
-        // TODO statement.addBatch(insertSQL);
-        statement.execute(insertSQL);
+        statement.addBatch(insertSQL);
       }
-      // TODO statement.executeBatch();
+      statement.executeBatch();
 
       testStrLength(statement);
       testStrLocate(statement);
@@ -1197,7 +1196,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
     // create time series with master data
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.testMasterRepair");
+      statement.execute("CREATE DATABASE root.testMasterRepair");
       statement.execute(
           "CREATE TIMESERIES root.testMasterRepair.d1.s1 with datatype=FLOAT,encoding=PLAIN");
       statement.execute(
@@ -1366,7 +1365,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testChangePoints() {
     String[] createSQLs =
         new String[] {
-          "SET STORAGE GROUP TO root.testChangePoints",
+          "CREATE DATABASE root.testChangePoints",
           "CREATE TIMESERIES root.testChangePoints.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testChangePoints.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testChangePoints.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",

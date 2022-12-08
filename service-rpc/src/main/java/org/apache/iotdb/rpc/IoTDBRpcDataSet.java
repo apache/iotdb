@@ -53,7 +53,6 @@ public class IoTDBRpcDataSet {
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
   public final long timeout;
-  public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
 
@@ -63,8 +62,10 @@ public class IoTDBRpcDataSet {
   public long sessionId;
   public long queryId;
   public long statementId;
+  public long time;
   public boolean ignoreTimeStamp;
-  public boolean isRpcFetchResult;
+  // indicates that there is still more data in server side and we can call fetchResult to get more
+  public boolean moreData;
 
   public static final TsBlockSerde serde = new TsBlockSerde();
   public List<ByteBuffer> queryResult;
@@ -81,7 +82,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      boolean isRpcFetchResult,
+      boolean moreData,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -97,7 +98,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
-    this.isRpcFetchResult = isRpcFetchResult;
+    this.moreData = moreData;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -153,7 +154,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public IoTDBRpcDataSet(
@@ -162,7 +162,7 @@ public class IoTDBRpcDataSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      boolean isRpcFetchResult,
+      boolean moreData,
       long queryId,
       long statementId,
       IClientRPCService.Iface client,
@@ -180,7 +180,7 @@ public class IoTDBRpcDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
-    this.isRpcFetchResult = isRpcFetchResult;
+    this.moreData = moreData;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -245,7 +245,6 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
-    this.emptyResultSet = this.queryResultSize == 0;
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -280,16 +279,8 @@ public class IoTDBRpcDataSet {
       constructOneRow();
       return true;
     }
-    if (emptyResultSet) {
-      try {
-        close();
-        return false;
-      } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
-      }
-    }
-    if (isRpcFetchResult && fetchResults() && hasCachedByteBuffer()) {
+
+    if (moreData && fetchResults() && hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
@@ -309,10 +300,9 @@ public class IoTDBRpcDataSet {
     req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResultsV2(req);
-
       RpcUtils.verifySuccess(resp.getStatus());
+      moreData = resp.moreData;
       if (!resp.hasResultSet) {
-        emptyResultSet = true;
         close();
       } else {
         queryResult = resp.getQueryResult();
@@ -323,7 +313,6 @@ public class IoTDBRpcDataSet {
         }
         this.tsBlockSize = 0;
         this.tsBlockIndex = -1;
-        this.emptyResultSet = this.queryResultSize == 0;
       }
       return resp.hasResultSet;
     } catch (TException e) {
@@ -343,6 +332,7 @@ public class IoTDBRpcDataSet {
   public void constructOneRow() {
     tsBlockIndex++;
     hasCachedRecord = true;
+    time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
   }
 
   public void constructOneTsBlock() {
@@ -509,10 +499,6 @@ public class IoTDBRpcDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
-  public Timestamp getTimestamp() throws StatementExecutionException {
-    return new Timestamp(curTsBlock.getTimeByIndex(tsBlockIndex));
-  }
-
   public int findColumn(String columnName) {
     return columnOrdinalMap.get(columnName);
   }
@@ -561,10 +547,6 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    return getObject(index, columnTypeDeduplicatedList.get(index));
-  }
-
-  public Object getObject(int index, TSDataType tsDataType) {
     return curTsBlock.getColumn(index).getObject(tsBlockIndex);
   }
 

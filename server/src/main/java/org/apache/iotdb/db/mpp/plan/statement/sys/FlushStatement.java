@@ -31,7 +31,7 @@ import java.util.List;
 
 public class FlushStatement extends Statement implements IConfigStatement {
 
-  /** list of storage group */
+  /** list of database */
   private List<PartialPath> storageGroups;
 
   // being null indicates flushing both seq and unseq data

@@ -377,7 +377,8 @@ public class SessionConnection {
         sessionId,
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
-        timeout);
+        timeout,
+        execResp.moreData);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -439,7 +440,8 @@ public class SessionConnection {
         client,
         sessionId,
         execResp.queryResult,
-        execResp.isIgnoreTimeStamp());
+        execResp.isIgnoreTimeStamp(),
+        execResp.moreData);
   }
 
   protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)
@@ -478,7 +480,8 @@ public class SessionConnection {
         client,
         sessionId,
         tsExecuteStatementResp.queryResult,
-        tsExecuteStatementResp.isIgnoreTimeStamp());
+        tsExecuteStatementResp.isIgnoreTimeStamp(),
+        tsExecuteStatementResp.moreData);
   }
 
   protected void insertRecord(TSInsertRecordReq request)

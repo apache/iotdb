@@ -227,6 +227,7 @@ public class TimeChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = new TimeStatistics();
   }
@@ -263,6 +264,10 @@ public class TimeChunkWriter {
 
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
+  }
+
+  public long getPointNum() {
+    return statistics.getCount() + pageWriter.getPointNumber();
   }
 
   /**
@@ -312,5 +317,9 @@ public class TimeChunkWriter {
 
   public TimePageWriter getPageWriter() {
     return pageWriter;
+  }
+
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
   }
 }

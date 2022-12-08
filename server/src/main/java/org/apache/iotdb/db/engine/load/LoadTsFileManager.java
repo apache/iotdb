@@ -28,14 +28,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -44,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -235,18 +233,7 @@ public class LoadTsFileManager {
     }
 
     private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {
-      TsFileResource tsFileResource = new TsFileResource(writer.getFile());
-      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-          writer.getDeviceTimeseriesMetadataMap();
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          deviceTimeseriesMetadataMap.entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-          tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
-          tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
-        }
-      }
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
     }
@@ -303,7 +290,7 @@ public class LoadTsFileManager {
     public String toString() {
       return String.join(
           IoTDBConstant.FILE_NAME_SEPARATOR,
-          dataRegion.getStorageGroupName(),
+          dataRegion.getDatabaseName(),
           dataRegion.getDataRegionId(),
           Long.toString(timePartitionSlot.getStartTime()));
     }

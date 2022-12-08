@@ -24,16 +24,24 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.CompositeReporter;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.SessionIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,22 +55,23 @@ import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
-
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
-  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  protected final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
-  /** Is metric service enabled */
-  protected boolean isEnableMetric = metricConfig.getEnableMetric();
+  /** The internal reporter of metric service */
+  protected InternalIoTDBReporter internalReporter = new MemoryInternalIoTDBReporter();
+
   /** The list of metric sets */
   protected List<IMetricSet> metricSets = new ArrayList<>();
 
   public AbstractMetricService() {}
 
-  /** start metric service */
+  /** Start metric service */
   public void startService() {
     startCoreModule();
     for (IMetricSet metricSet : metricSets) {
@@ -70,27 +79,16 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** restart metric service */
-  public void restartService() {
-    logger.info("Restart Core Module");
-    stopCoreModule();
-    startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
-      metricSet.unbindFrom(this);
-      metricSet.bindTo(this);
-    }
-  }
-
-  /** stop metric service */
+  /** Stop metric service */
   public void stopService() {
     for (IMetricSet metricSet : metricSets) {
       metricSet.unbindFrom(this);
     }
     stopCoreModule();
   }
-  /** start metric core module */
-  private void startCoreModule() {
+
+  /** Start metric core module */
+  protected void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
     loadManager();
@@ -100,8 +98,8 @@ public abstract class AbstractMetricService {
     startAllReporter();
   }
 
-  /** stop metric core module */
-  private void stopCoreModule() {
+  /** Stop metric core module */
+  protected void stopCoreModule() {
     stopAllReporter();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
@@ -110,7 +108,7 @@ public abstract class AbstractMetricService {
 
   /** Load metric manager according to configuration */
   private void loadManager() {
-    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
+    logger.info("Load metricManager, type: {}", metricConfig.getMetricFrameType());
     ServiceLoader<AbstractMetricManager> metricManagers =
         ServiceLoader.load(AbstractMetricManager.class);
     int size = 0;
@@ -119,7 +117,7 @@ public abstract class AbstractMetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
+          .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -129,7 +127,7 @@ public abstract class AbstractMetricService {
     if (size == 0 || metricManager == null) {
       metricManager = new DoNothingMetricManager();
     } else if (size > 1) {
-      logger.warn(
+      logger.info(
           "Detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
   }
@@ -138,55 +136,75 @@ public abstract class AbstractMetricService {
   protected void loadReporter() {
     logger.info("Load metric reporters, type: {}", metricConfig.getMetricReporterList());
     compositeReporter.clearReporter();
-    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
-    for (Reporter reporter : reporters) {
-      if (metricConfig.getMetricReporterList() != null
-          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
-          && reporter
-              .getClass()
-              .getName()
-              .toLowerCase()
-              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
-        reporter.setMetricManager(metricManager);
-        compositeReporter.addReporter(reporter);
+    if (metricConfig.getMetricReporterList() == null) {
+      return;
+    }
+    for (ReporterType reporterType : metricConfig.getMetricReporterList()) {
+      Reporter reporter = null;
+      switch (reporterType) {
+        case JMX:
+          ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
+          for (JmxReporter jmxReporter : reporters) {
+            if (jmxReporter
+                .getClass()
+                .getName()
+                .toLowerCase()
+                .contains(metricConfig.getMetricFrameType().name().toLowerCase())) {
+              jmxReporter.setMetricManager(metricManager);
+              reporter = jmxReporter;
+            }
+          }
+          break;
+        case PROMETHEUS:
+          reporter = new PrometheusReporter(metricManager);
+          break;
+        case IOTDB:
+          reporter = new SessionIoTDBReporter(metricManager);
+          break;
+        default:
+          continue;
       }
+      if (reporter == null) {
+        logger.error("Failed to load reporter which type is {}", reporterType);
+        continue;
+      }
+      compositeReporter.addReporter(reporter);
     }
   }
 
-  /** Reload metric service according to reloadLevel */
-  protected abstract void reloadProperties(ReloadLevel reloadLevel);
+  /**
+   * Reload internal reporter
+   *
+   * @param internalReporter the new internal reporter
+   */
+  public abstract void reloadInternalReporter(InternalIoTDBReporter internalReporter);
+
+  /**
+   * Reload metric service
+   *
+   * @param reloadLevel the level of reload
+   */
+  protected abstract void reloadService(ReloadLevel reloadLevel);
 
   // region interface from metric reporter
 
   /** Start all reporters */
   public void startAllReporter() {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.startAll();
   }
 
   /** Stop all reporters */
   public void stopAllReporter() {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.stopAll();
   }
 
   /** Start reporter according to type */
   public void start(ReporterType type) {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.start(type);
   }
 
   /** Stop reporter according to type */
   public void stop(ReporterType type) {
-    if (!isEnable()) {
-      return;
-    }
     compositeReporter.stop(type);
   }
 
@@ -198,9 +216,13 @@ public abstract class AbstractMetricService {
     return metricManager.getOrCreateCounter(metric, metricLevel, tags);
   }
 
-  public <T> Gauge getOrCreateAutoGauge(
+  public <T> AutoGauge createAutoGauge(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    return metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+    return metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
+  }
+
+  public <T> AutoGauge getAutoGauge(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getAutoGauge(metric, metricLevel, tags);
   }
 
   public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
@@ -240,28 +262,99 @@ public abstract class AbstractMetricService {
     metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
   }
 
-  public List<String[]> getAllMetricKeys() {
+  /** GetOrCreateCounter with internal report */
+  public Counter getOrCreateCounterWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    Counter counter = metricManager.getOrCreateCounter(metric, metricLevel, tags);
+    internalReporter.writeMetricToIoTDB(counter, metric, tags);
+    return counter;
+  }
+
+  /** GetOrCreateAutoGauge with internal report */
+  public <T> AutoGauge createAutoGaugeWithInternalReport(
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+    AutoGauge gauge = metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
+    internalReporter.addAutoGauge(gauge, metric, tags);
+    return gauge;
+  }
+
+  /** GetOrCreateGauge with internal report */
+  public Gauge getOrCreateGaugeWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    Gauge gauge = metricManager.getOrCreateGauge(metric, metricLevel, tags);
+    internalReporter.writeMetricToIoTDB(gauge, metric, tags);
+    return gauge;
+  }
+
+  /** GetOrCreateRate with internal report */
+  public Rate getOrCreateRateWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    Rate rate = metricManager.getOrCreateRate(metric, metricLevel, tags);
+    internalReporter.writeMetricToIoTDB(rate, metric, tags);
+    return rate;
+  }
+
+  /** GetOrCreateHistogram with internal report */
+  public Histogram getOrCreateHistogramWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    Histogram histogram = metricManager.getOrCreateHistogram(metric, metricLevel, tags);
+    internalReporter.writeMetricToIoTDB(histogram, metric, tags);
+    return histogram;
+  }
+
+  /** GetOrCreateTimer with internal report */
+  public Timer getOrCreateTimerWithInternalReport(
+      String metric, MetricLevel metricLevel, String... tags) {
+    Timer timer = metricManager.getOrCreateTimer(metric, metricLevel, tags);
+    internalReporter.writeMetricToIoTDB(timer, metric, tags);
+    return timer;
+  }
+
+  /** Count with internal report */
+  public void countWithInternalReport(
+      long delta, String metric, MetricLevel metricLevel, String... tags) {
+    internalReporter.writeMetricToIoTDB(
+        metricManager.count(delta, metric, metricLevel, tags), metric, tags);
+  }
+
+  /** Gauge value with internal report */
+  public void gaugeWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    internalReporter.writeMetricToIoTDB(
+        metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
+  }
+
+  /** Rate with internal report */
+  public void rateWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    internalReporter.writeMetricToIoTDB(
+        metricManager.rate(value, metric, metricLevel, tags), metric, tags);
+  }
+
+  /** Histogram with internal report */
+  public void histogramWithInternalReport(
+      long value, String metric, MetricLevel metricLevel, String... tags) {
+    internalReporter.writeMetricToIoTDB(
+        metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
+  }
+
+  /** Timer with internal report */
+  public void timerWithInternalReport(
+      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
+    internalReporter.writeMetricToIoTDB(
+        metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
+  }
+
+  public List<Pair<String, String[]>> getAllMetricKeys() {
     return metricManager.getAllMetricKeys();
   }
 
-  public Map<String[], Counter> getAllCounters() {
-    return metricManager.getAllCounters();
+  public Map<MetricInfo, IMetric> getAllMetrics() {
+    return metricManager.getAllMetrics();
   }
 
-  public Map<String[], Gauge> getAllGauges() {
-    return metricManager.getAllGauges();
-  }
-
-  public Map<String[], Rate> getAllRates() {
-    return metricManager.getAllRates();
-  }
-
-  public Map<String[], Histogram> getAllHistograms() {
-    return metricManager.getAllHistograms();
-  }
-
-  public Map<String[], Timer> getAllTimers() {
-    return metricManager.getAllTimers();
+  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
+    return metricManager.getMetricsByType(metricType);
   }
 
   public void remove(MetricType type, String metric, String... tags) {
@@ -274,11 +367,7 @@ public abstract class AbstractMetricService {
     return metricManager;
   }
 
-  public boolean isEnable() {
-    return isEnableMetric;
-  }
-
-  /** bind metrics and store metric set */
+  /** Bind metrics and store metric set */
   public void addMetricSet(IMetricSet metricSet) {
     if (!metricSets.contains(metricSet)) {
       metricSet.bindTo(this);
@@ -286,7 +375,7 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** remove metrics */
+  /** Remove metrics */
   public void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);

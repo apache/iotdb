@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -41,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -114,12 +112,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -254,8 +254,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
-    storageGroupSchema.setMaxSchemaRegionGroupCount(0);
-    storageGroupSchema.setMaxDataRegionGroupCount(0);
+    storageGroupSchema.setMaxSchemaRegionGroupNum(0);
+    storageGroupSchema.setMaxDataRegionGroupNum(0);
 
     SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);
@@ -467,7 +467,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
               "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
     }
@@ -476,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     ConsensusGenericResponse resp =
         configManager.getConsensusManager().getConsensusImpl().deletePeer(groupId);
     if (!resp.isSuccess()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
@@ -567,7 +567,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         return RpcUtils.getStatus(
-            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            TSStatusCode.DATABASE_NOT_EXIST,
             "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }
@@ -587,6 +587,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setSystemStatus(String status) {
     return configManager.setSystemStatus(status);
+  }
+
+  @TestOnly
+  @Override
+  public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) {
+    return configManager.setDataNodeStatus(req);
   }
 
   @Override
@@ -715,16 +721,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
+    return configManager.recordPipeMessage(req);
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
       return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
     }
-    TTimePartitionSlot timePartitionSlot =
-        req.isSetTimeSlotId() ? req.getTimeSlotId() : new TTimePartitionSlot(-1);
-    GetRegionIdPlan plan =
-        new GetRegionIdPlan(
-            req.getStorageGroup(), req.getType(), req.getSeriesSlotId(), timePartitionSlot);
-    return configManager.getRegionId(plan);
+    return configManager.getRegionId(req);
   }
 
   @Override
@@ -739,7 +745,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     TConsensusGroupType type =
-        req.isSetType() ? req.getType() : TConsensusGroupType.PartitionRegion;
+        req.isSetType() ? req.getType() : TConsensusGroupType.ConfigNodeRegion;
     GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getStorageGroup(), type);
     return configManager.getSeriesSlotList(plan);
   }

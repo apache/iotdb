@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
@@ -91,11 +93,12 @@ public class SyncManager {
 
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
     try {
-      clusterSyncInfo.checkAddPipeSink(plan.getPipeSinkInfo().getPipeSinkName());
+      clusterSyncInfo.checkAddPipeSink(plan);
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 
@@ -105,7 +108,8 @@ public class SyncManager {
       return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
-      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return new TSStatus(TSStatusCode.CREATE_PIPE_SINK_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 
@@ -145,6 +149,12 @@ public class SyncManager {
 
   public TSStatus dropPipe(String pipeName) {
     return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
+  }
+
+  public TSStatus recordPipeMessage(String pipeName, PipeMessage pipeMessage) {
+    return getConsensusManager()
+        .write(new RecordPipeMessagePlan(pipeName, pipeMessage))
+        .getStatus();
   }
 
   public TShowPipeResp showPipe(String pipeName) {
@@ -280,5 +290,9 @@ public class SyncManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ProcedureManager getProcedureManager() {
+    return configManager.getProcedureManager();
   }
 }

@@ -20,6 +20,7 @@
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
+namespace go rpc
 
 struct TSQueryDataSet{
   // ByteBuffer for time column
@@ -68,6 +69,7 @@ struct TSExecuteStatementResp {
   11: optional list<byte> aliasColumns
   12: optional TSTracingInfo tracingInfo
   13: optional list<binary> queryResult
+  14: optional bool moreData
 }
 
 enum TSProtocolVersion {
@@ -176,6 +178,7 @@ struct TSFetchResultsResp{
   4: optional TSQueryDataSet queryDataSet
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
   6: optional list<binary> queryResult
+  7: optional bool moreData
 }
 
 struct TSFetchMetadataResp{
@@ -415,14 +418,12 @@ struct TSDropSchemaTemplateReq {
 
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
-  // Check whether the ip of sender is in the white list of receiver.
-  1:required string address
   // Sender needs to tell receiver its identity.
-  2:required string pipeName
-  3:required i64 createTime
+  1:required string pipeName
+  2:required i64 createTime
   // The version of sender and receiver need to be the same.
-  4:required string version
-  5:required string storageGroup
+  3:required string version
+  4:required string database
 }
 
 struct TSyncTransportMetaInfo{

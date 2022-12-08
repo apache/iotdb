@@ -20,12 +20,9 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.RewriteTsFileTool;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -66,41 +63,41 @@ public class IoTDBRewriteTsFileToolIT {
 
   public void unload(Statement statement)
       throws IllegalPathException, SQLException, StorageEngineException {
-    for (TsFileResource resource :
-        StorageEngine.getInstance()
-            .getProcessor(new PartialPath("root.sg"))
-            .getSequenceFileList()) {
-      if (tmpDir == null) {
-        tmpDir =
-            resource
-                    .getTsFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParent()
-                + File.separator
-                + "tmp";
-        File tmpFile = new File(tmpDir);
-        if (!tmpFile.exists()) {
-          tmpFile.mkdirs();
-        }
-      }
-      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
-    }
-    for (TsFileResource resource :
-        StorageEngine.getInstance()
-            .getProcessor(new PartialPath("root.sg"))
-            .getUnSequenceFileList()) {
-      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
-    }
+    //    for (TsFileResource resource :
+    //        StorageEngine.getInstance()
+    //            .getProcessor(new PartialPath("root.sg"))
+    //            .getSequenceFileList()) {
+    //      if (tmpDir == null) {
+    //        tmpDir =
+    //            resource
+    //                    .getTsFile()
+    //                    .getParentFile()
+    //                    .getParentFile()
+    //                    .getParentFile()
+    //                    .getParentFile()
+    //                    .getParent()
+    //                + File.separator
+    //                + "tmp";
+    //        File tmpFile = new File(tmpDir);
+    //        if (!tmpFile.exists()) {
+    //          tmpFile.mkdirs();
+    //        }
+    //      }
+    //      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+    //    }
+    //    for (TsFileResource resource :
+    //        StorageEngine.getInstance()
+    //            .getProcessor(new PartialPath("root.sg"))
+    //            .getUnSequenceFileList()) {
+    //      statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
+    //    }
   }
 
   public void prepareTsFiles() throws Exception {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.sg");
+      statement.execute("CREATE DATABASE root.sg");
       statement.execute("create timeseries root.sg.d1.s INT32");
       statement.execute("create timeseries root.sg.d2.s INT32");
       statement.execute("create timeseries root.sg.d3.s INT32");

@@ -59,18 +59,6 @@
             <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>grafana-metrics-example</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
-        </fileSet>
-        <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
@@ -78,6 +66,11 @@
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
@@ -103,10 +96,6 @@
         <!--            <outputDirectory>confignode</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>-->
         <!--        </fileSet>-->
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
-        </fileSet>
     </fileSets>
     <!--    <files>-->
     <!--        <file>-->

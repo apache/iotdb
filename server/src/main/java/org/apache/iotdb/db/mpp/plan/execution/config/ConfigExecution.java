@@ -129,7 +129,7 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   private void fail(Throwable cause) {
-    LOGGER.error("Failures happened during running ConfigExecution.", cause);
+    LOGGER.warn("Failures happened during running ConfigExecution.", cause);
     stateMachine.transitionToFailed(cause);
     ConfigTaskResult result;
     if (cause instanceof IoTDBException) {
@@ -218,5 +218,15 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getQueryId() {
     return context.getQueryId().getId();
+  }
+
+  @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
+  public Optional<String> getExecuteSQL() {
+    return Optional.ofNullable(context.getSql());
   }
 }

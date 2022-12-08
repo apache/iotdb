@@ -39,6 +39,7 @@ struct TDataNodeRegisterResp {
   7: optional list<binary> allTriggerInformation
   8: optional TCQConfig cqConfig
   9: optional list<binary> allUDFInformation
+  10: optional binary allTTLInformation
 }
 
 struct TGlobalConfig {
@@ -88,6 +89,9 @@ struct TRatisConfig {
 
   25: required i64 firstElectionTimeoutMin
   26: required i64 firstElectionTimeoutMax
+
+  27: required i64 schemaRegionRatisLogMax
+  28: required i64 dataRegionRatisLogMax
 }
 
 struct TCQConfig {
@@ -117,6 +121,11 @@ struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeConfiguration>
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
+}
+
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
 }
 
 // StorageGroup
@@ -164,8 +173,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupCount
-  7: optional i32 maxDataRegionGroupCount
+  6: optional i32 maxSchemaRegionGroupNum
+  7: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -192,10 +201,16 @@ struct TSchemaNodeManagementResp {
   3: optional set<common.TSchemaNode> matchedNode
 }
 
+struct TTimeSlotList {
+  1: required list<common.TTimePartitionSlot> timePartitionSlots
+  2: required bool needLeftAll
+  3: required bool needRightAll
+}
+
 // Data
 struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
+  1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
@@ -207,8 +222,10 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required string storageGroup
     2: required common.TConsensusGroupType type
-    3: required common.TSeriesPartitionSlot seriesSlotId
-    4: optional common.TTimePartitionSlot timeSlotId
+    3: optional common.TSeriesPartitionSlot seriesSlotId
+    4: optional string deviceId
+    5: optional common.TTimePartitionSlot timeSlotId
+    6: optional i64 timeStamp
 }
 
 struct TGetRegionIdResp {
@@ -259,6 +276,7 @@ struct TUserResp {
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
+  5: required bool isOpenIdUser
 }
 
 struct TRoleResp {
@@ -300,6 +318,7 @@ struct TConfigNodeRegisterReq {
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
   13: required double diskSpaceWarningThreshold
+  14: required i32 leastDataRegionGroupNum
 }
 
 struct TConfigNodeRegisterResp {
@@ -398,6 +417,7 @@ struct TDataNodeInfo {
   4: required i32 rpcPort
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
+  7: optional i32 cpuCoreNum
 }
 
 struct TShowDataNodesResp {
@@ -496,6 +516,11 @@ struct TGetPathsSetTemplatesResp {
 }
 
 // SYNC
+struct TRecordPipeMessageReq{
+  1: required string pipeName
+  2: required binary message
+}
+
 struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
@@ -714,9 +739,12 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-  // Node Management TODO: @MarcosZyk add interface annotation
-  // ======================================================
+    // Node Management
+    // ======================================================
 
+  /**
+   * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
+   */
   TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   // ======================================================
@@ -902,7 +930,7 @@ service IConfigNodeRPCService {
   /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
   common.TSStatus merge()
 
-  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
+  /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
@@ -913,6 +941,9 @@ service IConfigNodeRPCService {
 
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
+
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
   // ======================================================
   // Cluster Tools
@@ -944,27 +975,48 @@ service IConfigNodeRPCService {
   TRegionRouteMapResp getLatestRegionRouteMap()
 
   // ======================================================
-  // Template TODO: @MarcosZyk add interface annotation
+  // Template
   // ======================================================
 
+  /**
+   * Create schema template
+   */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
+  /**
+   * Get all schema template info and template set info for DataNode registeration
+   */
   TGetAllTemplatesResp getAllTemplates()
 
+  /**
+   * Get one schema template info
+   */
   TGetTemplateResp getTemplate(string req)
 
+  /**
+   * Set given schema template to given path
+   */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
+  /**
+   * Get paths setting given schema template
+   */
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  /**
+   * Deactivate schema template from paths matched by given pattern tree in cluster
+   */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
+  /**
+   * Unset schema template from given path
+   */
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
-     * Drop schema template
-     */
-    common.TSStatus dropSchemaTemplate(string req)
+   * Drop schema template
+   */
+  common.TSStatus dropSchemaTemplate(string req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -1006,6 +1058,9 @@ service IConfigNodeRPCService {
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
 
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
+
   // ======================================================
   // TestTools
   // ======================================================
@@ -1016,7 +1071,7 @@ service IConfigNodeRPCService {
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
 
-  /** Get the given storage group's assigned SeriesSlots */
+  /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
 

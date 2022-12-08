@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -91,14 +92,14 @@ public class IoTDBConfigNodeSnapshotIT {
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RatisConsensus);
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =
         ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
     ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(testTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(2, 2);
@@ -112,7 +113,7 @@ public class IoTDBConfigNodeSnapshotIT {
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
-    ConfigFactory.getConfig().setTimePartitionIntervalForRouting(originalTimePartitionInterval);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
@@ -163,12 +164,15 @@ public class IoTDBConfigNodeSnapshotIT {
                 new TTimePartitionSlot(testTimePartitionInterval * k);
 
             // Create DataPartition
-            Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+            Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 new HashMap<>();
             partitionSlotsMap.put(storageGroup, new HashMap<>());
             partitionSlotsMap
                 .get(storageGroup)
-                .put(seriesPartitionSlot, Collections.singletonList(timePartitionSlot));
+                .put(
+                    seriesPartitionSlot,
+                    new TTimeSlotList()
+                        .setTimePartitionSlots(Collections.singletonList(timePartitionSlot)));
             TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
             TDataPartitionTableResp dataPartitionTableResp =
                 client.getOrCreateDataPartitionTable(dataPartitionReq);
@@ -298,11 +302,13 @@ public class IoTDBConfigNodeSnapshotIT {
 
     TCreateFunctionReq createFunctionReq1 =
         new TCreateFunctionReq("test1", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
 
     TCreateFunctionReq createFunctionReq2 =
         new TCreateFunctionReq("test2", "org.apache.iotdb.udf.UDTFExample", true)
+            .setJarName(jarName)
             .setJarFile(jarFile)
             .setJarMD5(jarMD5);
 

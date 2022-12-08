@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessN
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -52,9 +54,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -62,6 +67,13 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
 public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
+
+  private final Analysis analysis;
+
+  public ExchangeNodeAdder(Analysis analysis) {
+    this.analysis = analysis;
+  }
+
   @Override
   public PlanNode visitPlan(PlanNode node, NodeGroupContext context) {
     // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
@@ -183,6 +195,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    // A temporary way to decrease the FragmentInstance for aggregation with device view.
+    if (isAggregationQuery()) {
+      return processDeviceViewWithAggregation(node, context);
+    }
     return processMultiChildNode(node, context);
   }
 
@@ -237,8 +253,106 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processOneChildNode(node, context);
   }
 
+  @Override
   public PlanNode visitGroupByTag(GroupByTagNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitVerticallyConcat(VerticallyConcatNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  private PlanNode processDeviceViewWithAggregation(DeviceViewNode node, NodeGroupContext context) {
+    // group all the children by DataRegion distribution
+    Map<TRegionReplicaSet, DeviceViewGroup> deviceViewGroupMap = new HashMap<>();
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      String device = node.getDevices().get(i);
+      PlanNode rawChildNode = node.getChildren().get(i);
+      PlanNode visitedChild = visit(rawChildNode, context);
+      TRegionReplicaSet region = context.getNodeDistribution(visitedChild.getPlanNodeId()).region;
+      DeviceViewGroup group = deviceViewGroupMap.computeIfAbsent(region, DeviceViewGroup::new);
+      group.addChild(device, visitedChild);
+    }
+
+    // Generate DeviceViewNode for each group
+    List<DeviceViewNode> deviceViewNodeList = new ArrayList<>();
+    for (DeviceViewGroup group : deviceViewGroupMap.values()) {
+      DeviceViewNode deviceViewNode =
+          new DeviceViewNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              node.getOutputColumnNames(),
+              node.getDeviceToMeasurementIndexesMap());
+      for (int i = 0; i < group.devices.size(); i++) {
+        deviceViewNode.addChildDeviceNode(group.devices.get(i), group.children.get(i));
+      }
+      context.putNodeDistribution(
+          deviceViewNode.getPlanNodeId(),
+          new NodeDistribution(
+              NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+              context.getNodeDistribution(deviceViewNode.getChildren().get(0).getPlanNodeId())
+                  .region));
+      deviceViewNodeList.add(deviceViewNode);
+    }
+
+    if (deviceViewNodeList.size() == 1) {
+      return deviceViewNodeList.get(0);
+    }
+
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getDevices());
+
+    // Each child of deviceMergeNode has different TRegionReplicaSet, so we can select any one from
+    // its child
+    deviceMergeNode.addChild(deviceViewNodeList.get(0));
+    context.putNodeDistribution(
+        deviceMergeNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_SOME_CHILD,
+            context.getNodeDistribution(deviceViewNodeList.get(0).getPlanNodeId()).region));
+
+    // Add ExchangeNode for any other child except first one
+    for (int i = 1; i < deviceViewNodeList.size(); i++) {
+      PlanNode child = deviceViewNodeList.get(i);
+      ExchangeNode exchangeNode =
+          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.setChild(child);
+      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+      deviceMergeNode.addChild(exchangeNode);
+    }
+    return deviceMergeNode;
+  }
+
+  private static class DeviceViewGroup {
+    public TRegionReplicaSet regionReplicaSet;
+    public List<PlanNode> children;
+    public List<String> devices;
+
+    public DeviceViewGroup(TRegionReplicaSet regionReplicaSet) {
+      this.regionReplicaSet = regionReplicaSet;
+      this.children = new LinkedList<>();
+      this.devices = new LinkedList<>();
+    }
+
+    public void addChild(String device, PlanNode child) {
+      devices.add(device);
+      children.add(child);
+    }
+
+    public int hashCode() {
+      return regionReplicaSet.hashCode();
+    }
+
+    public boolean equals(Object o) {
+      if (o instanceof DeviceViewGroup) {
+        return regionReplicaSet.equals(((DeviceViewGroup) o).regionReplicaSet);
+      }
+      return false;
+    }
   }
 
   private PlanNode processMultiChildNode(MultiChildProcessNode node, NodeGroupContext context) {
@@ -348,6 +462,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       }
     }
     return true;
+  }
+
+  private boolean isAggregationQuery() {
+    return ((QueryStatement) analysis.getStatement()).isAggregationQuery();
   }
 
   public PlanNode visit(PlanNode node, NodeGroupContext context) {

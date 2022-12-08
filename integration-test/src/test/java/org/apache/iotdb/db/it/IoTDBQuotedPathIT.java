@@ -59,7 +59,7 @@ public class IoTDBQuotedPathIT {
           new String[] {
             "1509465600000,true", "1509465600001,true", "1509465600002,false", "1509465600003,false"
           };
-      statement.execute("SET STORAGE GROUP TO root.ln");
+      statement.execute("CREATE DATABASE root.ln");
       statement.execute(
           "CREATE TIMESERIES root.ln.`wf+01`.wt01.`status+2+3` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute(
@@ -103,13 +103,12 @@ public class IoTDBQuotedPathIT {
   public void testIllegalStorageGroup() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.`\"ln`");
+      statement.execute("CREATE DATABASE root.`\"ln`");
     } catch (SQLException e) {
       Assert.assertTrue(
           e.getMessage().contains("Error StorageGroup name")
               || e.getMessage()
-                  .contains(
-                      "The storage group name can only be characters, numbers and underscores."));
+                  .contains("The database name can only be characters, numbers and underscores."));
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

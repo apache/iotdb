@@ -50,7 +50,7 @@ public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
 
-  private static final int retryNum = 6;
+  private static final int DEFAULT_RETRY_NUM = 6;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
@@ -63,61 +63,89 @@ public class SyncDataNodeClientPool {
 
   public TSStatus sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
-    Throwable lastException = null;
-    for (int retry = 0; retry < retryNum; retry++) {
+    Throwable lastException = new TException();
+    for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-        switch (requestType) {
-          case INVALIDATE_PARTITION_CACHE:
-            return client.invalidatePartitionCache((TInvalidateCacheReq) req);
-          case INVALIDATE_SCHEMA_CACHE:
-            return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-          case CREATE_SCHEMA_REGION:
-            return client.createSchemaRegion((TCreateSchemaRegionReq) req);
-          case CREATE_DATA_REGION:
-            return client.createDataRegion((TCreateDataRegionReq) req);
-          case DELETE_REGION:
-            return client.deleteRegion((TConsensusGroupId) req);
-          case INVALIDATE_PERMISSION_CACHE:
-            return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-          case DISABLE_DATA_NODE:
-            return client.disableDataNode((TDisableDataNodeReq) req);
-          case STOP_DATA_NODE:
-            return client.stopDataNode();
-          case SET_SYSTEM_STATUS:
-            return client.setSystemStatus((String) req);
-          case UPDATE_TEMPLATE:
-            return client.updateTemplate((TUpdateTemplateReq) req);
-          case CREATE_NEW_REGION_PEER:
-            return client.createNewRegionPeer((TCreatePeerReq) req);
-          case ADD_REGION_PEER:
-            return client.addRegionPeer((TMaintainPeerReq) req);
-          case REMOVE_REGION_PEER:
-            return client.removeRegionPeer((TMaintainPeerReq) req);
-          case DELETE_OLD_REGION_PEER:
-            return client.deleteOldRegionPeer((TMaintainPeerReq) req);
-          default:
-            return RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
-        }
+        return executeSyncRequest(requestType, client, req);
       } catch (TException | IOException e) {
         lastException = e;
-        LOGGER.warn(
-            "{} failed on DataNode {}, because {}, retrying {}...",
-            requestType,
-            endPoint,
-            e.getMessage(),
-            retry);
-        doRetryWait(retry);
+        if (retry != DEFAULT_RETRY_NUM - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
+          doRetryWait(retry);
+        }
       }
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+    return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
+  }
+
+  public TSStatus sendSyncRequestToDataNodeWithGivenRetry(
+      TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
+    Throwable lastException = new TException();
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+        return executeSyncRequest(requestType, client, req);
+      } catch (TException | IOException e) {
+        lastException = e;
+        if (retry != retryNum - 1) {
+          LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
+          doRetryWait(retry);
+        }
+      }
+    }
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
+        .setMessage("All retry failed due to: " + lastException.getMessage());
+  }
+
+  private TSStatus executeSyncRequest(
+      DataNodeRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      throws TException {
+    switch (requestType) {
+      case INVALIDATE_PARTITION_CACHE:
+        return client.invalidatePartitionCache((TInvalidateCacheReq) req);
+      case INVALIDATE_SCHEMA_CACHE:
+        return client.invalidateSchemaCache((TInvalidateCacheReq) req);
+      case CREATE_SCHEMA_REGION:
+        return client.createSchemaRegion((TCreateSchemaRegionReq) req);
+      case CREATE_DATA_REGION:
+        return client.createDataRegion((TCreateDataRegionReq) req);
+      case DELETE_REGION:
+        return client.deleteRegion((TConsensusGroupId) req);
+      case INVALIDATE_PERMISSION_CACHE:
+        return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
+      case DISABLE_DATA_NODE:
+        return client.disableDataNode((TDisableDataNodeReq) req);
+      case STOP_DATA_NODE:
+        return client.stopDataNode();
+      case SET_SYSTEM_STATUS:
+        return client.setSystemStatus((String) req);
+      case UPDATE_TEMPLATE:
+        return client.updateTemplate((TUpdateTemplateReq) req);
+      case CREATE_NEW_REGION_PEER:
+        return client.createNewRegionPeer((TCreatePeerReq) req);
+      case ADD_REGION_PEER:
+        return client.addRegionPeer((TMaintainPeerReq) req);
+      case REMOVE_REGION_PEER:
+        return client.removeRegionPeer((TMaintainPeerReq) req);
+      case DELETE_OLD_REGION_PEER:
+        return client.deleteOldRegionPeer((TMaintainPeerReq) req);
+      default:
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
+    }
   }
 
   private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      if (retryNum < 3) {
+        TimeUnit.MILLISECONDS.sleep(800L);
+      } else if (retryNum < 5) {
+        TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+      } else {
+        TimeUnit.MILLISECONDS.sleep(3200L);
+      }
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }
@@ -134,18 +162,18 @@ public class SyncDataNodeClientPool {
    */
   public TSStatus changeRegionLeader(
       TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
-    LOGGER.info("send RPC to data node: {} for changing regions leader on it", dataNode);
+    LOGGER.info("Send RPC to data node: {} for changing regions leader on it", dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
       status = client.changeRegionLeader(req);
     } catch (IOException e) {
       LOGGER.error("Can't connect to Data node: {}", dataNode, e);
-      status = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
+      status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
-      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;

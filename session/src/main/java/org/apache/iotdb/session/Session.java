@@ -466,6 +466,24 @@ public class Session implements ISession {
   }
 
   @Override
+  public void createDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.setStorageGroup(database);
+  }
+
+  @Override
+  public void deleteDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(database));
+  }
+
+  @Override
+  public void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deleteStorageGroups(databases);
+  }
+
+  @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -504,7 +522,7 @@ public class Session implements ISession {
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
-    request.setCompressor(compressor.ordinal());
+    request.setCompressor(compressor.serialize());
     request.setProps(props);
     request.setTags(tags);
     request.setAttributes(attributes);
@@ -1461,18 +1479,18 @@ public class Session implements ISession {
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
       TSInsertStringRecordsReq request =
-          recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
+          recordsGroup.getOrDefault(connection, new TSInsertStringRecordsReq());
       request.setIsAligned(isAligned);
       try {
         filterAndUpdateTSInsertStringRecordsReq(
             request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
+        recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
             "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i).toString());
-        continue;
       }
     }
 
@@ -2138,8 +2156,7 @@ public class Session implements ISession {
     Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
     for (int i = 0; i < deviceIds.size(); i++) {
       final SessionConnection connection = getSessionConnection(deviceIds.get(i));
-      TSInsertRecordsReq request =
-          recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
+      TSInsertRecordsReq request = recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
       request.setIsAligned(isAligned);
       try {
         filterAndUpdateTSInsertRecordsReq(
@@ -2149,13 +2166,13 @@ public class Session implements ISession {
             measurementsList.get(i),
             typesList.get(i),
             valuesList.get(i));
+        recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
             "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i).toString());
-        continue;
       }
     }
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
@@ -2985,7 +3002,7 @@ public class Session implements ISession {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -3030,7 +3047,7 @@ public class Session implements ISession {
     req.setMeasurements(Collections.singletonList(measurementPath));
     req.setDataTypes(Collections.singletonList(dataType.ordinal()));
     req.setEncodings(Collections.singletonList(encoding.ordinal()));
-    req.setCompressors(Collections.singletonList(compressor.ordinal()));
+    req.setCompressors(Collections.singletonList((int) compressor.serialize()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }

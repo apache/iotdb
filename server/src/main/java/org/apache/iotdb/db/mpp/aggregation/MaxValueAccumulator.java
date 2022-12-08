@@ -120,7 +120,26 @@ public class MaxValueAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
-    maxResult.setObject(finalResult.getObject(0));
+    initResult = true;
+    switch (seriesDataType) {
+      case INT32:
+        maxResult.setInt(finalResult.getInt(0));
+        break;
+      case INT64:
+        maxResult.setLong(finalResult.getLong(0));
+        break;
+      case FLOAT:
+        maxResult.setFloat(finalResult.getFloat(0));
+        break;
+      case DOUBLE:
+        maxResult.setDouble(finalResult.getDouble(0));
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+    }
   }
 
   // columnBuilder should be single in countAccumulator

@@ -193,7 +193,7 @@ public class CQInfo implements SnapshotProcessor {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format("MD5 of CQ %s doesn't match", cqId);
       } else if (cqEntry.lastExecutionTime >= plan.getExecutionTime()) {
-        res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_FAILED.getStatusCode();
+        res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode();
         res.message =
             String.format(
                 "Update last execution time of CQ %s failed because its original last execution time(%d) is larger than the updated one(%d).",

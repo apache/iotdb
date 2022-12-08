@@ -79,7 +79,7 @@ class IoTDBDialect(default.DefaultDialect):
         return table_name in self.get_table_names(connection, schema=schema)
 
     def get_schema_names(self, connection, **kw):
-        cursor = connection.execute("SHOW STORAGE GROUP")
+        cursor = connection.execute("SHOW DATABASES")
         return [row[0] for row in cursor.fetchall()]
 
     def get_table_names(self, connection, schema=None, **kw):

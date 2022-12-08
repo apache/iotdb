@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -46,6 +47,8 @@ public class LocalExecutionPlanContext {
   private final Map<String, Set<String>> allSensorsMap;
   // Used to lock corresponding query resources
   private final List<DataSourceOperator> sourceOperators;
+
+  private final long dataRegionTTL;
   private ISinkHandle sinkHandle;
 
   private int nextOperatorId = 0;
@@ -62,16 +65,19 @@ public class LocalExecutionPlanContext {
 
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
+  // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+      TypeProvider typeProvider, FragmentInstanceContext instanceContext, long dataRegionTTL) {
     this.typeProvider = typeProvider;
     this.instanceContext = instanceContext;
     this.paths = new ArrayList<>();
     this.allSensorsMap = new HashMap<>();
     this.sourceOperators = new ArrayList<>();
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    this.dataRegionTTL = dataRegionTTL;
   }
 
+  // for schema region
   public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
     this.instanceContext = instanceContext;
     this.paths = new ArrayList<>();
@@ -81,6 +87,8 @@ public class LocalExecutionPlanContext {
 
     // only used in `order by heat`
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    // there is no ttl in schema region, so we don't care this field
+    this.dataRegionTTL = Long.MAX_VALUE;
   }
 
   public int getNextOperatorId() {
@@ -157,5 +165,13 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public long getDataRegionTTL() {
+    return dataRegionTTL;
+  }
+
+  public ExecutorService getIntoOperationExecutor() {
+    return instanceContext.getIntoOperationExecutor();
   }
 }

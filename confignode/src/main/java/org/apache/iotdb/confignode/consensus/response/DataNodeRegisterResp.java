@@ -26,9 +26,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 public class DataNodeRegisterResp implements DataSet {
 
@@ -42,6 +46,8 @@ public class DataNodeRegisterResp implements DataSet {
   private byte[] templateInfo;
   private List<ByteBuffer> allTriggerInformation;
   private List<ByteBuffer> allUDFInformation;
+
+  private byte[] allTTLInformation;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -92,6 +98,19 @@ public class DataNodeRegisterResp implements DataSet {
     this.allUDFInformation = allUDFInformation;
   }
 
+  public void setAllTTLInformation(Map<String, Long> allTTLInformation) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(allTTLInformation.size(), outputStream);
+      for (Map.Entry<String, Long> entry : allTTLInformation.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+    } catch (IOException ignored) {
+    }
+    this.allTTLInformation = outputStream.toByteArray();
+  }
+
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
@@ -107,6 +126,7 @@ public class DataNodeRegisterResp implements DataSet {
       resp.setCqConfig(cqConfig);
       resp.setAllTriggerInformation(allTriggerInformation);
       resp.setAllUDFInformation(allUDFInformation);
+      resp.setAllTTLInformation(allTTLInformation);
     }
 
     return resp;

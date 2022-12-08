@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -93,10 +92,10 @@ public class ConfigMTree {
     }
   }
 
-  // region Storage Group Management
+  // region database Management
 
   /**
-   * Set storage group. Make sure check seriesPath before setting storage group
+   * CREATE DATABASE. Make sure check seriesPath before setting database
    *
    * @param path path
    */
@@ -114,7 +113,7 @@ public class ConfigMTree {
       if (temp == null) {
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
-        // before set storage group, check whether the storage group already exists
+        // before create database, check whether the database already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
@@ -145,12 +144,12 @@ public class ConfigMTree {
     }
   }
 
-  /** Delete a storage group */
+  /** Delete a database */
   public void deleteStorageGroup(PartialPath path) throws MetadataException {
     IStorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(path);
     IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
-    // delete the storage group node sg1
+    // delete the database node sg1
     cur.deleteChild(storageGroupMNode.getName());
 
     // delete node a while retain root.a.sg2
@@ -161,10 +160,10 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether path is storage group or not
+   * Check whether path is database or not
    *
    * <p>e.g., path = root.a.b.sg. if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode
-   * path is a storage group
+   * path is a database
    *
    * @param path path
    * @apiNote :for cluster
@@ -187,7 +186,7 @@ public class ConfigMTree {
     return cur != null && cur.isStorageGroup();
   }
 
-  /** Check whether the given path contains a storage group */
+  /** Check whether the given path contains a database */
   public boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
     IMNode cur = root;
@@ -203,11 +202,11 @@ public class ConfigMTree {
   }
 
   /**
-   * Get storage group path by path
+   * Get database path by path
    *
-   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is database, path is root.sg1.d1, return root.sg1
    *
-   * @return storage group in the given path
+   * @return database in the given path
    */
   public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
     String[] nodes = path.getNodes();
@@ -224,14 +223,14 @@ public class ConfigMTree {
   }
 
   /**
-   * Get the storage group that given path pattern matches or belongs to.
+   * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path
+   * @return a list contains all databases related to given path
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
@@ -239,13 +238,13 @@ public class ConfigMTree {
   }
 
   /**
-   * Get all storage group that the given path pattern matches. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * Get all database that the given path pattern matches. If using prefix match, the path pattern
+   * is used to match prefix path. All timeseries start with the matched prefix path will be
    * collected.
    *
    * @param pathPattern a path pattern or a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return a list contains all storage group names under given path pattern
+   * @return a list contains all database names under given path pattern
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -270,9 +269,9 @@ public class ConfigMTree {
   }
 
   /**
-   * Get all storage group names
+   * Get all database names
    *
-   * @return a list contains all distinct storage groups
+   * @return a list contains all distinct databases
    */
   public List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> res = new ArrayList<>();
@@ -291,7 +290,7 @@ public class ConfigMTree {
 
   /**
    * Resolve the path or path pattern into StorageGroupName-FullPath pairs. Try determining the
-   * storage group using the children of a mNode. If one child is a storage group node, put a
+   * database using the children of a mNode. If one child is a database node, put a
    * storageGroupName-fullPath pair into paths.
    */
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
@@ -311,9 +310,8 @@ public class ConfigMTree {
   }
 
   /**
-   * Get the count of storage group matching the given path. If using prefix match, the path pattern
-   * is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
+   * Get the count of database matching the given path. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
@@ -323,12 +321,11 @@ public class ConfigMTree {
     CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
-    return counter.getCount();
+    return (int) counter.getCount();
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], if the give path is not a storage group, throw
-   * exception
+   * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
       throws MetadataException {
@@ -359,9 +356,9 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get storage group node, the give path don't need to be
-   * storage group path.
+   * E.g., root.sg is database given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get database node, the give path don't need to be database
+   * path.
    */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -397,7 +394,7 @@ public class ConfigMTree {
     return result;
   }
 
-  /** Get all storage group MNodes */
+  /** Get all database MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     List<IStorageGroupMNode> ret = new ArrayList<>();
     Deque<IMNode> nodeStack = new ArrayDeque<>();
@@ -414,8 +411,8 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether the storage group of given path exists. The given path may be a prefix path of
-   * existing storage group.
+   * Check whether the database of given path exists. The given path may be a prefix path of
+   * existing database.
    *
    * @param path a full path or a prefix path
    */
@@ -438,8 +435,8 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether the storage group of given path exists. The given path may be a prefix path of
-   * existing storage group. if exists will throw MetaException.
+   * Check whether the database of given path exists. The given path may be a prefix path of
+   * existing database. if exists will throw MetaException.
    *
    * @param path a full path or a prefix path
    */
@@ -492,11 +489,7 @@ public class ConfigMTree {
    * path pattern is used to match prefix path.
    */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
@@ -507,7 +500,6 @@ public class ConfigMTree {
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
     collector.setPrefixMatch(isPrefixMatch);
-    collector.setStorageGroupFilter(filter);
     collector.traverse();
 
     return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
@@ -515,8 +507,8 @@ public class ConfigMTree {
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain MTreeBelowSG.
+   * nodes above database. Nodes below database, including database node will be counted by certain
+   * MTreeBelowSG.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -551,8 +543,8 @@ public class ConfigMTree {
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain MTreeBelowSG.
+   * nodes above database. Nodes below database, including database node will be counted by certain
+   * MTreeBelowSG.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *

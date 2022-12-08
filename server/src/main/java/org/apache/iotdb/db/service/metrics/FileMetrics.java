@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -35,13 +33,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
@@ -56,42 +51,42 @@ public class FileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
         "wal");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
         "seq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
         "wal");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
         "seq");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -100,7 +95,7 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null == currentServiceFuture) {
+    if (null == currentServiceFuture) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -121,55 +116,25 @@ public class FileMetrics implements IMetricSet {
       currentServiceFuture = null;
     }
 
-    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
-    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
   }
 
   private void collect() {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(true);
     unsequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(false);
-    walFileTotalCount =
-        Stream.of(walDirs)
-            .mapToLong(
-                dir -> {
-                  File walFolder = new File(dir);
-                  if (walFolder.exists()) {
-                    File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                    long result = 0L;
-                    if (null != walNodeFolders) {
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          try {
-                            result +=
-                                org.apache.commons.io.FileUtils.listFiles(walFolder, null, true)
-                                    .size();
-                          } catch (UncheckedIOException exception) {
-                            // do nothing
-                            logger.debug(
-                                "Failed when count wal folder {}: ",
-                                walNodeFolder.getName(),
-                                exception);
-                          }
-                        }
-                      }
-                    }
-                    return result;
-                  } else {
-                    return 0L;
-                  }
-                })
-            .sum();
+    walFileTotalCount = WALManager.getInstance().getTotalFileNum();
     sequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(true);
     unsequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(false);
   }

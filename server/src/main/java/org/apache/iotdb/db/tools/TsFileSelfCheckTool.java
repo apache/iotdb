@@ -129,7 +129,8 @@ public class TsFileSelfCheckTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(deviceId, timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
+                    timeseriesMetadata));
           }
         } else {
           // deviceId should be determined by LEAF_DEVICE node

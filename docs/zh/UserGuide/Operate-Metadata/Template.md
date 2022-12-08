@@ -30,7 +30,7 @@ IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元�
 创建元数据模板的 SQL 语法如下：
 
 ```sql
-CREATE SCHEMA? TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
+CREATE SCHEMA TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeClauses> [',' <measurementId> <attributeClauses>]+ ')'
 ```
 
 **示例1：** 创建包含两个非对齐序列的元数据模板
@@ -51,7 +51,9 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 元数据模板在创建后，需执行挂载操作，方可用于相应路径下的序列创建与数据写入。
 
-**推荐将模板挂载在存储组节点上，不建议将模板挂载到存储组上层的节点上。**
+**挂载模板前，需确保存相关储组已经创建。**
+
+**推荐将模板挂载在 database 节点上，不建议将模板挂载到 database 上层的节点上。**
 
 挂载元数据模板的 SQL 语句如下所示：
 
@@ -61,7 +63,7 @@ IoTDB> set schema template t1 to root.sg1.d1
 
 ## 激活元数据模板
 
-挂载好元数据模板后，且系统开启自动注册序列功能的情况下，即可直接进行数据的写入。例如存储组为 root.sg1，模板 t1 被挂载到了节点 root.sg1.d1，那么可直接向时间序列（如 root.sg1.d1.temperature 和 root.sg1.d1.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+挂载好元数据模板后，且系统开启自动注册序列功能的情况下，即可直接进行数据的写入。例如 database 为 root.sg1，模板 t1 被挂载到了节点 root.sg1.d1，那么可直接向时间序列（如 root.sg1.d1.temperature 和 root.sg1.d1.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
 
 **注意**：在插入数据之前或系统未开启自动注册序列功能，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列即激活模板：
 
@@ -84,7 +86,7 @@ show timeseries root.sg1.**
 
 ```shell
 +-----------------------+-----+-------------+--------+--------+-----------+----+----------+
-|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|             timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-----------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -183,11 +185,25 @@ IoTDB> show paths using schema template t1
 IoTDB> delete timeseries of schema template t1 from root.sg1.d1
 ```
 
+或
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.d1
+```
+
 解除操作支持批量处理，SQL语句如下所示：
 
 ```shell
 IoTDB> delete timeseries of schema template t1 from root.sg1.*, root.sg2.*
 ```
+
+或
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.*, root.sg2.*
+```
+
+若解除命令不指定模板名称，则会将给定路径涉及的所有模板使用情况均解除。
 
 ## 卸载元数据模板
 

@@ -80,14 +80,14 @@ public class ErrorHandlingUtils {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
         String message =
             String.format(
                 "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
         if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
-          LOGGER.error(message);
+          LOGGER.warn(message);
         } else {
-          LOGGER.error(message, e);
+          LOGGER.warn(message, e);
         }
       }
       return status;
@@ -108,12 +108,12 @@ public class ErrorHandlingUtils {
     Throwable rootCause = getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
-      return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
     }
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
     if (t instanceof QueryTimeoutRuntimeException) {
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, rootCause.getMessage());
     } else if (t instanceof ParseCancellationException) {
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
@@ -159,7 +159,7 @@ public class ErrorHandlingUtils {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
       for (TSStatus status : batchException.getFailingStatus()) {
-        if (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
           return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
         }
       }

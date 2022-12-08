@@ -62,6 +62,8 @@ keyWords
     | CQS
     | CREATE
     | DATA
+    | DATABASE
+    | DATABASES
     | DATANODES
     | DEACTIVATE
     | DEBUG
@@ -70,6 +72,7 @@ keyWords
     | DESCRIBE
     | DEVICE
     | DEVICES
+    | DETAILS
     | DISABLE
     | DISCARD
     | DROP

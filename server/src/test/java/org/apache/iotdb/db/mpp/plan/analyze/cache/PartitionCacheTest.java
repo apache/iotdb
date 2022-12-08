@@ -79,7 +79,7 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      // init each storage group
+      // init each database
       String storageGroupName = getStorageGroupName(storageGroupNumber);
       storageGroups.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
@@ -158,7 +158,7 @@ public class PartitionCacheTest {
   public void testStorageGroupCache() {
     Map<String, List<String>> storageGroupToDeviceMap;
     Map<String, String> deviceToStorageGroupMap;
-    // test devices in one storage group
+    // test devices in one database
     List<List<String>> existedDevicesInOneStorageGroup =
         Arrays.asList(
             Arrays.asList("root.sg1.d1", "root.sg1.d2"),
@@ -172,7 +172,7 @@ public class PartitionCacheTest {
       deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
-    // test devices in two storage group
+    // test devices in two database
     List<List<String>> existedDevicesInMultiStorageGroup =
         Arrays.asList(
             Arrays.asList("root.sg1.d1", "root.sg2.d2"),

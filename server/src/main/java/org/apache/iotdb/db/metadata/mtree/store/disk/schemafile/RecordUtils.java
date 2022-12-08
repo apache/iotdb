@@ -26,8 +26,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -81,7 +79,7 @@ public class RecordUtils {
    *   <li>1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a
    *       bit slower)
    *   <li>1 long (8 bytes): glbIndex, combined index to its children records
-   *   <li>1 int (4 byte): templateHash, hash code of template, occupies only 1 byte before
+   *   <li>1 int (4 byte): templateId, id of template, occupies only 1 byte before
    * </ul>
    *
    * -- bitwise flags (1 byte) --
@@ -108,7 +106,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write(INTERNAL_NODE_LENGTH, buffer);
     ReadWriteIOUtils.write(
         ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
-    ReadWriteIOUtils.write(convertTemplate2Int(node.getSchemaTemplate()), buffer);
+    ReadWriteIOUtils.write(node.getSchemaTemplateId(), buffer);
 
     // encode bitwise flag
     byte useAndAligned = encodeInternalStatus(node.isUseTemplate(), isAligned);
@@ -172,7 +170,7 @@ public class RecordUtils {
 
       short recLen = ReadWriteIOUtils.readShort(buffer);
       long segAddr = ReadWriteIOUtils.readLong(buffer);
-      int templateHash = ReadWriteIOUtils.readInt(buffer);
+      int templateId = ReadWriteIOUtils.readInt(buffer);
       byte bitFlag = ReadWriteIOUtils.readByte(buffer);
 
       boolean usingTemplate = usingTemplate(bitFlag);
@@ -187,8 +185,9 @@ public class RecordUtils {
 
       ICachedMNodeContainer.getCachedMNodeContainer(resNode).setSegmentAddress(segAddr);
       resNode.setUseTemplate(usingTemplate);
+      resNode.setSchemaTemplateId(templateId);
 
-      return paddingTemplate(resNode, templateHash);
+      return resNode;
     } else {
       // measurement node
       short recLenth = ReadWriteIOUtils.readShort(buffer);
@@ -320,18 +319,6 @@ public class RecordUtils {
     return node.getOffset();
   }
 
-  private static int convertTemplate2Int(Template temp) {
-    return temp == null ? 0 : temp.hashCode();
-  }
-
-  private static IMNode paddingTemplate(IMNode node, int templateHashCode)
-      throws MetadataException {
-    if (templateHashCode != 0) {
-      node.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHashCode));
-    }
-    return node;
-  }
-
   /** Including schema and pre-delete flag of a measurement, could be expanded further. */
   private static long convertMeasStat2Long(IMeasurementMNode node) {
     byte dataType = node.getSchema().getTypeInByte();
@@ -354,7 +341,7 @@ public class RecordUtils {
             nodeName,
             TSDataType.values()[dataType],
             TSEncoding.values()[encoding],
-            CompressionType.values()[compressor]);
+            CompressionType.deserialize(compressor));
 
     IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
     res.getAsMeasurementMNode().setOffset(tagIndex);

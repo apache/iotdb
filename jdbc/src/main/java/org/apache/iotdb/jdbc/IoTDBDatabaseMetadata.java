@@ -606,12 +606,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -651,12 +651,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -666,13 +666,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getCatalogTerm() {
-    return "storage group";
+    return "database";
   }
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+    ResultSet rs = stmt.executeQuery("SHOW DATABASES ");
 
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
@@ -706,7 +706,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -913,7 +913,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+    ResultSet rs = stmt.executeQuery("SHOW DATABASES ");
 
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
@@ -952,7 +952,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -966,7 +966,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW STORAGE GROUP";
+    String sql = "SHOW DATABASES";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
@@ -1061,7 +1061,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1116,12 +1116,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1230,12 +1230,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1330,7 +1330,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1399,7 +1399,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1452,12 +1452,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1501,12 +1501,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1705,7 +1705,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -1761,12 +1761,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1806,12 +1806,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -1912,7 +1912,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+    ResultSet rs = stmt.executeQuery("SHOW DATABASES ");
     Field[] fields = new Field[2];
     fields[0] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
@@ -1952,7 +1952,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2006,12 +2006,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2047,12 +2047,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2084,7 +2084,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW STORAGE GROUP";
+    String sql = "SHOW DATABASES";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
@@ -2171,7 +2171,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2211,7 +2211,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2225,7 +2225,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW STORAGE GROUP";
+    String sql = "SHOW DATABASES";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
@@ -2383,7 +2383,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2560,7 +2560,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2763,7 +2763,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         true,
         client,
         null,
-        0,
+        -1,
         sessionId,
         Collections.singletonList(tsBlock),
         null,
@@ -2806,12 +2806,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override
@@ -2860,12 +2860,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false,
         client,
         null,
-        0,
+        -1,
         sessionId,
         null,
         null,
         (long) 60 * 1000,
-        true);
+        false);
   }
 
   @Override

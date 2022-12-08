@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -70,6 +71,7 @@ public class DataNodeSchemaCacheTest {
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
+                            "root.sg1",
                             (MeasurementSchema) o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
@@ -102,6 +104,7 @@ public class DataNodeSchemaCacheTest {
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
+                            "root.sg1",
                             (MeasurementSchema) o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
@@ -209,7 +212,7 @@ public class DataNodeSchemaCacheTest {
         null,
         null,
         false);
-
+    schemaTree.setDatabases(Collections.singleton("root.sg1"));
     return schemaTree;
   }
 
@@ -234,7 +237,7 @@ public class DataNodeSchemaCacheTest {
         null,
         null,
         false);
-
+    schemaTree.setDatabases(Collections.singleton("root.sg1"));
     return schemaTree;
   }
 }

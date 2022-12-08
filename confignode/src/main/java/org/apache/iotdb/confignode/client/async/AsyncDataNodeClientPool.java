@@ -49,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
@@ -78,19 +79,28 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Send asynchronous requests to the specified DataNodes
+   * Send asynchronous requests to the specified DataNodes with default retry num
    *
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
    * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
   public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
+    sendAsyncRequest(clientHandler, MAX_RETRY_NUM);
+  }
+
+  public void sendAsyncRequestToDataNodeWithRetry(
+      AsyncClientHandler<?, ?> clientHandler, int retryNum) {
+    sendAsyncRequest(clientHandler, retryNum);
+  }
+
+  private void sendAsyncRequest(AsyncClientHandler<?, ?> clientHandler, int retryNum) {
     if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
 
     DataNodeRequestType requestType = clientHandler.getRequestType();
-    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
+    for (int retry = 0; retry < retryNum; retry++) {
       // Always Reset CountDownLatch first
       clientHandler.resetCountDownLatch();
 
@@ -219,6 +229,12 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case CHANGE_REGION_LEADER:
+          client.changeRegionLeader(
+              (TRegionLeaderChangeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
               (TUpdateConfigNodeGroupReq) clientHandler.getRequest(requestId),
@@ -296,16 +312,19 @@ public class AsyncDataNodeClientPool {
               (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
               (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case UPDATE_TEMPLATE:
           client.updateTemplate(
               (TUpdateTemplateReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
               (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
               (CountPathsUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

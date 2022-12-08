@@ -19,6 +19,7 @@
 
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
+namespace go common
 
 // Define a set of ip:port address
 struct TEndPoint {
@@ -35,7 +36,7 @@ struct TSStatus {
 }
 
 enum TConsensusGroupType {
-  PartitionRegion,
+  ConfigNodeRegion,
   DataRegion,
   SchemaRegion
 }

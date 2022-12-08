@@ -22,14 +22,16 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,16 +54,10 @@ public class SchemaRegionPlanFactory {
         return new ChangeTagOffsetPlanImpl();
       case CHANGE_ALIAS:
         return new ChangeAliasPlanImpl();
-      case SET_TEMPLATE:
-        return new SetTemplatePlanImpl();
-      case ACTIVATE_TEMPLATE:
-        return new ActivateTemplatePlanImpl();
       case AUTO_CREATE_DEVICE_MNODE:
         return new AutoCreateDeviceMNodePlanImpl();
       case CREATE_ALIGNED_TIMESERIES:
         return new CreateAlignedTimeSeriesPlanImpl();
-      case UNSET_TEMPLATE:
-        return new UnsetTemplatePlanImpl();
       case ACTIVATE_TEMPLATE_IN_CLUSTER:
         return new ActivateTemplateInClusterPlanImpl();
       case PRE_DELETE_TIMESERIES_IN_CLUSTER:
@@ -88,10 +84,6 @@ public class SchemaRegionPlanFactory {
 
   public static IChangeTagOffsetPlan getChangeTagOffsetPlan(PartialPath fullPath, long tagOffset) {
     return new ChangeTagOffsetPlanImpl(fullPath, tagOffset);
-  }
-
-  public static IActivateTemplatePlan getActivateTemplatePlan(PartialPath path) {
-    return new ActivateTemplatePlanImpl(path);
   }
 
   public static IAutoCreateDeviceMNodePlan getAutoCreateDeviceMNodePlan(PartialPath path) {
@@ -142,5 +134,20 @@ public class SchemaRegionPlanFactory {
   public static IRollbackPreDeleteTimeSeriesPlan getRollbackPreDeleteTimeSeriesPlan(
       PartialPath path) {
     return new RollbackPreDeleteTimeSeriesPlanImpl(path);
+  }
+
+  public static IPreDeactivateTemplatePlan getPreDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new PreDeactivateTemplatePlanImpl(templateSetInfo);
+  }
+
+  public static IRollbackPreDeactivateTemplatePlan getRollbackPreDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new RollbackPreDeactivateTemplatePlanImpl(templateSetInfo);
+  }
+
+  public static IDeactivateTemplatePlan getDeactivateTemplatePlan(
+      Map<PartialPath, List<Integer>> templateSetInfo) {
+    return new DeactivateTemplatePlanImpl(templateSetInfo);
   }
 }

@@ -30,7 +30,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final String targetConfigNode;
   private int mppDataExchangePort;
   private int internalPort;
-  private String internal_address;
+  private final String internalAddress;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
@@ -39,7 +39,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
-    this.internal_address = super.getIp();
+    this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
@@ -51,18 +51,19 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   protected void updateConfig(Properties properties) {
     properties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
     properties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
-    properties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internal_address);
+    properties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internalAddress);
     properties.setProperty(IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
     properties.setProperty("dn_mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(
         "dn_data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "dn_schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+    properties.setProperty("dn_join_cluster_retry_interval_ms", "1000");
     properties.setProperty("mqtt_host", super.getIp());
     properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
-    properties.setProperty("connection_timeout_ms", "30000");
+    properties.setProperty("dn_connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODES, this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, this.targetConfigNode);
     }
     properties.setProperty("max_tsblock_size_in_bytes", "1024");
     properties.setProperty("page_size_in_byte", "1024");
@@ -130,6 +131,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public void setMppDataExchangePort(int mppDataExchangePort) {
     this.mppDataExchangePort = mppDataExchangePort;
+  }
+
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
   public int getInternalPort() {

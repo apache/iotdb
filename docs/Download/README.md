@@ -29,14 +29,19 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-            <td rowspan="1">0.14.0-preview3</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip">Cluster</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip">Sources</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-source-release.zip.asc">ASC</a></td>
-            <td rowspan="1"><a href="https://raw.githubusercontent.com/apache/iotdb/master/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="2">1.0.0</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip">Sources</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://raw.githubusercontent.com/apache/iotdb/v1.0.0/RELEASE_NOTES.md">release notes</a></td>
+      </tr>
+      <tr>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip">Grafana-plugin</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
             <td rowspan="3">0.13.3</td>
@@ -57,31 +62,6 @@
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip">Grafana-connector</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.asc">ASC</a></td>
-      </tr>
-      <tr>
-            <td rowspan="4">0.12.6</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip">Sources</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.6/RELEASE_NOTES.md">release notes</a></td>
-      </tr>
-      <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip">Server</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip.asc">ASC</a></td>
-      </tr>
-      <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip">Cluster</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip.asc">ASC</a></td>
-      </tr>
-      <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip">Grafana-connector</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip.asc">ASC</a></td>
       </tr>
 </table>
 
@@ -280,7 +260,7 @@ Query the data of root.sg.a, you can see that the string is unescaped:
   * __NOTICE 1: V0.12 changes many settings in conf/iotdb-engine.properties, so do not use previous 
     configuration file directly.__
   * __NOTICE 2: V0.12 doesn't support upgrade from v0.9 or lower version, please upgrade to v0.10 first if needed.__
-  * __NOTICE 3: We don't recommend deleting data before the upgrading finished. The deletion will fail if you try to delete data in the storage group with upgrading files.__
+  * __NOTICE 3: We don't recommend deleting data before the upgrading finished. The deletion will fail if you try to delete data in the database with upgrading files.__
 
 - How to upgrade from v.10.x to v0.11.x?
   * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is 

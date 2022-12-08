@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -37,8 +36,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -95,28 +92,12 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-
-    Analysis analysis = Util.constructAnalysis();
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
 
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
@@ -173,27 +154,12 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testAddExchangeNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-
-    Analysis analysis = Util.constructAnalysis();
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
 
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
@@ -210,30 +176,13 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testSplitFragment() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-
-    Analysis analysis = Util.constructAnalysis();
-
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
+
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -245,30 +194,13 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Ordering.ASC));
-    timeJoinNode.addChild(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
-            Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-
-    Analysis analysis = Util.constructAnalysis();
-
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+
+    String sql = "select d1.s1,d1.s2,d333.s1 from root.sg limit 10";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
+
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
@@ -278,23 +210,17 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testSingleAlignedSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_aligned");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-
-    timeJoinNode.addChild(
-        new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath("root.sg.d22", Arrays.asList("s1", "s2")),
-            Ordering.ASC));
-
-    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-    Analysis analysis = Util.constructAnalysis();
-
+    String sql = "select s1, s2 from root.sg.d666666 limit 10";
     MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+        new MPPQueryContext(sql, queryId, null, new TEndPoint(), new TEndPoint());
+
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode root = Util.genLogicalPlan(analysis, context);
+
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
-    assertEquals(1, plan.getInstances().size());
+    assertEquals(2, plan.getInstances().size());
   }
 
   @Test

@@ -76,7 +76,7 @@ public class UDFInfo implements SnapshotProcessor {
     existedJarToMD5 = new HashMap<>();
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
-            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
+            CONFIG_NODE_CONF.getUdfTemporaryLibDir(), CONFIG_NODE_CONF.getUdfDir());
   }
 
   public void acquireUDFTableLock() {

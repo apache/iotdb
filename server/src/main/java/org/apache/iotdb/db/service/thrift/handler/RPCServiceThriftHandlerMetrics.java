@@ -35,9 +35,9 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.THRIFT_CONNECTIONS.toString(),
-        MetricLevel.CORE,
+        MetricLevel.IMPORTANT,
         thriftConnectionNumber,
         AtomicLong::get,
         Tag.NAME.toString(),
@@ -47,7 +47,7 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
+        MetricType.AUTO_GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
   }
 
   @Override

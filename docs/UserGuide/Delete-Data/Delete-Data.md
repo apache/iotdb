@@ -84,7 +84,7 @@ Msg: The statement is executed successfully.
 ```
 
 ## Delete Time Partition (experimental)
-You may delete all data in a time partition of a storage group using the following grammar:
+You may delete all data in a time partition of a database using the following grammar:
 
 ```sql
 DELETE PARTITION root.ln 0,1,2

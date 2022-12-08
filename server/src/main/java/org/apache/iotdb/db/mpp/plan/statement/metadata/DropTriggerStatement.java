@@ -20,17 +20,21 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 
 import java.util.Collections;
 import java.util.List;
 
 public class DropTriggerStatement extends Statement implements IConfigStatement {
   private final String triggerName;
+
+  private PartialPath authPath;
 
   public DropTriggerStatement(String triggerName) {
     super();
@@ -53,7 +57,23 @@ public class DropTriggerStatement extends Statement implements IConfigStatement 
   }
 
   @Override
+  public boolean isAuthenticationRequired() {
+    if (authPath == null) {
+      TriggerInformation information =
+          TriggerManagementService.getInstance().getTriggerInformation(triggerName);
+      if (information == null) {
+        return false;
+      } else {
+        authPath = information.getPathPattern();
+      }
+    }
+    return true;
+  }
+
+  @Override
   public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+    return isAuthenticationRequired()
+        ? Collections.singletonList(authPath)
+        : Collections.emptyList();
   }
 }

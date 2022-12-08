@@ -99,11 +99,11 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        currSequenceId++;
-        logger.info(
+        logger.debug(
             "[GetTsBlockFromQueue] TsBlock:{} size:{}",
             currSequenceId,
             tsBlock.getRetainedSizeInBytes());
+        currSequenceId++;
       }
       checkAndInvokeOnFinished();
       return tsBlock;
@@ -161,7 +161,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("[StartAbortLocalSourceHandle]");
+      logger.debug("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -172,7 +172,28 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.info("[EndAbortLocalSourceHandle]");
+      logger.debug("[EndAbortLocalSourceHandle]");
+    }
+  }
+
+  @Override
+  public void abort(Throwable t) {
+    if (aborted || closed) {
+      return;
+    }
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.debug("[StartAbortLocalSourceHandle]");
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          queue.abort(t);
+          aborted = true;
+          sourceHandleListener.onAborted(this);
+        }
+      }
+      logger.debug("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -182,7 +203,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("[StartCloseLocalSourceHandle]");
+      logger.debug("[StartCloseLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -193,7 +214,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      logger.info("[EndCloseLocalSourceHandle]");
+      logger.debug("[EndCloseLocalSourceHandle]");
     }
   }
 

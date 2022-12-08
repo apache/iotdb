@@ -73,7 +73,7 @@ public class CommonConfig {
           + "procedure";
 
   /** Sync directory, including the log and hardlink tsfiles */
-  private String syncFolder =
+  private String syncDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** WAL directories */
@@ -85,10 +85,10 @@ public class CommonConfig {
   private FSType systemFileStorageFs = FSType.LOCAL;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms.
+   * default TTL for databases that are not set TTL by statements, in ms.
    *
-   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected. Unit: millisecond
+   * <p>Notice: if this property is changed, previous created database which are not set TTL will
+   * also be affected. Unit: millisecond
    */
   private long defaultTTLInMs = Long.MAX_VALUE;
 
@@ -117,7 +117,7 @@ public class CommonConfig {
   private volatile String statusReason = null;
 
   /** Disk Monitor */
-  private double diskSpaceWarningThreshold = 5.0;
+  private double diskSpaceWarningThreshold = 0.05;
 
   CommonConfig() {}
 
@@ -125,7 +125,7 @@ public class CommonConfig {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-    syncFolder = addHomeDir(syncFolder, homeDir);
+    syncDir = addHomeDir(syncDir, homeDir);
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i], homeDir);
     }
@@ -214,12 +214,12 @@ public class CommonConfig {
     this.procedureWalFolder = procedureWalFolder;
   }
 
-  public String getSyncFolder() {
-    return syncFolder;
+  public String getSyncDir() {
+    return syncDir;
   }
 
-  public void setSyncFolder(String syncFolder) {
-    this.syncFolder = syncFolder;
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
   }
 
   public String[] getWalDirs() {
@@ -306,6 +306,7 @@ public class CommonConfig {
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
+    this.statusReason = null;
 
     switch (newStatus) {
       case ReadOnly:

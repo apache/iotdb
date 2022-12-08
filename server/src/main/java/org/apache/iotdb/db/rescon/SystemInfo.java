@@ -46,7 +46,7 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private long memorySizeForWrite;
+  private long memorySizeForMemtable;
   private long memorySizeForCompaction;
   private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -55,8 +55,8 @@ public class SystemInfo {
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-  private double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  private double FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+  private double REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -65,10 +65,10 @@ public class SystemInfo {
   }
 
   /**
-   * Report current mem cost of storage group to system. Called when the memory of storage group
-   * newly accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
+   * Report current mem cost of database to system. Called when the memory of database newly
+   * accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
    *
-   * @param dataRegionInfo storage group
+   * @param dataRegionInfo database
    * @throws WriteProcessRejectException
    */
   public synchronized boolean reportStorageGroupStatus(
@@ -80,8 +80,7 @@ public class SystemInfo {
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Report Storage Group Status to the system. "
-              + "After adding {}, current sg mem cost is {}.",
+          "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
           delta,
           totalStorageGroupMemCost);
     }
@@ -92,7 +91,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
-          "The total storage group mem costs are too large, call for flushing. "
+          "The total database mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
           totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
@@ -100,20 +99,20 @@ public class SystemInfo {
     } else {
       logger.info(
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THERSHOLD ({})",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
           REJECT_THERSHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
-        if (totalStorageGroupMemCost < memorySizeForWrite) {
+        if (totalStorageGroupMemCost < memorySizeForMemtable) {
           return true;
         } else {
           throw new WriteProcessRejectException(
-              "Total Storage Group MemCost "
+              "Total database MemCost "
                   + totalStorageGroupMemCost
                   + " is over than memorySizeForWriting "
-                  + memorySizeForWrite);
+                  + memorySizeForMemtable);
         }
       } else {
         return false;
@@ -125,7 +124,7 @@ public class SystemInfo {
    * Report resetting the mem cost of sg to system. It will be called after flushing, closing and
    * failed to insert
    *
-   * @param dataRegionInfo storage group
+   * @param dataRegionInfo database
    */
   public synchronized void resetStorageGroupStatus(DataRegionInfo dataRegionInfo) {
     long delta = 0;
@@ -141,13 +140,13 @@ public class SystemInfo {
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-            dataRegionInfo.getDataRegion().getStorageGroupName(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -156,7 +155,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -164,7 +163,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -181,11 +180,13 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    long originSize = this.compactionMemoryCost.get();
-    while (originSize + memoryCost > memorySizeForCompaction
-        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-      Thread.sleep(100);
-      originSize = this.compactionMemoryCost.get();
+    if (config.isEnableMemControl()) {
+      long originSize = this.compactionMemoryCost.get();
+      while (originSize + memoryCost > memorySizeForCompaction
+          || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+        Thread.sleep(100);
+        originSize = this.compactionMemoryCost.get();
+      }
     }
   }
 
@@ -194,16 +195,21 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    return memorySizeForCompaction;
+    if (config.isEnableMemControl()) {
+      return memorySizeForCompaction;
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 
   public void allocateWriteMemory() {
-    memorySizeForWrite =
-        (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
+    memorySizeForMemtable =
+        (long)
+            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   @TestOnly
@@ -284,15 +290,15 @@ public class SystemInfo {
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForWrite -= estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    memorySizeForMemtable -= estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForWrite += estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+    memorySizeForMemtable += estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public long getTotalMemTableSize() {

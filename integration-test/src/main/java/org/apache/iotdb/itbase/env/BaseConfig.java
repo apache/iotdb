@@ -70,15 +70,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default boolean isEnablePartition() {
-    return false;
-  }
-
   default BaseConfig setPartitionInterval(long partitionInterval) {
-    return this;
-  }
-
-  default BaseConfig setTimePartitionIntervalForStorage(long partitionInterval) {
     return this;
   }
 
@@ -99,10 +91,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 
@@ -215,7 +203,7 @@ public interface BaseConfig {
   }
 
   default String getConfigNodeConsesusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaRegionConsensusProtocolClass(
@@ -224,7 +212,7 @@ public interface BaseConfig {
   }
 
   default String getSchemaRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
@@ -232,7 +220,47 @@ public interface BaseConfig {
   }
 
   default String getDataRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
+  }
+
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
+  default BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getSchemaRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getSchemaRegionGroupPerDatabase() {
+    return 1;
+  }
+
+  default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getDataRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getDataRegionGroupPerDatabase() {
+    return 1;
   }
 
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
@@ -251,7 +279,15 @@ public interface BaseConfig {
     return 1;
   }
 
-  default BaseConfig setTimePartitionIntervalForRouting(long timePartitionInterval) {
+  default BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    return this;
+  }
+
+  default int getSeriesPartitionSlotNum() {
+    return 10000;
+  }
+
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 
@@ -267,7 +303,7 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default int getPartitionRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
     return 4000;
   }
 
@@ -341,5 +377,39 @@ public interface BaseConfig {
 
   default int getSelectIntoInsertTabletPlanRowLimit() {
     return 10000;
+  }
+
+  default BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
+    return this;
+  }
+
+  default boolean isEnableAutoLeaderBalanceForRatisConsensus() {
+    return false;
+  }
+
+  default BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    return this;
+  }
+
+  default boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return true;
+  }
+
+  default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    return this;
+  }
+
+  default int getLeastDataRegionGroupNum() {
+    return 5;
+  }
+
+  default BaseConfig setQueryThreadCount(int queryThreadCount) {
+    return this;
+  }
+
+  default int getQueryThreadCount() {
+    return Runtime.getRuntime().availableProcessors();
   }
 }

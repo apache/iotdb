@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
@@ -67,7 +68,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     void onEndOfBlocks(ISinkHandle sinkHandle);
 
-    void onAborted(ISinkHandle sinkHandle);
+    Optional<Throwable> onAborted(ISinkHandle sinkHandle);
 
     void onFailure(ISinkHandle sinkHandle, Throwable t);
   }
@@ -121,7 +122,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
         if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
-          logger.warn(
+          logger.debug(
               "received ACK event but target FragmentInstance[{}] is not found.",
               e.getSourceFragmentInstanceId());
           return;
@@ -129,7 +130,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
       } catch (Throwable t) {
-        logger.error(
+        logger.warn(
             "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
         throw t;
       }
@@ -160,7 +161,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           // may
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
           // FragmentInstance may be finished, although the upstream is still working.
-          logger.warn(
+          logger.debug(
               "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
@@ -194,7 +195,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
                 .isFinished()) {
-          logger.warn(
+          logger.debug(
               "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
@@ -220,12 +221,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("[ScHListenerOnFinish]");
+      logger.debug("[ScHListenerOnFinish]");
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.warn("[ScHListenerAlreadyReleased]");
+        logger.debug("[ScHListenerAlreadyReleased]");
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -239,13 +240,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      logger.info("[ScHListenerOnAbort]");
+      logger.debug("[ScHListenerOnAbort]");
       onFinished(sourceHandle);
     }
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      logger.error("Source handle failed due to: ", t);
+      logger.warn("Source handle failed due to: ", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -267,35 +268,36 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnFinish]");
+      logger.debug("[SkHListenerOnFinish]");
       removeFromMPPDataExchangeManager(sinkHandle);
       context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnEndOfTsBlocks]");
+      logger.debug("[SkHListenerOnEndOfTsBlocks]");
       context.transitionToFlushing();
     }
 
     @Override
-    public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("[SkHListenerOnAbort]");
+    public Optional<Throwable> onAborted(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnAbort]");
       removeFromMPPDataExchangeManager(sinkHandle);
+      return context.getFailureCause();
     }
 
     private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
       if (sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId()) == null) {
-        logger.warn("[RemoveNoSinkHandle]");
+        logger.debug("[RemoveNoSinkHandle]");
       } else {
-        logger.info("[RemoveSinkHandle]");
+        logger.debug("[RemoveSinkHandle]");
       }
     }
 
     @Override
     public void onFailure(ISinkHandle sinkHandle, Throwable t) {
       // TODO: (xingtanzjr) should we remove the sinkHandle from MPPDataExchangeManager ?
-      logger.error("Sink handle failed due to", t);
+      logger.warn("Sink handle failed due to", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -499,21 +501,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("[StartForceReleaseFIDataExchangeResource]");
-    if (sinkHandles.containsKey(fragmentInstanceId)) {
-      ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
+    logger.debug("[StartForceReleaseFIDataExchangeResource]");
+    ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
+    if (sinkHandle != null) {
       sinkHandle.abort();
       sinkHandles.remove(fragmentInstanceId);
     }
-    if (sourceHandles.containsKey(fragmentInstanceId)) {
-      Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+    Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
+    if (planNodeIdToSourceHandle != null) {
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
-        logger.info("[CloseSourceHandle] {}", entry.getKey());
+        logger.debug("[CloseSourceHandle] {}", entry.getKey());
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }
-    logger.info("[EndForceReleaseFIDataExchangeResource]");
+    logger.debug("[EndForceReleaseFIDataExchangeResource]");
   }
 
   /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */

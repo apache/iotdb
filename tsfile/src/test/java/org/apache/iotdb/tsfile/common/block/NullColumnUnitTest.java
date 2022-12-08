@@ -36,11 +36,6 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 
   @Test
@@ -51,11 +46,6 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 
   @Test
@@ -66,11 +56,6 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 
   @Test
@@ -81,11 +66,6 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 
   @Test
@@ -96,11 +76,6 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 
   @Test
@@ -111,10 +86,5 @@ public class NullColumnUnitTest {
     Assert.assertTrue(nullColumn.mayHaveNull());
     Assert.assertTrue(nullColumn.isNull(0));
     Assert.assertTrue(nullColumn.isNull(9));
-    try {
-      nullColumn.isNull(10);
-      Assert.fail();
-    } catch (IllegalArgumentException ignored) {
-    }
   }
 }

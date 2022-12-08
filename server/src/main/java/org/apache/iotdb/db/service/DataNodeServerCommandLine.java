@@ -48,10 +48,10 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeServerCommandLine.class);
 
   // join an established cluster
-  private static final String MODE_START = "-s";
+  public static final String MODE_START = "-s";
   // send a request to remove a node, more arguments: ip-of-removed-node
   // metaport-of-removed-node
-  private static final String MODE_REMOVE = "-r";
+  public static final String MODE_REMOVE = "-r";
 
   private static final String USAGE =
       "Usage: <-s|-r> "
@@ -72,15 +72,17 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     }
 
     DataNode dataNode = DataNode.getInstance();
+
+    String mode = args[0];
+    LOGGER.info("Running mode {}", mode);
+
     // Check config of IoTDB, and set some configs in cluster mode
     try {
-      dataNode.serverCheckAndInit();
+      dataNode.serverCheckAndInit(mode);
     } catch (ConfigurationException | IOException e) {
       LOGGER.error("Meet error when doing start checking", e);
       return -1;
     }
-    String mode = args[0];
-    LOGGER.info("Running mode {}", mode);
 
     // Initialize the current node and its services
     if (!dataNode.initLocalEngines()) {

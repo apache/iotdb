@@ -37,7 +37,7 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
         schemaStatisticsManager,
@@ -49,7 +49,7 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
   }
 
   @Override

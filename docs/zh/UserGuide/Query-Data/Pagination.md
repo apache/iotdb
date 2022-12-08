@@ -28,7 +28,14 @@
 
 ## 按行分页
 
-通过使用 `LIMIT` 和 `OFFSET` 子句，用户可以以与行相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
+用户可以通过 `LIMIT` 和 `OFFSET` 子句控制查询结果的行数，`LIMIT rowLimit` 指定查询结果的行数，`OFFSET rowOffset` 指定查询结果显示的起始行位置。
+
+注意：
+- 当 `rowOffset` 超过结果集的大小时，返回空结果集。
+- 当 `rowLimit` 超过结果集的大小时，返回所有查询结果。
+- 当 `rowLimit` 和 `rowOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+
+我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
 
 - **示例 1：** 基本的 `LIMIT` 子句
 
@@ -146,21 +153,17 @@ Total line number = 4
 It costs 0.016s
 ```
 
-值得注意的是，由于当前的 FILL 子句只能在某个时间点填充时间序列的缺失值，也就是说，FILL 子句的执行结果恰好是一行，因此 LIMIT 和 OFFSE 不能与 FILL 子句结合使用，否则将提示错误。 例如，执行以下 SQL 语句：
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) limit 10
-```
-
-错误提示如下：
-
-```
-Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, ';'}
-```
-
 ## 按列分页
 
-通过使用 `SLIMIT` 和 `SOFFSET` 子句，用户可以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
+用户可以通过 `SLIMIT` 和 `SOFFSET` 子句控制查询结果的列数，`SLIMIT seriesLimit` 指定查询结果的列数，`SOFFSET seriesOffset` 指定查询结果显示的起始列位置。
+
+注意：
+- 仅用于控制值列，对时间列和设备列无效。
+- 当 `seriesOffset` 超过结果集的大小时，返回空结果集。
+- 当 `seriesLimit` 超过结果集的大小时，返回所有查询结果。
+- 当 `seriesLimit` 和 `seriesOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+
+我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
 
 - **示例 1：** 基本的 `SLIMIT` 子句
 
@@ -246,29 +249,7 @@ Total line number = 7
 It costs 0.000s
 ```
 
-- **示例 4：** `SLIMIT` 子句与 `FILL` 子句结合
-
-SQL 语句：
-
-```sql
-select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) slimit 1 soffset 1
-```
-
-含义：
-
-```
-+-----------------------------+--------------------------+
-|                         Time|root.sgcc.wf03.wt01.status|
-+-----------------------------+--------------------------+
-|2017-11-01T16:35:00.000+08:00|                      true|
-+-----------------------------+--------------------------+
-Total line number = 1
-It costs 0.007s
-```
-
-## 行和列混合分页
-
-除了对查询结果进行行或列控制之外，IoTDB 还允许用户控制查询结果的行和列。 这是同时包含 `LIMIT` 子句和 `SLIMIT` 子句的完整示例。
+- **示例 4：** `SLIMIT` 子句与 `LIMIT` 子句结合
 
 SQL 语句：
 
@@ -299,69 +280,4 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 +-----------------------------+-----------------------------+------------------------+
 Total line number = 10
 It costs 0.009s
-```
-
-## 错误处理
-
-当 `LIMIT / SLIMIT` 的参数 `N / SN` 超过结果集的大小时，IoTDB 将按预期返回所有结果。 例如，原始 SQL 语句的查询结果由六行组成，我们通过 `LIMIT` 子句选择前 100 行：
-
-```sql
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
-```
-
-结果如下所示：
-
-```
-+-----------------------------+------------------------+-----------------------------+
-|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------------+------------------------+-----------------------------+
-|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
-|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
-|2017-11-01T00:08:00.000+08:00|                   false|                        22.58|
-|2017-11-01T00:09:00.000+08:00|                   false|                        20.98|
-|2017-11-01T00:10:00.000+08:00|                    true|                        25.52|
-|2017-11-01T00:11:00.000+08:00|                   false|                        22.91|
-+-----------------------------+------------------------+-----------------------------+
-Total line number = 6
-It costs 0.005s
-```
-
-当 `LIMIT / SLIMIT` 子句的参数 `N / SN` 超过允许的最大值（`N / SN` 的类型为 `INT32`）时，系统将提示错误。 例如，执行以下 SQL 语句：
-
-```sql
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
-```
-
-SQL 语句将不会执行，并且相应的错误提示如下：
-
-```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
-```
-
-当 `LIMIT / LIMIT` 子句的参数 `N / SN` 不是正整数时，系统将提示错误。 例如，执行以下 SQL 语句：
-
-```sql
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
-```
-
-SQL 语句将不会执行，并且相应的错误提示如下：
-
-```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
-```
-
-当 `LIMIT` 子句的参数 `OFFSET` 超过结果集的大小时，IoTDB 将返回空结果集。 例如，执行以下 SQL 语句：
-
-```sql
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
-```
-
-结果如下所示：
-
-```
-+----+------------------------+-----------------------------+
-|Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+----+------------------------+-----------------------------+
-Empty set.
-It costs 0.005s
 ```

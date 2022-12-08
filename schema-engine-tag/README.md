@@ -29,7 +29,7 @@
   | | (_| | (_| | /\__/ / (__| | | |  __/ | | | | | (_| | | |\ \  __/ (_| | | (_) | | | |
   \_/\__,_|\__, | \____/ \___|_| |_|\___|_| |_| |_|\__,_| \_| \_\___|\__, |_|\___/|_| |_|
             __/ |                                                     __/ |              
-           |___/                                                     |___/ > version 0.14.0-SNAPSHOT
+           |___/                                                     |___/ > version 1.0.0
 </pre>
 
 # How To Use
@@ -61,7 +61,7 @@ Starting IoTDB Cli
   | |   .--.|_/ | | \_|  | | `. \ | |_) |  
   | | / .'`\ \  | |      | |  | | |  __'.  
  _| |_| \__. | _| |_    _| |_.' /_| |__) | 
-|_____|'.__.' |_____|  |______.'|_______/  version 0.14.0-SNAPSHOT
+|_____|'.__.' |_____|  |______.'|_______/  version 1.0.0
                                            
 
 IoTDB> login successfully
@@ -91,7 +91,7 @@ enter a full path
 ```sql
 IoTDB> show timeseries root.ln.tag2.c.tag1.a
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                     timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 | root.ln.tag1.a.tag2.c.latitude| null|      root.ln|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.ln.tag1.a.tag2.c.longitude| null|      root.ln|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -105,7 +105,7 @@ paths ending in ".**" indicate batch query
 ```sql
 IoTDB> show timeseries root.ln.tag1.a.**
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                     timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |   root.ln.tag1.a.tag2.b.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 | root.ln.tag1.a.tag2.c.latitude| null|      root.ln|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -114,7 +114,7 @@ IoTDB> show timeseries root.ln.tag1.a.**
 
 IoTDB> show timeseries root.ln.tag2.c.**
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                     timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 | root.ln.tag1.a.tag2.c.latitude| null|      root.ln|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.ln.tag1.a.tag2.c.longitude| null|      root.ln|   FLOAT|   PLAIN|     SNAPPY|null|      null|
@@ -122,7 +122,7 @@ IoTDB> show timeseries root.ln.tag2.c.**
 
 IoTDB> show timeseries root.ln.tag2.b.**
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                  timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                  timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.tag1.a.tag2.b.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+

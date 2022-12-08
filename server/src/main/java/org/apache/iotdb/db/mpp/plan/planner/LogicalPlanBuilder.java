@@ -106,7 +106,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 
 public class LogicalPlanBuilder {
 
@@ -136,7 +136,7 @@ public class LogicalPlanBuilder {
     }
     expressions.forEach(
         expression -> {
-          if (!expression.getExpressionString().equals(COLUMN_DEVICE)) {
+          if (!expression.getExpressionString().equals(DEVICE)) {
             context
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
@@ -192,18 +192,22 @@ public class LogicalPlanBuilder {
       Filter globalTimeFilter,
       OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Expression sourceExpression : sourceExpressions) {
-      MeasurementPath selectPath =
-          (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-      if (selectPath.isUnderAlignedEntity()) {
+    List<PartialPath> selectedPaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toList());
+    List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
+    for (PartialPath path : groupedPaths) {
+      if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
-            new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), (MeasurementPath) path));
+      } else if (path instanceof AlignedPath) { // aligned series
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(context.getQueryId().genPlanNodeId(), (AlignedPath) path));
       } else {
-        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+        throw new IllegalArgumentException("unexpected path type");
       }
     }
-    updateTypeProvider(sourceExpressions);
 
     this.root =
         new LastQueryNode(
@@ -534,7 +538,7 @@ public class LogicalPlanBuilder {
       deviceViewNode.addChildDeviceNode(deviceName, subPlan);
     }
 
-    context.getTypeProvider().setType(COLUMN_DEVICE, TSDataType.TEXT);
+    context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
 
     this.root = deviceViewNode;

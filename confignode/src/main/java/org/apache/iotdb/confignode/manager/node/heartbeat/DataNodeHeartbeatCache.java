@@ -19,13 +19,17 @@
 package org.apache.iotdb.confignode.manager.node.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 /** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
+  private volatile TLoadSample latestLoadSample;
+
   /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
   public DataNodeHeartbeatCache() {
     super();
+    this.latestLoadSample = new TLoadSample((short) 0, 0, 0, 0);
   }
 
   @Override
@@ -37,6 +41,11 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
       }
     }
     long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
+
+    /* Update load sample */
+    if (lastSample != null && lastSample.isSetLoadSample()) {
+      latestLoadSample = lastSample.getLoadSample();
+    }
 
     /* Update Node status */
     NodeStatus status = null;
@@ -59,5 +68,9 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
       // Update the current NodeStatistics if necessary
       currentStatistics = newStatistics;
     }
+  }
+
+  public long getFreeDiskSpace() {
+    return latestLoadSample.getFreeDiskSpace();
   }
 }
