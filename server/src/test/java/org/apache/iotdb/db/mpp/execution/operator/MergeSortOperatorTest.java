@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperat
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -43,8 +44,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.DeviceMergeUtils;
-import org.apache.iotdb.db.utils.TimeMergeUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -315,12 +314,10 @@ public class MergeSortOperatorTest {
           Arrays.asList(
               singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
           tsDataTypes,
-          new TimeMergeUtils(
-              new ArrayList<>(
-                  Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))),
-              3));
+          MergeSortComparator.getComparator(
+              Arrays.asList(
+                  new SortItem(SortKey.TIME, timeOrdering),
+                  new SortItem(SortKey.DEVICE, deviceOrdering))));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -791,34 +788,28 @@ public class MergeSortOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(14),
               Arrays.asList(singleDeviceViewOperator1, singleDeviceViewOperator2),
               tsDataTypes,
-              new TimeMergeUtils(
-                  new ArrayList<>(
-                      Arrays.asList(
-                          new SortItem(SortKey.TIME, timeOrdering),
-                          new SortItem(SortKey.DEVICE, deviceOrdering))),
-                  2));
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering))));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               fragmentInstanceContext.getOperatorContexts().get(15),
               Arrays.asList(singleDeviceViewOperator3, singleDeviceViewOperator4),
               tsDataTypes,
-              new TimeMergeUtils(
-                  new ArrayList<>(
-                      Arrays.asList(
-                          new SortItem(SortKey.TIME, timeOrdering),
-                          new SortItem(SortKey.DEVICE, deviceOrdering))),
-                  2));
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering))));
 
       return new MergeSortOperator(
           fragmentInstanceContext.getOperatorContexts().get(16),
           Arrays.asList(mergeSortOperator1, mergeSortOperator2),
           tsDataTypes,
-          new TimeMergeUtils(
-              new ArrayList<>(
-                  Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))),
-              2));
+          MergeSortComparator.getComparator(
+              Arrays.asList(
+                  new SortItem(SortKey.TIME, timeOrdering),
+                  new SortItem(SortKey.DEVICE, deviceOrdering))));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1263,12 +1254,10 @@ public class MergeSortOperatorTest {
           fragmentInstanceContext.getOperatorContexts().get(12),
           Arrays.asList(deviceViewOperator1, deviceViewOperator2),
           tsDataTypes,
-          new DeviceMergeUtils(
-              new ArrayList<>(
-                  Arrays.asList(
-                      new SortItem(SortKey.DEVICE, deviceOrdering),
-                      new SortItem(SortKey.TIME, timeOrdering))),
-              2));
+          MergeSortComparator.getComparator(
+              Arrays.asList(
+                  new SortItem(SortKey.DEVICE, deviceOrdering),
+                  new SortItem(SortKey.TIME, timeOrdering))));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

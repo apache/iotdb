@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
@@ -168,13 +169,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
-    boxValue.add(
-        String.format(
-            "Order: %s %s,%s %s",
-            node.getMergeOrderParameter().getSortItemList().get(0).getSortKey(),
-            node.getMergeOrderParameter().getSortItemList().get(0).getOrdering(),
-            node.getMergeOrderParameter().getSortItemList().get(1).getSortKey(),
-            node.getMergeOrderParameter().getSortItemList().get(1).getOrdering()));
+    String sortInfo = "Order";
+    for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
+      sortInfo += sortItem.getSortKey() + " " + sortItem.getOrdering();
+    }
+    boxValue.add(sortInfo);
     return render(node, boxValue, context);
   }
 

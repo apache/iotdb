@@ -20,11 +20,11 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.utils.MergeSortUtils;
+import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -45,7 +46,8 @@ public class MergeSortOperator implements ProcessOperator {
   private final int inputOperatorsCount;
   private final TsBlock[] inputTsBlocks;
   private final boolean[] noMoreTsBlocks;
-  private final MergeSortUtils mergeSortToolKit;
+  private final MergeSortHeap mergeSortHeap;
+  private final Comparator<MergeSortKey> comparator;
 
   private boolean finished;
 
@@ -53,12 +55,13 @@ public class MergeSortOperator implements ProcessOperator {
       OperatorContext operatorContext,
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
-      MergeSortUtils mergeSortUtils) {
+      Comparator<MergeSortKey> comparator) {
     this.operatorContext = operatorContext;
     this.inputOperators = inputOperators;
     this.dataTypes = dataTypes;
     this.inputOperatorsCount = inputOperators.size();
-    this.mergeSortToolKit = mergeSortUtils;
+    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
+    this.comparator = comparator;
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
@@ -91,77 +94,55 @@ public class MergeSortOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    // 1. fill consumed up TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && inputOperators.get(i).hasNext()) {
         inputTsBlocks[i] = inputOperators.get(i).next();
         if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
           return null;
         }
-        mergeSortToolKit.addTsBlock(inputTsBlocks[i], i);
+        mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
       }
     }
 
-    List<Integer> targetTsBlockIndex = mergeSortToolKit.getTargetTsBlockIndex();
-    int targetTsBlockSize = targetTsBlockIndex.size();
-    if (targetTsBlockSize == 1) {
-      int index = targetTsBlockIndex.get(0);
-      TsBlock resultTsBlock = inputTsBlocks[index];
-      inputTsBlocks[index] = null;
-      mergeSortToolKit.updateTsBlock(index, null);
-      return resultTsBlock;
+    // 2. check if we can directly return the original TsBlock instead of merging way
+    MergeSortKey minMergeSortKey = mergeSortHeap.poll();
+    if (mergeSortHeap.isEmpty()
+        || comparator.compare(
+                new MergeSortKey(
+                    minMergeSortKey.tsBlock, minMergeSortKey.tsBlock.getPositionCount() - 1),
+                mergeSortHeap.peek())
+            < 0) {
+      inputTsBlocks[minMergeSortKey.columnIndex] = null;
+      return minMergeSortKey.tsBlock;
     }
+    mergeSortHeap.push(minMergeSortKey);
 
-    // get the row of tsBlock whose keyValue <= targetValue
+    // 3. do merge sort until one TsBlock is consumed up
     tsBlockBuilder.reset();
-
-    TsBlockSingleColumnIterator[] tsBlockIterators =
-        new TsBlockSingleColumnIterator[targetTsBlockSize];
-    for (int i = 0; i < targetTsBlockSize; i++) {
-      tsBlockIterators[i] =
-          inputTsBlocks[targetTsBlockIndex.get(i)].getTsBlockSingleColumnIterator();
-      mergeSortToolKit.keyValueSelector.updateTsBlock(i, tsBlockIterators[i]);
-    }
-    // use the min KeyValue of all TsBlock as the end keyValue of result tsBlock, it has already
-    // been calculated through mergeSortToolKit.getTargetTsBlockIndex().
-    // ps: max KeyValue if the ordering is desc, which is aimed to use up at least one tsBlock.
-    boolean hasMatchKey = true;
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    // add to result TsBlock through a merge-sorting way
-    while (hasMatchKey) {
-      hasMatchKey = false;
-      // find the targetTsBlock which has the min KeyValue to output one row
-      int minIndex = mergeSortToolKit.keyValueSelector.poll();
-      if (minIndex != -1) {
-        hasMatchKey = true;
-        int rowIndex = tsBlockIterators[minIndex].getRowIndex();
-        TsBlock targetBlock = inputTsBlocks[targetTsBlockIndex.get(minIndex)];
-        timeBuilder.writeLong(targetBlock.getTimeByIndex(rowIndex));
-        for (int i = 0; i < valueColumnBuilders.length; i++) {
-          if (targetBlock.getColumn(i).isNull(rowIndex)) {
-            valueColumnBuilders[i].appendNull();
-            continue;
-          }
-          valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
+    while (!mergeSortHeap.isEmpty()) {
+      MergeSortKey mergeSortKey = mergeSortHeap.poll();
+      TsBlock targetBlock = mergeSortKey.tsBlock;
+      int rowIndex = mergeSortKey.rowIndex;
+      timeBuilder.writeLong(targetBlock.getTimeByIndex(rowIndex));
+      for (int i = 0; i < valueColumnBuilders.length; i++) {
+        if (targetBlock.getColumn(i).isNull(rowIndex)) {
+          valueColumnBuilders[i].appendNull();
+          continue;
         }
-        tsBlockIterators[minIndex].next();
-        tsBlockBuilder.declarePosition();
-        if (!tsBlockIterators[minIndex].hasNext()) break;
-        mergeSortToolKit.keyValueSelector.update();
+        valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
       }
-    }
-    // update inputTsBlocks after consuming
-    mergeSortToolKit.keyValueSelector.clear();
-    for (int i = 0; i < targetTsBlockSize; i++) {
-      if (tsBlockIterators[i].hasNext()) {
-        int rowIndex = tsBlockIterators[i].getRowIndex();
-        inputTsBlocks[targetTsBlockIndex.get(i)] =
-            inputTsBlocks[targetTsBlockIndex.get(i)].subTsBlock(rowIndex);
-        mergeSortToolKit.updateTsBlock(
-            targetTsBlockIndex.get(i), inputTsBlocks[targetTsBlockIndex.get(i)]);
+      tsBlockBuilder.declarePosition();
+      if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
+        if (!mergeSortHeap.isEmpty()
+            && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
+          break;
+        }
       } else {
-        inputTsBlocks[targetTsBlockIndex.get(i)] = null;
-        mergeSortToolKit.updateTsBlock(targetTsBlockIndex.get(i), null);
+        mergeSortKey.rowIndex++;
+        mergeSortHeap.push(mergeSortKey);
       }
     }
     return tsBlockBuilder.build();

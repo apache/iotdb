@@ -197,7 +197,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
     for (int i = 0; i < node.getDevices().size(); i++) {
       List<PlanNode> rewroteNode = rewrite(node.getChildren().get(i), context);
-      rewroteNode.forEach(newRoot::addChild);
+      for (PlanNode planNode : rewroteNode) {
+        newRoot.addChildDeviceNode(node.getDevices().get(i), planNode);
+      }
     }
     return Collections.singletonList(newRoot);
   }

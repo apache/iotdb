@@ -255,11 +255,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       mergeSortNodeList.add(mergeSortNode);
     }
 
-    return groupPlanNodeByMergeSortNode(mergeSortNodeList, node.getMergeOrderParameter(), context);
+    return groupPlanNodeByMergeSortNode(
+        mergeSortNodeList, node.getOutputColumnNames(), node.getMergeOrderParameter(), context);
   }
 
   private PlanNode groupPlanNodeByMergeSortNode(
       List<PlanNode> mergeSortNodeList,
+      List<String> outputColumns,
       OrderByParameter orderByParameter,
       NodeGroupContext context) {
     if (mergeSortNodeList.size() == 1) {
@@ -267,7 +269,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     }
 
     MergeSortNode mergeSortNode =
-        new MergeSortNode(context.queryContext.getQueryId().genPlanNodeId(), orderByParameter);
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(), orderByParameter, outputColumns);
 
     // Each child has different TRegionReplicaSet, so we can select any one from
     // its child
@@ -379,7 +382,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       deviceViewNodeList.add(deviceViewNode);
     }
 
-    return groupPlanNodeByMergeSortNode(deviceViewNodeList, node.getMergeOrderParameter(), context);
+    return groupPlanNodeByMergeSortNode(
+        deviceViewNodeList, node.getOutputColumnNames(), node.getMergeOrderParameter(), context);
   }
 
   private static class DeviceViewGroup {
