@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
@@ -27,9 +30,6 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -77,7 +77,7 @@ public class MemTableFlushTask {
   /**
    * @param memTable the memTable to flush
    * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
-   * @param storageGroup current storage group
+   * @param storageGroup current database
    */
   public MemTableFlushTask(
       IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
@@ -87,7 +87,7 @@ public class MemTableFlushTask {
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
     LOGGER.debug(
-        "flush task of Storage group {} memtable is created, flushing to file {}.",
+        "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
         writer.getFile().getName());
   }
@@ -122,14 +122,20 @@ public class MemTableFlushTask {
     // sort the IDeviceID in lexicographical order
     deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
     for (IDeviceID deviceID : deviceIDList) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
-
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
+      // skip the empty device/chunk group
+      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+        continue;
+      }
+      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
       List<String> seriesInOrder = new ArrayList<>(value.keySet());
       seriesInOrder.sort((String::compareTo));
       for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = value.get(seriesId);
+        if (series.count() == 0) {
+          continue;
+        }
         /*
          * sort task (first task of flush pipeline)
          */
@@ -142,7 +148,7 @@ public class MemTableFlushTask {
     }
     encodingTaskQueue.put(new TaskEnd());
     LOGGER.debug(
-        "Storage group {} memtable flushing into file {}: data sort time cost {} ms.",
+        "Database {} memtable flushing into file {}: data sort time cost {} ms.",
         storageGroup,
         writer.getFile().getName(),
         sortTime);
@@ -179,7 +185,7 @@ public class MemTableFlushTask {
             "flush");
 
     LOGGER.info(
-        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        "Database {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup,
         memTable,
         System.currentTimeMillis() - start);
@@ -193,7 +199,7 @@ public class MemTableFlushTask {
         @Override
         public void run() {
           LOGGER.debug(
-              "Storage group {} memtable flushing to file {} starts to encoding data.",
+              "Database {} memtable flushing to file {} starts to encoding data.",
               storageGroup,
               writer.getFile().getName());
           while (true) {
@@ -213,7 +219,7 @@ public class MemTableFlushTask {
                   @SuppressWarnings("squid:S2142")
                   InterruptedException e) {
                 LOGGER.error(
-                    "Storage group {} memtable flushing to file {}, encoding task is interrupted.",
+                    "Database {} memtable flushing to file {}, encoding task is interrupted.",
                     storageGroup,
                     writer.getFile().getName(),
                     e);
@@ -246,7 +252,7 @@ public class MemTableFlushTask {
           }
 
           LOGGER.debug(
-              "Storage group {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
+              "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
               storageGroup,
               writer.getFile().getName(),
               memSerializeTime);
@@ -258,7 +264,7 @@ public class MemTableFlushTask {
   private Runnable ioTask =
       () -> {
         LOGGER.debug(
-            "Storage group {} memtable flushing to file {} start io.",
+            "Database {} memtable flushing to file {} start io.",
             storageGroup,
             writer.getFile().getName());
         while (true) {
@@ -282,17 +288,16 @@ public class MemTableFlushTask {
               this.writer.endChunkGroup();
             } else {
               ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
-              writer.checkMetadataSizeAndMayFlush();
             }
           } catch (IOException e) {
             LOGGER.error(
-                "Storage group {} memtable {}, io task meets error.", storageGroup, memTable, e);
+                "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
             throw new FlushRunTimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
         LOGGER.debug(
-            "flushing a memtable to file {} in storage group {}, io cost {}ms",
+            "flushing a memtable to file {} in database {}, io cost {}ms",
             writer.getFile().getName(),
             storageGroup,
             ioTime);

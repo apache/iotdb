@@ -49,12 +49,12 @@ public class IoTDBInsertAlignedValues2IT {
     autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
@@ -63,12 +63,11 @@ public class IoTDBInsertAlignedValues2IT {
   public void testInsertAlignedWithEmptyPage() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
       for (int i = 0; i < 100; i++) {
         if (i == 99) {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S3) aligned values("
                   + i
                   + ","
@@ -77,7 +76,7 @@ public class IoTDBInsertAlignedValues2IT {
                   + i
                   + ")");
         } else {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
                   + i
                   + ","
@@ -87,6 +86,7 @@ public class IoTDBInsertAlignedValues2IT {
                   + ")");
         }
       }
+      statement.executeBatch();
 
       statement.execute("flush");
       int rowCount = 0;

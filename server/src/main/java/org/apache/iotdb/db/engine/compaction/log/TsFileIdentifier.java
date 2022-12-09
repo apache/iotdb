@@ -29,9 +29,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 /**
  * This class record the logical information of files in compaction, which is used to locate file in
- * disk. File identifier includes whether the file is sequence, its storage group name, virtual
- * storage group id, time partition id and file name. <b>This class cannot be initialized
- * directly.</b> We provide some static methods to create instance of this class.
+ * disk. File identifier includes whether the file is sequence, its database name, virtual database
+ * id, time partition id and file name. <b>This class cannot be initialized directly.</b> We provide
+ * some static methods to create instance of this class.
  */
 public class TsFileIdentifier {
   private final String logicalStorageGroupName;
@@ -74,8 +74,8 @@ public class TsFileIdentifier {
 
   /**
    * This function generates an instance of CompactionFileIdentifier by parsing the path of a
-   * tsfile. Notice, the path of the file should include information of its logical storage group,
-   * virtual storage group id, time partition, sequence or not and its filename, such as
+   * tsfile. Notice, the path of the file should include information of its logical database, data
+   * region id, time partition, sequence or not and its filename, such as
    * "sequence/root.test.sg/0/0/1-1-0-0.tsfile".
    */
   public static TsFileIdentifier getFileIdentifierFromFilePath(String filepath) {

@@ -81,6 +81,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showClusterColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowClusterDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showClusterDetailsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowFunctionsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showFunctionsColumnHeaders, true);
   }
@@ -127,5 +131,27 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowPipeHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
+  }
+
+  public static DatasetHeader getGetRegionIdHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getRegionIdColumnHeaders, true);
+  }
+
+  public static DatasetHeader getGetSeriesSlotListHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getSeriesSlotListColumnHeaders, true);
+  }
+
+  public static DatasetHeader getGetTimeSlotListHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
+  }
+
+  public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
+    return isAlignByDevice
+        ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.selectIntoColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowContinuousQueriesHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showContinuousQueriesColumnHeaders, true);
   }
 }

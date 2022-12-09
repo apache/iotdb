@@ -22,8 +22,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionTest;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -49,6 +49,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   File tempSGDir;
   final long MAX_WAITING_TIME = 120_000;
 
+  private ICompactionPerformer performer;
+
   @Before
   public void setUp() throws Exception {
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
@@ -58,6 +60,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     CompactionTaskManager.getInstance().restart();
     Assert.assertTrue(tempSGDir.mkdirs());
     super.setUp();
+    performer = new FastCompactionPerformer(false);
+    performer.setSourceFiles(seqResources);
   }
 
   @After
@@ -74,22 +78,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Future<CompactionTaskSummary> summaryFuture = null;
@@ -130,22 +122,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     seqResources.get(0).readLock();
     Future<CompactionTaskSummary> summaryFuture = null;
     try {
@@ -184,22 +164,10 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     seqResources.get(0).readLock();
     Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
@@ -224,13 +192,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
@@ -260,13 +222,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     seqResources.get(0).readLock();
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
 
@@ -295,7 +251,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new ReadPointCompactionPerformer(),
+            new FastCompactionPerformer(true),
             new AtomicInteger(0),
             0,
             0);

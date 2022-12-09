@@ -70,10 +70,6 @@ public interface BaseConfig {
     return this;
   }
 
-  default boolean isEnablePartition() {
-    return true;
-  }
-
   default BaseConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -95,10 +91,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 
@@ -211,7 +203,7 @@ public interface BaseConfig {
   }
 
   default String getConfigNodeConsesusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setSchemaRegionConsensusProtocolClass(
@@ -220,7 +212,7 @@ public interface BaseConfig {
   }
 
   default String getSchemaRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
   default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
@@ -228,7 +220,47 @@ public interface BaseConfig {
   }
 
   default String getDataRegionConsensusProtocolClass() {
-    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+    return "org.apache.iotdb.consensus.simple.SimpleConsensus";
+  }
+
+  default BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    return this;
+  }
+
+  default boolean isEnableDataPartitionInheritPolicy() {
+    return false;
+  }
+
+  default BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getSchemaRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getSchemaRegionGroupPerDatabase() {
+    return 1;
+  }
+
+  default BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    return this;
+  }
+
+  default String getDataRegionGroupExtensionPolicy() {
+    return "AUTO";
+  }
+
+  default BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    return this;
+  }
+
+  default int getDataRegionGroupPerDatabase() {
+    return 1;
   }
 
   default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
@@ -247,6 +279,14 @@ public interface BaseConfig {
     return 1;
   }
 
+  default BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    return this;
+  }
+
+  default int getSeriesPartitionSlotNum() {
+    return 10000;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
@@ -263,7 +303,11 @@ public interface BaseConfig {
     return 400000;
   }
 
-  default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+  default int getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs() {
+    return 4000;
+  }
+
+  default BaseConfig setCompactionThreadCount(int compactionThreadCount) {
     return this;
   }
 
@@ -277,5 +321,95 @@ public interface BaseConfig {
 
   default int getMaxDegreeOfIndexNode() {
     return 256;
+  }
+
+  default BaseConfig setEnableWatermark(boolean enableWatermark) {
+    return this;
+  }
+
+  default boolean isEnableWatermark() {
+    return false;
+  }
+
+  default String getWatermarkSecretKey() {
+    return "IoTDB*2019@Beijing";
+  }
+
+  default BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    return this;
+  }
+
+  default String getWatermarkBitString() {
+    return "100101110100";
+  }
+
+  default BaseConfig setWatermarkBitString(String watermarkBitString) {
+    return this;
+  }
+
+  default String getWatermarkMethod() {
+    return "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
+  }
+
+  default BaseConfig setWatermarkMethod(String watermarkMethod) {
+    return this;
+  }
+
+  default boolean isEnableMQTTService() {
+    return false;
+  }
+
+  default BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
+  }
+
+  default BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    return this;
+  }
+
+  default String getSchemaEngineMode() {
+    return "Memory";
+  }
+
+  default BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    return this;
+  }
+
+  default int getSelectIntoInsertTabletPlanRowLimit() {
+    return 10000;
+  }
+
+  default BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
+    return this;
+  }
+
+  default boolean isEnableAutoLeaderBalanceForRatisConsensus() {
+    return false;
+  }
+
+  default BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    return this;
+  }
+
+  default boolean isEnableAutoLeaderBalanceForIoTConsensus() {
+    return true;
+  }
+
+  default BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    return this;
+  }
+
+  default int getLeastDataRegionGroupNum() {
+    return 5;
+  }
+
+  default BaseConfig setQueryThreadCount(int queryThreadCount) {
+    return this;
+  }
+
+  default int getQueryThreadCount() {
+    return Runtime.getRuntime().availableProcessors();
   }
 }

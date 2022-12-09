@@ -29,11 +29,11 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
@@ -48,7 +48,8 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final String value;
   private final boolean isContains;
 
-  private boolean isFinished;
+  private List<TsBlock> tsBlockList;
+  private int currentIndex = 0;
 
   private final List<TSDataType> outputDataTypes;
 
@@ -87,9 +88,24 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    Map<PartialPath, Integer> countMap;
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    currentIndex++;
+    return tsBlockList.get(currentIndex - 1);
+  }
+
+  @Override
+  public boolean hasNext() {
+    if (tsBlockList == null) {
+      createTsBlockList();
+    }
+
+    return currentIndex < tsBlockList.size();
+  }
+
+  public void createTsBlockList() {
+    Map<PartialPath, Long> countMap;
     try {
       if (key != null && value != null) {
         countMap =
@@ -107,24 +123,24 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    countMap.forEach(
-        (path, count) -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path.getFullPath()));
-          tsBlockBuilder.getColumnBuilder(1).writeInt(count);
-          tsBlockBuilder.declarePosition();
-        });
-    return tsBlockBuilder.build();
-  }
 
-  @Override
-  public boolean hasNext() {
-    return !isFinished;
+    tsBlockList =
+        SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+            countMap.entrySet().iterator(),
+            outputDataTypes,
+            (entry, tsBlockBuilder) -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder
+                  .getColumnBuilder(0)
+                  .writeBinary(new Binary(entry.getKey().getFullPath()));
+              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
+              tsBlockBuilder.declarePosition();
+            });
   }
 
   @Override
   public boolean isFinished() {
-    return isFinished;
+    return !hasNext();
   }
 
   @Override

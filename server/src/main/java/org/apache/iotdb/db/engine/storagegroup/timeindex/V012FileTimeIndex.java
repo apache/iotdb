@@ -34,8 +34,14 @@ import java.util.Set;
 
 public class V012FileTimeIndex implements ITimeIndex {
 
+  FileTimeIndex fileTimeIndex;
+
   /** devices */
   public V012FileTimeIndex() {}
+
+  public FileTimeIndex getFileTimeIndex() {
+    return fileTimeIndex;
+  }
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
@@ -44,22 +50,25 @@ public class V012FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
+  public ITimeIndex deserialize(InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
       ReadWriteIOUtils.readString(inputStream);
     }
-    return new FileTimeIndex(
-        ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
+    fileTimeIndex =
+        new FileTimeIndex(
+            ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
+    return this;
   }
 
   @Override
-  public FileTimeIndex deserialize(ByteBuffer buffer) {
+  public ITimeIndex deserialize(ByteBuffer buffer) {
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       SerializeUtils.deserializeString(buffer);
     }
-    return new FileTimeIndex(buffer.getLong(), buffer.getLong());
+    fileTimeIndex = new FileTimeIndex(buffer.getLong(), buffer.getLong());
+    return this;
   }
 
   @Override
@@ -177,8 +186,19 @@ public class V012FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    throw new UnsupportedOperationException(
+        "V012FileTimeIndex should be rewritten while upgrading and getStartAndEndTime() method should not be called any more.");
+  }
+
+  @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
     throw new UnsupportedOperationException(
         "V012FileTimeIndex should be rewritten while upgrading and getPossibleStartTimeAndEndTime() method should not be called any more.");
+  }
+
+  @Override
+  public byte getTimeIndexType() {
+    return ITimeIndex.V012_FILE_TIME_INDEX_TYPE;
   }
 }

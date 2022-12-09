@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.pool;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -39,7 +39,7 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
         rawQueryReadTaskPoolManager,
@@ -48,7 +48,7 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
         Tag.STATUS.toString(),
         "running");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
         rawQueryReadTaskPoolManager,
@@ -62,14 +62,14 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
         Tag.STATUS.toString(),
         "running");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),

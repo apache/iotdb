@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -69,6 +68,19 @@ public interface IStateMachine {
    * @return true if snapshot is successfully taken
    */
   boolean takeSnapshot(File snapshotDir);
+
+  /**
+   * Take a snapshot of current statemachine. Snapshot.log will be stored under snapshotDir, The
+   * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
+   *
+   * @param snapshotDir required storage dir
+   * @param snapshotTmpId temporary id of the snapshot
+   * @param snapshotId the id of the snapshot
+   * @return true if snapshot is successfully taken
+   */
+  default boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
+    return takeSnapshot(snapshotDir);
+  }
 
   /**
    * Load the latest snapshot from given dir
@@ -132,9 +144,9 @@ public interface IStateMachine {
      * can possibly be this server.
      *
      * @param groupId The id of this consensus group.
-     * @param newLeader The id of the new leader.
+     * @param newLeaderId The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {}
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a
@@ -158,5 +170,15 @@ public interface IStateMachine {
    */
   default IStateMachine.EventApi event() {
     return (IStateMachine.EventApi) this;
+  }
+
+  /**
+   * Since Ratis 2.4.1, RatisConsensus allows statemachine to customize its own snapshot storage.
+   * Currently only DataRegionStateMachine will use this interface.
+   *
+   * @return statemachine snapshot root
+   */
+  default File getSnapshotRoot() {
+    return null;
   }
 }

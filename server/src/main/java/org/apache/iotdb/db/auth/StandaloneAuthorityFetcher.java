@@ -47,11 +47,10 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
       if (localConfigNode.login(username, password)) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     }
   }
 
@@ -72,7 +71,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
     if (checkStatus) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR, checkMessage);
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION, checkMessage);
     }
   }
 
@@ -84,7 +83,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e);
+      throw new AuthException(TSStatusCode.ILLEGAL_PATH, e);
     }
     return false;
   }

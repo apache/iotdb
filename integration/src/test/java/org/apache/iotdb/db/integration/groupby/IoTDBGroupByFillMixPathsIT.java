@@ -46,7 +46,7 @@ public class IoTDBGroupByFillMixPathsIT {
 
   private static String[] dataSet1 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -106,7 +106,7 @@ public class IoTDBGroupByFillMixPathsIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
     EnvironmentUtils.cleanEnv();
   }
 

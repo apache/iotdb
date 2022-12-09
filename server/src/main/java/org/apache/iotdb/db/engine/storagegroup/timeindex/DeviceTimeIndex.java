@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -83,6 +84,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);
@@ -151,6 +153,24 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
+  }
+
+  /**
+   * Deserialize TimeIndex and get devices only.
+   *
+   * @param inputStream inputStream
+   * @return device name
+   */
+  public static Set<String> getDevices(InputStream inputStream) throws IOException {
+    int deviceNum = ReadWriteIOUtils.readInt(inputStream);
+    ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
+    Set<String> devices = new HashSet<>();
+    for (int i = 0; i < deviceNum; i++) {
+      String path = ReadWriteIOUtils.readString(inputStream).intern();
+      ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
+      devices.add(path);
+    }
+    return devices;
   }
 
   @Override
@@ -342,6 +362,17 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    Integer index = deviceToIndex.get(deviceId);
+    if (index == null) {
+      return null;
+    } else {
+      int i = index;
+      return new long[] {startTimes[i], endTimes[i]};
+    }
+  }
+
+  @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
     boolean hasMatchedDevice = false;
     long startTime = Long.MAX_VALUE;
@@ -363,5 +394,10 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     return hasMatchedDevice ? new Pair<>(startTime, endTime) : null;
+  }
+
+  @Override
+  public byte getTimeIndexType() {
+    return ITimeIndex.DEVICE_TIME_INDEX_TYPE;
   }
 }

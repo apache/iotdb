@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -31,12 +32,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class DataPartitionTable {
 
@@ -62,7 +66,7 @@ public class DataPartitionTable {
    * @return True if all the PartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
+      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots,
       DataPartitionTable dataPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
     if (partitionSlots.isEmpty()) {
@@ -71,12 +75,12 @@ public class DataPartitionTable {
     } else {
       // Return the DataPartition for each SeriesPartitionSlot
       partitionSlots.forEach(
-          (seriesPartitionSlot, timePartitionSlots) -> {
+          (seriesPartitionSlot, timePartitionSlotList) -> {
             if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
               SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
               if (!dataPartitionMap
                   .get(seriesPartitionSlot)
-                  .getDataPartition(timePartitionSlots, seriesPartitionTable)) {
+                  .getDataPartition(timePartitionSlotList, seriesPartitionTable)) {
                 result.set(false);
               }
 
@@ -145,33 +149,55 @@ public class DataPartitionTable {
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @return Unassigned PartitionSlots
    */
-  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
-    Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> result = new ConcurrentHashMap<>();
+  public Map<TSeriesPartitionSlot, TTimeSlotList> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, TTimeSlotList> partitionSlots) {
+    Map<TSeriesPartitionSlot, TTimeSlotList> result = new ConcurrentHashMap<>();
 
     partitionSlots.forEach(
         (seriesPartitionSlot, timePartitionSlots) ->
             result.put(
                 seriesPartitionSlot,
-                dataPartitionMap
-                    .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .filterUnassignedDataPartitionSlots(timePartitionSlots)));
+                new TTimeSlotList(
+                    dataPartitionMap
+                        .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
+                        .filterUnassignedDataPartitionSlots(
+                            timePartitionSlots.getTimePartitionSlots()),
+                    false,
+                    false)));
 
     return result;
   }
 
-  public static DataPartitionTable convertFromPlainMap(
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-          dataPartitionMap) {
-    DataPartitionTable result = new DataPartitionTable();
+  /**
+   * Query a timePartition's corresponding dataRegionIds
+   *
+   * @param seriesSlotId SeriesPartitionSlot
+   * @param timeSlotId TimePartitionSlot
+   * @return the timePartition's corresponding dataRegionIds, if timeSlotId == -1, then return all
+   *     the seriesSlot's dataRegionIds
+   */
+  public List<TConsensusGroupId> getRegionId(
+      TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+    return seriesPartitionTable.getRegionId(timeSlotId);
+  }
 
-    dataPartitionMap.forEach(
-        (seriesPartitionSlot, seriesPartitionMap) ->
-            result
-                .getDataPartitionMap()
-                .put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap)));
+  public List<TTimePartitionSlot> getTimeSlotList(
+      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
+    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+    return seriesPartitionTable.getTimeSlotList(startTime, endTime);
+  }
 
-    return result;
+  public List<TSeriesPartitionSlot> getSeriesSlotList() {
+    return dataPartitionMap.keySet().stream()
+        .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
+        .collect(Collectors.toList());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

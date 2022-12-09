@@ -80,7 +80,7 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
+    engineProperties.setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -100,20 +100,14 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
+        "dn_rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
-        "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
-    return this;
-  }
-
-  @Override
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
+        "dn_rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
@@ -228,6 +222,34 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy) {
+    confignodeProperties.setProperty(
+        "data_region_group_extension_policy", dataRegionGroupExtensionPolicy);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+    confignodeProperties.setProperty(
+        "data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+    return this;
+  }
+
+  @Override
   public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
     confignodeProperties.setProperty(
         "schema_replication_factor", String.valueOf(schemaReplicationFactor));
@@ -235,9 +257,23 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
+  public BaseConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
+    confignodeProperties.setProperty(
+        "enable_data_partition_inherit_policy", String.valueOf(enableDataPartitionInheritPolicy));
+    return this;
+  }
+
+  @Override
   public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     confignodeProperties.setProperty(
         "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    confignodeProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(seriesPartitionSlotNum));
     return this;
   }
 
@@ -257,20 +293,99 @@ public class MppConfig implements BaseConfig {
   @Override
   public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
-        "ratis_snapshot_trigger_threshold", String.valueOf(ratisSnapshotTriggerThreshold));
+        "config_node_ratis_snapshot_trigger_threshold",
+        String.valueOf(ratisSnapshotTriggerThreshold));
     return this;
   }
 
   @Override
-  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+  public BaseConfig setCompactionThreadCount(int concurrentCompactionThread) {
     confignodeProperties.setProperty(
-        "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));
+        "compaction_thread_count", String.valueOf(concurrentCompactionThread));
     return this;
   }
 
   @Override
   public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
     engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableWatermark(boolean enableWatermark) {
+    engineProperties.setProperty("watermark_module_opened", String.valueOf(enableWatermark));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkSecretKey(String watermarkSecretKey) {
+    engineProperties.setProperty("watermark_secret_key", watermarkSecretKey);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkBitString(String watermarkBitString) {
+    engineProperties.setProperty("watermark_bit_string", watermarkBitString);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setWatermarkMethod(String watermarkMethod) {
+    engineProperties.setProperty("watermark_method", watermarkMethod);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMQTTService(boolean enableMQTTService) {
+    engineProperties.setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSchemaEngineMode(String schemaEngineMode) {
+    engineProperties.setProperty("schema_engine_mode", schemaEngineMode);
+    return this;
+  }
+
+  @Override
+  public BaseConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    engineProperties.setProperty(
+        "select_into_insert_tablet_plan_row_limit",
+        String.valueOf(selectIntoInsertTabletPlanRowLimit));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableAutoLeaderBalanceForRatisConsensus(
+      boolean enableAutoLeaderBalanceForRatisConsensus) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_ratis_consensus",
+        String.valueOf(enableAutoLeaderBalanceForRatisConsensus));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableAutoLeaderBalanceForIoTConsensus(
+      boolean enableAutoLeaderBalanceForIoTConsensus) {
+    confignodeProperties.setProperty(
+        "enable_auto_leader_balance_for_iot_consensus",
+        String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+    confignodeProperties.setProperty(
+        "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
     return this;
   }
 }

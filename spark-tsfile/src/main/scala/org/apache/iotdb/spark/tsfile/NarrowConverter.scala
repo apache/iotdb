@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.spark.tsfile
 
-import java.util
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.qp.QueryProcessor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.spark.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
+import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
+import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
@@ -36,33 +34,34 @@ import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
+import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 
+import java.util
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * This object contains methods that are used to convert schema and data between SparkSQL
-  * and TSFile.
-  *
-  */
+ * This object contains methods that are used to convert schema and data between SparkSQL
+ * and TSFile.
+ *
+ */
 object NarrowConverter extends Converter {
 
   val TEMPLATE_NAME = "spark_template"
   val DEVICE_NAME = "device_name"
 
   /**
-    * Get union series in all tsfiles.
-    * e.g. (tsfile1:s1,s2) & (tsfile2:s2,s3) = s1,s2,s3
-    *
-    * @param files tsfiles
-    * @param conf  hadoop configuration
-    * @return union series
-    */
+   * Get union series in all tsfiles.
+   * e.g. (tsfile1:s1,s2) & (tsfile2:s2,s3) = s1,s2,s3
+   *
+   * @param files tsfiles
+   * @param conf  hadoop configuration
+   * @return union series
+   */
   def getUnionSeries(files: Seq[FileStatus], conf: Configuration): util.ArrayList[Series] = {
     val unionSeries = new util.ArrayList[Series]()
     var seriesSet: mutable.Set[String] = mutable.Set()
@@ -88,12 +87,12 @@ object NarrowConverter extends Converter {
 
 
   /**
-    * Construct fields with the TSFile data type converted to the SparkSQL data type.
-    *
-    * @param tsfileSchema tsfileSchema
-    * @param addTimeField true to add a time field; false to not
-    * @return the converted list of fields
-    */
+   * Construct fields with the TSFile data type converted to the SparkSQL data type.
+   *
+   * @param tsfileSchema tsfileSchema
+   * @param addTimeField true to add a time field; false to not
+   * @return the converted list of fields
+   */
   override def toSqlField(tsfileSchema: util.ArrayList[Series], addTimeField: Boolean):
   ListBuffer[StructField] = {
     val fields = new ListBuffer[StructField]()
@@ -120,12 +119,12 @@ object NarrowConverter extends Converter {
 
 
   /**
-    * Prepare queriedSchema from requiredSchema.
-    *
-    * @param requiredSchema requiredSchema
-    * @param tsFileMetaData tsFileMetaData
-    * @return
-    */
+   * Prepare queriedSchema from requiredSchema.
+   *
+   * @param requiredSchema requiredSchema
+   * @param tsFileMetaData tsFileMetaData
+   * @return
+   */
   def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetadata,
                  reader: TsFileSequenceReader): StructType = {
     var queriedSchema: StructType = new StructType()
@@ -158,13 +157,13 @@ object NarrowConverter extends Converter {
 
 
   /**
-    * Construct queryExpression based on queriedSchema and filters.
-    *
-    * @param schema           schema
-    * @param device_name      device_names
-    * @param measurement_name measurement_names
-    * @return query expression
-    */
+   * Construct queryExpression based on queriedSchema and filters.
+   *
+   * @param schema           schema
+   * @param device_name      device_names
+   * @param measurement_name measurement_names
+   * @return query expression
+   */
   def toQueryExpression(schema: StructType,
                         device_name: util.List[String],
                         measurement_name: util.Set[String],
@@ -210,11 +209,11 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Used in toQueryConfigs() to convert one query plan to one QueryConfig.
-    *
-    * @param queryPlan TsFile logical query plan
-    * @return TsFile physical query plan
-    */
+   * Used in toQueryConfigs() to convert one query plan to one QueryConfig.
+   *
+   * @param queryPlan TsFile logical query plan
+   * @return TsFile physical query plan
+   */
   private def queryToExpression(schema: StructType, queryPlan: TSQueryPlan): QueryExpression = {
     val selectedColumns = queryPlan.getPaths
     val timeFilter = queryPlan.getTimeFilterOperator
@@ -244,11 +243,11 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Transform sparkSQL's filter binary tree to filterOperator binary tree.
-    *
-    * @param node filter tree's node
-    * @return TSFile filterOperator binary tree
-    */
+   * Transform sparkSQL's filter binary tree to filterOperator binary tree.
+   *
+   * @param node filter tree's node
+   * @return TSFile filterOperator binary tree
+   */
   private def transformFilter(node: Filter): FilterOperator = {
     var operator: FilterOperator = null
     node match {
@@ -297,12 +296,12 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Transform SparkSQL's filter binary tree to TsFile's filter expression.
-    *
-    * @param schema to get relative columns' dataType information
-    * @param node   filter tree's node
-    * @return TSFile filter expression
-    */
+   * Transform SparkSQL's filter binary tree to TsFile's filter expression.
+   *
+   * @param schema to get relative columns' dataType information
+   * @param node   filter tree's node
+   * @return TSFile filter expression
+   */
   private def transformFilterToExpression(schema: StructType, node: FilterOperator,
                                           device_name: String): IExpression = {
     var filter: IExpression = null
@@ -402,7 +401,7 @@ object NarrowConverter extends Converter {
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
       // placeholder for an invalid filter in the current TsFile
-      val filter = new SingleSeriesExpression(new Path(device_name, nodeName), null)
+      val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true), null)
       filter
     } else {
       val dataType = schema.get(index).dataType
@@ -411,27 +410,27 @@ object NarrowConverter extends Converter {
         case FilterTypes.Eq =>
           dataType match {
             case BooleanType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(new java.lang.Boolean(nodeValue)))
               filter
             case IntegerType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(new java.lang.Double(nodeValue)))
               filter
             case StringType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.eq(nodeValue))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
@@ -439,19 +438,19 @@ object NarrowConverter extends Converter {
         case FilterTypes.Gt =>
           dataType match {
             case IntegerType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gt(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gt(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gt(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gt(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
@@ -459,19 +458,19 @@ object NarrowConverter extends Converter {
         case FilterTypes.GtEq =>
           dataType match {
             case IntegerType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gtEq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gtEq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gtEq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.gtEq(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
@@ -479,19 +478,19 @@ object NarrowConverter extends Converter {
         case FilterTypes.Lt =>
           dataType match {
             case IntegerType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.lt(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.lt(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.lt(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.lt(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
@@ -499,19 +498,19 @@ object NarrowConverter extends Converter {
         case FilterTypes.LtEq =>
           dataType match {
             case IntegerType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.ltEq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.ltEq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.ltEq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
-              val filter = new SingleSeriesExpression(new Path(device_name, nodeName),
+              val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
                 ValueFilter.ltEq(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
@@ -521,12 +520,12 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Construct MeasurementSchema from the given field.
-    *
-    * @param field   field
-    * @param options encoding options
-    * @return MeasurementSchema
-    */
+   * Construct MeasurementSchema from the given field.
+   *
+   * @param field   field
+   * @param options encoding options
+   * @return MeasurementSchema
+   */
   def getSeriesSchema(field: StructField, options: Map[String, String]): MeasurementSchema = {
     val dataType = getTsDataType(field.dataType)
     val encodingStr = dataType match {
@@ -543,12 +542,12 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Given a SparkSQL struct type, generate the TsFile schema.
-    * Note: Measurements of the same name should have the same schema.
-    *
-    * @param structType given sql schema
-    * @return TsFile schema
-    */
+   * Given a SparkSQL struct type, generate the TsFile schema.
+   * Note: Measurements of the same name should have the same schema.
+   *
+   * @param structType given sql schema
+   * @return TsFile schema
+   */
   def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
     val schema = new Schema()
     structType.fields.filter(f => {
@@ -561,11 +560,11 @@ object NarrowConverter extends Converter {
   }
 
   /**
-    * Convert a row in the spark table to a list of TSRecord.
-    *
-    * @param row given spark sql row
-    * @return TSRecord
-    */
+   * Convert a row in the spark table to a list of TSRecord.
+   *
+   * @param row given spark sql row
+   * @return TSRecord
+   */
   def toTsRecord(row: InternalRow, dataSchema: StructType): TSRecord = {
     val time = row.getLong(0)
     val res = new TSRecord(time, row.getString(1))

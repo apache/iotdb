@@ -45,10 +45,10 @@ public class TestUtils {
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace with prepareBatchData
       for (String sql : sqls) {
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -257,5 +257,15 @@ public class TestUtils {
       cnt++;
     }
     assertEquals(expectedRetArray.length, cnt);
+  }
+
+  public static void executeNonQuery(String sql) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

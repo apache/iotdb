@@ -27,10 +27,10 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -103,7 +103,23 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getStorageGroupName(),
+          region.getDatabaseName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
+    try {
+      return new SnapshotTaker(region)
+          .takeFullSnapshot(snapshotDir.getAbsolutePath(), snapshotTmpId, snapshotId, true);
+    } catch (Exception e) {
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getDatabaseName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -116,7 +132,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
-                region.getStorageGroupName(),
+                region.getDatabaseName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
@@ -125,7 +141,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
     this.region = newRegion;
     try {
-      StorageEngineV2.getInstance()
+      StorageEngine.getInstance()
           .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
@@ -136,7 +152,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   /**
-   * This method is used for write of MultiLeader SyncLog. By this method, we can keep write order
+   * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write order
    * in follower the same as the leader. And besides order insurance, we can make the
    * deserialization of PlanNode to be concurrent
    */
@@ -153,8 +169,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     /**
-     * This method is used for write of MultiLeader SyncLog. By this method, we can keep write order
-     * in follower the same as the leader. And besides order insurance, we can make the
+     * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write
+     * order in follower the same as the leader. And besides order insurance, we can make the
      * deserialization of PlanNode to be concurrent
      */
     private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
@@ -300,13 +316,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
-              region.getStorageGroupName(),
+              region.getDatabaseName(),
               region.getDataRegionId())
           .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",
-          region.getStorageGroupName(),
+          region.getDatabaseName(),
           region.getDataRegionId(),
           e);
       return null;
@@ -427,5 +443,21 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public long getSleepTime() {
     // TODO implement this
     return super.getSleepTime();
+  }
+
+  @Override
+  public File getSnapshotRoot() {
+    String snapshotDir =
+        IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotDir()
+            + File.separator
+            + region.getDatabaseName()
+            + "-"
+            + region.getDataRegionId();
+    try {
+      return new File(snapshotDir).getCanonicalFile();
+    } catch (IOException e) {
+      logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
+      return null;
+    }
   }
 }

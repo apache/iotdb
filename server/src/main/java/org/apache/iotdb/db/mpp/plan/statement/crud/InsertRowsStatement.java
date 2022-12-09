@@ -106,7 +106,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
       TRegionReplicaSet regionReplicaSet =
           dataPartition.getDataRegionReplicaSetForWriting(
               insertRowStatement.devicePath.getFullPath(),
-              TimePartitionUtils.getTimePartitionForRouting(insertRowStatement.getTime()));
+              TimePartitionUtils.getTimePartition(insertRowStatement.getTime()));
       result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }
     return result;

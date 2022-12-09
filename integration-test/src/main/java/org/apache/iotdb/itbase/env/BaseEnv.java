@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConfig;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.util.Version;
 
 import java.io.IOException;
@@ -71,7 +72,8 @@ public interface BaseEnv {
 
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
-  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
+  IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
+      throws IOException, InterruptedException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(
@@ -83,7 +85,7 @@ public interface BaseEnv {
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -96,7 +98,7 @@ public interface BaseEnv {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader,
+      boolean enableRedirection,
       Version version)
       throws IoTDBConnectionException {
     Session session =
@@ -109,7 +111,7 @@ public interface BaseEnv {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader,
+            enableRedirection,
             version);
 
     session.open();
@@ -126,13 +128,84 @@ public interface BaseEnv {
             null,
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_CACHE_LEADER_MODE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
             SessionConfig.DEFAULT_VERSION);
     session.open();
     return session;
   }
 
-  void restartDataNode(int index);
+  default SessionPool getSessionPool(int maxSize) {
+    return getSessionPool(
+        SessionConfig.DEFAULT_HOST,
+        SessionConfig.DEFAULT_PORT,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
 
+  default SessionPool getSessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    SessionPool pool =
+        new SessionPool(
+            host,
+            port,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableRedirection,
+            connectionTimeoutInMs,
+            version,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize);
+    return pool;
+  }
+
+  /** @return The index of ConfigNode-Leader in configNodeWrapperList */
+  int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
+
+  /** Start an existed ConfigNode */
+  void startConfigNode(int index);
+
+  /** Shutdown an existed ConfigNode */
+  void shutdownConfigNode(int index);
+
+  /** @return The TDataNodeLocation of the specified DataNode */
+  DataNodeWrapper getDataNodeWrapper(int index);
+
+  /** Register a new DataNode */
+  void registerNewDataNode();
+
+  /** Start an existed DataNode */
+  void startDataNode(int index);
+
+  /** Shutdown an existed DataNode */
   void shutdownDataNode(int index);
+
+  int getMqttPort();
 }

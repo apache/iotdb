@@ -32,22 +32,22 @@ public class RequestValidationHandler {
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
     if (sql.getRowLimit() != null) {
-      Validate.isTrue(sql.getRowLimit() > 0, "rowLimit should be positive");
+      Validate.isTrue(sql.getRowLimit() > 0, "row_limit should be positive");
     }
   }
 
   public static void validateInsertTabletRequest(InsertTabletRequest insertTabletRequest) {
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
-    Objects.requireNonNull(insertTabletRequest.getIsAligned(), "isAligned should not be null");
-    Objects.requireNonNull(insertTabletRequest.getDeviceId(), "deviceId should not be null");
-    Objects.requireNonNull(insertTabletRequest.getDataTypes(), "dataTypes should not be null");
+    Objects.requireNonNull(insertTabletRequest.getIsAligned(), "is_aligned should not be null");
+    Objects.requireNonNull(insertTabletRequest.getDevice(), "device should not be null");
+    Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
   }
 
   public static void validateExpressionRequest(ExpressionRequest expressionRequest) {
     Objects.requireNonNull(expressionRequest.getExpression(), "expression should not be null");
-    Objects.requireNonNull(expressionRequest.getPrefixPath(), "prefixPath should not be null");
-    Objects.requireNonNull(expressionRequest.getStartTime(), "startTime should not be null");
-    Objects.requireNonNull(expressionRequest.getEndTime(), "endTime should not be null");
+    Objects.requireNonNull(expressionRequest.getPrefixPath(), "prefix_path should not be null");
+    Objects.requireNonNull(expressionRequest.getStartTime(), "start_time should not be null");
+    Objects.requireNonNull(expressionRequest.getEndTime(), "end_time should not be null");
   }
 }

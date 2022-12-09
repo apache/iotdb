@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -97,9 +98,6 @@ public class TsFileIOWriter implements AutoCloseable {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool and split tool
-  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
-
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
   private long minPlanIndex;
@@ -111,12 +109,12 @@ public class TsFileIOWriter implements AutoCloseable {
   protected File chunkMetadataTempFile;
   protected LocalTsFileOutput tempOutput;
   protected volatile boolean hasChunkMetadataInDisk = false;
-  protected String currentSeries = null;
   // record the total num of path in order to make bloom filter
   protected int pathCount = 0;
   protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
+  private volatile int chunkMetadataCount = 0;
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".meta";
 
   /** empty construct function. */
@@ -269,6 +267,30 @@ public class TsFileIOWriter implements AutoCloseable {
     }
   }
 
+  /** Write an empty value chunk into file directly. Only used for aligned timeseries. */
+  public void writeEmptyValueChunk(
+      String measurementId,
+      CompressionType compressionType,
+      TSDataType tsDataType,
+      TSEncoding encodingType,
+      Statistics<? extends Serializable> statistics)
+      throws IOException {
+    currentChunkMetadata =
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
+    currentChunkMetadata.setMask(TsFileConstant.VALUE_COLUMN_MASK);
+    ChunkHeader emptyChunkHeader =
+        new ChunkHeader(
+            measurementId,
+            0,
+            tsDataType,
+            compressionType,
+            encodingType,
+            0,
+            TsFileConstant.VALUE_COLUMN_MASK);
+    emptyChunkHeader.serializeTo(out.wrapAsStream());
+    endCurrentChunk();
+  }
+
   public void writeChunk(Chunk chunk) throws IOException {
     ChunkHeader chunkHeader = chunk.getHeader();
     currentChunkMetadata =
@@ -287,6 +309,7 @@ public class TsFileIOWriter implements AutoCloseable {
     if (enableMemoryControl) {
       this.currentChunkMetadataSize += currentChunkMetadata.calculateRamSize();
     }
+    chunkMetadataCount++;
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
   }
@@ -298,6 +321,7 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
+    long startTime = System.currentTimeMillis();
     checkInMemoryPathCount();
     readChunkMetadataAndConstructIndexTree();
 
@@ -321,6 +345,8 @@ public class TsFileIOWriter implements AutoCloseable {
       }
     }
     canWrite = false;
+    long cost = System.currentTimeMillis() - startTime;
+    logger.info("Time for flushing metadata is {} ms", cost);
   }
 
   private void checkInMemoryPathCount() {
@@ -347,6 +373,7 @@ public class TsFileIOWriter implements AutoCloseable {
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
     String currentDevice = null;
     String prevDevice = null;
+    Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
@@ -359,25 +386,16 @@ public class TsFileIOWriter implements AutoCloseable {
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
-      Pair<String, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
+      Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
-      currentSeries = timeseriesMetadataPair.left;
+      currentPath = timeseriesMetadataPair.left;
 
       indexCount++;
       // build bloom filter
-      filter.add(currentSeries);
+      filter.add(currentPath.getFullPath());
       // construct the index tree node for the series
-      Path currentPath = null;
-      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        // this series is the time column of the aligned device
-        // the full series path will be like "root.sg.d."
-        // we remove the last . in the series id here
-        currentPath = new Path(currentSeries);
-        currentDevice = currentSeries.substring(0, currentSeries.length() - 1);
-      } else {
-        currentPath = new Path(currentSeries, true);
-        currentDevice = currentPath.getDevice();
-      }
+
+      currentDevice = currentPath.getDevice();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -507,7 +525,7 @@ public class TsFileIOWriter implements AutoCloseable {
           chunkGroupMetaData.getChunkMetadataList().iterator();
       while (chunkMetaDataIterator.hasNext()) {
         IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid(), true);
         int startTimeIdx = startTimeIdxes.get(path);
 
         List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
@@ -545,6 +563,14 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public TsFileOutput getIOWriterOut() {
     return out;
+  }
+
+  /**
+   * This method should be called before flushing chunk group metadata list, otherwise, it will
+   * return null.
+   */
+  public List<ChunkMetadata> getChunkMetadataListOfCurrentDeviceInMemory() {
+    return chunkMetadataList;
   }
 
   /**
@@ -609,6 +635,13 @@ public class TsFileIOWriter implements AutoCloseable {
     // This function should be called after all data of an aligned device has been written
     if (enableMemoryControl && currentChunkMetadataSize > maxMetadataSize) {
       try {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Flushing chunk metadata, total size is {}, count is {}, avg size is {}",
+              currentChunkMetadataSize,
+              chunkMetadataCount,
+              currentChunkMetadataSize / chunkMetadataCount);
+        }
         sortAndFlushChunkMetadata();
       } catch (IOException e) {
         logger.error("Meets exception when flushing metadata to temp file for {}", file, e);
@@ -649,6 +682,8 @@ public class TsFileIOWriter implements AutoCloseable {
     if (chunkMetadataList != null) {
       chunkMetadataList.clear();
     }
+    chunkMetadataCount = 0;
+    currentChunkMetadataSize = 0;
   }
 
   private void writeChunkMetadataToTempFile(
@@ -675,5 +710,17 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
     buffer.writeTo(tempOutput);
+  }
+
+  public String getCurrentChunkGroupDeviceId() {
+    return currentChunkGroupDeviceId;
+  }
+
+  public List<ChunkGroupMetadata> getChunkGroupMetadataList() {
+    return chunkGroupMetadataList;
+  }
+
+  public void flush() throws IOException {
+    out.flush();
   }
 }

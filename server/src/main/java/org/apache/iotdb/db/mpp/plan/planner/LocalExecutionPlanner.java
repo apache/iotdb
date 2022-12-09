@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
@@ -61,9 +61,10 @@ public class LocalExecutionPlanner {
       TypeProvider types,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      DataRegion dataRegion)
+      IDataRegionForQuery dataRegion)
       throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
@@ -129,10 +130,10 @@ public class LocalExecutionPlanner {
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
+            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.info(
+        LOGGER.debug(
             String.format(
                 "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
@@ -146,7 +147,7 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.info(
+                LOGGER.debug(
                     String.format(
                         "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));

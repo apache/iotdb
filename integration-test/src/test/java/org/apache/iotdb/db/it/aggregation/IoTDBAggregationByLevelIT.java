@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.it.aggregation;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -28,9 +30,12 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -43,13 +48,14 @@ import static org.apache.iotdb.itbase.constant.TestConstant.minTime;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationByLevelIT {
 
   private static final String[] dataSet =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg1",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -416,7 +422,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(temperature) as ct from root.sg1.d1, root.sg1.d2 GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -427,7 +434,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(temperature) as ct from root.sg1.* GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -439,7 +447,8 @@ public class IoTDBAggregationByLevelIT {
           statement.executeQuery(
               "select count(*) as ct from root.sg1.d1 GROUP BY ([0, 600), 100ms), level=1")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + "," + resultSet.getString("ct");
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME) + "," + resultSet.getString("ct");
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
@@ -654,8 +663,6 @@ public class IoTDBAggregationByLevelIT {
    * Test group by level without aggregation function used in select clause. The expected situation
    * is throwing an exception.
    */
-  // TODO
-  @Ignore
   @Test
   public void TestGroupByLevelWithoutAggregationFunc() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -668,6 +675,23 @@ public class IoTDBAggregationByLevelIT {
           e.getMessage()
               .contains(
                   "Common queries and aggregated queries are not allowed to appear at the same time"));
+    }
+  }
+
+  @Test
+  public void groupByLevelWithSameColumn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(status),count(status) from root.** GROUP BY level=0")) {
+
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        Assert.assertEquals(metaData.getColumnName(1), metaData.getColumnName(2));
+        Assert.assertEquals(count("root.*.*.status"), metaData.getColumnName(1));
+        Assert.assertEquals(2, metaData.getColumnCount());
+      }
     }
   }
 

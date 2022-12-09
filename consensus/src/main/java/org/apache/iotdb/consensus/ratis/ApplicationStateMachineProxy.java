@@ -44,6 +44,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -59,13 +61,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    groupId = id;
     retryPolicy =
         applicationStateMachine instanceof IStateMachine.RetryPolicy
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
-    snapshotStorage = new SnapshotStorage(applicationStateMachine);
+    snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     applicationStateMachine.start();
-    groupId = id;
   }
 
   @Override
@@ -194,28 +196,39 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to take the latest snapshot
-    String metadata = Utils.getMetadataFromTermIndex(lastApplied);
-    File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+    final String metadata = Utils.getMetadataFromTermIndex(lastApplied);
+    File snapshotTmpDir = snapshotStorage.getSnapshotTmpDir(metadata);
 
     // delete snapshotDir fully in case of last takeSnapshot() crashed
-    FileUtils.deleteFully(snapshotDir);
+    FileUtils.deleteFully(snapshotTmpDir);
 
-    snapshotDir.mkdirs();
-    if (!snapshotDir.isDirectory()) {
-      logger.error("Unable to create snapshotDir at {}", snapshotDir);
+    snapshotTmpDir.mkdirs();
+    if (!snapshotTmpDir.isDirectory()) {
+      logger.error("Unable to create temp snapshotDir at {}", snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
+    boolean applicationTakeSnapshotSuccess =
+        applicationStateMachine.takeSnapshot(
+            snapshotTmpDir, snapshotStorage.getSnapshotTmpId(metadata), metadata);
     if (!applicationTakeSnapshotSuccess) {
-      deleteIncompleteSnapshot(snapshotDir);
+      deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
-    boolean addTermIndexMetafileSuccess =
-        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
-    if (!addTermIndexMetafileSuccess) {
-      deleteIncompleteSnapshot(snapshotDir);
+    File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+
+    FileUtils.deleteFully(snapshotDir);
+    try {
+      Files.move(snapshotTmpDir.toPath(), snapshotDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      logger.error(
+          "{} atomic rename {} to {} failed with exception {}",
+          this,
+          snapshotTmpDir,
+          snapshotDir,
+          e);
+      deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
@@ -257,7 +270,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         .event()
         .notifyLeaderChanged(
             Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId()),
-            Utils.formRaftPeerIdToTEndPoint(newLeaderId));
+            Utils.fromRaftPeerIdToNodeId(newLeaderId));
   }
 
   @Override

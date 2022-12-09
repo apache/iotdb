@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 import org.apache.iotdb.itbase.constant.TestConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -174,7 +176,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testStringLiteralIllegalCase() {
     String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:45 no viable alternative at input '(1, string'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -192,7 +195,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg1 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:45 no viable alternative at input '(1, `string`'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -204,7 +208,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg2 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:53 token recognition error at: '')'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -216,7 +221,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg3 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:53 token recognition error at: '\")'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -235,7 +241,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testIllegalFilePath() {
     String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:5 no viable alternative at input 'LOAD path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -246,7 +253,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg1 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:7 mismatched input 'path' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -257,7 +265,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg2 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:7 mismatched input 'path' expecting {ROOT, STRING_LITERAL}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -271,7 +280,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testUserPassword() {
     String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:18 mismatched input 'test' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -284,7 +294,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     String errorMsg1 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -300,7 +311,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testUDFClassName() {
     String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:23 mismatched input 'org' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -335,7 +347,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     // Illegal name with back quote
     String errorMsg1 =
-        "401: Error occurred while parsing SQL to physical plan: "
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
             + "expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -367,8 +380,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     // Illegal attribute
     String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:21 extraneous input 'k' expecting {',', ')'}";
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": Error occurred while parsing SQL to physical plan: "
+            + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // UDF attribute should be STRING_LITERAL
@@ -538,11 +552,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   @Test
   public void testAliasInAlterClause() {
     String[] alias = {
-      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "\"\\\\test\"",
+      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "`\\\\test`",
     };
 
     String[] res = {
-      "b", "test", "test.1", "1`1", "test", "test", "\\\\test",
+      "b", "test", "`test.1`", "`1``1`", "test", "test", "`\\\\test`",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -555,7 +569,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
         statement.execute(String.format(alterSql, alias[i]));
         try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
           resultSet.next();
-          Assert.assertEquals(res[i], resultSet.getString("alias"));
+          Assert.assertEquals(res[i], resultSet.getString(ColumnHeaderConstant.ALIAS));
         }
       }
 
@@ -576,7 +590,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //  @Test
   //  public void testTriggerClassName() {
   //    String errorMsg =
-  //        "401: Error occurred while parsing SQL to physical plan: "
+  //        TSStatusCode.SQL_PARSE_ERROR.getStatusCode() + ": Error occurred while parsing SQL to
+  // physical plan: "
   //            + "line 1:64 mismatched input 'org' expecting {AS, '.'}";
   //    try (Connection connection = EnvFactory.getEnv().getConnection();
   //        Statement statement = connection.createStatement()) {
@@ -619,7 +634,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //  @Test
   //  public void testTriggerClassName1() {
   //    String errorMsg =
-  //        "401: Error occurred while parsing SQL to physical plan: "
+  //        TSStatusCode.SQL_PARSE_ERROR.getStatusCode() + ": Error occurred while parsing SQL to
+  // physical plan: "
   //            + "line 1:64 mismatched input
   // '`org.apache.iotdb.db.engine.trigger.example.Accumulator`' "
   //            + "expecting {AS, '.'}";
@@ -684,7 +700,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //  @Test
   //  public void testPipeSinkAttribute() {
   //    String errorMsg =
-  //        "401: Error occurred while parsing SQL to physical plan: "
+  //        TSStatusCode.SQL_PARSE_ERROR.getStatusCode() + ": Error occurred while parsing SQL to
+  // physical plan: "
   //            + "line 1:40 token recognition error at: '` = '127.0.0.1')'";
   //    try (Connection connection = EnvFactory.getEnv().getConnection();
   //        Statement statement = connection.createStatement()) {

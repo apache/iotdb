@@ -25,23 +25,14 @@
 
 时间分区按照时间分割数据，一个时间分区用于保存某个时间范围内的所有数据。时间分区编号使用自然数表示，0 表示 1970 年 1 月 1 日，每隔 partition_interval 毫秒后加一。数据通过计算 timestamp / partition_interval 得到自己所在的时间分区编号，主要配置项如下所示：
 
-* enable\_partition
+* time\_partition\_interval
 
-|名字| enable\_partition |
-|:---:|:---|
-|描述| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0 (不建议开启此功能。 如果打开，请计算合适的 concurrent_writing_time_partition 和 wal_buffer_size)|
-|类型|Bool|
-|默认值| false |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
-* time\_partition\_interval\_for\_storage
-
-|名字| time\_partition\_interval\_for\_storage |
-|:---:|:----------------------------------------|
-|描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：毫秒  |
-|类型| Int64                                   |
-|默认值| 86400000                                |
-|改后生效方式| 仅允许在第一次启动服务前修改                          |
+|名字| time\_partition\_interval              |
+ |:---------------------------------------------------:|:----------------------------------------|
+|描述| Database 分区的时间段长度，用户指定的 database 下会使用该时间段进行分区，单位：毫秒 |
+|类型|                        Int64                        |
+|默认值|                      604800000                      |
+|改后生效方式|                   仅允许在第一次启动服务前修改                    |
 
 ## 配置示例
 
@@ -49,9 +40,9 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Time-Partition/time_partition_example.png?raw=true" alt="time partition example">
 
-* 插入一条时间戳为 0 的数据，计算 0 / 86400 = 0，则该数据会被存储到 0 号文件夹下的TsFile中
+* 插入一条时间戳为 0 的数据，计算 0 / 86400000 = 0，则该数据会被存储到 0 号文件夹下的TsFile中
   
-* 插入一条时间戳为 1609459200010 的数据，计算 1609459200010 / 86400 = 18628，则该数据会被存储到 18628 号文件夹下的TsFile中
+* 插入一条时间戳为 1609459200010 的数据，计算 1609459200010 / 86400000 = 18628，则该数据会被存储到 18628 号文件夹下的TsFile中
 
 ## 使用建议
 

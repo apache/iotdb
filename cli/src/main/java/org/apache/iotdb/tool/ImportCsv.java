@@ -21,8 +21,9 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -30,6 +31,8 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -436,10 +439,9 @@ public class ImportCsv extends AbstractCsvTool {
     parseHeaders(headerNames, deviceAndMeasurementNames, headerTypeMap, headerNameMap);
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
-    String devicesStr = StringUtils.join(devices, ",");
     if (headerTypeMap.isEmpty()) {
       try {
-        queryType(devicesStr, headerTypeMap, "Time");
+        queryType(devices, headerTypeMap, "Time");
       } catch (IoTDBConnectionException e) {
         e.printStackTrace();
       }
@@ -587,17 +589,29 @@ public class ImportCsv extends AbstractCsvTool {
           AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
           // read data from record
-          for (String measurement : headerNameMap.keySet()) {
-            String value = record.get(measurement);
+          for (Map.Entry<String, String> headerNameEntry : headerNameMap.entrySet()) {
+            // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
+            String headerNameWithoutType = headerNameEntry.getKey();
+            String headerName = headerNameEntry.getValue();
+            String value = record.get(headerName);
             if (!"".equals(value)) {
               TSDataType type;
-              if (!headerTypeMap.containsKey(headerNameMap.get(measurement))) {
+              // Get the data type directly if the CSV column have data type.
+              if (!headerTypeMap.containsKey(headerNameWithoutType)) {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
-                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                      hasResult =
+                          queryType(
+                              new HashSet<String>() {
+                                {
+                                  add(deviceName.get());
+                                }
+                              },
+                              headerTypeMap,
+                              "Device");
                     }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
@@ -607,26 +621,26 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!hasResult) {
                   type = typeInfer(value);
                   if (type != null) {
-                    headerTypeMap.put(measurement, type);
+                    headerTypeMap.put(headerNameWithoutType, type);
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), measurement, value);
+                        record.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
               }
-              type = headerTypeMap.get(headerNameMap.get(measurement));
+              type = headerTypeMap.get(headerNameWithoutType);
               if (type != null) {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
+                      record.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
-                  measurements.add(headerNameMap.get(measurement));
+                  measurements.add(headerNameWithoutType);
                   types.add(type);
                   pointSize.getAndIncrement();
                 }
@@ -741,8 +755,8 @@ public class ImportCsv extends AbstractCsvTool {
    * read data from the CSV file
    *
    * @param path
-   * @return
-   * @throws IOException
+   * @return CSVParser csv parser
+   * @throws IOException when reading the csv file failed.
    */
   private static CSVParser readCsvFile(String path) throws IOException {
     return CSVFormat.Builder.create(CSVFormat.DEFAULT)
@@ -813,32 +827,37 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws StatementExecutionException
    */
   private static boolean queryType(
-      String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
+      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
       throws IoTDBConnectionException {
-    String sql = "select * from " + deviceNames + " limit 1";
-    SessionDataSet sessionDataSet = null;
-    try {
-      sessionDataSet = session.executeQueryStatement(sql);
-    } catch (StatementExecutionException e) {
-      System.out.println("Meet error when query the type of timeseries because " + e.getMessage());
-      return false;
-    }
-    List<String> columnNames = sessionDataSet.getColumnNames();
-    List<String> columnTypes = sessionDataSet.getColumnTypes();
-    if (columnNames.size() == 1) {
-      return false;
-    } else {
-      for (int i = 1; i < columnNames.size(); i++) {
-        if (Objects.equals(alignedType, "Time")) {
-          headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
-        } else if (Objects.equals(alignedType, "Device")) {
-          String[] split = columnNames.get(i).split("\\.");
-          String measurement = split[split.length - 1];
-          headerTypeMap.put(measurement, getType(columnTypes.get(i)));
+    boolean hasResult = false;
+    for (String deviceName : deviceNames) {
+      String sql = "show timeseries " + deviceName + ".*";
+      SessionDataSet sessionDataSet = null;
+      try {
+        sessionDataSet = session.executeQueryStatement(sql);
+        int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
+        int dtIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
+        while (sessionDataSet.hasNext()) {
+          hasResult = true;
+          RowRecord record = sessionDataSet.next();
+          List<Field> fields = record.getFields();
+          String timeseries = fields.get(tsIndex).getStringValue();
+          String dataType = fields.get(dtIndex).getStringValue();
+          if (Objects.equals(alignedType, "Time")) {
+            headerTypeMap.put(timeseries, getType(dataType));
+          } else if (Objects.equals(alignedType, "Device")) {
+            String[] split = PathUtils.splitPathToDetachedNodes(timeseries);
+            String measurement = split[split.length - 1];
+            headerTypeMap.put(measurement, getType(dataType));
+          }
         }
+      } catch (StatementExecutionException | IllegalPathException e) {
+        System.out.println(
+            "Meet error when query the type of timeseries because " + e.getMessage());
+        return false;
       }
-      return true;
     }
+    return hasResult;
   }
 
   /**
@@ -958,7 +977,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
+      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
     }
     return timestamp;
   }

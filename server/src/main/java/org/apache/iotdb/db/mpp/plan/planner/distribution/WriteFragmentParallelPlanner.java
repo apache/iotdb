@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.IFragmentParallelPlaner;
@@ -62,8 +63,9 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               fragment.getId().genFragmentInstanceId(),
               timeFilter,
               queryContext.getQueryType(),
-              queryContext.getTimeOut());
-      instance.setDataRegionAndHost(split.getRegionReplicaSet());
+              queryContext.getTimeOut(),
+              queryContext.getSession());
+      instance.setExecutorAndHost(new StorageExecutor(split.getRegionReplicaSet()));
       ret.add(instance);
     }
     return ret;

@@ -19,15 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -37,7 +31,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class MeasurementMNode extends MNode implements IMeasurementMNode {
@@ -52,8 +45,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
-  /** last value cache */
-  private volatile ILastCacheContainer lastCacheContainer = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
@@ -129,33 +120,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public TriggerExecutor getTriggerExecutor() {
-    return triggerExecutor;
-  }
-
-  @Override
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    this.triggerExecutor = triggerExecutor;
-  }
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    if (lastCacheContainer == null) {
-      synchronized (this) {
-        if (lastCacheContainer == null) {
-          lastCacheContainer = new LastCacheContainer();
-        }
-      }
-    }
-    return lastCacheContainer;
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    this.lastCacheContainer = lastCacheContainer;
-  }
-
-  @Override
   public boolean isPreDeleted() {
     return preDeleted;
   }
@@ -167,10 +131,10 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void updateSchemaInfo(
-      String measurementId,
-      TSEncoding encoding,
-      CompressionType compressionType,
-      Map<String, String> props) {
+          String measurementId,
+          TSEncoding encoding,
+          CompressionType compressionType,
+          Map<String, String> props) {
 
     if (encoding == null) {
       encoding = this.schema.getEncodingType();
@@ -179,31 +143,17 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       compressionType = this.schema.getCompressor();
     }
     this.schema =
-        new MeasurementSchema(
-            this.schema.getMeasurementId(),
-            this.schema.getType(),
-            encoding,
-            compressionType,
-            this.schema.getProps());
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    logWriter.serializeMeasurementMNode(this);
+            new MeasurementSchema(
+                    this.schema.getMeasurementId(),
+                    this.schema.getType(),
+                    encoding,
+                    compressionType,
+                    this.schema.getProps());
   }
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitMeasurementMNode(this, context);
-  }
-
-  /** deserialize MeasurementMNode from MeasurementNodePlan */
-  public static IMeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
-    IMeasurementMNode node =
-        MeasurementMNode.getMeasurementMNode(
-            null, plan.getName(), plan.getSchema(), plan.getAlias());
-    node.setOffset(plan.getOffset());
-    return node;
   }
 
   @Override
@@ -258,22 +208,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public Template getUpperTemplate() {
-    return parent.getUpperTemplate();
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    MeasurementMNode.logger.warn(
-        "current node {} is a MeasurementMNode, can not get Schema Template", name);
-    throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {}
-
-  @Override
   public int getSchemaTemplateId() {
     MeasurementMNode.logger.warn(
         "current node {} is a MeasurementMNode, can not get Schema Template", name);
@@ -283,6 +217,20 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void setSchemaTemplateId(int schemaTemplateId) {}
+
+  @Override
+  public void preUnsetSchemaTemplate() {}
+
+  @Override
+  public void rollbackUnsetSchemaTemplate() {}
+
+  @Override
+  public boolean isSchemaTemplatePreUnset() {
+    return false;
+  }
+
+  @Override
+  public void unsetSchemaTemplate() {}
 
   @Override
   public void setUseTemplate(boolean useTemplate) {}

@@ -22,8 +22,7 @@
 
 # IoTDB
 [![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -176,19 +175,15 @@ git checkout vx.x.x
 
 ### 启动 IoTDB
 
-可以通过运行 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+可以通过运行 sbin 文件夹下的 start-standalone 脚本启动 1C1D IoTDB。
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
 
 ### 使用 IoTDB
 
@@ -231,26 +226,26 @@ IoTDB>
 现在，让我们介绍创建 timeseries、插入数据和查询数据的方法。
 
 
-IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个存储组拥有。
-在定义 timeseries 之前，我们应该先使用SET storage group来定义一个存储组，下面是一个例子:
+IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个 database 拥有。
+在定义 timeseries 之前，我们应该先使用 CREATE DATABASE 来创建一个数据库，下面是一个例子:
 
 ```
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们也可以使用`SHOW STORAGE GROUP`来检查正在创建的存储组:
+我们也可以使用`SHOW DATABASES`来检查已创建的数据库:
 
 ```
-IoTDB> SHOW STORAGE GROUP
-+-------------+
-|storage group|
-+-------------+
-|      root.ln|
-+-------------+
+IoTDB> SHOW DATABASES
++--------+
+|Database|
++--------+
+| root.ln|
++--------+
 Total line number = 1
 ```
 
-在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
+在设置 database 之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
 在创建 timeseries 时，我们应该定义它的数据类型和编码方案。这里我们创建两个 timeseries:
 
 
@@ -267,7 +262,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -280,7 +275,7 @@ Total line number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -359,10 +354,10 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
 
 ## 只编译 server

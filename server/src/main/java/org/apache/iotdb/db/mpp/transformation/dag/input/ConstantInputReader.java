@@ -46,8 +46,7 @@ public class ConstantInputReader implements LayerPointReader {
   public ConstantInputReader(ConstantOperand expression) throws QueryProcessException {
     this.expression = Validate.notNull(expression);
 
-    Object value =
-        CommonUtils.parseValue(expression.getDataType(), expression.getExpressionString());
+    Object value = CommonUtils.parseValue(expression.getDataType(), expression.getValueString());
     if (value == null) {
       throw new QueryProcessException(
           "Invalid constant operand: " + expression.getExpressionString());

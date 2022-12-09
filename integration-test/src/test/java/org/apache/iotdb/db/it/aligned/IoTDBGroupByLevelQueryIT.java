@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -61,7 +62,7 @@ public class IoTDBGroupByLevelQueryIT {
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg2");
+      statement.execute("CREATE DATABASE root.sg2");
       statement.execute(
           "create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
       for (int i = 1; i <= 10; i++) {
@@ -200,7 +201,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void timeFuncGroupByLevelTest() throws ClassNotFoundException {
+  public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
       "min_time(root.*.d1.s3)",
@@ -213,7 +214,7 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  public void valueFuncGroupByLevelTest() throws ClassNotFoundException {
+  public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
       "last_value(root.*.d1.s3)",
@@ -225,5 +226,88 @@ public class IoTDBGroupByLevelQueryIT {
         "select last_value(s3),max_value(s3) from root.*.* group by level=2",
         retArray1,
         columnNames1);
+  }
+
+  @Test
+  public void nestedQueryTest1() {
+    // level = 1
+    double[][] retArray1 = new double[][] {{40.0, 21.0}};
+    String[] columnNames1 = {"count(root.sg1.*.s1 + 1) + 1", "count(root.sg2.*.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=1", retArray1, columnNames1);
+
+    // level = 2
+    double[][] retArray2 = new double[][] {{41.0, 20.0}};
+    String[] columnNames2 = {"count(root.*.d1.s1 + 1) + 1", "count(root.*.d2.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=2", retArray2, columnNames2);
+
+    // level = 3
+    double[][] retArray3 = new double[][] {{60.0}};
+    String[] columnNames3 = {"count(root.*.*.s1 + 1) + 1"};
+    resultSetEqualTest(
+        "select count(s1 + 1) + 1 from root.*.* group by level=3", retArray3, columnNames3);
+  }
+
+  @Test
+  public void nestedQueryTest2() {
+    // level = 1
+    double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
+    String[] columnNames1 = {
+      "count(root.sg1.*.s1) + sum(root.sg1.*.s1)",
+      "count(root.sg1.*.s1) + sum(root.sg2.*.s1)",
+      "count(root.sg2.*.s1) + sum(root.sg1.*.s1)",
+      "count(root.sg2.*.s1) + sum(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=1", retArray1, columnNames1);
+
+    // level = 2
+    double[][] retArray2 = new double[][] {{390634.0, 240.0, 390613.0, 219.0}};
+    String[] columnNames2 = {
+      "count(root.*.d1.s1) + sum(root.*.d1.s1)",
+      "count(root.*.d1.s1) + sum(root.*.d2.s1)",
+      "count(root.*.d2.s1) + sum(root.*.d1.s1)",
+      "count(root.*.d2.s1) + sum(root.*.d2.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=2", retArray2, columnNames2);
+
+    // level = 3
+    double[][] retArray3 = new double[][] {{390853.0}};
+    String[] columnNames3 = {"count(root.*.*.s1) + sum(root.*.*.s1)"};
+    resultSetEqualTest(
+        "select count(s1) + sum(s1) from root.*.* group by level=3", retArray3, columnNames3);
+  }
+
+  @Test
+  public void caseSensitivityTest() {
+    double[][] retArray = new double[][] {{39, 20, 39, 20, 39, 20}};
+
+    String[] columnNames1 = {
+      "count(root.sg1.*.s1)",
+      "count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames1);
+
+    String[] columnNames2 = {
+      "Count(root.sg1.*.s1)",
+      "Count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select Count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames2);
   }
 }

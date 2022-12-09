@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.util;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.rpc.IoTDBJDBCDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -82,7 +83,8 @@ public class QueryResultUtils {
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
     // gets the reverse map of the tag
-    Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
+    Map<String, Integer> tagOrders =
+        InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, -1);
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
@@ -294,13 +296,19 @@ public class QueryResultUtils {
     return queryResult.getResults().get(0).getSeries() == null;
   }
 
+  /**
+   * parse time series paths from query results
+   *
+   * @param tsExecuteStatementResp query results
+   * @return time series paths
+   */
   public static List<String> getFullPaths(TSExecuteStatementResp tsExecuteStatementResp) {
     List<String> res = new ArrayList<>();
     IoTDBJDBCDataSet ioTDBJDBCDataSet = creatIoTJDBCDataset(tsExecuteStatementResp);
     try {
       while (ioTDBJDBCDataSet.hasCachedResults()) {
         ioTDBJDBCDataSet.constructOneRow();
-        String path = ioTDBJDBCDataSet.getValueByName("timeseries");
+        String path = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIMESERIES);
         res.add(path);
       }
     } catch (StatementExecutionException e) {
@@ -309,6 +317,13 @@ public class QueryResultUtils {
     return res;
   }
 
+  /**
+   * Convert align by device query result of NewIoTDB to the query result of influxdb,used for
+   * Memory and schema_file schema region
+   *
+   * @param tsExecuteStatementResp NewIoTDB execute statement resp to be converted
+   * @return query results in influxdb format
+   */
   public static QueryResult iotdbResultConvertInfluxResult(
       TSExecuteStatementResp tsExecuteStatementResp,
       String database,
@@ -321,7 +336,8 @@ public class QueryResultUtils {
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
     // gets the reverse map of the tag
-    Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
+    Map<String, Integer> tagOrders =
+        InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, -1);
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
@@ -350,8 +366,8 @@ public class QueryResultUtils {
       while (ioTDBJDBCDataSet.hasCachedResults()) {
         Object[] value = new Object[columns.size()];
         ioTDBJDBCDataSet.constructOneRow();
-        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName("Time"));
-        String deviceName = ioTDBJDBCDataSet.getValueByName("Device");
+        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIME));
+        String deviceName = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.DEVICE);
         String[] deviceNameList = deviceName.split("\\.");
         for (int i = 3; i < deviceNameList.length; i++) {
           if (!deviceNameList[i].equals(InfluxConstant.PLACE_HOLDER)) {
@@ -363,6 +379,87 @@ public class QueryResultUtils {
           if (o != null) {
             // insert the value of filed into it
             value[fieldOrders.get(ioTDBJDBCDataSet.findColumnNameByIndex(i))] = o;
+          }
+        }
+        values.add(Arrays.asList(value));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    series.setValues(values);
+
+    QueryResult queryResult = new QueryResult();
+    QueryResult.Result result = new QueryResult.Result();
+    result.setSeries(new ArrayList<>(Arrays.asList(series)));
+    queryResult.setResults(new ArrayList<>(Arrays.asList(result)));
+
+    return queryResult;
+  }
+
+  /**
+   * Convert align by device query result of NewIoTDB to the query result of influxdb,used for tag
+   * schema region
+   *
+   * @param tsExecuteStatementResp NewIoTDB execute statement resp to be converted
+   * @return query results in influxdb format
+   */
+  public static QueryResult iotdbResultConvertInfluxResult(
+      TSExecuteStatementResp tsExecuteStatementResp,
+      String database,
+      String measurement,
+      Map<String, Integer> tagOrders,
+      Map<String, Integer> fieldOrders) {
+    if (tsExecuteStatementResp == null) {
+      return getNullQueryResult();
+    }
+    // generate series
+    QueryResult.Series series = new QueryResult.Series();
+    series.setName(measurement);
+    Map<Integer, String> tagOrderReversed =
+        tagOrders.entrySet().stream()
+            .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+    int tagSize = tagOrderReversed.size();
+    Map<Integer, String> fieldOrdersReversed =
+        fieldOrders.entrySet().stream()
+            .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+    ArrayList<String> tagList = new ArrayList<>();
+    for (int i = 0; i < tagSize; i++) {
+      tagList.add(tagOrderReversed.get(i));
+    }
+
+    ArrayList<String> fieldList = new ArrayList<>();
+    for (int i = 0; i < fieldOrders.size(); i++) {
+      fieldList.add(fieldOrdersReversed.get(i));
+    }
+
+    ArrayList<String> columns = new ArrayList<>();
+    columns.add("time");
+    columns.addAll(tagList);
+    columns.addAll(fieldList);
+    // insert columns into series
+    series.setColumns(columns);
+    List<List<Object>> values = new ArrayList<>();
+    IoTDBJDBCDataSet ioTDBJDBCDataSet = creatIoTJDBCDataset(tsExecuteStatementResp);
+    try {
+      while (ioTDBJDBCDataSet.hasCachedResults()) {
+        Object[] value = new Object[columns.size()];
+        ioTDBJDBCDataSet.constructOneRow();
+        value[0] = Long.valueOf(ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.TIME));
+        String deviceName = ioTDBJDBCDataSet.getValueByName(ColumnHeaderConstant.DEVICE);
+        String[] deviceNameList = deviceName.split("\\.");
+        for (int i = 2; i < deviceNameList.length; i += 2) {
+          if (tagOrders.containsKey(deviceNameList[i])) {
+            int position = tagOrders.get(deviceNameList[i]) + 1;
+            value[position] = deviceNameList[i + 1];
+          }
+        }
+        for (int i = 3; i <= ioTDBJDBCDataSet.columnNameList.size(); i++) {
+          Object o = ioTDBJDBCDataSet.getObject(ioTDBJDBCDataSet.findColumnNameByIndex(i));
+          if (o != null) {
+            // insert the value of filed into it
+            int position = fieldOrders.get(ioTDBJDBCDataSet.findColumnNameByIndex(i)) + tagSize + 1;
+            value[position] = o;
           }
         }
         values.add(Arrays.asList(value));

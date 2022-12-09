@@ -26,27 +26,25 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
+import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -56,8 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-
-import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
 
 public class NewIoTDB implements NewIoTDBMBean {
 
@@ -76,21 +72,22 @@ public class NewIoTDB implements NewIoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
-    config.setMppMode(true);
+    // In standalone mode, Consensus memory should be reclaimed
+    IoTDBDescriptor.getInstance().reclaimConsensusMemory();
 
-    loadExternLib(config);
-
-    daemon.active();
+    daemon.active(false);
   }
 
-  public void active() {
-    StartupChecks checks = new StartupChecks().withDefaultTest();
+  public void active(boolean isTesting) {
+    processPid();
+    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     try {
       checks.verify();
     } catch (StartupException e) {
@@ -104,7 +101,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     config.setDataNodeId(0);
 
     try {
-      setUp();
+      setUp(isTesting);
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
@@ -115,7 +112,14 @@ public class NewIoTDB implements NewIoTDBMBean {
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
-  private void setUp() throws StartupException, QueryProcessException {
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
+  }
+
+  private void setUp(boolean isTesting) throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
@@ -130,24 +134,19 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
-    registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
-    registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DriverScheduler.getInstance());
+    registerManager.register(StorageEngine.getInstance());
+    if (!isTesting) {
+      registerManager.register(DriverScheduler.getInstance());
+    }
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
         UDFClassLoaderManager.setupAndGetInstance(
             IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
-    registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + "udf"
-                + File.separator));
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -157,9 +156,9 @@ public class NewIoTDB implements NewIoTDBMBean {
     initProtocols();
 
     logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB is setting up, some databases may not be ready now, please wait several seconds...");
 
-    while (!StorageEngineV2.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -170,14 +169,10 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(SettleService.getINSTANCE());
-    }
-    registerManager.register(TriggerRegistrationService.getInstance());
-    registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
+    registerManager.register(CompactionTaskManager.getInstance());
+    // bind predefined metrics
+    DataNodeMetricsHelper.bind();
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
@@ -191,7 +186,7 @@ public class NewIoTDB implements NewIoTDBMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(MPPRestService.getInstance());
+      registerManager.register(RestService.getInstance());
     }
   }
 
@@ -204,13 +199,9 @@ public class NewIoTDB implements NewIoTDBMBean {
 
   private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.configManager.init();
+    configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

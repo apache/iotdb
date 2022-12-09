@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -44,7 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class CreateAlignedTimeSeriesNode extends WritePlanNode {
+public class CreateAlignedTimeSeriesNode extends WritePlanNode
+    implements ICreateAlignedTimeSeriesPlan {
   private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
@@ -53,6 +55,11 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
+
+  // only used inside schemaRegion to be serialized to mlog, no need to be serialized for mpp
+  // transport
+  private List<Long> tagOffsets = null;
+
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
@@ -141,6 +148,22 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
+  public List<Long> getTagOffsets() {
+    if (tagOffsets == null) {
+      tagOffsets = new ArrayList<>();
+      for (int i = 0; i < measurements.size(); i++) {
+        tagOffsets.add(Long.parseLong("-1"));
+      }
+    }
+    return tagOffsets;
+  }
+
+  @Override
+  public void setTagOffsets(List<Long> tagOffsets) {
+    this.tagOffsets = tagOffsets;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();
   }
@@ -206,7 +229,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[byteBuffer.get()]);
+      compressors.add(CompressionType.deserialize(byteBuffer.get()));
     }
 
     byte label = byteBuffer.get();
@@ -298,7 +321,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
     // compressors
     for (CompressionType compressor : compressors) {
-      byteBuffer.put((byte) compressor.ordinal());
+      byteBuffer.put(compressor.serialize());
     }
 
     // alias
@@ -363,7 +386,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
     // compressors
     for (CompressionType compressor : compressors) {
-      stream.write((byte) compressor.ordinal());
+      stream.write(compressor.serialize());
     }
 
     // alias

@@ -23,16 +23,16 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class IoTDBPipeSink implements PipeSink {
   private final PipeSinkType pipeSinkType = PipeSinkType.IoTDB;
@@ -54,28 +54,6 @@ public class IoTDBPipeSink implements PipeSink {
   }
 
   @Override
-  public void setAttribute(List<Pair<String, String>> params) throws PipeSinkException {
-    for (Pair<String, String> pair : params) {
-      String attr = pair.left;
-      String value = pair.right;
-
-      attr = attr.toLowerCase();
-      if (attr.equals(ATTRIBUTE_IP_KEY)) {
-        ip = value;
-      } else if (attr.equals(ATTRIBUTE_PORT_KEY)) {
-        try {
-          port = Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-          throw new PipeSinkException(attr, value, TSDataType.INT32.name());
-        }
-      } else {
-        throw new PipeSinkException(
-            "There is No attribute " + attr + " in " + PipeSinkType.IoTDB + " pipeSink.");
-      }
-    }
-  }
-
-  @Override
   public void setAttribute(Map<String, String> params) throws PipeSinkException {
     for (Map.Entry<String, String> entry : params.entrySet()) {
       String attr = entry.getKey();
@@ -83,6 +61,10 @@ public class IoTDBPipeSink implements PipeSink {
 
       attr = attr.toLowerCase();
       if (attr.equals(ATTRIBUTE_IP_KEY)) {
+        if (!Pattern.matches(SyncConstant.IPV4_PATTERN, value)) {
+          throw new PipeSinkException(
+              String.format("%s is nonstandard IP address, only support IPv4 now.", value));
+        }
         ip = value;
       } else if (attr.equals(ATTRIBUTE_PORT_KEY)) {
         try {
@@ -141,6 +123,13 @@ public class IoTDBPipeSink implements PipeSink {
     name = ReadWriteIOUtils.readString(inputStream);
     ip = ReadWriteIOUtils.readString(inputStream);
     port = ReadWriteIOUtils.readInt(inputStream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    name = ReadWriteIOUtils.readString(buffer);
+    ip = ReadWriteIOUtils.readString(buffer);
+    port = ReadWriteIOUtils.readInt(buffer);
   }
 
   @Override

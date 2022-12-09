@@ -158,6 +158,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
 
+    // plan select into
+    if (queryStatement.isAlignByDevice()) {
+      planBuilder = planBuilder.planDeviceViewInto(analysis.getDeviceViewIntoPathDescriptor());
+    } else {
+      planBuilder = planBuilder.planInto(analysis.getIntoPathDescriptor());
+    }
+
     return planBuilder.getRoot();
   }
 
@@ -232,13 +239,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         if (queryStatement.isGroupByLevel()) {
           planBuilder =
               planBuilder.planGroupByLevel(
-                  analysis.getGroupByLevelExpressions(),
+                  analysis.getCrossGroupByExpressions(),
                   analysis.getGroupByTimeParameter(),
                   queryStatement.getResultTimeOrder());
         }
       } else {
         curStep =
-            (analysis.getGroupByLevelExpressions() != null
+            (analysis.getCrossGroupByExpressions() != null
                     || (analysis.getGroupByTimeParameter() != null
                         && analysis.getGroupByTimeParameter().hasOverlap()))
                 ? AggregationStep.PARTIAL
@@ -253,7 +260,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
-                    analysis.getGroupByLevelExpressions())
+                    analysis.getCrossGroupByExpressions(),
+                    analysis.getTagKeys(),
+                    analysis.getTagValuesToGroupedTimeseriesOperands())
                 : planBuilder.planAggregationSourceWithIndexAdjust(
                     curStep,
                     queryStatement.getResultTimeOrder(),
@@ -261,7 +270,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
-                    analysis.getGroupByLevelExpressions(),
+                    analysis.getCrossGroupByExpressions(),
                     deviceViewInputIndexes);
       }
     }
@@ -632,7 +641,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planSchemaFetchSource(
             storageGroupList,
             schemaFetchStatement.getPatternTree(),
-            schemaFetchStatement.getTemplateMap())
+            schemaFetchStatement.getTemplateMap(),
+            schemaFetchStatement.isWithTags())
         .getRoot();
   }
 
@@ -685,7 +695,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     planBuilder =
         planBuilder
-            .planPathsUsingTemplateSource(analysis.getTemplateSetInfo().left.getId())
+            .planPathsUsingTemplateSource(
+                analysis.getSpecifiedTemplateRelatedPathPatternList(),
+                analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
     return planBuilder.getRoot();
   }

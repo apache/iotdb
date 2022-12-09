@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -46,9 +48,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-// TODO add them back while deleting old standalone
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLastQueryWithDeletionIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -68,9 +69,7 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 27");
     } catch (Exception e) {
       e.printStackTrace();

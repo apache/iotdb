@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.fragment;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -27,8 +29,11 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -58,6 +63,11 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
+  // session info
+  private SessionInfo sessionInfo;
+
+  private ExecutorService intoOperationExecutor;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -67,8 +77,12 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      ExecutorService intoOperationExecutor) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, intoOperationExecutor);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -79,10 +93,26 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      ExecutorService intoOperationExecutor) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.intoOperationExecutor = intoOperationExecutor;
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()), null);
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
   }
 
   // used for compaction
@@ -163,10 +193,19 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.failed(cause);
   }
 
+  /** @return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
+        .findFirst()
         .map(Throwable::getMessage)
-        .collect(Collectors.joining("; "));
+        .orElse("");
+  }
+
+  /** @return List of specific throwable and stack trace */
+  public List<FragmentInstanceFailureInfo> getFailureInfoList() {
+    return stateMachine.getFailureCauses().stream()
+        .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+        .collect(Collectors.toList());
   }
 
   public void finished() {
@@ -194,10 +233,23 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+    return new FragmentInstanceInfo(
+        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return sessionInfo;
+  }
+
+  public Optional<Throwable> getFailureCause() {
+    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
+  }
+
+  public ExecutorService getIntoOperationExecutor() {
+    return intoOperationExecutor;
   }
 }

@@ -21,26 +21,40 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
 
@@ -48,6 +62,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -77,6 +92,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -89,6 +105,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -176,6 +193,34 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitGroupByTag(GroupByTagNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GroupByTag-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Tag keys: %s", node.getTagKeys()));
+    int bucketIdx = 0;
+    for (Entry<List<String>, List<CrossSeriesAggregationDescriptor>> entry :
+        node.getTagValuesToAggregationDescriptors().entrySet()) {
+      boxValue.add(String.format("Bucket-%d: %s", bucketIdx, entry.getKey()));
+      int aggregatorIdx = 0;
+      for (CrossSeriesAggregationDescriptor descriptor : entry.getValue()) {
+        if (descriptor == null) {
+          boxValue.add(String.format("    Aggregator-%d: NULL", aggregatorIdx));
+        } else {
+          boxValue.add(
+              String.format(
+                  "    Aggregator-%d: %s, %s",
+                  aggregatorIdx, descriptor.getAggregationType(), descriptor.getStep()));
+          boxValue.add(String.format("      Output: %s", descriptor.getOutputColumnNames()));
+          boxValue.add(String.format("      Input: %s", descriptor.getInputExpressions()));
+        }
+        aggregatorIdx += 1;
+      }
+      bucketIdx += 1;
+    }
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
@@ -258,6 +303,102 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
     }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitInto(IntoNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
+    IntoPathDescriptor descriptor = node.getIntoPathDescriptor();
+    drawSourceTargetPath(
+        boxValue,
+        descriptor.getSourceTargetPathPairList(),
+        descriptor.getTargetDeviceToAlignedMap());
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitDeviceViewInto(DeviceViewIntoNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("DeviceViewInto-%s", node.getPlanNodeId().getId()));
+    DeviceViewIntoPathDescriptor descriptor = node.getDeviceViewIntoPathDescriptor();
+    Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap =
+        descriptor.getDeviceToSourceTargetPathPairListMap();
+    for (String deviceName : deviceToSourceTargetPathPairListMap.keySet()) {
+      boxValue.add(String.format("Device [%s]:", deviceName));
+      drawSourceTargetPath(
+          boxValue,
+          deviceToSourceTargetPathPairListMap.get(deviceName),
+          descriptor.getTargetDeviceToAlignedMap());
+    }
+    return render(node, boxValue, context);
+  }
+
+  private void drawSourceTargetPath(
+      List<String> boxValue,
+      List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      Map<String, Boolean> targetDeviceToAlignedMap) {
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+      boxValue.add(
+          String.format(
+              "%s -> %s %s",
+              sourceTargetPathPair.left,
+              sourceTargetPathPair.right,
+              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getDevice())
+                  ? "[ALIGNED]"
+                  : ""));
+    }
+  }
+
+  @Override
+  public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAlignedLastQueryScan(
+      AlignedLastQueryScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AlignedLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQuery(LastQueryNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQuery-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQueryMerge(LastQueryMergeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryMerge-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLastQueryCollect(LastQueryCollectNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryCollect-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitVerticallyConcat(VerticallyConcatNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("VerticallyConcat-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 

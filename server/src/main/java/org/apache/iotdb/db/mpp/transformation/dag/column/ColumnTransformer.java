@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column;
 
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
@@ -64,11 +65,41 @@ public abstract class ColumnTransformer {
   }
 
   public boolean isReturnTypeNumeric() {
+    if (returnType == null) {
+      return true;
+    }
     TypeEnum typeEnum = returnType.getTypeEnum();
     return typeEnum.equals(TypeEnum.INT32)
         || typeEnum.equals(TypeEnum.INT64)
         || typeEnum.equals(TypeEnum.FLOAT)
         || typeEnum.equals(TypeEnum.DOUBLE);
+  }
+
+  /**
+   * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
+   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}
+   */
+  public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
+    if (a.getType() == null || b.getType() == null) {
+      return true;
+    }
+    return a.getType().getTypeEnum().equals(b.getType().getTypeEnum());
+  }
+
+  /**
+   * Return whether the type of this ColumnTransformer is equal to certain type. If this
+   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}
+   */
+  public boolean typeEquals(TypeEnum typeEnum) {
+    return returnType == null || returnType.getTypeEnum().equals(typeEnum);
+  }
+
+  /**
+   * Return whether the type of this ColumnTransformer is not equal to certain type. If this
+   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}
+   */
+  public boolean typeNotEquals(TypeEnum typeEnum) {
+    return returnType == null || !returnType.getTypeEnum().equals(typeEnum);
   }
 
   /** Responsible for the calculation */

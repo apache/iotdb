@@ -23,9 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
@@ -62,7 +63,6 @@ public class StandaloneCoordinatorTest {
 
   @Before
   public void setUp() throws Exception {
-    conf.setMppMode(true);
     conf.setDataNodeId(0);
     coordinator = Coordinator.getInstance();
     schemaFetcher = StandaloneSchemaFetcher.getInstance();
@@ -72,7 +72,7 @@ public class StandaloneCoordinatorTest {
     configNode.init();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
-    StorageEngineV2.getInstance().start();
+    StorageEngine.getInstance().start();
   }
 
   @After
@@ -81,11 +81,10 @@ public class StandaloneCoordinatorTest {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
     WALManager.getInstance().stop();
-    StorageEngineV2.getInstance().stop();
+    StorageEngine.getInstance().stop();
     FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
-    conf.setMppMode(false);
   }
 
   @Test
@@ -116,7 +115,7 @@ public class StandaloneCoordinatorTest {
             put("tag2", "v2");
           }
         });
-    executeStatement(createTimeSeriesStatement, false);
+    executeStatement(createTimeSeriesStatement);
   }
 
   @Test
@@ -124,7 +123,7 @@ public class StandaloneCoordinatorTest {
 
     String insertSql = "insert into root.sg.d1(time,s1,s2) values (100,222,333)";
     Statement insertStmt = StatementGenerator.createStatement(insertSql, ZoneId.systemDefault());
-    executeStatement(insertStmt, false);
+    executeStatement(insertStmt);
   }
 
   @Test
@@ -132,16 +131,16 @@ public class StandaloneCoordinatorTest {
     String createUserSql = "create user username 'password'";
     Statement createStmt =
         StatementGenerator.createStatement(createUserSql, ZoneId.systemDefault());
-    executeStatement(createStmt, false);
+    executeStatement(createStmt);
   }
 
-  private void executeStatement(Statement statement, boolean isDataQuery) {
-    long queryId = SessionManager.getInstance().requestQueryId(isDataQuery);
+  private void executeStatement(Statement statement) {
+    long queryId = SessionManager.getInstance().requestQueryId();
     ExecutionResult executionResult =
         coordinator.execute(
             statement,
             queryId,
-            null,
+            new SessionInfo(0, "root", "+5:00"),
             "",
             partitionFetcher,
             schemaFetcher,
@@ -150,9 +149,7 @@ public class StandaloneCoordinatorTest {
       int statusCode = executionResult.status.getCode();
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
     } finally {
-      if (isDataQuery) {
-        coordinator.getQueryExecution(queryId).stopAndCleanup();
-      }
+      coordinator.cleanupQueryExecution(queryId);
     }
   }
 }

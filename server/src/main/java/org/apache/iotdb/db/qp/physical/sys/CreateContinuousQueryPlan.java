@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -73,7 +73,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     this.firstExecutionTimeBoundary =
         firstExecutionTimeBoundary != null
             ? firstExecutionTimeBoundary
-            : DatetimeUtils.currentTime();
+            : DateTimeUtils.currentTime();
   }
 
   public String getQuerySql() {

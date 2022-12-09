@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -395,7 +396,11 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.**");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.**] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                      + ": Timeseries [root.**] does not exist or is represented by schema template"));
     }
 
     String[] retArray1 = new String[] {"0,4,4,4,4"};
@@ -423,7 +428,41 @@ public class IoTDBDeleteTimeseriesIT {
     try {
       statement.execute("delete timeseries root.*.d1.s3");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                      + ": Timeseries [root.*.d1.s3] does not exist or is represented by schema template"));
+    }
+  }
+
+  @Test
+  public void dropTimeseriesTest() throws Exception {
+    String[] retArray = new String[] {"1,1,", "2,1.1,"};
+    int cnt = 0;
+
+    statement.execute(
+        "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute(
+        "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        Assert.assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+    }
+    statement.execute("DROP timeseries root.turbine1.d1.s1");
+    statement.execute("FLUSH");
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine1.d1")) {
+      Assert.assertFalse(resultSet.next());
     }
   }
 }

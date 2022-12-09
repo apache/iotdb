@@ -19,18 +19,12 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -48,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -56,7 +49,6 @@ import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
@@ -72,8 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -313,18 +303,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       PhysicalPlan plan;
       // TODO-Cluster: support more plans
       switch (type) {
-        case INSERT:
-          plan = new InsertRowPlan();
-          break;
-        case BATCHINSERT:
-          plan = new InsertTabletPlan();
-          break;
-        case MULTI_BATCH_INSERT:
-          plan = new InsertMultiTabletsPlan();
-          break;
-        case DELETE:
-          plan = new DeletePlan();
-          break;
         case SET_STORAGE_GROUP:
           plan = new SetStorageGroupPlan();
           break;
@@ -420,24 +398,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
           break;
         case STORAGE_GROUP_MNODE:
           plan = new StorageGroupMNodePlan();
-          break;
-        case BATCH_INSERT_ROWS:
-          plan = new InsertRowsPlan();
-          break;
-        case BATCH_INSERT_ONE_DEVICE:
-          plan = new InsertRowsOfOneDevicePlan();
-          break;
-        case CREATE_TRIGGER:
-          plan = new CreateTriggerPlan();
-          break;
-        case DROP_TRIGGER:
-          plan = new DropTriggerPlan();
-          break;
-        case START_TRIGGER:
-          plan = new StartTriggerPlan();
-          break;
-        case STOP_TRIGGER:
-          plan = new StopTriggerPlan();
           break;
         case CLUSTER_LOG:
           plan = new LogPlan();

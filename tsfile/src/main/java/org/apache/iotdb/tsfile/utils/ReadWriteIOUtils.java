@@ -35,10 +35,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
@@ -844,7 +846,7 @@ public class ReadWriteIOUtils {
     int size = list.size();
     buffer.putInt(size);
     for (String s : list) {
-      buffer.put(s.getBytes());
+      write(s, buffer);
     }
   }
 
@@ -858,6 +860,32 @@ public class ReadWriteIOUtils {
     write(size, outputStream);
     for (String s : list) {
       write(s, outputStream);
+    }
+  }
+
+  /** read integer set with self define length. */
+  public static Set<Integer> readIntegerSet(ByteBuffer buffer) {
+    int size = readInt(buffer);
+    if (size <= 0) {
+      return Collections.emptySet();
+    }
+    Set<Integer> set = new HashSet<>();
+    for (int i = 0; i < size; i++) {
+      set.add(readInt(buffer));
+    }
+    return set;
+  }
+
+  /** write integer set with self define length. */
+  public static void writeIntegerSet(Set<Integer> set, OutputStream outputStream)
+      throws IOException {
+    if (set == null) {
+      throw new IllegalArgumentException("stringList must not be null!");
+    }
+    int size = set.size();
+    write(size, outputStream);
+    for (int i : set) {
+      write(i, outputStream);
     }
   }
 
@@ -1030,5 +1058,29 @@ public class ReadWriteIOUtils {
 
     clone.flip();
     return clone;
+  }
+
+  /**
+   * The skip method of will return only if skipping n bytes or reaching end of file.
+   *
+   * @param inputStream the inputSteam to be skipped.
+   * @param n the number of bytes to be skipped.
+   * @throws IOException if the stream does not support seek, or if some other I/O error occurs.
+   */
+  public static void skip(InputStream inputStream, long n) throws IOException {
+    while (n > 0) {
+      long skipN = inputStream.skip(n);
+      if (skipN > 0) {
+        n -= skipN;
+      } else {
+        // read one byte to decide should we retry
+        if (inputStream.read() == -1) {
+          // EOF
+          break;
+        } else {
+          n--;
+        }
+      }
+    }
   }
 }

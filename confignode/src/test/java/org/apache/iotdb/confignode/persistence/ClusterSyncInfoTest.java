@@ -82,10 +82,24 @@ public class ClusterSyncInfoTest {
   }
 
   @Test
-  public void testSnapshot() throws Exception {
-    prepareClusterSyncInfo();
+  public void testEmptySnapshot() throws Exception {
+    // test empty snapshot
+    Assert.assertTrue(clusterSyncInfo.processTakeSnapshot(snapshotDir));
+    ClusterSyncInfo clusterSyncInfo2 = new ClusterSyncInfo();
+    clusterSyncInfo2.processLoadSnapshot(snapshotDir);
 
-    clusterSyncInfo.processTakeSnapshot(snapshotDir);
+    List<PipeSink> expectedPipeSink =
+        clusterSyncInfo.getPipeSink(new GetPipeSinkPlan()).getPipeSinkList();
+    List<PipeSink> actualPipeSink =
+        clusterSyncInfo2.getPipeSink(new GetPipeSinkPlan()).getPipeSinkList();
+    Assert.assertEquals(expectedPipeSink, actualPipeSink);
+  }
+
+  @Test
+  public void testSnapshot() throws Exception {
+    // test snapshot with data
+    prepareClusterSyncInfo();
+    Assert.assertTrue(clusterSyncInfo.processTakeSnapshot(snapshotDir));
     ClusterSyncInfo clusterSyncInfo2 = new ClusterSyncInfo();
     clusterSyncInfo2.processLoadSnapshot(snapshotDir);
 
@@ -99,15 +113,49 @@ public class ClusterSyncInfoTest {
   @Test
   public void testPipeSinkOperation() {
     prepareClusterSyncInfo();
+    Map<String, String> attributes1 = new HashMap<>();
+    attributes1.put("ip", "192.168.11.11");
+    attributes1.put("port", "7766");
+    Map<String, String> attributes2 = new HashMap<>();
+    attributes2.put("ip", "Nonstandard");
+    attributes2.put("port", "7777");
+    TPipeSinkInfo alreadyExistSink =
+        new TPipeSinkInfo()
+            .setPipeSinkName("demo1")
+            .setPipeSinkType("IoTDB")
+            .setAttributes(attributes1);
+    TPipeSinkInfo errorAttributeSink =
+        new TPipeSinkInfo()
+            .setPipeSinkName("demo3")
+            .setPipeSinkType("IoTDB")
+            .setAttributes(attributes2);
+    TPipeSinkInfo nonExistSink =
+        new TPipeSinkInfo()
+            .setPipeSinkName("demo3")
+            .setPipeSinkType("IoTDB")
+            .setAttributes(attributes1);
+
     try {
-      clusterSyncInfo.checkAddPipeSink("demo1");
-      clusterSyncInfo.checkDropPipeSink("demo3");
+      clusterSyncInfo.checkAddPipeSink(new CreatePipeSinkPlan(alreadyExistSink));
       Assert.fail("checkOperatePipeSink ignore failure.");
     } catch (PipeSinkException e) {
       // nothing
     }
     try {
-      clusterSyncInfo.checkAddPipeSink("demo3");
+      clusterSyncInfo.checkAddPipeSink(new CreatePipeSinkPlan(alreadyExistSink));
+      Assert.fail("checkOperatePipeSink ignore failure.");
+    } catch (PipeSinkException e) {
+      // nothing
+    }
+    try {
+      clusterSyncInfo.checkAddPipeSink(new CreatePipeSinkPlan(errorAttributeSink));
+      Assert.fail("checkOperatePipeSink ignore failure.");
+    } catch (PipeSinkException e) {
+      // nothing
+    }
+
+    try {
+      clusterSyncInfo.checkAddPipeSink(new CreatePipeSinkPlan(nonExistSink));
       clusterSyncInfo.checkDropPipeSink("demo1");
     } catch (PipeSinkException e) {
       Assert.fail("checkOperatePipeSink should not throw exception.");

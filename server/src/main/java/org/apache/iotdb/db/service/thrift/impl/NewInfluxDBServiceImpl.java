@@ -19,17 +19,17 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
 import org.apache.iotdb.db.protocol.influxdb.handler.AbstractQueryHandler;
-import org.apache.iotdb.db.protocol.influxdb.handler.NewQueryHandler;
+import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandlerFactory;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
-import org.apache.iotdb.db.protocol.influxdb.meta.AbstractInfluxDBMetaManager;
-import org.apache.iotdb.db.protocol.influxdb.meta.NewInfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.IInfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
 import org.apache.iotdb.db.protocol.influxdb.util.InfluxReqAndRespUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
@@ -42,6 +42,8 @@ import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
@@ -53,23 +55,34 @@ import org.influxdb.dto.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * When using NewIoTDB, use this object to handle read and write requests of the influxdb protocol
+ */
 public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
 
   private static final ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
 
-  private final AbstractInfluxDBMetaManager metaManager;
+  private final IInfluxDBMetaManager metaManager;
 
   private final AbstractQueryHandler queryHandler;
 
   public NewInfluxDBServiceImpl() {
-    metaManager = NewInfluxDBMetaManager.getInstance();
-    queryHandler = new NewQueryHandler();
+    metaManager = InfluxDBMetaManagerFactory.getInstance();
+    metaManager.recover();
+    queryHandler = QueryHandlerFactory.getInstance();
   }
 
   public static ClientRPCServiceImpl getClientRPCService() {
     return clientRPCService;
   }
 
+  /**
+   * open session
+   *
+   * @param req InfluxOpenSessionReq
+   * @return InfluxOpenSessionResp
+   * @throws TException
+   */
   @Override
   public InfluxOpenSessionResp openSession(InfluxOpenSessionReq req) throws TException {
     TSOpenSessionReq tsOpenSessionReq = InfluxReqAndRespUtils.convertOpenSessionReq(req);
@@ -77,6 +90,12 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return InfluxReqAndRespUtils.convertOpenSessionResp(tsOpenSessionResp);
   }
 
+  /**
+   * close session
+   *
+   * @param req InfluxCloseSessionReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus closeSession(InfluxCloseSessionReq req) {
     TSCloseSessionReq tsCloseSessionReq = InfluxReqAndRespUtils.convertCloseSessionReq(req);
@@ -84,6 +103,12 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return DataTypeUtils.RPCStatusToInfluxDBTSStatus(tsStatus);
   }
 
+  /**
+   * Handling insert requests
+   *
+   * @param req InfluxWritePointsReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus writePoints(InfluxWritePointsReq req) {
     List<InfluxTSStatus> tsStatusList = new ArrayList<>();
@@ -102,25 +127,57 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     return new InfluxTSStatus().setCode(executeCode).setSubStatus(tsStatusList);
   }
 
+  /**
+   * Create a database in the influxdb semantics
+   *
+   * @param req InfluxCreateDatabaseReq
+   * @return InfluxTSStatus
+   */
   @Override
   public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) {
     TSStatus tsStatus =
         clientRPCService.setStorageGroup(req.sessionId, "root." + req.getDatabase());
-    if (tsStatus.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
+    if (tsStatus.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage("Execute successfully");
     }
     return DataTypeUtils.RPCStatusToInfluxDBTSStatus(tsStatus);
   }
 
+  /**
+   * Process query requests
+   *
+   * @param req InfluxQueryReq
+   * @return InfluxQueryResultRsp
+   * @throws TException
+   */
   @Override
   public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
     queryHandler.checkInfluxDBQueryOperator(operator);
-    return queryHandler.queryInfluxDB(
-        req.database, (InfluxQueryOperator) operator, req.sessionId, IoTDB.serviceProvider);
+    return queryHandler.queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
   }
 
+  /**
+   * execute sql statement
+   *
+   * @param sql sql statement
+   * @param sessionId session id
+   * @return TSExecuteStatementResp
+   */
+  public static TSExecuteStatementResp executeStatement(String sql, long sessionId) {
+    TSExecuteStatementReq tsExecuteStatementReq = new TSExecuteStatementReq();
+    tsExecuteStatementReq.setStatement(sql);
+    tsExecuteStatementReq.setSessionId(sessionId);
+    tsExecuteStatementReq.setStatementId(
+        NewInfluxDBServiceImpl.getClientRPCService().requestStatementId(sessionId));
+    tsExecuteStatementReq.setFetchSize(InfluxConstant.DEFAULT_FETCH_SIZE);
+    TSExecuteStatementResp executeStatementResp =
+        NewInfluxDBServiceImpl.getClientRPCService().executeStatement(tsExecuteStatementReq);
+    return executeStatementResp;
+  }
+
+  /** handle client exit, close session and resource */
   @Override
   public void handleClientExit() {
     clientRPCService.handleClientExit();
