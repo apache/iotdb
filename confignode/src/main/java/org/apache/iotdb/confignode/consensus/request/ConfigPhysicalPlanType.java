@@ -55,7 +55,6 @@ public enum ConfigPhysicalPlanType {
   GetRegionId((short) 306),
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
-  MigrateRegion((short) 309),
 
   /** Partition */
   GetSchemaPartition((short) 400),
