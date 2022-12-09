@@ -354,7 +354,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     private SingleBatchMatchChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
-      this.transition = patternFA.getTransition(sourceState).get(0);
+      this.transition = patternFA.getBatchMatchTransition(sourceState).get(0);
       this.stateMatchInfo =
           new PreciseStateMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
       this.childrenIterator = getChildrenIterator(parent);

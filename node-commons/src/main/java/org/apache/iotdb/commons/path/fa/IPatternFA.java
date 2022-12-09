@@ -24,8 +24,6 @@ import java.util.Map;
 
 public interface IPatternFA {
 
-  List<IFATransition> getTransition(IFAState state);
-
   Map<String, IFATransition> getPreciseMatchTransition(IFAState state);
 
   List<IFATransition> getBatchMatchTransition(IFAState state);

@@ -125,34 +125,6 @@ public class SimpleNFA implements IPatternFA {
   }
 
   @Override
-  public List<IFATransition> getTransition(IFAState state) {
-    SimpleNFAState nfaState = (SimpleNFAState) state;
-    if (nfaState.isInitial()) {
-      return Collections.singletonList(states[0]);
-    }
-    if (nfaState.patternIndex == nodes.length) {
-      // prefix match
-      return Collections.singletonList(nfaState);
-    }
-
-    if (nfaState.patternIndex == nodes.length - 1) {
-      if (isPrefixMatch) {
-        return Collections.singletonList(states[nodes.length]);
-      } else if (nodes[nfaState.patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return Collections.singletonList(nfaState);
-      }
-
-      return Collections.emptyList();
-    }
-
-    if (nodes[nfaState.patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      return Arrays.asList(states[nfaState.patternIndex + 1], nfaState);
-    } else {
-      return Collections.singletonList(states[nfaState.patternIndex + 1]);
-    }
-  }
-
-  @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
     if (state.isInitial()) {
       return initialTransition;
