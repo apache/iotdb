@@ -41,7 +41,7 @@ public class SimpleNFA implements IPatternFA {
 
   private final SimpleNFAState initialState = new SimpleNFAState(-1);
 
-  private final Map<Integer, Pattern> patternMap = new HashMap<>();
+  private final Map<Integer, Pattern> regexPatternMap = new HashMap<>();
 
   private final Map<String, IFATransition> initialTransition;
 
@@ -113,7 +113,7 @@ public class SimpleNFA implements IPatternFA {
         optimizedNodes.add(ONE_LEVEL_PATH_WILDCARD);
       } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
         optimizedNodes.add(rawNode.replace("*", ".*"));
-        patternMap.put(
+        regexPatternMap.put(
             optimizedNodes.size() - 1,
             Pattern.compile(optimizedNodes.get(optimizedNodes.size() - 1)));
       } else {
@@ -228,7 +228,7 @@ public class SimpleNFA implements IPatternFA {
         return true;
       }
       if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        return patternMap.get(patternIndex).matcher(event).matches();
+        return regexPatternMap.get(patternIndex).matcher(event).matches();
       }
       return nodes[patternIndex].equals(event);
     }
