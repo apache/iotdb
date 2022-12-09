@@ -226,7 +226,7 @@ public class LocalQueryExecutor {
     // metadata of the designated timeseries. Because of which, the following metadata access will
     // not trigger an RPC.
     path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
-    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    TSDataType dataType = TSDataType.deserialize(request.getDataTypeOrdinal());
     Filter timeFilter = null;
     Filter valueFilter = null;
     if (request.isSetTimeFilterBytes()) {

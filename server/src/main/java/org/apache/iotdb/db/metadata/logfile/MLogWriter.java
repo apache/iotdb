@@ -277,7 +277,7 @@ public class MLogWriter implements AutoCloseable {
                 words[1],
                 TSDataType.values()[Integer.parseInt(words[3])],
                 TSEncoding.values()[Integer.parseInt(words[4])],
-                CompressionType.values()[Integer.parseInt(words[5])]));
+                CompressionType.deserialize((byte) Integer.parseInt(words[5]))));
       case "1":
         return new StorageGroupMNodePlan(
             words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
