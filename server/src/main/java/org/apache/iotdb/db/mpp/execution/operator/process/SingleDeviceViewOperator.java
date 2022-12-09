@@ -63,8 +63,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
     this.deviceOperator = deviceOperator;
     this.deviceColumnIndex = deviceColumnIndex;
     this.dataTypes = dataTypes;
-    this.binaryColumn =
-        new BinaryColumn(1, Optional.of(new boolean[] {false}), new Binary[] {new Binary(device)});
+    this.binaryColumn = new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(device)});
   }
 
   @Override
