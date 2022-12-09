@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
@@ -31,24 +31,24 @@ import java.util.List;
 /** insertion for MemTable */
 @InsertionProcessor(level = 1)
 public class MemTableInsertion
-    extends InsertLevelProcessor<MemTable, MemChunkGroup, InsertionRequest> {
+    extends InsertLevelProcessor<MemTable, MemTagValueGroup, InsertionRequest> {
 
   /**
-   * get all MemChunkGroups that need to be processed in the current MemTable
+   * get all MemTagValueGroups that need to be processed in the current MemTable
    *
    * @param memNode memory node
    * @param context request context
    * @return A list of saved MemChunkGroups
    */
   @Override
-  public List<MemChunkGroup> getChildren(
+  public List<MemTagValueGroup> getChildren(
       MemTable memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
     if (memNode.isImmutable()) return new ArrayList<>();
-    List<MemChunkGroup> memChunkGroups = new ArrayList<>();
+    List<MemTagValueGroup> memTagValueGroups = new ArrayList<>();
     String tagKey = insertionRequest.getKey(context);
-    MemChunkGroup child = memNode.get(tagKey);
-    if (child != null) memChunkGroups.add(child);
-    return memChunkGroups;
+    MemTagValueGroup child = memNode.get(tagKey);
+    if (child != null) memTagValueGroups.add(child);
+    return memTagValueGroups;
   }
 
   /**

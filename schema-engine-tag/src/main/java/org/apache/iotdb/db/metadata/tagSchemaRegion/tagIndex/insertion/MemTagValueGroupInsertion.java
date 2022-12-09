@@ -19,40 +19,47 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/** insertion for MemChunk */
-@InsertionProcessor(level = 3)
-public class MemChunkInsertion extends InsertLevelProcessor<MemChunk, Object, InsertionRequest> {
+/** insertion for MemTagValueGroup */
+@InsertionProcessor(level = 2)
+public class MemTagValueGroupInsertion
+    extends InsertLevelProcessor<MemTagValueGroup, MemChunkGroup, InsertionRequest> {
 
   /**
-   * MemChunk is the last layer of memory nodes, no children
+   * get all MemChunkGroups that need to be processed in the current MemTagValueGroup
    *
    * @param memNode memory node
    * @param context request context
-   * @return null
+   * @return A list of saved MemChunks
    */
   @Override
-  public List<Object> getChildren(
-      MemChunk memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
-    return null;
+  public List<MemChunkGroup> getChildren(
+      MemTagValueGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
+    List<MemChunkGroup> memChunkGroups = new ArrayList<>();
+    String tagValue = insertionRequest.getKey(context);
+    MemChunkGroup child = memNode.get(tagValue);
+    if (child != null) memChunkGroups.add(child);
+    return memChunkGroups;
   }
 
   /**
-   * the insert method corresponding to the MemChunk node
+   * the insert method corresponding to the MemTagValueGroup node
    *
    * @param memNode memory node
    * @param context insert request context
    */
   @Override
   public void insert(
-      MemChunk memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
-    Integer deviceID = insertionRequest.getValue();
-    memNode.put(deviceID);
+      MemTagValueGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
+    String tagValue = insertionRequest.getKey(context);
+    memNode.put(tagValue);
   }
 }

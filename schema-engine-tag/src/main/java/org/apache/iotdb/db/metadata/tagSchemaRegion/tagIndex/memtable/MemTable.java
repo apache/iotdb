@@ -23,15 +23,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** used to manage tagKey -> MemChunkGroup */
+/** used to manage tagKey -> MemTagValueGroup */
 public class MemTable {
 
   public static final String WORKING = "working";
 
   public static final String IMMUTABLE = "immutable";
 
-  // manage tagKey -> MemChunkGroup
-  private Map<String, MemChunkGroup> memChunkGroupMap;
+  // manage tagKey -> MemTagChunkGroup
+  private Map<String, MemTagValueGroup> memTagValueGroupMap;
 
   private String status;
 
@@ -40,15 +40,15 @@ public class MemTable {
   private Set<Integer> deletionList;
 
   public MemTable(String status) {
-    memChunkGroupMap = new HashMap<>();
+    memTagValueGroupMap = new HashMap<>();
     this.status = status;
     deletionList = new HashSet<>();
   }
 
   public void put(String tagKey) {
     if (this.status.equals(IMMUTABLE)) return;
-    if (!memChunkGroupMap.containsKey(tagKey)) {
-      memChunkGroupMap.put(tagKey, new MemChunkGroup());
+    if (!memTagValueGroupMap.containsKey(tagKey)) {
+      memTagValueGroupMap.put(tagKey, new MemTagValueGroup());
     }
   }
 
@@ -56,7 +56,7 @@ public class MemTable {
   public String toString() {
     return "MemTable{"
         + "memChunkGroupMap="
-        + memChunkGroupMap
+        + memTagValueGroupMap
         + ", status='"
         + status
         + '\''
@@ -65,12 +65,12 @@ public class MemTable {
         + '}';
   }
 
-  public MemChunkGroup get(String tagKey) {
-    return memChunkGroupMap.get(tagKey);
+  public MemTagValueGroup get(String tagKey) {
+    return memTagValueGroupMap.get(tagKey);
   }
 
   public void remove(String tagKey) {
-    memChunkGroupMap.remove(tagKey);
+    memTagValueGroupMap.remove(tagKey);
   }
 
   public boolean isImmutable() {
