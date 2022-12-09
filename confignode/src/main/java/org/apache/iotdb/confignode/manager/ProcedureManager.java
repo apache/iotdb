@@ -355,8 +355,8 @@ public class ProcedureManager {
             .getRegisteredDataNode(migrateRegionReq.getToId())
             .getLocation();
     if (!regionId.isPresent()) {
-      LOGGER.info(
-          "Submit RegionMigrateProcedure failed, because no region Group {}",
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because no Region {}",
           migrateRegionReq.getRegionId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
