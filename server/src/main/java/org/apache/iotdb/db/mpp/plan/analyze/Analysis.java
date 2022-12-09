@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -259,7 +260,9 @@ public class Analysis {
 
   public boolean hasDataSource() {
     return (dataPartition != null && !dataPartition.isEmpty())
-        || (schemaPartition != null && !schemaPartition.isEmpty());
+        || (schemaPartition != null && !schemaPartition.isEmpty())
+        || (statement instanceof QueryStatement
+            && ((QueryStatement) statement).isAggregationQuery());
   }
 
   public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
