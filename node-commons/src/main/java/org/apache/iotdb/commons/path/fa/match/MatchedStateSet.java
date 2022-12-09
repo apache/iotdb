@@ -26,9 +26,9 @@ public class MatchedStateSet {
 
   private final boolean[] stateStatus;
 
-  int[] existingState = new int[INITIAL_SIZE];
+  private int[] existingState = new int[INITIAL_SIZE];
 
-  int end = 0;
+  private int end = 0;
 
   MatchedStateSet(int stateSize) {
     stateStatus = new boolean[stateSize];
@@ -45,5 +45,13 @@ public class MatchedStateSet {
     }
     existingState[end++] = state.getIndex();
     stateStatus[state.getIndex()] = true;
+  }
+
+  int getStateValueIndex(int matchIndex) {
+    return existingState[matchIndex];
+  }
+
+  int size() {
+    return end;
   }
 }

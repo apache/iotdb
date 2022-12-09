@@ -89,12 +89,12 @@ public class BatchStateMatchInfo implements IStateMatchInfo {
 
   @Override
   public IFAState getMatchedState(int index) {
-    return patternFA.getState(matchedStateSet.existingState[index]);
+    return patternFA.getState(matchedStateSet.getStateValueIndex(index));
   }
 
   @Override
   public int getMatchedStateSize() {
-    return matchedStateSet.end;
+    return matchedStateSet.size();
   }
 
   @Override
