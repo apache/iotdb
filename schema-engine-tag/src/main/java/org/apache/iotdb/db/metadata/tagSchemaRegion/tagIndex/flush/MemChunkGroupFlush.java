@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.lsm.annotation.FlushProcessor;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
+import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 
-/** Save the level processor of each layer in hierarchical order */
-public class LevelProcessorChain<T, R, C extends RequestContext> {
+import java.util.List;
 
-  // the level process of the first layer of memory nodes
-  ILevelProcessor<T, ?, R, C> headLevelProcess;
+/** flush for MemChunkGroup */
+@FlushProcessor(level = 3)
+public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, Object> {
 
-  public <O> ILevelProcessor<T, O, R, C> nextLevel(ILevelProcessor<T, O, R, C> next) {
-    this.headLevelProcess = next;
-    return next;
+  @Override
+  public List<Object> getChildren(
+      MemChunkGroup memNode, Object request, FlushRequestContext context) {
+    return null;
   }
 
-  /**
-   * Use the level processor of each layer to process memory nodes
-   *
-   * @param memNode memory node
-   * @param request extends IRequest
-   * @param context extends RequestContext
-   */
-  public void process(T memNode, R request, C context) {
-    headLevelProcess.process(memNode, request, context);
-  }
+  @Override
+  public void flush(MemChunkGroup memNode, FlushRequestContext context) {}
 }

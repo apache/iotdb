@@ -16,29 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.lsm.annotation;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/** Save the level processor of each layer in hierarchical order */
-public class LevelProcessorChain<T, R, C extends RequestContext> {
-
-  // the level process of the first layer of memory nodes
-  ILevelProcessor<T, ?, R, C> headLevelProcess;
-
-  public <O> ILevelProcessor<T, O, R, C> nextLevel(ILevelProcessor<T, O, R, C> next) {
-    this.headLevelProcess = next;
-    return next;
-  }
-
-  /**
-   * Use the level processor of each layer to process memory nodes
-   *
-   * @param memNode memory node
-   * @param request extends IRequest
-   * @param context extends RequestContext
-   */
-  public void process(T memNode, R request, C context) {
-    headLevelProcess.process(memNode, request, context);
-  }
+/**
+ * Indicates that the class using this annotation is a FlushLevelProcessor, and the attribute level
+ * of the annotation indicates which layer of memory node the deletion method of the
+ * FlushLevelProcessor is.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface FlushProcessor {
+  // level of the FlushLevelProcessor
+  int level() default -1;
 }

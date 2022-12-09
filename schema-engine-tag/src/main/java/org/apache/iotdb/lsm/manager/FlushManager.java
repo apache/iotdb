@@ -16,29 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 
-/** Save the level processor of each layer in hierarchical order */
-public class LevelProcessorChain<T, R, C extends RequestContext> {
+public class FlushManager<T> extends BasicLSMManager<T, Object, FlushRequestContext> {
+  @Override
+  public void preProcess(T root, Object request, FlushRequestContext context) {}
 
-  // the level process of the first layer of memory nodes
-  ILevelProcessor<T, ?, R, C> headLevelProcess;
-
-  public <O> ILevelProcessor<T, O, R, C> nextLevel(ILevelProcessor<T, O, R, C> next) {
-    this.headLevelProcess = next;
-    return next;
-  }
-
-  /**
-   * Use the level processor of each layer to process memory nodes
-   *
-   * @param memNode memory node
-   * @param request extends IRequest
-   * @param context extends RequestContext
-   */
-  public void process(T memNode, R request, C context) {
-    headLevelProcess.process(memNode, request, context);
-  }
+  @Override
+  public void postProcess(T root, Object request, FlushRequestContext context) {}
 }
