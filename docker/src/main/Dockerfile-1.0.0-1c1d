@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,6 +16,35 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-nohup /iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
-sleep 5
-/iotdb/sbin/start-datanode.sh
+
+FROM openjdk:11-jre-slim
+ARG version=1.0.1-SNAPSHOT
+ARG target=apache-iotdb-${version}-all-bin
+
+RUN apt update \
+  && apt install lsof dos2unix procps unzip dumb-init -y \
+  && apt autoremove -y \
+  && apt purge --auto-remove -y \
+  && apt clean -y
+
+COPY tmp/${target}.zip /
+RUN cd / && unzip ${target}.zip \
+  && rm ${target}.zip \
+  && mv ${target} iotdb
+
+ENV IOTDB_HOME=/iotdb VERSION=${version}
+WORKDIR ${IOTDB_HOME}/sbin
+
+COPY DockerCompose/replace-conf-from-env.sh .
+COPY DockerCompose/entrypoint.sh .
+RUN chmod +x *.sh && dos2unix *.sh \
+  && dos2unix ${IOTDB_HOME}/conf/*.sh
+
+EXPOSE 6667
+VOLUME /iotdb/data
+VOLUME /iotdb/logs
+
+ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["bash", "-c", "entrypoint.sh all"]
