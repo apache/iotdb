@@ -402,8 +402,8 @@ public class ProcedureManager {
         .getStatistics()
         .getRegionStatisticsMap()
         .containsKey(migrateRegionReq.getToId())) {
-      LOGGER.info(
-          "Submit RegionMigrateProcedure failed, because region Group {} already contains target DataNode {}",
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains  Region {}",
           migrateRegionReq.getRegionId(),
           migrateRegionReq.getToId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
