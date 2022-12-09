@@ -159,7 +159,7 @@
         <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
         <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
-        <felix.version>5.1.7</felix.version>
+        <felix.version>5.1.8</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <netty.version>4.1.82.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
@@ -172,7 +172,7 @@
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
         <gson.version>2.8.9</gson.version>
-        <argLine />
+        <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
@@ -192,7 +192,7 @@
         <lz4-java.version>1.8.0</lz4-java.version>
         <jackson-mapper-asl.version>1.9.13</jackson-mapper-asl.version>
         <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
-        <mockito-core.version>2.23.0</mockito-core.version>
+        <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
         <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
@@ -225,6 +225,9 @@
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
         <JTransforms.version>3.1</JTransforms.version>
+        <!-- codegen -->
+        <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
+        <codegen.phase>generate-sources</codegen.phase>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -800,7 +803,7 @@
                             <importOrder>
                                 <order>org.apache.iotdb,,javax,java,\#</order>
                             </importOrder>
-                            <removeUnusedImports />
+                            <removeUnusedImports/>
                         </java>
                         <lineEndings>UNIX</lineEndings>
                     </configuration>
@@ -878,7 +881,7 @@
                         <phase>validate</phase>
                         <configuration>
                             <rules>
-                                <dependencyConvergence />
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                         <goals>
@@ -924,7 +927,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -289,8 +289,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         }
       }
     }
-    return StorageEngineV2.getTimePartition(pageHeader.getStartTime())
-        != StorageEngineV2.getTimePartition(pageHeader.getEndTime());
+    return StorageEngine.getTimePartition(pageHeader.getStartTime())
+        != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
   /**
@@ -376,7 +376,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws PageException {
-    long partitionId = StorageEngineV2.getTimePartition(pageHeader.getStartTime());
+    long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     ChunkWriterImpl chunkWriter =
         partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
@@ -431,7 +431,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
-      long partitionId = StorageEngineV2.getTimePartition(time);
+      long partitionId = StorageEngine.getTimePartition(time);
 
       ChunkWriterImpl chunkWriter =
           partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));

@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -148,21 +149,26 @@ public class SeriesPartitionTable {
    * @return the timePartition's corresponding dataRegionIds
    */
   List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
-    if (timeSlotId.getStartTime() >= 0) {
+    if (timeSlotId != null) {
       if (!seriesPartitionMap.containsKey(timeSlotId)) {
         return new ArrayList<>();
       }
-      return seriesPartitionMap.get(timeSlotId);
+      return seriesPartitionMap.get(timeSlotId).stream()
+          .sorted(Comparator.comparing(TConsensusGroupId::getId))
+          .collect(Collectors.toList());
     } else {
       Set<TConsensusGroupId> result = new HashSet<>();
       seriesPartitionMap.values().forEach(result::addAll);
-      return new ArrayList<>(result);
+      return result.stream()
+          .sorted(Comparator.comparing(TConsensusGroupId::getId))
+          .collect(Collectors.toList());
     }
   }
 
   List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {
     return seriesPartitionMap.keySet().stream()
         .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+        .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
         .collect(Collectors.toList());
   }
 

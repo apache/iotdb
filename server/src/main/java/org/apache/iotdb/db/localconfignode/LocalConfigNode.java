@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -126,7 +126,7 @@ public class LocalConfigNode {
   private final LocalSchemaPartitionTable schemaPartitionTable =
       LocalSchemaPartitionTable.getInstance();
 
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final LocalDataPartitionInfo dataPartitionInfo = LocalDataPartitionInfo.getInstance();
 
@@ -858,7 +858,8 @@ public class LocalConfigNode {
         iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
-        throw new AuthException("Unsupported operation " + authorType);
+        throw new AuthException(
+            TSStatusCode.UNSUPPORTED_AUTH_OPERATION, "Unsupported operation " + authorType);
     }
   }
 
@@ -876,7 +877,8 @@ public class LocalConfigNode {
       case LIST_ROLE_PRIVILEGE:
         return executeListRolePrivileges(authorStatement);
       default:
-        throw new AuthException("Unsupported operation " + authorType);
+        throw new AuthException(
+            TSStatusCode.UNSUPPORTED_AUTH_OPERATION, "Unsupported operation " + authorType);
     }
   }
 
@@ -884,14 +886,10 @@ public class LocalConfigNode {
       throws AuthException {
     List<String> userList = iAuthorizer.listAllUsers();
     if (authorStatement.getRoleName() != null && !authorStatement.getRoleName().isEmpty()) {
-      Role role;
-      try {
-        role = iAuthorizer.getRole(authorStatement.getRoleName());
-        if (role == null) {
-          throw new AuthException("No such role : " + authorStatement.getRoleName());
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      Role role = iAuthorizer.getRole(authorStatement.getRoleName());
+      if (role == null) {
+        throw new AuthException(
+            TSStatusCode.ROLE_NOT_EXIST, "No such role : " + authorStatement.getRoleName());
       }
       Iterator<String> itr = userList.iterator();
       while (itr.hasNext()) {
@@ -913,18 +911,12 @@ public class LocalConfigNode {
     if (authorStatement.getUserName() == null || authorStatement.getUserName().isEmpty()) {
       roleList.addAll(iAuthorizer.listAllRoles());
     } else {
-      User user;
-      try {
-        user = iAuthorizer.getUser(authorStatement.getUserName());
-        if (user == null) {
-          throw new AuthException("No such user : " + authorStatement.getUserName());
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      User user = iAuthorizer.getUser(authorStatement.getUserName());
+      if (user == null) {
+        throw new AuthException(
+            TSStatusCode.USER_NOT_EXIST, "No such user : " + authorStatement.getUserName());
       }
-      for (String roleN : user.getRoleList()) {
-        roleList.add(roleN);
-      }
+      roleList.addAll(user.getRoleList());
     }
 
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -935,14 +927,10 @@ public class LocalConfigNode {
   public Map<String, List<String>> executeListRolePrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = iAuthorizer.getRole(authorStatement.getRoleName());
-      if (role == null) {
-        throw new AuthException("No such role : " + authorStatement.getRoleName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    Role role = iAuthorizer.getRole(authorStatement.getRoleName());
+    if (role == null) {
+      throw new AuthException(
+          TSStatusCode.ROLE_NOT_EXIST, "No such role : " + authorStatement.getRoleName());
     }
     Set<String> rolePrivilegeSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
@@ -964,14 +952,10 @@ public class LocalConfigNode {
   public Map<String, List<String>> executeListUserPrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = iAuthorizer.getUser(authorStatement.getUserName());
-      if (user == null) {
-        throw new AuthException("No such user : " + authorStatement.getUserName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    User user = iAuthorizer.getUser(authorStatement.getUserName());
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, "No such user : " + authorStatement.getUserName());
     }
     List<String> userPrivilegesList = new ArrayList<>();
 

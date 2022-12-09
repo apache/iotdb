@@ -1539,12 +1539,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeName(nodeName);
     return nodeName;
@@ -1556,12 +1551,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeNameInIntoPath(nodeName);
     return nodeName;
@@ -3022,14 +3012,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    GetRegionIdStatement getRegionIdStatement =
-        new GetRegionIdStatement(
-            ctx.prefixPath().getText(),
-            type,
-            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(ctx.path.getText(), type);
+    if (ctx.seriesSlot != null) {
+      getRegionIdStatement.setSeriesSlotId(
+          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    } else {
+      getRegionIdStatement.setDeviceId(ctx.deviceId.getText());
+    }
     if (ctx.timeSlot != null) {
       getRegionIdStatement.setTimeSlotId(
-          new TTimePartitionSlot(Long.parseLong(ctx.timeSlot.getText())));
+          new TTimePartitionSlot(
+              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
+    } else if (ctx.timeStamp != null) {
+      getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
     }
     return getRegionIdStatement;
   }

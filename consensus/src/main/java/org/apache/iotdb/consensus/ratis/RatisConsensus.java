@@ -341,9 +341,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // add RaftPeer myself to this RaftGroup
-    ConsensusGenericResponse reply = addNewGroupToServer(group, myself);
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+    return addNewGroupToServer(group, myself);
   }
 
   private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
@@ -476,7 +474,7 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
@@ -493,7 +491,7 @@ class RatisConsensus implements IConsensus {
     try {
       reply = sendReconfiguration(raftGroup);
     } catch (RatisRequestFailedException e) {
-      return failed(new RatisRequestFailedException(e));
+      return failed(e);
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
@@ -676,6 +674,9 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
+      if (!reply.isSuccess()) {
+        return failed(new RatisRequestFailedException(reply.getException()));
+      }
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
     }

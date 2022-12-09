@@ -90,6 +90,7 @@ public class SumAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
+    initResult = true;
     sumValue = finalResult.getDouble(0);
   }
 

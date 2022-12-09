@@ -81,6 +81,7 @@ import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -757,7 +758,7 @@ public class PlanExecutor implements IPlanExecutor {
   private ListDataSet executeListRoleUsers(String roleName) throws AuthException {
     Role role = authorizerManager.getRole(roleName);
     if (role == null) {
-      throw new AuthException("No such role : " + roleName);
+      throw new AuthException(TSStatusCode.ROLE_NOT_EXIST, "No such role : " + roleName);
     }
     ListDataSet dataSet =
         new ListDataSet(
@@ -795,7 +796,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       return dataSet;
     } else {
-      throw new AuthException("No such user : " + userName);
+      throw new AuthException(TSStatusCode.USER_NOT_EXIST, "No such user : " + userName);
     }
   }
 
@@ -830,7 +831,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       return dataSet;
     } else {
-      throw new AuthException("No such role : " + roleName);
+      throw new AuthException(TSStatusCode.ROLE_NOT_EXIST, "No such role : " + roleName);
     }
   }
 
@@ -838,7 +839,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws AuthException {
     User user = authorizerManager.getUser(userName);
     if (user == null) {
-      throw new AuthException("No such user : " + userName);
+      throw new AuthException(TSStatusCode.USER_NOT_EXIST, "No such user : " + userName);
     }
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();

@@ -111,9 +111,10 @@ public class WALNodeRecoverTask implements Runnable {
       long lastVersionId = indexInfo[0];
       long lastSearchIndex = indexInfo[1];
       // update disk usage
-      long totalSize =
-          Arrays.stream(WALFileUtils.listAllWALFiles(logDirectory)).mapToLong(File::length).sum();
-      WALManager.getInstance().addTotalDiskUsage(totalSize);
+      File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+      WALManager.getInstance()
+          .addTotalDiskUsage(Arrays.stream(walFiles).mapToLong(File::length).sum());
+      WALManager.getInstance().addTotalFileNum(walFiles.length);
       // register wal node
       WALManager.getInstance()
           .registerWALNode(
