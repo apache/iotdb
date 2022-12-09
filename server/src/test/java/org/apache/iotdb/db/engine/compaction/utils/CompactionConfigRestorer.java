@@ -29,39 +29,24 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSel
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 
 public class CompactionConfigRestorer {
-  private boolean enableSeqSpaceCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-  private boolean enableUnseqSpaceCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-  private boolean enableCrossSpaceCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-  private CrossCompactionSelector crossStrategy =
-      IoTDBDescriptor.getInstance().getConfig().getCrossCompactionSelector();
+  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
+  private boolean enableCrossSpaceCompaction = true;
+  private CrossCompactionSelector crossStrategy = CrossCompactionSelector.REWRITE;
   private InnerSequenceCompactionSelector innerStrategy =
-      IoTDBDescriptor.getInstance().getConfig().getInnerSequenceCompactionSelector();
-  private CompactionPriority priority =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
-  private long targetFileSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-  private long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  private long targetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-  private long chunkSizeLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-  private long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-  private int maxInnerCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-  private int maxCrossCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-  private int concurrentCompactionThread =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
-  private long compactionScheduleIntervalInMs =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs();
-  private long compactionSubmissionIntervalInMs =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionIntervalInMs();
-  private int compactionWriteThroughputMbPerSec =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec();
+      InnerSequenceCompactionSelector.SIZE_TIERED;
+  private CompactionPriority priority = CompactionPriority.BALANCE;
+  private long targetFileSize = 1073741824L;
+  private long targetChunkSize = 1048576L;
+  private long targetChunkPointNum = 100000L;
+  private long chunkSizeLowerBoundInCompaction = 128L;
+  private long chunkPointNumLowerBoundInCompaction = 100L;
+  private int maxInnerCompactionCandidateFileNum = 30;
+  private int maxCrossCompactionCandidateFileNum = 1000;
+  private int concurrentCompactionThread = 10;
+  private long compactionScheduleIntervalInMs = 60000L;
+  private long compactionSubmissionIntervalInMs = 60000L;
+  private int compactionWriteThroughputMbPerSec = 8;
 
   private CrossCompactionPerformer oldCrossPerformer =
       IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer();
