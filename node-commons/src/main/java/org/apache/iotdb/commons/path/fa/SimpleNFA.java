@@ -35,7 +35,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class SimpleNFA implements IPatternFA {
 
   private final String[] nodes;
-  private final boolean isPrefixMatch;
 
   private final SimpleNFAState[] states;
 
@@ -51,7 +50,6 @@ public class SimpleNFA implements IPatternFA {
 
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
     this.nodes = optimizePathPattern(pathPattern);
-    this.isPrefixMatch = isPrefixMatch;
 
     states = new SimpleNFAState[this.nodes.length + 1];
     for (int i = 0; i < states.length; i++) {
@@ -63,21 +61,32 @@ public class SimpleNFA implements IPatternFA {
     preciseMatchTransition = new Map[states.length];
     batchMatchTransition = new List[states.length];
 
+    generateFAGraph(isPrefixMatch);
+  }
+
+  private void generateFAGraph(boolean isPrefixMatch) {
+    int lastMultiWildcard = -1;
     for (int i = 0; i < nodes.length - 1; i++) {
       if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-          batchMatchTransition[i] = Arrays.asList(states[i + 1], states[i]);
-          preciseMatchTransition[i] = Collections.emptyMap();
-        } else {
-          batchMatchTransition[i] = Collections.singletonList(states[i]);
-          preciseMatchTransition[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
-        }
-      } else {
+        lastMultiWildcard = i;
+      }
+      if (lastMultiWildcard == -1) {
         if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
           batchMatchTransition[i] = Collections.singletonList(states[i + 1]);
           preciseMatchTransition[i] = Collections.emptyMap();
         } else {
           batchMatchTransition[i] = Collections.emptyList();
+          preciseMatchTransition[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
+        }
+      } else {
+        if (nodes[i + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+          batchMatchTransition[i] = Collections.singletonList(states[i + 1]);
+          preciseMatchTransition[i] = Collections.emptyMap();
+        } else if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
+          batchMatchTransition[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
+          preciseMatchTransition[i] = Collections.emptyMap();
+        } else {
+          batchMatchTransition[i] = Collections.singletonList(states[lastMultiWildcard]);
           preciseMatchTransition[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
         }
       }
@@ -91,7 +100,12 @@ public class SimpleNFA implements IPatternFA {
       batchMatchTransition[nodes.length - 1] = Collections.singletonList(states[nodes.length - 1]);
     } else {
       preciseMatchTransition[nodes.length - 1] = Collections.emptyMap();
-      batchMatchTransition[nodes.length - 1] = Collections.emptyList();
+      if (lastMultiWildcard == -1) {
+        batchMatchTransition[nodes.length - 1] = Collections.emptyList();
+      } else {
+        batchMatchTransition[nodes.length - 1] =
+            Collections.singletonList(states[lastMultiWildcard]);
+      }
     }
 
     preciseMatchTransition[nodes.length] = Collections.emptyMap();
