@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.load.ChunkData;
@@ -173,7 +174,7 @@ public class LoadTsFileScheduler implements IScheduler {
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession());
-    instance.setDataRegionAndHost(replicaSet);
+    instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(Collections.singletonList(instance));
 
@@ -272,7 +273,7 @@ public class LoadTsFileScheduler implements IScheduler {
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());
-      instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
+      instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
