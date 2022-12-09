@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.SimpleNFA;
+import org.apache.iotdb.commons.path.fa.match.BatchStateMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.PreciseStateMatchInfo;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -91,7 +94,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     IFAState rootState =
         patternFA.getNextState(
             initialState, patternFA.getPreciseMatchTransition(initialState).get(PATH_ROOT));
-    currentStateMatchInfo = new PreciseStateMatchInfo(rootState);
+    currentStateMatchInfo = new PreciseStateMatchInfo(patternFA, rootState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
@@ -239,207 +242,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   /** The method used for generating the result based on the matched node. */
   protected abstract R generateResult();
 
-  private interface IStateMatchInfo {
-
-    boolean hasFinalState();
-
-    void setHasFinalState();
-
-    boolean hasOnlyPreciseMatchTransition();
-
-    boolean hasNoPreciseMatchTransition();
-
-    boolean isSingleBatchMatchTransition();
-
-    IFAState getOneMatchedState();
-
-    void addMatchedState(IFAState state);
-
-    IFAState getMatchedState(int index);
-
-    int getMatchedStateSize();
-
-    int getSourceStateIndex();
-
-    void setSourceStateIndex(int sourceStateIndex);
-
-    Iterator<IFATransition> getSourceStateTransitionIterator();
-
-    void setSourceStateTransitionIterator(Iterator<IFATransition> sourceStateTransitionIterator);
-  }
-
-  private class BatchStateMatchInfo implements IStateMatchInfo {
-
-    private final MatchedStateSet matchedStateSet;
-
-    private int sourceStateIndex;
-
-    private Iterator<IFATransition> sourceStateTransitionIterator;
-
-    private boolean hasFinalState = false;
-
-    BatchStateMatchInfo() {
-      matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
-    }
-
-    BatchStateMatchInfo(
-        IFAState matchedState, Iterator<IFATransition> sourceStateTransitionIterator) {
-      matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
-      matchedStateSet.add(matchedState);
-      sourceStateIndex = 0;
-      this.sourceStateTransitionIterator = sourceStateTransitionIterator;
-      this.hasFinalState = matchedState.isFinal();
-    }
-
-    @Override
-    public boolean hasFinalState() {
-      return hasFinalState;
-    }
-
-    @Override
-    public void setHasFinalState() {
-      hasFinalState = true;
-    }
-
-    @Override
-    public boolean hasOnlyPreciseMatchTransition() {
-      return false;
-    }
-
-    @Override
-    public boolean hasNoPreciseMatchTransition() {
-      return false;
-    }
-
-    @Override
-    public boolean isSingleBatchMatchTransition() {
-      return false;
-    }
-
-    @Override
-    public IFAState getOneMatchedState() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void addMatchedState(IFAState state) {
-      matchedStateSet.add(state);
-      if (state.isFinal()) {
-        hasFinalState = true;
-      }
-    }
-
-    @Override
-    public IFAState getMatchedState(int index) {
-      return patternFA.getState(matchedStateSet.existingState[index]);
-    }
-
-    @Override
-    public int getMatchedStateSize() {
-      return matchedStateSet.end;
-    }
-
-    @Override
-    public int getSourceStateIndex() {
-      return sourceStateIndex;
-    }
-
-    @Override
-    public void setSourceStateIndex(int sourceStateIndex) {
-      this.sourceStateIndex = sourceStateIndex;
-    }
-
-    @Override
-    public Iterator<IFATransition> getSourceStateTransitionIterator() {
-      return sourceStateTransitionIterator;
-    }
-
-    @Override
-    public void setSourceStateTransitionIterator(
-        Iterator<IFATransition> sourceStateTransitionIterator) {
-      this.sourceStateTransitionIterator = sourceStateTransitionIterator;
-    }
-  }
-
-  private class PreciseStateMatchInfo implements IStateMatchInfo {
-
-    private final IFAState matchedState;
-
-    private PreciseStateMatchInfo(IFAState matchedState) {
-      this.matchedState = matchedState;
-    }
-
-    @Override
-    public boolean hasFinalState() {
-      return matchedState.isFinal();
-    }
-
-    @Override
-    public void setHasFinalState() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean hasOnlyPreciseMatchTransition() {
-      return patternFA.getBatchMatchTransition(matchedState).isEmpty();
-    }
-
-    @Override
-    public boolean hasNoPreciseMatchTransition() {
-      return patternFA.getPreciseMatchTransition(matchedState).isEmpty();
-    }
-
-    @Override
-    public boolean isSingleBatchMatchTransition() {
-      return patternFA.getBatchMatchTransition(matchedState).size() == 1;
-    }
-
-    @Override
-    public IFAState getOneMatchedState() {
-      return matchedState;
-    }
-
-    @Override
-    public void addMatchedState(IFAState state) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public IFAState getMatchedState(int index) {
-      if (index == 0) {
-        return matchedState;
-      } else {
-        throw new IllegalStateException();
-      }
-    }
-
-    @Override
-    public int getMatchedStateSize() {
-      return 1;
-    }
-
-    @Override
-    public int getSourceStateIndex() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setSourceStateIndex(int sourceStateIndex) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Iterator<IFATransition> getSourceStateTransitionIterator() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setSourceStateTransitionIterator(
-        Iterator<IFATransition> sourceStateTransitionIterator) {
-      throw new UnsupportedOperationException();
-    }
-  }
-
   private class VisitorStackEntry {
 
     private final Iterator<N> iterator;
@@ -516,7 +318,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           continue;
         }
         saveResult(
-            child, new PreciseStateMatchInfo(patternFA.getNextState(sourceState, transition)));
+            child,
+            new PreciseStateMatchInfo(patternFA, patternFA.getNextState(sourceState, transition)));
         return;
       }
     }
@@ -536,7 +339,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       this.sourceState = sourceState;
       this.transition = patternFA.getTransition(sourceState).get(0);
       this.stateMatchInfo =
-          new PreciseStateMatchInfo(patternFA.getNextState(sourceState, transition));
+          new PreciseStateMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
       this.childrenIterator = getChildrenIterator(parent);
     }
 
@@ -599,10 +402,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (transitionIterator.hasNext()) {
-          stateMatchInfo = new BatchStateMatchInfo(matchedState, transitionIterator);
+          stateMatchInfo = new BatchStateMatchInfo(patternFA, matchedState, transitionIterator);
           startIndexOfTraceback = ancestorStack.size();
         } else {
-          stateMatchInfo = new PreciseStateMatchInfo(matchedState);
+          stateMatchInfo = new PreciseStateMatchInfo(patternFA, matchedState);
         }
         saveResult(child, stateMatchInfo);
         return;
@@ -634,13 +437,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         child = iterator.next();
 
-        stateMatchInfo = new BatchStateMatchInfo();
+        stateMatchInfo = new BatchStateMatchInfo(patternFA);
         for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
           sourceState = sourceStateMatchInfo.getMatchedState(i);
           transitionIterator = tryGetOneMatchedState(child, sourceState, stateMatchInfo);
           if (stateMatchInfo.getMatchedStateSize() > 0) {
             stateMatchInfo.setSourceStateIndex(i);
-            stateMatchInfo.setSourceStateTransitionIterator(transitionIterator);
+            stateMatchInfo.setSourceTransitionIterator(transitionIterator);
             break;
           }
         }
@@ -731,7 +534,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             continue;
           }
           sourceState = parentStateMatchInfo.getMatchedState(sourceStateIndex);
-          transitionIterator = currentStateMatchInfo.getSourceStateTransitionIterator();
+          transitionIterator = currentStateMatchInfo.getSourceTransitionIterator();
           while (transitionIterator.hasNext()) {
             matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
             if (matchedState != null) {
@@ -749,13 +552,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
               matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
               currentStateMatchInfo.setSourceStateIndex(sourceStateIndex);
-              currentStateMatchInfo.setSourceStateTransitionIterator(transitionIterator);
+              currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
               break;
             }
           }
           if (matchedState == null) {
             currentStateMatchInfo.setSourceStateIndex(sourceStateIndex - 1);
-            currentStateMatchInfo.setSourceStateTransitionIterator(transitionIterator);
+            currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
             index--;
             continue;
           }
@@ -786,33 +589,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       return patternFA.getNextState(sourceState, transition);
     } else {
       return null;
-    }
-  }
-
-  private static class MatchedStateSet {
-    private static final int INITIAL_SIZE = 8;
-
-    private final boolean[] stateStatus;
-
-    private int[] existingState = new int[INITIAL_SIZE];
-
-    private int end = 0;
-
-    public MatchedStateSet(int stateSize) {
-      stateStatus = new boolean[stateSize];
-    }
-
-    public void add(IFAState state) {
-      if (stateStatus[state.getIndex()]) {
-        return;
-      }
-      if (end == existingState.length) {
-        int[] array = new int[existingState.length * 2];
-        System.arraycopy(existingState, 0, array, 0, end);
-        existingState = array;
-      }
-      existingState[end++] = state.getIndex();
-      stateStatus[state.getIndex()] = true;
     }
   }
 }
