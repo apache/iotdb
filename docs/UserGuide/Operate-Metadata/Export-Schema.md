@@ -25,11 +25,43 @@ The schema export operation exports the information about store group, timeserie
 
 The exported `mlog.bin` and `tlog.txt` files can be incrementally loaded into an IoTDB instance.
 
-### Export Schema SQL
+### Export Schema with SQL
 
 ```
 EXPORT SCHEMA '<path/dir>' 
 ```
+
+### Export Schema with Script
+
+Linux/MacOS
+
+> ./exportSchema.sh -d /yourpath/data/system/schema -o /yourpath/targetDir
+
+Windows
+
+> ./exportSchema.bat-d /yourpath/data/system/schema -o /yourpath/targetDir
+
+
+Source directory and the export destination directory need to be specified when exporting metadata using scripting.
+```
+usage: ExportSchema -d <source directory path> -o <target directory path>
+       [-help]
+ -d <source directory path>   Need to specify a source directory path
+ -o <target directory path>   Need to specify a target directory path
+ -help,--help                 Display help information
+```
+
+### Q&A
+
+* Cannot find or load the main class ExportSchema
+    * It may be because the environment variable $IOTDB_HOME is not set, please set the environment variable and try again
+* Encounter an error, because: File ... already exist.
+    * There is already a mlog.bin or tlog.txt file in the target directory, please check the target directory and try again
+* Encounter an error, because: ... does not exist or is not a directory.
+    * The source directory path does not exist or is not a directory, please check the source directory and try again
+* Encounter an error, because: ... is not a valid directory.
+    * The source directory is not the schema directory in IoTDB, please check the target directory and try again
+
 
 ### Load Schema
 
