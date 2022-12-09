@@ -387,7 +387,7 @@ public class ProcedureManager {
         .getRegionStatisticsMap()
         .containsKey(migrateRegionReq.getFromId())) {
       LOGGER.info(
-          "Submit RegionMigrateProcedure failed, because region group {} doesn't contain original DataNode {}",
+          "Submit RegionMigrateProcedure failed, because the original DataNode {} doesn't contain Region {}",
           migrateRegionReq.getRegionId(),
           migrateRegionReq.getFromId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
