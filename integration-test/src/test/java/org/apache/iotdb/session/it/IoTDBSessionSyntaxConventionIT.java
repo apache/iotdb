@@ -109,6 +109,7 @@ public class IoTDBSessionSyntaxConventionIT {
       measurements.add("`a“（Φ）”b`");
       measurements.add("`a>b`");
       measurements.add("`\\\"a`");
+      measurements.add("`aaa`");
       List<String> values = new ArrayList<>();
 
       for (int i = 0; i < measurements.size(); i++) {
@@ -125,6 +126,7 @@ public class IoTDBSessionSyntaxConventionIT {
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
+      assertTrue(session.checkTimeseriesExists("root.sg1.d1.aaa"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

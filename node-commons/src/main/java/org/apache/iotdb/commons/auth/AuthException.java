@@ -19,20 +19,30 @@
 
 package org.apache.iotdb.commons.auth;
 
+import org.apache.iotdb.rpc.TSStatusCode;
+
 /** The exception for authority model. */
 public class AuthException extends Exception {
 
   private static final long serialVersionUID = 5091102941209301301L;
+  private final TSStatusCode code;
 
-  public AuthException(String message) {
+  public AuthException(TSStatusCode code, String message) {
     super(message);
+    this.code = code;
   }
 
-  public AuthException(String message, Throwable cause) {
+  public AuthException(TSStatusCode code, String message, Throwable cause) {
     super(message, cause);
+    this.code = code;
   }
 
-  public AuthException(Throwable cause) {
+  public AuthException(TSStatusCode code, Throwable cause) {
     super(cause);
+    this.code = code;
+  }
+
+  public TSStatusCode getCode() {
+    return code;
   }
 }

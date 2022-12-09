@@ -50,7 +50,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     }
   }
 
@@ -83,7 +83,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e);
+      throw new AuthException(TSStatusCode.ILLEGAL_PATH, e);
     }
     return false;
   }
