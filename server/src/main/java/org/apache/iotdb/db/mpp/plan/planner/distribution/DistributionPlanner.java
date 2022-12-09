@@ -51,7 +51,13 @@ public class DistributionPlanner {
 
   public PlanNode rewriteSource() {
     SourceRewriter rewriter = new SourceRewriter(this.analysis);
-    return rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    List<PlanNode> planNodeList =
+        rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    if (planNodeList.size() != 1) {
+      throw new IllegalStateException("root node must return only one");
+    } else {
+      return planNodeList.get(0);
+    }
   }
 
   public PlanNode addExchangeNode(PlanNode root) {
