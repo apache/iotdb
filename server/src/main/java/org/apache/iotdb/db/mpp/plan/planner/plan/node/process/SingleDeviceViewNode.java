@@ -34,6 +34,10 @@ import java.util.Objects;
 public class SingleDeviceViewNode extends SingleChildProcessNode {
 
   private final String device;
+
+  // To reduce memory cost, SingleDeviceViewNode doesn't serialize and deserialize
+  // outputColumnNames.
+  // It just rebuilds using the infos from parent node.
   private List<String> outputColumnNames;
   private final List<Integer> deviceToMeasurementIndexes;
 
@@ -107,6 +111,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
       deviceToMeasurementIndexes.add(ReadWriteIOUtils.readInt(byteBuffer));
       listSize--;
     }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SingleDeviceViewNode(planNodeId, device, deviceToMeasurementIndexes);
   }

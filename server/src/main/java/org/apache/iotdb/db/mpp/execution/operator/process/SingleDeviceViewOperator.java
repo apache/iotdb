@@ -24,9 +24,8 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The SingleDeviceViewOperator plays a similar role with DeviceViewOperator of adding a device
@@ -46,12 +46,12 @@ import java.util.List;
 public class SingleDeviceViewOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final String device;
   private final Operator deviceOperator;
   // Used to fill columns and leave null columns which doesn't exist in some devices.
   private final List<Integer> deviceColumnIndex;
   // Column dataTypes that includes device column
   private final List<TSDataType> dataTypes;
+  private final BinaryColumn binaryColumn;
 
   public SingleDeviceViewOperator(
       OperatorContext operatorContext,
@@ -60,10 +60,11 @@ public class SingleDeviceViewOperator implements ProcessOperator {
       List<Integer> deviceColumnIndex,
       List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
-    this.device = device;
     this.deviceOperator = deviceOperator;
     this.deviceColumnIndex = deviceColumnIndex;
     this.dataTypes = dataTypes;
+    this.binaryColumn =
+        new BinaryColumn(1, Optional.of(new boolean[] {false}), new Binary[] {new Binary(device)});
   }
 
   @Override
@@ -92,10 +93,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
       newValueColumns[deviceColumnIndex.get(i)] = tsBlock.getColumn(i);
     }
     // construct device column
-    ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeBinary(new Binary(device));
-    newValueColumns[0] =
-        new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
+    newValueColumns[0] = new RunLengthEncodedColumn(binaryColumn, tsBlock.getPositionCount());
     // construct other null columns
     for (int i = 0; i < dataTypes.size(); i++) {
       if (newValueColumns[i] == null) {

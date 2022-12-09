@@ -223,14 +223,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       PlanNode rawChildNode = node.getChildren().get(i);
       PlanNode visitedChild = visit(rawChildNode, context);
       TRegionReplicaSet region = context.getNodeDistribution(visitedChild.getPlanNodeId()).region;
-      if (childrenGroupMap.containsKey(region)) {
-        List<PlanNode> group = childrenGroupMap.get(region);
-        group.add(visitedChild);
-      } else {
-        List<PlanNode> group = new ArrayList<>();
-        group.add(visitedChild);
-        childrenGroupMap.put(region, group);
-      }
+      childrenGroupMap.computeIfAbsent(region, k -> new ArrayList<>()).add(visitedChild);
     }
 
     // 2.add mergeSortNode for each group

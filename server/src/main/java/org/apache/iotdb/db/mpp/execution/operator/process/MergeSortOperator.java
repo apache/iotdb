@@ -114,7 +114,9 @@ public class MergeSortOperator implements ProcessOperator {
                 mergeSortHeap.peek())
             < 0) {
       inputTsBlocks[minMergeSortKey.columnIndex] = null;
-      return minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
+      return minMergeSortKey.rowIndex == 0
+          ? minMergeSortKey.tsBlock
+          : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
     }
     mergeSortHeap.push(minMergeSortKey);
 
