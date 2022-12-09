@@ -386,16 +386,16 @@ public class ProcedureManager {
         .getStatistics()
         .getRegionStatisticsMap()
         .containsKey(migrateRegionReq.getFromId())) {
-      LOGGER.info(
+      LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because the original DataNode {} doesn't contain Region {}",
-          migrateRegionReq.getRegionId(),
-          migrateRegionReq.getFromId());
+          migrateRegionReq.getFromId(),
+          migrateRegionReq.getRegionId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
-          "Submit RegionMigrateProcedure failed, because region group "
-              + migrateRegionReq.getRegionId()
-              + " doesn't contain original DataNode "
-              + migrateRegionReq.getFromId());
+          "Submit RegionMigrateProcedure failed, because the original DataNode "
+              + migrateRegionReq.getFromId()
+              + " doesn't contain Region "
+              + migrateRegionReq.getRegionId());
       return status;
     } else if (regionReplicaMap
         .get(regionId.get())
@@ -403,15 +403,15 @@ public class ProcedureManager {
         .getRegionStatisticsMap()
         .containsKey(migrateRegionReq.getToId())) {
       LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains  Region {}",
-          migrateRegionReq.getRegionId(),
-          migrateRegionReq.getToId());
+          "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains Region {}",
+          migrateRegionReq.getToId(),
+          migrateRegionReq.getRegionId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
-          "Submit RegionMigrateProcedure failed, because region Group "
-              + migrateRegionReq.getRegionId()
-              + " already contains target DataNode "
-              + migrateRegionReq.getToId());
+          "Submit RegionMigrateProcedure failed, because the target DataNode "
+              + migrateRegionReq.getToId()
+              + " already contains Region "
+              + migrateRegionReq.getRegionId());
       return status;
     }
     this.executor.submitProcedure(
