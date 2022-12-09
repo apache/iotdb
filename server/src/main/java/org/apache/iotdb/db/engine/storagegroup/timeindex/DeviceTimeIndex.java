@@ -163,11 +163,11 @@ public class DeviceTimeIndex implements ITimeIndex {
    */
   public static Set<String> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
-    inputStream.skip(2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
+    ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
     Set<String> devices = new HashSet<>();
     for (int i = 0; i < deviceNum; i++) {
       String path = ReadWriteIOUtils.readString(inputStream).intern();
-      inputStream.skip(ReadWriteIOUtils.INT_LEN);
+      ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
       devices.add(path);
     }
     return devices;
