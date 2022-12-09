@@ -264,9 +264,15 @@ public class ClientMain {
   }
 
   private static long connectClient(Client client) throws TException {
+    /*
     TSOpenSessionReq openReq =
         new TSOpenSessionReq(
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3, ZoneId.systemDefault().getId());
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3, ZoneId.systemDefault().getId(), "root");
+     */
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
+
+    openReq.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+    openReq.setZoneId(ZoneId.systemDefault().getId());
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
