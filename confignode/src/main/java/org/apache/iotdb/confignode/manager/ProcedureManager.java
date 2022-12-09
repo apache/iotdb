@@ -417,7 +417,7 @@ public class ProcedureManager {
     this.executor.submitProcedure(
         new RegionMigrateProcedure(regionId.get(), originalDataNode, destDataNode));
     LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, ConsensusGroup: {}, From: {}, To: {}",
+        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
         migrateRegionReq.getRegionId(),
         migrateRegionReq.getFromId(),
         migrateRegionReq.getToId());
