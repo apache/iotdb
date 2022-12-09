@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.path.fa.match;
 
 import org.apache.iotdb.commons.path.fa.IFAState;
 
+/** This class is used for recording the states, matched by one item, in order. */
 public class MatchedStateSet {
   private static final int INITIAL_SIZE = 8;
 

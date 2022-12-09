@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import java.util.Iterator;
 
+/**
+ * This interface defines the behaviour of a state match info, which helps make decision during FA
+ * Graph traversing
+ */
 public interface IStateMatchInfo {
 
   boolean hasFinalState();
@@ -38,12 +42,18 @@ public interface IStateMatchInfo {
 
   void addMatchedState(IFAState state);
 
+  /**
+   * @param index the target state's index of matched order
+   * @return the index(th) matched state
+   */
   IFAState getMatchedState(int index);
 
   int getMatchedStateSize();
 
+  /** @return the value index, the id in FA Graph, of the source state */
   int getSourceStateIndex();
 
+  /** @param sourceStateIndex the value index, the id in FA Graph, of the source state, */
   void setSourceStateIndex(int sourceStateIndex);
 
   Iterator<IFATransition> getSourceTransitionIterator();
