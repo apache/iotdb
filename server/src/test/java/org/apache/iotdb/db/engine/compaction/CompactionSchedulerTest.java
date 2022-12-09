@@ -91,9 +91,6 @@ public class CompactionSchedulerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -106,22 +103,13 @@ public class CompactionSchedulerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    CompactionTaskManager.getInstance().stop();
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
-    CompactionTaskManager.getInstance().stop();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(oldEnableInnerSeqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(oldEnableInnerUnseqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(oldEnableCrossCompaction);
   }
 
   /**

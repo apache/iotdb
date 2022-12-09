@@ -101,9 +101,6 @@ public class CompactionSchedulerWithFastPerformerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCrossCompactionPerformer(CrossCompactionPerformer.FAST);
@@ -125,22 +122,13 @@ public class CompactionSchedulerWithFastPerformerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    CompactionTaskManager.getInstance().stop();
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
-    CompactionTaskManager.getInstance().stop();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(oldEnableInnerSeqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(oldEnableInnerUnseqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(oldEnableCrossCompaction);
     IoTDBDescriptor.getInstance().getConfig().setCrossCompactionPerformer(oldCrossPerformer);
     IoTDBDescriptor.getInstance().getConfig().setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
     IoTDBDescriptor.getInstance()
