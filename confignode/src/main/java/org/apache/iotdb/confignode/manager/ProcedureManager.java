@@ -364,7 +364,7 @@ public class ProcedureManager {
               + migrateRegionReq.getRegionId());
       return status;
     } else if (originalDataNode == null) {
-      LOGGER.info(
+      LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because no original DataNode {}",
           migrateRegionReq.getFromId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
