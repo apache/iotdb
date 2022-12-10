@@ -20,14 +20,17 @@ package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.manager.DeletionManager;
+import org.apache.iotdb.lsm.manager.FlushManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
@@ -50,6 +53,9 @@ public class LSMEngine<T> implements ILSMEngine {
 
   // Use the framework's default QueryManager object to handle query requests
   private QueryManager<T, IQueryRequest> queryManager;
+
+  // Use the framework's default FlushManager object to handle flush
+  private FlushManager<T, IFlushRequest> flushManager;
 
   // Used to manage wal logs
   private WALManager walManager;
@@ -104,6 +110,21 @@ public class LSMEngine<T> implements ILSMEngine {
     DeleteRequestContext deleteRequestContext = new DeleteRequestContext();
     deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
     return deleteRequestContext.getResponse();
+  }
+
+  /**
+   * Use this LSMEngine to flush data
+   *
+   * @param flushRequest Encapsulates the data to be deleted
+   * @param <K> The type of key in the request data
+   * @param <V> The type of value in the request data
+   * @param <R> type of response
+   */
+  @Override
+  public <K, V, R extends IResponse> R flush(IFlushRequest<K, V> flushRequest) {
+    FlushRequestContext flushRequestContext = new FlushRequestContext();
+    flushManager.process(rootMemNode, flushRequest, flushRequestContext);
+    return flushRequestContext.getResponse();
   }
 
   /** recover the LSMEngine */

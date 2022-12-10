@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.manager;
+package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
-import org.apache.iotdb.lsm.request.IFlushRequest;
+/** Represents a flush request that can be processed by the lsm framework */
+public interface IFlushRequest<K, V> extends IRequest<K, V> {
 
-public class FlushManager<T, R extends IFlushRequest>
-    extends BasicLSMManager<T, R, FlushRequestContext> {
-  @Override
-  public void preProcess(T root, R request, FlushRequestContext context) {}
+  RequestType requestType = RequestType.FLUSH;
 
   @Override
-  public void postProcess(T root, R request, FlushRequestContext context) {}
+  default RequestType getRequestType() {
+    return requestType;
+  }
 }

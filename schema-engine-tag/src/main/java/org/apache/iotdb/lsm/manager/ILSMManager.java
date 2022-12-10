@@ -20,9 +20,10 @@ package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
+import org.apache.iotdb.lsm.request.IRequest;
 
 // Represents the manager of the lsm framework, used to handle root memory node
-public interface ILSMManager<T, R, C extends RequestContext> {
+public interface ILSMManager<T, R extends IRequest, C extends RequestContext> {
 
   /**
    * preprocessing of the root memory node
