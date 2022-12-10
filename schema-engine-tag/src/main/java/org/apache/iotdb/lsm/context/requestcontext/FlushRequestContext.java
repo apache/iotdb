@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 /**
  * represents the context of a flush request, this class can be extended to implement a custom
@@ -27,7 +27,7 @@ import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
 public class FlushRequestContext extends RequestContext {
   public FlushRequestContext() {
     super();
-    // use the reverse post-order traversal strategy to access memory nodes
-    accessStrategy = new PostOrderAccessStrategy();
+    // use the reverse breadth-first traversal strategy to access memory nodes
+    accessStrategy = new RBFSAccessStrategy();
   }
 }
