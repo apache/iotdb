@@ -16,13 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.manager;
 
-/** Represents a insertion request that can be processed by the lsm framework */
-public interface IInsertionRequest<K, V> extends IRequest<K, V> {
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
+import org.apache.iotdb.lsm.request.IFlushRequest;
+
+public class FlushManager<T, R extends IFlushRequest>
+    extends BasicLSMManager<T, R, FlushRequestContext> {
+
+  // use wal manager object to write wal file on deletion
+  private WALManager walManager;
+
+  public FlushManager(WALManager walManager) {
+    this.walManager = walManager;
+  }
 
   @Override
-  default RequestType getRequestType() {
-    return RequestType.INSERT;
-  }
+  public void preProcess(T root, R request, FlushRequestContext context) {}
+
+  @Override
+  public void postProcess(T root, R request, FlushRequestContext context) {}
 }

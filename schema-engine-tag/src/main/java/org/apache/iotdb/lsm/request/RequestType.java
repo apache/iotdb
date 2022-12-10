@@ -23,5 +23,7 @@ public enum RequestType {
   NONE,
   INSERT,
   QUERY,
-  DELETE
+  DELETE,
+
+  FLUSH
 }

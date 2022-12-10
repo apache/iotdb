@@ -16,18 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-/** Represents a query request that can be processed by the lsm framework */
-public interface IQueryRequest<K> extends IRequest<K, Object> {
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
+import org.apache.iotdb.lsm.annotation.FlushProcessor;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
+import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+
+import java.util.List;
+
+/** flush for MemTagValueGroup */
+@FlushProcessor(level = 2)
+public class MemTagValueGroupFlush extends FlushLevelProcessor<MemTagValueGroup, MemChunkGroup> {
 
   @Override
-  default Object getValue() {
+  public List<MemChunkGroup> getChildren(
+      MemTagValueGroup memNode, Object request, FlushRequestContext context) {
     return null;
   }
 
   @Override
-  default RequestType getRequestType() {
-    return RequestType.QUERY;
-  }
+  public void flush(MemTagValueGroup memNode, FlushRequestContext context) {}
 }

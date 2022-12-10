@@ -16,13 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.annotation;
 
-/** Represents a insertion request that can be processed by the lsm framework */
-public interface IInsertionRequest<K, V> extends IRequest<K, V> {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  @Override
-  default RequestType getRequestType() {
-    return RequestType.INSERT;
-  }
+/**
+ * Indicates that the class using this annotation is a FlushLevelProcessor, and the attribute level
+ * of the annotation indicates which layer of memory node the deletion method of the
+ * FlushLevelProcessor is.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface FlushProcessor {
+  // level of the FlushLevelProcessor
+  int level() default -1;
 }

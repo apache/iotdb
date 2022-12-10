@@ -21,10 +21,8 @@ package org.apache.iotdb.lsm.request;
 /** Represents a deletion request that can be processed by the lsm framework */
 public interface IDeletionRequest<K, V> extends IRequest<K, V> {
 
-  RequestType requestType = RequestType.DELETE;
-
   @Override
   default RequestType getRequestType() {
-    return requestType;
+    return RequestType.DELETE;
   }
 }

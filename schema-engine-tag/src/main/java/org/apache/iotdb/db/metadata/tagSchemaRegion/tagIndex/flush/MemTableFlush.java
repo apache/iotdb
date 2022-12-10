@@ -16,13 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-/** Represents a insertion request that can be processed by the lsm framework */
-public interface IInsertionRequest<K, V> extends IRequest<K, V> {
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
+import org.apache.iotdb.lsm.annotation.FlushProcessor;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
+import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+
+import java.util.List;
+
+/** flush for MemTable */
+@FlushProcessor(level = 1)
+public class MemTableFlush extends FlushLevelProcessor<MemTable, MemTagValueGroup> {
+  @Override
+  public List<MemTagValueGroup> getChildren(
+      MemTable memNode, Object request, FlushRequestContext context) {
+    return null;
+  }
 
   @Override
-  default RequestType getRequestType() {
-    return RequestType.INSERT;
-  }
+  public void flush(MemTable memNode, FlushRequestContext context) {}
 }
