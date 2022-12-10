@@ -21,8 +21,6 @@ package org.apache.iotdb.lsm.request;
 /** Represents a query request that can be processed by the lsm framework */
 public interface IQueryRequest<K> extends IRequest<K, Object> {
 
-  RequestType requestType = RequestType.QUERY;
-
   @Override
   default Object getValue() {
     return null;
@@ -30,6 +28,6 @@ public interface IQueryRequest<K> extends IRequest<K, Object> {
 
   @Override
   default RequestType getRequestType() {
-    return requestType;
+    return RequestType.QUERY;
   }
 }

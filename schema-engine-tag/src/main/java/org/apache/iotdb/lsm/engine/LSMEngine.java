@@ -179,6 +179,10 @@ public class LSMEngine<T> implements ILSMEngine {
     this.queryManager = (QueryManager<T, IQueryRequest>) queryManager;
   }
 
+  protected <R extends IFlushRequest> void setFlushManager(FlushManager<T, R> flushManager) {
+    this.flushManager = (FlushManager<T, IFlushRequest>) flushManager;
+  }
+
   protected WALManager getWalManager() {
     return walManager;
   }

@@ -21,17 +21,20 @@ package org.apache.iotdb.lsm.engine;
 import org.apache.iotdb.lsm.context.applicationcontext.ApplicationContext;
 import org.apache.iotdb.lsm.context.applicationcontext.ApplicationContextGenerator;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.ILevelProcessor;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.manager.DeletionManager;
+import org.apache.iotdb.lsm.manager.FlushManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
@@ -121,6 +124,32 @@ public class LSMEngineBuilder<T> {
   }
 
   /**
+   * build FlushManager for lsmEngine
+   *
+   * @param levelProcessChain flush level processors chain
+   * @param <R> extends IFlushRequest
+   */
+  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
+      LevelProcessorChain<T, R, FlushRequestContext> levelProcessChain) {
+    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager());
+    flushManager.setLevelProcessorsChain(levelProcessChain);
+    buildFlushManager(flushManager);
+    return this;
+  }
+
+  /**
+   * build FlushManager for lsmEngine
+   *
+   * @param flushManager DeletionManager object
+   * @param <R> extends IDeletionRequest
+   */
+  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
+      FlushManager<T, R> flushManager) {
+    lsmEngine.setFlushManager(flushManager);
+    return this;
+  }
+
+  /**
    * build QueryManager for lsmEngine
    *
    * @param levelProcessChain query level processors chain
@@ -175,9 +204,12 @@ public class LSMEngineBuilder<T> {
         generateLevelProcessorsChain(applicationContext.getDeletionLevelProcessClass());
     LevelProcessorChain<T, IQueryRequest, QueryRequestContext> queryLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getQueryLevelProcessClass());
+    LevelProcessorChain<T, IFlushRequest, FlushRequestContext> flushLevelProcessChain =
+        generateLevelProcessorsChain(applicationContext.getFlushLevelProcessClass());
     return buildQueryManager(queryLevelProcessChain)
         .buildInsertionManager(insertionLevelProcessChain)
-        .buildDeletionManager(deletionLevelProcessChain);
+        .buildDeletionManager(deletionLevelProcessChain)
+        .buildFlushManager(flushLevelProcessChain);
   }
 
   /**

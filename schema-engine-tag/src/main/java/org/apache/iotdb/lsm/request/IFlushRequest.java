@@ -21,10 +21,8 @@ package org.apache.iotdb.lsm.request;
 /** Represents a flush request that can be processed by the lsm framework */
 public interface IFlushRequest<K, V> extends IRequest<K, V> {
 
-  RequestType requestType = RequestType.FLUSH;
-
   @Override
   default RequestType getRequestType() {
-    return requestType;
+    return RequestType.FLUSH;
   }
 }

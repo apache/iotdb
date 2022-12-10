@@ -23,6 +23,14 @@ import org.apache.iotdb.lsm.request.IFlushRequest;
 
 public class FlushManager<T, R extends IFlushRequest>
     extends BasicLSMManager<T, R, FlushRequestContext> {
+
+  // use wal manager object to write wal file on deletion
+  private WALManager walManager;
+
+  public FlushManager(WALManager walManager) {
+    this.walManager = walManager;
+  }
+
   @Override
   public void preProcess(T root, R request, FlushRequestContext context) {}
 

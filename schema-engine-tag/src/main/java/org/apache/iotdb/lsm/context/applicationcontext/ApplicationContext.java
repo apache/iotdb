@@ -35,6 +35,9 @@ public class ApplicationContext {
   // Save the query level processor of each layer in hierarchical order
   List<String> queryLevelProcessClass;
 
+  // Save the flush level processor of each layer in hierarchical order
+  List<String> flushLevelProcessClass;
+
   public List<String> getInsertionLevelProcessClass() {
     return insertionLevelProcessClass;
   }
@@ -57,5 +60,13 @@ public class ApplicationContext {
 
   public void setQueryLevelProcessClass(List<String> queryLevelProcessClass) {
     this.queryLevelProcessClass = queryLevelProcessClass;
+  }
+
+  public List<String> getFlushLevelProcessClass() {
+    return flushLevelProcessClass;
+  }
+
+  public void setFlushLevelProcessClass(List<String> flushLevelProcessClass) {
+    this.flushLevelProcessClass = flushLevelProcessClass;
   }
 }
