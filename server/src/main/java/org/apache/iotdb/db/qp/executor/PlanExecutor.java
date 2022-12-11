@@ -105,6 +105,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.ExportSchemaPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -430,10 +431,21 @@ public class PlanExecutor implements IPlanExecutor {
       case PAUSE_ARCHIVING:
         operatePauseArchiving((PauseArchivingPlan) plan);
         return true;
+      case EXPORT_SCHEMA:
+        return exportSchema((ExportSchemaPlan) plan);
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
     }
+  }
+
+  private boolean exportSchema(ExportSchemaPlan plan) throws QueryProcessException {
+    try {
+      IoTDB.metaManager.exportSchema(plan.getTargetDir());
+    } catch (MetadataException | IOException e) {
+      throw new QueryProcessException(e.getMessage(), e);
+    }
+    return true;
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
