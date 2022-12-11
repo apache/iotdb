@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.InternalIoTDBReporter;
 import org.apache.iotdb.metrics.reporter.MemoryInternalIoTDBReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -265,14 +264,19 @@ public abstract class AbstractMetricService {
     return counter;
   }
 
+  public <T> Gauge getOrCreateAutoGaugeWithInternalReport(
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+    Gauge gauge = metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+    internalReporter.addAutoGauge(gauge, metric, tags);
+    return gauge;
+  }
+
   /** GetOrCreateGauge with internal report */
   public Gauge getOrCreateGaugeWithInternalReport(
       String metric, MetricLevel metricLevel, String... tags) {
     Gauge gauge = metricManager.getOrCreateGauge(metric, metricLevel, tags);
     internalReporter.writeMetricToIoTDB(gauge, metric, tags);
-    if (gauge instanceof AutoGauge) {
-      internalReporter.addAutoGauge(gauge, metric, tags);
-    }
+
     return gauge;
   }
 

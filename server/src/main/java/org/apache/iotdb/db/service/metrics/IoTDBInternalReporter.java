@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -53,8 +50,6 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBInternalReporter extends InternalIoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 

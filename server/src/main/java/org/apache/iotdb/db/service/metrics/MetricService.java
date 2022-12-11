@@ -53,6 +53,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
+        internalReporter.start();
         logger.info("Finish start metric Service");
       }
     } catch (Exception e) {
@@ -63,6 +64,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   public void restart() {
     logger.info("Restart metric service.");
+    internalReporter.clear();
     restartService();
     logger.info("Finish restart metric service.");
   }
@@ -71,6 +73,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
   public void stop() {
     if (isEnable()) {
       logger.info("Stop metric Service.");
+      internalReporter.stop();
       stopService();
       JMXService.deregisterMBean(mbeanName);
       logger.info("Finish stop metric Service");
