@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
+
 public interface Gauge extends IMetric {
 
   /** set value */
@@ -32,4 +34,9 @@ public interface Gauge extends IMetric {
 
   /** decrease the value stored in gauge */
   void decr(long value);
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("value", value());
+  }
 }

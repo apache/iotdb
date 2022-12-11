@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -56,6 +57,9 @@ public class MetricConfig {
 
   /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
+
+  /** The type of internal reporter */
+  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
 
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value */
@@ -159,13 +163,15 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
+    enablePerformanceStat = newMetricConfig.getEnablePerformanceStat();
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
+    ioTDBReporterConfig = newMetricConfig.getIoTDBReporterConfig();
+    internalReporterType = newMetricConfig.getInternalReporterType();
   }
 
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
@@ -253,6 +259,14 @@ public class MetricConfig {
     return rpcPort;
   }
 
+  public InternalReporterType getInternalReporterType() {
+    return internalReporterType;
+  }
+
+  public void setInternalReporterType(InternalReporterType internalReporterType) {
+    this.internalReporterType = internalReporterType;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (!(obj instanceof MetricConfig)) {
@@ -260,12 +274,14 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
+        && enablePerformanceStat.equals(anotherMetricConfig.getEnablePerformanceStat())
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
-        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
+        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
+        && internalReporterType.equals(anotherMetricConfig.getInternalReporterType());
   }
 }

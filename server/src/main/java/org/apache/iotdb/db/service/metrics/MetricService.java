@@ -33,6 +33,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.metricsets.predefined.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.reporter.InternalIoTDBReporter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,6 +137,11 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Failed to start metric when reload properties");
       }
     }
+  }
+
+  @Override
+  public void reloadInternalReporter(InternalIoTDBReporter internalReporter) {
+    this.internalReporter = internalReporter;
   }
 
   @Override

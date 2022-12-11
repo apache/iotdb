@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,43 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.impl;
+package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-public class DoNothingRate implements Rate, DoNothingMetric {
+import java.util.Map;
+
+public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
   @Override
-  public long getCount() {
-    return 0;
+  public InternalReporterType getType() {
+    return InternalReporterType.MEMORY;
   }
 
   @Override
-  public double getOneMinuteRate() {
-    return 0;
-  }
-
-  @Override
-  public double getMeanRate() {
-    return 0;
-  }
-
-  @Override
-  public double getFiveMinuteRate() {
-    return 0;
-  }
-
-  @Override
-  public double getFifteenMinuteRate() {
-    return 0;
-  }
-
-  @Override
-  public void mark() {
+  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
     // do nothing
   }
 
   @Override
-  public void mark(long n) {
+  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
+    // do nothing
+  }
+
+  @Override
+  public boolean start() {
+    return false;
+  }
+
+  @Override
+  public boolean stop() {
+    return false;
+  }
+
+  @Override
+  public ReporterType getReporterType() {
+    return ReporterType.IOTDB;
+  }
+
+  @Override
+  public void setMetricManager(AbstractMetricManager metricManager) {
     // do nothing
   }
 }

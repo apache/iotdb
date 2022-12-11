@@ -45,6 +45,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -193,6 +194,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
     registerManager.register(MetricService.getInstance());
+    MetricService.getInstance().reloadInternalReporter(new IoTDBInternalReporter());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
