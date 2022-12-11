@@ -22,7 +22,7 @@
 ## Quick Start
 
 This article uses a local environment as an example to
-illustrate how to start, expand, and shrink a IoTDB Cluster.
+illustrate how to start, expand, and shrink an IoTDB Cluster.
 
 ### 1. Prepare the Start Environment
 

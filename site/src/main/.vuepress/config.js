@@ -849,7 +849,6 @@ var config = {
 						title: 'Quick Start',
 						children: [
 							['QuickStart/QuickStart','Quick Start'],
-							['QuickStart/ClusterQuickStart','Cluster Quick Start'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
 							['QuickStart/Files','Data storage']
@@ -2062,7 +2061,6 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
-							['QuickStart/ClusterQuickStart', '集群快速上手'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
 							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
 							['QuickStart/Files','数据文件存储']
