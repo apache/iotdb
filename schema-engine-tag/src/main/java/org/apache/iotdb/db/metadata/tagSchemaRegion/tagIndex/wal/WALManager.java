@@ -80,7 +80,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
   /**
    * for recover
    *
-   * @return request context
+   * @return request
    */
   @Override
   public synchronized IRequest read() {
@@ -91,7 +91,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
         return generateInsertRequest(walEntry);
       }
       if (walEntry.getType() == DELETE) {
-        return generateDeleteContext(walEntry);
+        return generateDeleteRequest(walEntry);
       }
     }
     return null;
@@ -113,7 +113,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @param walEntry wal entry
    * @return delete context
    */
-  private DeletionRequest generateDeleteContext(WALEntry walEntry) {
+  private DeletionRequest generateDeleteRequest(WALEntry walEntry) {
     return new DeletionRequest(walEntry.getKeys(), walEntry.getDeviceID());
   }
 
