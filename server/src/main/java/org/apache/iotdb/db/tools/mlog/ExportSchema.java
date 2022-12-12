@@ -68,7 +68,7 @@ public class ExportSchema {
             .required()
             .argName(TARGET_DIR_NAME)
             .hasArg()
-            .desc("Need to specify a target directory path")
+            .desc("Need to specify a target directory path on server（required)")
             .build();
     options.addOption(targetDir);
 

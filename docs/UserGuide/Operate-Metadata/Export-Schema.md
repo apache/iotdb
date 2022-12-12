@@ -42,10 +42,11 @@ Windows
 > ./exportSchema.bat-d /yourpath/data/system/schema -o /yourpath/targetDir
 
 
-Export destination directory need to be specified when exporting metadata using scripting.
+Export destination directory on server need to be specified when exporting metadata using scripting.
 ```
 usage: ExportSchema -o <target directory path> [-h <host address>] [-p <port>] [-u <user>] [-pw <password>] [-help]
- -o <target directory path>   Need to specify a target directory path
+ -o <target directory path>   Need to specify a target directory path on
+                              server（required)
  -h <host address>            Could specify a specify the IoTDB host
                               address, default is 127.0.0.1 (optional)
  -p <port>                    Could specify a specify the IoTDB port,
