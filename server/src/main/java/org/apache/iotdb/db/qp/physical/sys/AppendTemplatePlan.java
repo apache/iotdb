@@ -134,7 +134,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
     // compressor
     ReadWriteIOUtils.write(compressors.length, buffer);
     for (CompressionType type : compressors) {
-      ReadWriteIOUtils.write(type.ordinal(), buffer);
+      ReadWriteIOUtils.write((int) type.serialize(), buffer);
     }
 
     buffer.putLong(index);
@@ -205,7 +205,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
     // compressor
     ReadWriteIOUtils.write(compressors.length, stream);
     for (CompressionType type : compressors) {
-      ReadWriteIOUtils.write(type.ordinal(), stream);
+      ReadWriteIOUtils.write((int) type.serialize(), stream);
     }
 
     stream.writeLong(index);

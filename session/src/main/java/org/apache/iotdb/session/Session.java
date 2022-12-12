@@ -613,7 +613,7 @@ public class Session {
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     request.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
     return request;
   }
@@ -668,7 +668,7 @@ public class Session {
 
     List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
     for (CompressionType compression : compressors) {
-      compressionOrdinals.add(compression.ordinal());
+      compressionOrdinals.add((int) compression.serialize());
     }
     request.setCompressors(compressionOrdinals);
 
@@ -2869,7 +2869,7 @@ public class Session {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -2913,7 +2913,7 @@ public class Session {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
