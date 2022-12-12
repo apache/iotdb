@@ -487,123 +487,124 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         return;
       }
     }
-  }
 
-  private Iterator<IFATransition> tryGetNextMatchedState(
-      N child, IFAState sourceState, IStateMatchInfo currentStateMatchInfo) {
-    Map<String, IFATransition> preciseMatchTransitionMap =
-        patternFA.getPreciseMatchTransition(sourceState);
+    private Iterator<IFATransition> tryGetNextMatchedState(
+        N child, IFAState sourceState, IStateMatchInfo currentStateMatchInfo) {
+      Map<String, IFATransition> preciseMatchTransitionMap =
+          patternFA.getPreciseMatchTransition(sourceState);
 
-    IFAState matchedState;
-    if (!preciseMatchTransitionMap.isEmpty()) {
-      matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
-      if (matchedState != null) {
-        currentStateMatchInfo.addMatchedState(matchedState);
-        return patternFA.getFuzzyMatchTransition(sourceState).iterator();
+      IFAState matchedState;
+      if (!preciseMatchTransitionMap.isEmpty()) {
+        matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
+        if (matchedState != null) {
+          currentStateMatchInfo.addMatchedState(matchedState);
+          return patternFA.getFuzzyMatchTransition(sourceState).iterator();
+        }
       }
+
+      Iterator<IFATransition> transitionIterator =
+          patternFA.getFuzzyMatchTransition(sourceState).iterator();
+      while (transitionIterator.hasNext()) {
+        matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
+        if (matchedState != null) {
+          currentStateMatchInfo.addMatchedState(matchedState);
+          return transitionIterator;
+        }
+      }
+      return transitionIterator;
     }
 
-    Iterator<IFATransition> transitionIterator =
-        patternFA.getFuzzyMatchTransition(sourceState).iterator();
-    while (transitionIterator.hasNext()) {
-      matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
-      if (matchedState != null) {
-        currentStateMatchInfo.addMatchedState(matchedState);
-        return transitionIterator;
+    private void traceback(N node, IStateMatchInfo stateMatchInfo, int checkedSourceStateOrdinal) {
+      IStateMatchInfo parentStateMatchInfo;
+
+      N currentNode;
+      IStateMatchInfo currentStateMatchInfo;
+
+      int sourceStateOrdinal;
+      IFAState sourceState;
+      Iterator<IFATransition> transitionIterator = null;
+
+      int matchedStateSize;
+      IFAState matchedState;
+
+      int currentNodeIndex;
+      for (int i = ancestorStack.size() - 1; i >= firstAncestorOfTraceback; i--) {
+        parentStateMatchInfo = ancestorStack.get(i - 1).stateMatchInfo;
+        currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
+
+        // there's no state not further searched
+        if (currentStateMatchInfo.getSourceStateOrdinal()
+            == parentStateMatchInfo.getMatchedStateSize()) {
+          continue;
+        }
+
+        // there's some state not further searched, process them in order
+        currentNodeIndex = i;
+        while (currentNodeIndex >= i) {
+          parentStateMatchInfo = ancestorStack.get(currentNodeIndex - 1).stateMatchInfo;
+
+          if (currentNodeIndex == ancestorStack.size()) {
+            currentNode = node;
+            currentStateMatchInfo = stateMatchInfo;
+          } else {
+            currentNode = ancestorStack.get(currentNodeIndex).node;
+            currentStateMatchInfo = ancestorStack.get(currentNodeIndex).stateMatchInfo;
+          }
+
+          matchedState = null;
+          if (currentNode == node) {
+            sourceStateOrdinal = checkedSourceStateOrdinal;
+          } else {
+            sourceStateOrdinal = currentStateMatchInfo.getSourceStateOrdinal();
+            if (sourceStateOrdinal == parentStateMatchInfo.getMatchedStateSize()) {
+              currentNodeIndex--;
+              continue;
+            }
+            // there may be some states could be matched from transition of current source state
+            sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
+            transitionIterator = currentStateMatchInfo.getSourceTransitionIterator();
+            while (transitionIterator.hasNext()) {
+              matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
+              if (matchedState != null) {
+                break;
+              }
+            }
+          }
+
+          if (matchedState == null) {
+            while (++sourceStateOrdinal < parentStateMatchInfo.getMatchedStateSize()) {
+              sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
+              matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
+              transitionIterator =
+                  tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
+              if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
+                matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
+                currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal);
+                currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
+                break;
+              }
+            }
+            if (matchedState == null) {
+              currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal - 1);
+              currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
+              currentNodeIndex--;
+              continue;
+            }
+          }
+
+          currentStateMatchInfo.addMatchedState(matchedState);
+
+          if (currentNode == node) {
+            return;
+          } else {
+            currentNodeIndex++;
+          }
+        }
       }
     }
-    return transitionIterator;
   }
 
   // the match process of FA graph is a dfs on FA Graph
-  private void traceback(N node, IStateMatchInfo stateMatchInfo, int checkedSourceStateOrdinal) {
-    IStateMatchInfo parentStateMatchInfo;
-
-    N currentNode;
-    IStateMatchInfo currentStateMatchInfo;
-
-    int sourceStateOrdinal;
-    IFAState sourceState;
-    Iterator<IFATransition> transitionIterator = null;
-
-    int matchedStateSize;
-    IFAState matchedState;
-
-    int currentNodeIndex;
-    for (int i = ancestorStack.size() - 1; i >= firstAncestorOfTraceback; i--) {
-      parentStateMatchInfo = ancestorStack.get(i - 1).stateMatchInfo;
-      currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
-
-      // there's no state not further searched
-      if (currentStateMatchInfo.getSourceStateOrdinal()
-          == parentStateMatchInfo.getMatchedStateSize()) {
-        continue;
-      }
-
-      // there's some state not further searched, process them in order
-      currentNodeIndex = i;
-      while (currentNodeIndex >= i) {
-        parentStateMatchInfo = ancestorStack.get(currentNodeIndex - 1).stateMatchInfo;
-
-        if (currentNodeIndex == ancestorStack.size()) {
-          currentNode = node;
-          currentStateMatchInfo = stateMatchInfo;
-        } else {
-          currentNode = ancestorStack.get(currentNodeIndex).node;
-          currentStateMatchInfo = ancestorStack.get(currentNodeIndex).stateMatchInfo;
-        }
-
-        matchedState = null;
-        if (currentNode == node) {
-          sourceStateOrdinal = checkedSourceStateOrdinal;
-        } else {
-          sourceStateOrdinal = currentStateMatchInfo.getSourceStateOrdinal();
-          if (sourceStateOrdinal == parentStateMatchInfo.getMatchedStateSize()) {
-            currentNodeIndex--;
-            continue;
-          }
-          // there may be some states could be matched from transition of current source state
-          sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
-          transitionIterator = currentStateMatchInfo.getSourceTransitionIterator();
-          while (transitionIterator.hasNext()) {
-            matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
-            if (matchedState != null) {
-              break;
-            }
-          }
-        }
-
-        if (matchedState == null) {
-          while (++sourceStateOrdinal < parentStateMatchInfo.getMatchedStateSize()) {
-            sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
-            matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
-            transitionIterator =
-                tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
-            if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
-              matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
-              currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal);
-              currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
-              break;
-            }
-          }
-          if (matchedState == null) {
-            currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal - 1);
-            currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
-            currentNodeIndex--;
-            continue;
-          }
-        }
-
-        currentStateMatchInfo.addMatchedState(matchedState);
-
-        if (currentNode == node) {
-          return;
-        } else {
-          currentNodeIndex++;
-        }
-      }
-    }
-  }
 
   // a tmp way to process alias of measurement node, which may results in multi event when checking
   // the transition;
