@@ -20,7 +20,10 @@ package org.apache.iotdb.db.tools.mlog;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.util.Version;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -39,8 +42,17 @@ public class ExportSchema {
 
   private static final String EXPORT_PREFIX = "ExportSchema";
 
-  private static final String SOURCE_DIR_ARGS = "d";
-  private static final String SOURCE_DIR_NAME = "source directory path";
+  private static final String HOST_ARGS = "h";
+  private static final String HOST_NAME = "host address";
+
+  private static final String PORT_ARGS = "p";
+  private static final String PORT_NAME = "port";
+
+  private static final String USER_ARGS = "u";
+  private static final String USER_NAME = "user";
+
+  private static final String PASSWORD_ARGS = "pw";
+  private static final String PASSWORD_NAME = "password";
 
   private static final String TARGET_DIR_ARGS = "o";
   private static final String TARGET_DIR_NAME = "target directory path";
@@ -63,15 +75,6 @@ public class ExportSchema {
   public static Options createOptions() {
     Options options = new Options();
 
-    Option sourceDir =
-        Option.builder(SOURCE_DIR_ARGS)
-            .required()
-            .argName(SOURCE_DIR_NAME)
-            .hasArg()
-            .desc("Need to specify a source directory path")
-            .build();
-    options.addOption(sourceDir);
-
     Option targetDir =
         Option.builder(TARGET_DIR_ARGS)
             .required()
@@ -80,6 +83,42 @@ public class ExportSchema {
             .desc("Need to specify a target directory path")
             .build();
     options.addOption(targetDir);
+
+    Option opHost =
+        Option.builder(HOST_ARGS)
+            .required(false)
+            .argName(HOST_NAME)
+            .hasArg()
+            .desc("Could specify a specify the IoTDB host address, default is 127.0.0.1 (optional)")
+            .build();
+    options.addOption(opHost);
+
+    Option opPort =
+        Option.builder(PORT_ARGS)
+            .required(false)
+            .argName(PORT_NAME)
+            .hasArg()
+            .desc("Could specify a specify the IoTDB port, default is 6667 (optional)")
+            .build();
+    options.addOption(opPort);
+
+    Option opUser =
+        Option.builder(USER_ARGS)
+            .required(false)
+            .argName(USER_NAME)
+            .hasArg()
+            .desc("Could specify the IoTDB user name, default is root (optional)")
+            .build();
+    options.addOption(opUser);
+
+    Option opPw =
+        Option.builder(PASSWORD_ARGS)
+            .required(false)
+            .argName(PASSWORD_NAME)
+            .hasArg()
+            .desc("Could specify the IoTDB password, default is root (optional)")
+            .build();
+    options.addOption(opPw);
 
     Option opHelp =
         Option.builder(HELP_ARGS)
@@ -92,14 +131,7 @@ public class ExportSchema {
     return options;
   }
 
-  public static void main(String[] args) {
-    //    args =
-    //        new String[] {
-    //          "-d",
-    //          "/Users/chenyanze/Desktop/exportSchema",
-    //          "-o",
-    //          "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/system/schema"
-    //        };
+  public static void main(String[] args) throws IoTDBConnectionException {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
@@ -122,30 +154,39 @@ public class ExportSchema {
       return;
     }
 
-    String sourceDir = commandLine.getOptionValue(SOURCE_DIR_ARGS);
+    String host = commandLine.getOptionValue(HOST_ARGS);
+    if (host == null) {
+      host = "127.0.0.1";
+    }
+    int port =
+        commandLine.getOptionValue(PORT_ARGS) == null
+            ? 6667
+            : Integer.parseInt(commandLine.getOptionValue(PORT_ARGS));
+    String user = commandLine.getOptionValue(USER_ARGS);
+    if (user == null) {
+      user = "root";
+    }
+    String password = commandLine.getOptionValue(PASSWORD_ARGS);
+    if (password == null) {
+      password = "root";
+    }
     String targetDir = commandLine.getOptionValue(TARGET_DIR_ARGS);
-    File srcDir = new File(sourceDir);
-    if (!srcDir.exists() || !srcDir.isDirectory()) {
-      logger.error(
-          "Encounter an error, because: {} does not exist or is not a directory.", sourceDir);
-    } else {
-      File[] files =
-          srcDir.listFiles(
-              (dir, name) ->
-                  MetadataConstant.METADATA_LOG.equals(name)
-                      || MetadataConstant.TAG_LOG.equals(name));
-      if (files == null || files.length != 2) {
-        logger.error("Encounter an error, because: {} is not a valid directory.", sourceDir);
-      } else {
-        ExportSchema exportSchema = new ExportSchema(sourceDir, targetDir);
-        try {
-          exportSchema.export();
-        } catch (Exception e) {
-          logger.error("Encounter an error, because: {} ", e.getMessage());
-        } finally {
-          exportSchema.clear();
-        }
-      }
+
+    Session session =
+        new Session.Builder()
+            .host(host)
+            .port(port)
+            .username(user)
+            .password(password)
+            .version(Version.V_0_13)
+            .build();
+    try {
+      session.open(false);
+      session.executeNonQueryStatement(String.format("EXPORT SCHEMA '%s'", targetDir));
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error(e.getMessage(), e);
+    } finally {
+      session.close();
     }
   }
 
