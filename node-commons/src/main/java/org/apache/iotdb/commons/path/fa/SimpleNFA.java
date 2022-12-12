@@ -140,7 +140,7 @@ public class SimpleNFA implements IPatternFA {
             }
           }
 
-          if (preciseMatchTransitionTable[i] == null) {
+          if (equivalentHistoryIndex[i] == null) {
             if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
               batchMatchTransitionTable[i] =
                   Arrays.asList(states[i + 1], states[lastMultiWildcard]);
