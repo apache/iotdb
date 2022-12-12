@@ -131,10 +131,10 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void updateSchemaInfo(
-          String measurementId,
-          TSEncoding encoding,
-          CompressionType compressionType,
-          Map<String, String> props) {
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props) {
 
     if (encoding == null) {
       encoding = this.schema.getEncodingType();
@@ -143,12 +143,12 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       compressionType = this.schema.getCompressor();
     }
     this.schema =
-            new MeasurementSchema(
-                    this.schema.getMeasurementId(),
-                    this.schema.getType(),
-                    encoding,
-                    compressionType,
-                    this.schema.getProps());
+        new MeasurementSchema(
+            this.schema.getMeasurementId(),
+            this.schema.getType(),
+            encoding,
+            compressionType,
+            this.schema.getProps());
   }
 
   @Override

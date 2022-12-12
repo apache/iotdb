@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -55,10 +55,10 @@ public interface IMeasurementMNode extends IMNode {
    * @param props unsupported now
    */
   void updateSchemaInfo(
-          String measurementId,
-          TSEncoding encoding,
-          CompressionType compressionType,
-          Map<String, String> props);
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props);
 
   boolean isPreDeleted();
 

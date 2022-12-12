@@ -87,7 +87,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
@@ -695,8 +697,8 @@ public class PlanExecutor implements IPlanExecutor {
    * @throws MetadataException
    */
   protected void alterTimeSeriesType(
-          PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
-          throws QueryProcessException, IOException, MetadataException {
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws QueryProcessException, IOException, MetadataException {
 
     AUDIT_LOGGER.info("[alter timeseries] {} {} {}", fullPath, curEncoding, curCompressionType);
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
