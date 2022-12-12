@@ -114,7 +114,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | Metric   | Tag                                                                 | level     | 说明                                    | 示例                                          |
 | -------- | ------------------------------------------------------------------- | --------- |---------------------------------------| --------------------------------------------- |
 | quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
-| quantity | name="memtable", type="flush"                                       | core      | 已经刷盘的Memtable总大小                      | quantity{name="memtable",type="flush"} 1.0    |
+| quantity | name="memtable", type="flush"                                       | core      | 已经刷盘的Memtable总点数                      | quantity{name="memtable",type="flush"} 1.0    |
 
 #### 1.3.3.6. 集群
 

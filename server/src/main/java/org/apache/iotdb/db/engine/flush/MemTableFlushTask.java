@@ -300,7 +300,7 @@ public class MemTableFlushTask {
         if (!storageGroup.equals(IoTDBConstant.SYSTEM_STORAGE_GROUP)) {
           MetricService.getInstance()
               .countWithInternalReport(
-                  memTable.memSize(),
+                  memTable.getTotalPointsNum(),
                   Metric.QUANTITY.toString(),
                   MetricLevel.CORE,
                   Tag.NAME.toString(),
