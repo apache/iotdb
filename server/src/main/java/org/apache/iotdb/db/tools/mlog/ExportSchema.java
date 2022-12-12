@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -34,8 +32,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 public class ExportSchema {
   private static final Logger logger = LoggerFactory.getLogger(ExportSchema.class);
@@ -58,14 +54,6 @@ public class ExportSchema {
   private static final String TARGET_DIR_NAME = "target directory path";
 
   private static final String HELP_ARGS = "help";
-
-  private final String sourceDir;
-  private final String targetDir;
-
-  private ExportSchema(String sourceDir, String targetDir) {
-    this.sourceDir = sourceDir;
-    this.targetDir = targetDir;
-  }
 
   /**
    * create the commandline options.
@@ -188,16 +176,5 @@ public class ExportSchema {
     } finally {
       session.close();
     }
-  }
-
-  private void export() throws Exception {
-
-    IoTDBDescriptor.getInstance().getConfig().setSchemaDir(sourceDir);
-    MManager.getInstance().init();
-    MManager.getInstance().exportSchema(new File(targetDir));
-  }
-
-  public void clear() {
-    MManager.getInstance().clear();
   }
 }
