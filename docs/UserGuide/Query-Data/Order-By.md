@@ -44,20 +44,20 @@ Total line number = 4
 ## order by in ALIGN BY DEVICE mode
 When querying in ALIGN BY DEVICE mode, `ORDER BY` clause can be used to specify the ordering of result set.
 
-ALIGN BY DEVICE mode supports four kinds of clauses with two sort key which are `Device` and `Time`.
+ALIGN BY DEVICE mode supports four kinds of clauses with two sort keys which are `Device` and `Time`.
 
-1. ``ORDER BY DEVICE``: sort by the alphabetical order of the device name. The devices with the same column names will be shown in a clustering view.
+1. ``ORDER BY DEVICE``: sort by the alphabetical order of the device name. The devices with the same column names will be clustered in a group view.
 
-2. ``ORDER BY TIME``: sort by the timestamp, the row of different devices will be shuffled according to the priority of time.
+2. ``ORDER BY TIME``: sort by the timestamp, the data points from different devices will be shuffled according to the timestamp.
 
-3. ``ORDER BY DEVICE,TIME``: sort by the alphabetical order of the device name. The row with the same device name will be sorted by timestamp.
+3. ``ORDER BY DEVICE,TIME``: sort by the alphabetical order of the device name. The data points with the same device name will be sorted by timestamp.
 
-4. ``ORDER BY TIME,DEVICE``: sort by timestamp. The row with the same time will be sorted by the alphabetical order of the device name.
+4. ``ORDER BY TIME,DEVICE``: sort by timestamp. The data points with the same time will be sorted by the alphabetical order of the device name.
 
 > To make the result set more legible, when `ORDER BY` clause is not used, default settings will be provided.
 > The default ordering clause is `ORDER BY DEVICE,TIME` and the default ordering is `ASC`.
 
-When `Device` is the main sort key, the result set sort by device name first, then sort by timestamp in the group with the same device name, the SQL statement is:
+When `Device` is the main sort key, the result set is sorted by device name first, then by timestamp in the group with the same device name, the SQL statement is:
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 order by device desc,time asc align by device;
 ```
@@ -76,7 +76,7 @@ The result shows below:
 +-----------------------------+-----------------+--------+------+-----------+
 Total line number = 6
 ```
-When `Time` is the main sort key, the result set sort by timestamp first, then sort by device name in rows with the same timestamp. The SQL statement is:
+When `Time` is the main sort key, the result set is sorted by timestamp first, then by device name in data points with the same timestamp. The SQL statement is:
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 order by time asc,device desc align by device;
 ```
@@ -94,7 +94,7 @@ The result shows below:
 +-----------------------------+-----------------+--------+------+-----------+
 Total line number = 6
 ```
-When `ORDER BY` clause is not used, sort in the default way, the SQL statement is：
+When `ORDER BY` clause is not used, sort in default way, the SQL statement is：
 ```sql
 select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device;
 ```
