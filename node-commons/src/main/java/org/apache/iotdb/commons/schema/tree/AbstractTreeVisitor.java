@@ -77,14 +77,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private final Deque<VisitorStackEntry> visitorStack = new ArrayDeque<>();
   // stack to store ancestor nodes and their FA state match info
   private final List<AncestorStackEntry> ancestorStack = new ArrayList<>();
-  // the FA match process can traceback since this start index of ancestor stack
-  private int startIndexOfTraceback = -1;
+  // the FA match process can traceback since this ancestor in ancestor stack
+  // this field will be updated during iterating children in all subclass of
+  // AbstractChildrenIterator
+  private int firstAncestorOfTraceback = -1;
   // the FA state match info of current node
+  // this field will be updated during iterating children in all subclass of
+  // AbstractChildrenIterator
   private IStateMatchInfo currentStateMatchInfo;
   // whether to visit the subtree of current node
   private boolean shouldVisitSubtree;
 
-  // result variables
+  // cached result variables
   protected N nextMatchedNode;
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
@@ -109,7 +113,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     visitorStack.clear();
     ancestorStack.clear();
     nextMatchedNode = null;
-    startIndexOfTraceback = -1;
+    firstAncestorOfTraceback = -1;
     initStack();
   }
 
@@ -170,7 +174,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   private Iterator<N> createChildrenIterator(N parent) {
-    if (startIndexOfTraceback > -1) {
+    if (firstAncestorOfTraceback > -1) {
       // there may be traceback when try to find the matched state of node
       return new TraceBackChildrenIterator(parent, currentStateMatchInfo);
     } else if (currentStateMatchInfo.hasOnlyPreciseMatchTransition()) {
@@ -195,8 +199,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     // batch.
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
       ancestorStack.remove(ancestorStack.size() - 1);
-      if (ancestorStack.size() <= startIndexOfTraceback) {
-        startIndexOfTraceback = -1;
+      if (ancestorStack.size() <= firstAncestorOfTraceback) {
+        firstAncestorOfTraceback = -1;
       }
     }
   }
@@ -424,7 +428,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         if (transitionIterator.hasNext()) {
           stateMatchInfo = new BatchStateMatchInfo(patternFA, matchedState, transitionIterator);
-          startIndexOfTraceback = ancestorStack.size();
+          firstAncestorOfTraceback = ancestorStack.size();
         } else {
           stateMatchInfo = new PreciseStateMatchInfo(patternFA, matchedState);
         }
@@ -472,7 +476,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (stateMatchInfo.getMatchedStateSize() == 0) {
-          traceback(child, stateMatchInfo);
+          traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1);
           if (stateMatchInfo.getMatchedStateSize() == 0) {
             continue;
           }
@@ -511,21 +515,21 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   // the match process of FA graph is a dfs on FA Graph
-  private void traceback(N node, IStateMatchInfo stateMatchInfo) {
+  private void traceback(N node, IStateMatchInfo stateMatchInfo, int checkedSourceStateOrdinal) {
     IStateMatchInfo parentStateMatchInfo;
 
     N currentNode;
     IStateMatchInfo currentStateMatchInfo;
 
-    int sourceStateIndex;
+    int sourceStateOrdinal;
     IFAState sourceState;
     Iterator<IFATransition> transitionIterator = null;
 
     int matchedStateSize;
     IFAState matchedState;
 
-    int index;
-    for (int i = ancestorStack.size() - 1; i >= startIndexOfTraceback; i--) {
+    int currentNodeIndex;
+    for (int i = ancestorStack.size() - 1; i >= firstAncestorOfTraceback; i--) {
       parentStateMatchInfo = ancestorStack.get(i - 1).stateMatchInfo;
       currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
 
@@ -536,29 +540,29 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       }
 
       // there's some state not further searched, process them in order
-      index = i;
-      while (index >= i) {
-        parentStateMatchInfo = ancestorStack.get(index - 1).stateMatchInfo;
+      currentNodeIndex = i;
+      while (currentNodeIndex >= i) {
+        parentStateMatchInfo = ancestorStack.get(currentNodeIndex - 1).stateMatchInfo;
 
-        if (index == ancestorStack.size()) {
+        if (currentNodeIndex == ancestorStack.size()) {
           currentNode = node;
           currentStateMatchInfo = stateMatchInfo;
         } else {
-          currentNode = ancestorStack.get(index).node;
-          currentStateMatchInfo = ancestorStack.get(index).stateMatchInfo;
+          currentNode = ancestorStack.get(currentNodeIndex).node;
+          currentStateMatchInfo = ancestorStack.get(currentNodeIndex).stateMatchInfo;
         }
 
         matchedState = null;
         if (currentNode == node) {
-          sourceStateIndex = -1;
+          sourceStateOrdinal = checkedSourceStateOrdinal;
         } else {
-          sourceStateIndex = currentStateMatchInfo.getSourceStateOrdinal();
-          if (sourceStateIndex == parentStateMatchInfo.getMatchedStateSize()) {
-            index--;
+          sourceStateOrdinal = currentStateMatchInfo.getSourceStateOrdinal();
+          if (sourceStateOrdinal == parentStateMatchInfo.getMatchedStateSize()) {
+            currentNodeIndex--;
             continue;
           }
           // there may be some states could be matched from transition of current source state
-          sourceState = parentStateMatchInfo.getMatchedState(sourceStateIndex);
+          sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
           transitionIterator = currentStateMatchInfo.getSourceTransitionIterator();
           while (transitionIterator.hasNext()) {
             matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
@@ -569,22 +573,22 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (matchedState == null) {
-          while (++sourceStateIndex < parentStateMatchInfo.getMatchedStateSize()) {
-            sourceState = parentStateMatchInfo.getMatchedState(sourceStateIndex);
+          while (++sourceStateOrdinal < parentStateMatchInfo.getMatchedStateSize()) {
+            sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
             matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
             transitionIterator =
                 tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
             if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
               matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
-              currentStateMatchInfo.setSourceStateOrdinal(sourceStateIndex);
+              currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal);
               currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
               break;
             }
           }
           if (matchedState == null) {
-            currentStateMatchInfo.setSourceStateOrdinal(sourceStateIndex - 1);
+            currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal - 1);
             currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
-            index--;
+            currentNodeIndex--;
             continue;
           }
         }
@@ -594,7 +598,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (currentNode == node) {
           return;
         } else {
-          index++;
+          currentNodeIndex++;
         }
       }
     }

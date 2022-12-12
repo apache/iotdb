@@ -110,17 +110,12 @@ public class SimpleNFA implements IPatternFA {
         if (nodes[i + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
           batchMatchTransitionTable[i] = Collections.singletonList(states[i + 1]);
           preciseMatchTransitionTable[i] = Collections.emptyMap();
-        } else if (nodes[i + 1].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        } else if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
           batchMatchTransitionTable[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
           preciseMatchTransitionTable[i] = Collections.emptyMap();
         } else {
-          if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-            batchMatchTransitionTable[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
-            preciseMatchTransitionTable[i] = Collections.emptyMap();
-          } else {
-            batchMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
-            preciseMatchTransitionTable[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
-          }
+          batchMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
+          preciseMatchTransitionTable[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
         }
       }
     }
