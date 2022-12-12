@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -147,6 +148,10 @@ public class RatisConsensusTest {
 
     servers.get(0).createPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    ConsensusGenericResponse resp = servers.get(0).createPeer(group.getGroupId(), original);
+    Assert.assertFalse(resp.isSuccess());
+    Assert.assertTrue(resp.getException() instanceof RatisRequestFailedException);
 
     // add 2 members
     servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());

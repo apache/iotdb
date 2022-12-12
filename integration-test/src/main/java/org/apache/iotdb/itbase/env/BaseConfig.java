@@ -404,4 +404,12 @@ public interface BaseConfig {
   default int getLeastDataRegionGroupNum() {
     return 5;
   }
+
+  default BaseConfig setQueryThreadCount(int queryThreadCount) {
+    return this;
+  }
+
+  default int getQueryThreadCount() {
+    return Runtime.getRuntime().availableProcessors();
+  }
 }

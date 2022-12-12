@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
@@ -34,13 +33,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
@@ -184,41 +180,10 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
-    String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(true);
     unsequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(false);
-    walFileTotalCount =
-        Stream.of(walDirs)
-            .mapToLong(
-                dir -> {
-                  File walFolder = new File(dir);
-                  if (walFolder.exists()) {
-                    File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                    long result = 0L;
-                    if (null != walNodeFolders) {
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          try {
-                            result +=
-                                org.apache.commons.io.FileUtils.listFiles(walFolder, null, true)
-                                    .size();
-                          } catch (UncheckedIOException exception) {
-                            // do nothing
-                            logger.debug(
-                                "Failed when count wal folder {}: ",
-                                walNodeFolder.getName(),
-                                exception);
-                          }
-                        }
-                      }
-                    }
-                    return result;
-                  } else {
-                    return 0L;
-                  }
-                })
-            .sum();
+    walFileTotalCount = WALManager.getInstance().getTotalFileNum();
     sequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(true);
     unsequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(false);
   }
