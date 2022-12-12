@@ -626,6 +626,24 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
+struct TCreateModelReq {}
+
+struct TDropModelReq {}
+
+struct TShowModelReq {}
+
+struct TShowModelResp {}
+
+struct TShowTrailReq {}
+
+struct TShowTrailResp {}
+
+struct TGetModelInfoReq {}
+
+struct TGetModelInfoResp {}
+
+struct TUpdateModelInfoReq {}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1090,7 +1108,7 @@ service IConfigNodeRPCService {
   /**
    * Create a CQ
    *
-   * @return SUCCESS_STATUS if the trigger was created successfully
+   * @return SUCCESS_STATUS if the cq was created successfully
    */
   common.TSStatus createCQ(TCreateCQReq req)
 
@@ -1102,8 +1120,48 @@ service IConfigNodeRPCService {
   common.TSStatus dropCQ(TDropCQReq req)
 
   /**
-   * Return the trigger table of config leader
+   * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ML Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+  /**
+   * Return the trail table
+   */
+  TShowTrailResp showTrail(TShowTrailReq req)
+
+  /**
+   * Return the model info by specific model id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
+  /**
+   * Update the model info
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 }
 

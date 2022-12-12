@@ -351,6 +351,14 @@ struct TExecuteCQ {
   7: required string username
 }
 
+struct TDeleteModelMetricsReq {}
+
+struct TFetchWindowBatchReq {}
+
+struct TFetchWindowBatchResp {}
+
+struct TRecordModelMetricsReq {}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -642,6 +650,14 @@ service IDataNodeRPCService {
   * Execute CQ on DataNode
   */
   common.TSStatus executeCQ(TExecuteCQ req)
+
+  common.TSStatus deleteModelMetrics(TDeleteModelMetricsReq req)
+
+  // ----------------------------------- For ML Node -----------------------------------------------
+
+  TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req)
+
+  common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
 }
 
 service MPPDataExchangeService {
