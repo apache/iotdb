@@ -304,9 +304,9 @@ public class MemTableFlushTask {
                   Metric.QUANTITY.toString(),
                   MetricLevel.CORE,
                   Tag.NAME.toString(),
-                  "memtable",
+                  storageGroup,
                   Tag.TYPE.toString(),
-                  "flush");
+                  "memtable-flush");
         }
         LOGGER.debug(
             "flushing a memtable to file {} in storage group {}, io cost {}ms",
