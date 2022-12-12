@@ -21,7 +21,7 @@
 
 # 1. 目标
 
-本文档为 IoTDB 集群版（1.0.0）启动教程。
+本文档为 IoTDB 集群版（1.0.0）的安装及启动教程。
 
 # 2. 前置检查
 
@@ -73,15 +73,15 @@ mvn clean package -pl distribution -am -DskipTests
 
 打开 apache-iotdb-1.0.0-SNAPSHOT-all-bin，可见以下目录：
 
-| **目录**                  | **说明**                                               |
-|-------------------------|------------------------------------------------------|
-| conf                    | 配置文件目录，包含 ConfigNode 和 DataNode 的配置文件                |
-| data                    | 数据文件目录，包含 ConfigNode 和 DataNode 的数据文件                |
-| lib                     | 库文件目录                                                |
-| licenses                | 证书文件目录                                               |
-| logs                    | 日志文件目录，包含 ConfigNode 和 DataNode 的日志文件                |
-| sbin                    | 脚本目录，包含 ConfigNode 和 DataNode 的启停移除脚本目录，以及 Cli 的启动脚本 |
-| tools                   | 系统工具目录                                               |
+| **目录**   | **说明**                                              |
+|----------|-----------------------------------------------------|
+| conf     | 配置文件目录，包含 ConfigNode、DataNode、JMX 和 logback 等配置文件   |
+| data     | 数据文件目录，包含 ConfigNode 和 DataNode 的数据文件               |
+| lib      | 库文件目录                                               |
+| licenses | 证书文件目录                                              |
+| logs     | 日志文件目录，包含 ConfigNode 和 DataNode 的日志文件               |
+| sbin     | 脚本目录，包含 ConfigNode 和 DataNode 的启停移除脚本，以及 Cli 的启动脚本等 |
+| tools    | 系统工具目录                                              |
 
 # 5. 集群安装配置
 
@@ -111,7 +111,7 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项**                                    | **说明**                                 | **默认**                                          |
 |--------------------------------------------|----------------------------------------|-------------------------------------------------|
-| config_node_consensus_protocol_class       | ConfigNode 使用的共识协议                     | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| config\_node\_consensus\_protocol\_class   | ConfigNode 使用的共识协议                     | org.apache.iotdb.consensus.ratis.RatisConsensus |
 | schema\_replication\_factor                | 元数据副本数，DataNode 数量不应少于此数目              | 1                                               |
 | schema\_region\_consensus\_protocol\_class | 元数据副本组的共识协议                            | org.apache.iotdb.consensus.ratis.RatisConsensus |
 | data\_replication\_factor                  | 数据副本数，DataNode 数量不应少于此数目               | 1                                               |
@@ -279,20 +279,20 @@ DataNode 的其它配置参数可参考
 ## 6.3 验证集群
 
 以本地启动的 3C3D（3个 ConfigNode 和3个 DataNode） 集群为例，
-在 Cli 执行 show cluster，结果如下：
+在 Cli 执行 `show cluster details`，结果如下：
 
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     2|ConfigNode|Running|      127.0.0.1|       22279|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9004|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```

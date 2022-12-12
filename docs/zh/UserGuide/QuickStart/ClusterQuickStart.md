@@ -21,7 +21,9 @@
 
 # 快速上手
 
-以本地环境为例，演示 IoTDB 集群的启动、扩容与缩容：
+以本地环境为例，演示 IoTDB 集群的启动、扩容与缩容。
+
+**注意：本文档为使用本地不同端口，进行伪分布式环境部署的教程，仅用于练习。在真实环境部署时，一般不需要修改节点端口，仅需配置节点 IPV4 地址或域名即可。**
 
 ## 1. 准备启动环境
 
@@ -42,18 +44,18 @@
 ./cluster0/sbin/start-cli.sh
 ```
 
-+ 在 Cli 执行 [show cluster](https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/Maintenance-Command.html#%E6%9F%A5%E7%9C%8B%E5%85%A8%E9%83%A8%E8%8A%82%E7%82%B9%E4%BF%A1%E6%81%AF)
++ 在 Cli 执行 [show cluster details](https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/Maintenance-Command.html#%E6%9F%A5%E7%9C%8B%E5%85%A8%E9%83%A8%E8%8A%82%E7%82%B9%E4%BF%A1%E6%81%AF)
   指令，结果如下所示：
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 2
-It costs 0.160s
+It costs 0.242s
 ```
 
 ## 4. 准备扩容环境
@@ -123,19 +125,19 @@ It costs 0.160s
 
 ## 7. 验证扩容结果
 
-在 Cli 执行 show cluster，结果如下：
+在 Cli 执行 `show cluster details`，结果如下：
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     2|ConfigNode|Running|      127.0.0.1|       22279|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9004|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -144,27 +146,35 @@ It costs 0.012s
 
 + 缩容一个 ConfigNode：
 ```
+# 使用 ip:port 移除
 ./cluster0/sbin/remove-confignode.sh 127.0.0.1:22279
+
+# 使用节点编号移除
+./cluster0/sbin/remove-confignode.sh 2
 ```
 
 + 缩容一个 DataNode：
 ```
+# 使用 ip:port 移除
 ./cluster0/sbin/remove-datanode.sh 127.0.0.1:6668
+
+# 使用节点编号移除
+./cluster0/sbin/remove-confignode.sh 4
 ```
 
 ## 9. 验证缩容结果
 
-在 Cli 执行 show cluster，结果如下：
+在 Cli 执行 `show cluster details`，结果如下：
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 4
-It costs 0.007s
+It costs 0.005s
 ```

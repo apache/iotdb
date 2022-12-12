@@ -20,7 +20,8 @@
 -->
 
 # 1. Purpose
-This article is the setup process of IoTDB Cluster (1.0.0).
+
+This document describes how to install and start IoTDB Cluster (1.0.0).
 
 # 2. Prerequisites
 
@@ -70,15 +71,15 @@ Then you will get the binary distribution under
 
 # 4. Binary Distribution Content
 
-| **Folder**              | **Description**                                                                            |
-|-------------------------|--------------------------------------------------------------------------------------------|
-| conf                    | Configuration files folder, contains configuration files of ConfigNode and DataNode        |
-| data                    | Data files folder, contains data files of ConfigNode and DataNode                          |
-| lib                     | Jar files folder                                                                           |
-| licenses                | Licenses files folder                                                                      |
-| logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                          |
-| sbin                    | Shell files folder, contains start/stop/remove shell of ConfigNode and DataNode, cli shell |
-| tools                   | System tools                                                                               |
+| **Folder**              | **Description**                                                                                   |
+|-------------------------|---------------------------------------------------------------------------------------------------|
+| conf                    | Configuration files folder, contains configuration files of ConfigNode, DataNode, JMX and logback |
+| data                    | Data files folder, contains data files of ConfigNode and DataNode                                 |
+| lib                     | Jar files folder                                                                                  |
+| licenses                | Licenses files folder                                                                             |
+| logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                                 |
+| sbin                    | Shell files folder, contains start/stop/remove shell of ConfigNode and DataNode, cli shell        |
+| tools                   | System tools                                                                                      |
 
 # 5. Cluster Installation and Configuration
 
@@ -111,7 +112,7 @@ and set the following parameters base on the
 
 | **Configuration**                          | **Description**                                                                                                    | **Default**                                     |
 |--------------------------------------------|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| config_node_consensus_protocol_class       | Consensus protocol of ConfigNode                                                                                   | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| config\_node\_consensus\_protocol\_class   | Consensus protocol of ConfigNode                                                                                   | org.apache.iotdb.consensus.ratis.RatisConsensus |
 | schema\_replication\_factor                | Schema replication factor, no more than DataNode number                                                            | 1                                               |
 | schema\_region\_consensus\_protocol\_class | Consensus protocol of schema replicas                                                                              | org.apache.iotdb.consensus.ratis.RatisConsensus |
 | data\_replication\_factor                  | Data replication factor, no more than DataNode number                                                              | 1                                               |
@@ -285,20 +286,20 @@ Please read the [Cli manual](https://iotdb.apache.org/UserGuide/Master/QuickStar
 ## 6.3 Verify Cluster
 
 Use a 3C3D(3 ConfigNodes and 3 DataNodes) as an example.
-Run the `show cluster` command on the Cli, You will see the following results:
+Run the `show cluster details` command on the Cli, You will see the following results:
 
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     2|ConfigNode|Running|      127.0.0.1|       22279|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9004|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```

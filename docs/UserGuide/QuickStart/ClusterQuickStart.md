@@ -24,6 +24,8 @@
 This article uses a local environment as an example to
 illustrate how to start, expand, and shrink an IoTDB Cluster.
 
+**Notice: This document is a tutorial for deploying in a pseudo-cluster environment using different local ports, and is for exercise only. In real deployment scenarios, you only need to configure the IPV4 address or domain name of the server, and do not need to change the Node ports.**
+
 ### 1. Prepare the Start Environment
 
 Unzip the apache-iotdb-1.0.0-all-bin.zip file to cluster0 folder.
@@ -44,18 +46,18 @@ the default number of replicas is one.
 ./cluster0/sbin/start-cli.sh
 ```
 
-+ Execute the [show cluster](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Maintenance-Command.html#show-all-node-information)
++ Execute the [show cluster details](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Maintenance-Command.html#show-all-node-information)
   command on the Cli. The result is shown below:
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 2
-It costs 0.160s
+It costs 0.242s
 ```
 
 ### 4. Prepare the Expanding Environment
@@ -126,19 +128,19 @@ The following commands can be executed in arbitrary order.
 
 ### 7. Verify Cluster expansion
 
-Execute the show cluster command, then the result is shown below:
+Execute the `show cluster details` command, then the result is shown below:
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     2|ConfigNode|Running|      127.0.0.1|       22279|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9004|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -147,27 +149,35 @@ It costs 0.012s
 
 + Remove a ConfigNode:
 ```
+# Removing by ip:port
 ./cluster0/sbin/remove-confignode.sh 127.0.0.1:22279
+
+# Removing by Node index
+./cluster0/sbin/remove-confignode.sh 2
 ```
 
 + Remove a DataNode:
 ```
+# Removing by ip:port
 ./cluster0/sbin/remove-datanode.sh 127.0.0.1:6668
+
+# Removing by Node index
+./cluster0/sbin/remove-confignode.sh 4
 ```
 
 ### 9. Verify Cluster shrinkage
 
-Execute the show cluster command, then the result is shown below:
+Execute the `show cluster details` command, then the result is shown below:
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
+|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
+|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
+|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
 Total line number = 4
-It costs 0.007s
+It costs 0.005s
 ```
