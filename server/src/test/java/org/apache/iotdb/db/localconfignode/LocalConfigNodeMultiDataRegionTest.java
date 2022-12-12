@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -43,7 +43,7 @@ public class LocalConfigNodeMultiDataRegionTest {
     originDataRegionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
     isClusterMode = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
     IoTDBDescriptor.getInstance().getConfig().setClusterMode(false);
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     EnvironmentUtils.envSetUp();
     LocalDataPartitionInfo.getInstance().init(Collections.EMPTY_MAP);
   }
@@ -58,7 +58,7 @@ public class LocalConfigNodeMultiDataRegionTest {
   @Test
   public void createMultiDataRegionTest() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(3);
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.test"));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.test"));
     LocalConfigNode configNode = LocalConfigNode.getInstance();
     LocalDataPartitionInfo info = LocalDataPartitionInfo.getInstance();
     info.registerStorageGroup(new PartialPath("root.test"));
@@ -73,7 +73,7 @@ public class LocalConfigNodeMultiDataRegionTest {
   @Test
   public void recoverMultiDataRegionTest() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(3);
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.test"));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.test"));
     LocalConfigNode configNode = LocalConfigNode.getInstance();
     LocalDataPartitionInfo info = LocalDataPartitionInfo.getInstance();
     info.registerStorageGroup(new PartialPath("root.test"));

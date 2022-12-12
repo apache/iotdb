@@ -26,8 +26,9 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -74,7 +75,7 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> unseqResources,
       String sgName)
       throws MetadataException, IOException, WriteProcessException {
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     prepareSeries(measurementSchemas, deviceIds, sgName);
     prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, sgName);
   }
@@ -86,7 +87,7 @@ public class SeriesReaderTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -187,15 +188,16 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds.add(sgName + PATH_SEPARATOR + "device" + i);
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sgName));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        IoTDB.schemaProcessor.createTimeseries(
-            new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()),
-            measurementSchema.getType(),
-            measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(),
-            Collections.emptyMap());
+        LocalSchemaProcessor.getInstance()
+            .createTimeseries(
+                new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()),
+                measurementSchema.getType(),
+                measurementSchema.getEncodingType(),
+                measurementSchema.getCompressor(),
+                Collections.emptyMap());
       }
     }
   }
