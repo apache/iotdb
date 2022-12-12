@@ -23,6 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 /**
  * This class record the logical information of files in compaction, which is used to locate file in
  * disk. File identifier includes whether the file is sequence, its database name, virtual database
@@ -193,6 +197,30 @@ public class TsFileIdentifier {
             + filename;
     for (String dataDir : dataDirs) {
       File file = new File(dataDir, partialFileString);
+      if (file.exists()) {
+        return file;
+      }
+    }
+    return null;
+  }
+
+  public File getAlterFileFromDataDirs() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String alterFilePath = getFilePath().replace(TSFILE_SUFFIX, ALTER_TMP_FILE_SUFFIX);
+    for (String dataDir : dataDirs) {
+      File file = new File(dataDir, alterFilePath);
+      if (file.exists()) {
+        return file;
+      }
+    }
+    return null;
+  }
+
+  public File getAlterOldFileFromDataDirs() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String alterOldFilePath = getFilePath().replace(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
+    for (String dataDir : dataDirs) {
+      File file = new File(dataDir, alterOldFilePath);
       if (file.exists()) {
         return file;
       }

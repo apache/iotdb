@@ -1046,6 +1046,11 @@ public class IoTDBConfig {
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
+  /** TsFileManager Rewrite lock timeout */
+  private long rewriteLockWaitTimeoutInMS = (int) TimeUnit.MINUTES.toMillis(1);
+
+  private long rewriteCandidateStatusWaitTimeoutInMs = TimeUnit.MINUTES.toMillis(10);
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3327,6 +3332,22 @@ public class IoTDBConfig {
       }
     }
     return configMessage;
+  }
+
+  public long getRewriteLockWaitTimeoutInMS() {
+    return rewriteLockWaitTimeoutInMS;
+  }
+
+  public void setRewriteLockWaitTimeoutInMS(long rewriteLockWaitTimeoutInMS) {
+    this.rewriteLockWaitTimeoutInMS = rewriteLockWaitTimeoutInMS;
+  }
+
+  public long getRewriteCandidateStatusWaitTimeoutInMs() {
+    return rewriteCandidateStatusWaitTimeoutInMs;
+  }
+
+  public void setRewriteCandidateStatusWaitTimeoutInMs(long rewriteCandidateStatusWaitTimeoutInMs) {
+    this.rewriteCandidateStatusWaitTimeoutInMs = rewriteCandidateStatusWaitTimeoutInMs;
   }
 
   public long getDataRatisConsensusSnapshotTriggerThreshold() {

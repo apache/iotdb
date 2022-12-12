@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -548,6 +549,49 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * alter timeseries encoding & compressionType
+   *
+   * @param fullPath
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws StorageEngineException
+   */
+  public void alterTimeseries(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws StorageEngineException, StorageGroupNotSetException {
+    // The alterLock is mutually exclusive with the clear operation
+    StorageGroupManager storageGroupManager =
+        processorMap.get(IoTDB.schemaProcessor.getBelongedStorageGroup(fullPath));
+    if (storageGroupManager == null) {
+      throw new StorageEngineException("system error, StorageGroup not found");
+    }
+    storageGroupManager.alterLock();
+    // Update the ALTER state in memory
+    AlteringRecordsCache.getInstance().startAlter();
+    try {
+      // Change the encoding compression type in the schema first. After that, the newly inserted
+      // data
+      // will use the new encoding compression type
+      Pair<TSEncoding, CompressionType> oldPair =
+          IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
+      if (oldPair == null || oldPair.left == null || oldPair.right == null) {
+        throw new MetadataException("system error, old type is null");
+      }
+      curEncoding = curEncoding == null ? oldPair.left : curEncoding;
+      curCompressionType = curCompressionType == null ? oldPair.right : curCompressionType;
+
+      // process alter
+      storageGroupManager.alterTimeseries(fullPath, curEncoding, curCompressionType);
+    } catch (IOException | MetadataException e) {
+      throw new StorageEngineException(e.getMessage());
+    } finally {
+      if (storageGroupManager != null) {
+        storageGroupManager.alterUnlock();
+      }
+    }
+  }
+
+  /**
    * merge all databases.
    *
    * @throws StorageEngineException StorageEngineException
@@ -686,6 +730,17 @@ public class StorageEngine implements IService {
     }
   }
 
+  /**
+   * Get the virtual storage group name.
+   *
+   * @return virtual storage group name, like root.sg1/0
+   */
+  public String getStorageGroupName(PartialPath path) throws StorageEngineException {
+    PartialPath deviceId = path.getDevicePath();
+    DataRegion storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.getStorageGroupName();
+  }
+
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
   }
@@ -822,6 +877,33 @@ public class StorageEngine implements IService {
         logger.warn("{} still doesn't exit after 30s", poolName);
         throw new ShutdownException(e);
       }
+    }
+  }
+
+  public void rewriteTimeseries(PartialPath fullPath)
+      throws StorageEngineException, MetadataException {
+
+    if (fullPath == null) {
+      throw new StorageEngineException("Rewrite Timeseries Failed. The storageGroupName is null");
+    }
+    // Check altering cache
+    AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
+    boolean storageGroupExsist = alteringRecordsCache.isStorageGroupExsist(fullPath.getFullPath());
+    if (!storageGroupExsist) {
+      throw new StorageEngineException(
+          "Rewrite Timeseries Failed. The storage group you entered is not altering");
+    }
+    StorageGroupManager storageGroupManager =
+        getStorageGroupManager(
+            LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(fullPath));
+    if (storageGroupManager == null) {
+      throw new StorageEngineException(
+          "Rewrite Timeseries Failed. The StorageGroupManager is null");
+    }
+    try {
+      storageGroupManager.rewriteTimeseries();
+    } catch (Exception e) {
+      throw new StorageEngineException(e);
     }
   }
 

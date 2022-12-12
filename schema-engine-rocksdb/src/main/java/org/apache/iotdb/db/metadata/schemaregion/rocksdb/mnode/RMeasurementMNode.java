@@ -29,7 +29,9 @@ import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -125,6 +127,16 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public void setAlias(String alias) {
     this.alias = alias;
+  }
+
+  @Override
+  public void updateSchemaInfo(
+          String measurementId,
+          TSEncoding encoding,
+          CompressionType compressionType,
+          Map<String, String> props) {
+    // TODO not support now
+    throw new UnsupportedOperationException("only for alter timeSeries");
   }
 
   @Override

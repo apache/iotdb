@@ -188,12 +188,13 @@ Eg: IoTDB > DROP TIMESERIES root.ln.wf01.wt01.*
 ```
 ALTER TIMESERIES fullPath alterClause
 alterClause
-    : RENAME beforeName=ID TO currentName=ID
-    | SET property (COMMA property)*
-    | DROP ID (COMMA ID)*
-    | ADD TAGS property (COMMA property)*
-    | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT tagClause attributeClause
+    : RENAME beforeName=attributeKey TO currentName=attributeKey
+    | SET attributePair (COMMA attributePair)*
+    | DROP attributeKey (COMMA attributeKey)*
+    | ADD TAGS attributePair (COMMA attributePair)*
+    | ADD ATTRIBUTES attributePair (COMMA attributePair)*
+    | UPSERT aliasClause? tagClause? attributeClause?
+    | SETTYPE attributePair (COMMA attributePair)*
     ;
 attributeClause
     : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
@@ -207,6 +208,18 @@ Eg: ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
 Eg: ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 Eg: ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 EG: ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+Eg: ALTER timeseries root.turbine.d1.s1 SETTYPE encoding=plain, compression=SNAPPY
+```
+
+* Rewrite Timeseries Statement
+```
+REWRITE TIMESERIES prefixPath
+prefixPath
+    : ROOT (DOT nodeName)*
+    ;
+Eg: Rewrite Timeseries root.ln
+Note: This statement can be used when "ALTER timeseries" has been called
+Note: prefixPath is a storageGroup path
 ```
 
 * Show All Timeseries Statement

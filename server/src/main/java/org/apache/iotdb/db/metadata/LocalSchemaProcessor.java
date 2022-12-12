@@ -238,6 +238,23 @@ public class LocalSchemaProcessor {
   }
 
   /**
+   * alter timeseris encoding & compression type
+   *
+   * @param fullPath timeseries full path
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws QueryProcessException
+   * @throws IOException
+   * @throws MetadataException
+   */
+  public Pair<TSEncoding, CompressionType> alterTimeseries(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException {
+    return getBelongedSchemaRegion(fullPath)
+        .alterTimeseriesEncodingCompressionType(fullPath, curEncoding, curCompressionType);
+  }
+
+  /**
    * Delete all timeseries matching the given path pattern, may cross different database. If using
    * prefix match, the path pattern is used to match prefix path. All timeseries start with the
    * matched prefix path will be deleted.

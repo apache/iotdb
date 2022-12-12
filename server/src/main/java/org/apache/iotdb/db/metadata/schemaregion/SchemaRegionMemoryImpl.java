@@ -71,6 +71,8 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -735,6 +737,49 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+  }
+
+  @Override
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionType(
+          PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+          throws MetadataException, IOException {
+    final String logKey = fullPath.getFullPath();
+    // find mnode
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
+    if (measurementMNode == null) {
+      throw new PathNotExistException("path not exist", true);
+    }
+    IMeasurementSchema schema = measurementMNode.getSchema();
+    if (schema == null) {
+      throw new MetadataException("schema(" + fullPath + ") is null", false);
+    }
+    logger.info(
+            "[alter timeseries] {} ->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
+            logKey,
+            schema.getEncodingType(),
+            schema.getCompressor(),
+            curEncoding,
+            curCompressionType);
+    // trigger TODO
+    // alter type
+    measurementMNode.updateSchemaInfo(null, curEncoding, curCompressionType, null);
+    // cache
+    mNodeCache.invalidate(fullPath);
+    // mlog
+    if (!isRecovering) {
+      writeToMLog(
+              new AlterTimeSeriesPlan(
+                      fullPath,
+                      AlterTimeSeriesOperator.AlterType.SET_TYPE,
+                      null,
+                      null,
+                      null,
+                      null,
+                      measurementMNode.getSchema().getEncodingType(),
+                      measurementMNode.getSchema().getCompressor()));
+      forceMlog();
+    }
+    return new Pair<>(schema.getEncodingType(), schema.getCompressor());
   }
 
   /**

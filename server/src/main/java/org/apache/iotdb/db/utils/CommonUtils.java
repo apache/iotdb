@@ -266,4 +266,12 @@ public class CommonUtils {
     System.err.println("-- StackTrace --");
     System.err.println(Throwables.getStackTraceAsString(e));
   }
+
+  public static boolean equal(String s, String t) {
+    if (s == t) {
+      return true;
+    } else {
+      return s != null && t != null ? s.equals(t) : false;
+    }
+  }
 }

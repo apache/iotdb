@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Collections;
 import java.util.List;
@@ -52,6 +54,8 @@ public class AlterTimeSeriesStatement extends Statement {
 
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
+  private TSEncoding encoding;
+  private CompressionType compressor;
 
   public AlterTimeSeriesStatement() {
     super();
@@ -111,6 +115,22 @@ public class AlterTimeSeriesStatement extends Statement {
     this.attributesMap = attributesMap;
   }
 
+  public TSEncoding getEncoding() {
+    return encoding;
+  }
+
+  public void setEncoding(TSEncoding encoding) {
+    this.encoding = encoding;
+  }
+
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAlterTimeseries(this, context);
@@ -122,6 +142,7 @@ public class AlterTimeSeriesStatement extends Statement {
     DROP,
     ADD_TAGS,
     ADD_ATTRIBUTES,
-    UPSERT
+    UPSERT,
+    SET_TYPE
   }
 }

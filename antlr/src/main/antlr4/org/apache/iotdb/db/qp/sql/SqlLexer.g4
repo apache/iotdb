@@ -117,6 +117,10 @@ CLEAR
     : C L E A R
     ;
 
+REWRITE
+    : R E W R I T E
+    ;
+
 CLUSTER
     : C L U S T E R
     ;
@@ -672,6 +676,10 @@ UPDATE
 
 UPSERT
     : U P S E R T
+    ;
+
+SETTYPE
+    : S E T T Y P E
     ;
 
 URI

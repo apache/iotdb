@@ -38,7 +38,7 @@ statement
 ddlStatement
     : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
+    | alterTimeseries |rewriteTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
@@ -48,6 +48,9 @@ ddlStatement
     | countStorageGroup | countDevices | countTimeseries | countNodes
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     ;
+
+rewriteTimeseries
+    : REWRITE TIMESERIES prefixPath;
 
 dmlStatement
     : selectStatement | insertStatement | deleteStatement;
@@ -185,6 +188,7 @@ alterClause
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
+    | SETTYPE attributePair (COMMA attributePair)*
     ;
 
 aliasClause

@@ -22,11 +22,16 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
@@ -122,6 +127,28 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setPreDeleted(boolean preDeleted) {
     this.preDeleted = preDeleted;
+  }
+
+  @Override
+  public void updateSchemaInfo(
+          String measurementId,
+          TSEncoding encoding,
+          CompressionType compressionType,
+          Map<String, String> props) {
+
+    if (encoding == null) {
+      encoding = this.schema.getEncodingType();
+    }
+    if (compressionType == null) {
+      compressionType = this.schema.getCompressor();
+    }
+    this.schema =
+            new MeasurementSchema(
+                    this.schema.getMeasurementId(),
+                    this.schema.getType(),
+                    encoding,
+                    compressionType,
+                    this.schema.getProps());
   }
 
   @Override

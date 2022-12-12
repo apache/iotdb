@@ -391,4 +391,17 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   // endregion
+
+  /**
+   * alter schema encoding & compression type
+   *
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws MetadataException
+   * @throws IOException
+   * @return Pair<TSEncoding, CompressionType> old type
+   */
+  Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionType(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException;
 }

@@ -66,6 +66,18 @@ You can set different datatype, encoding, and compression for the timeseries in 
 
 It is also supported to set an alias, tag, and attribute for aligned timeseries.
 
+## Alter Timeseries
+
+To alter the encoding and compression of the timeseries we created before, we can use`ALTER TimeSeries <Path> SETTYPE  encoding=<Encoding>,compression=<Compression>` statement.
+
+The usage are as follows:
+
+```
+IoTDB> ALTER TimeSeries root.ln.wf01.wt01.status SETTYPE  encoding=RLE
+IoTDB> ALTER TimeSeries root.ln.wf01.wt01.status SETTYPE  compression=SNAPPY
+IoTDB> ALTER TimeSeries root.ln.wf01.wt01.status SETTYPE  encoding=RLE,compression=SNAPPY
+```
+
 ## Delete Timeseries
 
 To delete the timeseries we created before, we are able to use `(DELETE | DROP) TimeSeries <PathPattern>` statement.

@@ -38,9 +38,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
+import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
+import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
+import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -95,6 +99,8 @@ import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -130,7 +136,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_RESOURCE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -266,6 +277,9 @@ public class DataRegion implements IDataRegionForQuery {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  /** used to cache Altering Timeseries */
+  private AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 
   /**
    * constrcut a database processor
@@ -425,12 +439,12 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders(), true);
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders(), false);
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
@@ -547,6 +561,25 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
+    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
+    for (TsFileResource resource : seqTsFileResources) {
+      long timePartitionId = resource.getTimePartition();
+      Map<String, Long> endTimeMap = new HashMap<>();
+      for (String deviceId : resource.getDevices()) {
+        long endTime = resource.getEndTime(deviceId);
+        endTimeMap.put(deviceId.intern(), endTime);
+      }
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    }
+
+    // recover alter records cache
+    try {
+      recoverAlter();
+    } catch (IOException e) {
+      throw new DataRegionException(e);
+    }
     // recover and start timed compaction thread
     initCompaction();
 
@@ -555,6 +588,41 @@ public class DataRegion implements IDataRegionForQuery {
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
     }
+  }
+
+  private void recoverAlter() throws DataRegionException, IOException {
+
+    final String logKey = this.getStorageGroupPath();
+    // alter.log analyzer
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    if (!logFile.exists()) {
+      return;
+    }
+    AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
+    analyzer.analyzer();
+    List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = analyzer.getAlterList();
+    if (alterList == null || alterList.size() <= 0) {
+      try {
+        logger.warn("recoverAlter-{}: An empty alter.log exists", logKey);
+        fsFactory.deleteIfExists(logFile);
+        return;
+      } catch (IOException e) {
+        throw new DataRegionException(e);
+      }
+    }
+    // recover alter records cache
+    alteringRecordsCache.startAlter();
+    for (int i = 0; i < alterList.size(); i++) {
+      Pair<String, Pair<TSEncoding, CompressionType>> record = alterList.get(i);
+      try {
+        alteringRecordsCache.putRecord(
+            storageGroupName, record.left, record.right.left, record.right.right);
+      } catch (Exception e) {
+        throw new DataRegionException(e);
+      }
+    }
+    logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
   }
 
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
@@ -646,8 +714,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException, DataRegionException {
+  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(
+      List<String> folders, boolean isSeq) throws IOException, DataRegionException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -660,6 +728,11 @@ public class DataRegion implements IDataRegionForQuery {
       // some TsFileResource may be being persisted when the system crashed, try recovering such
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
+      // only sequence dir
+      if (isSeq) {
+        // altering tsfile repaired
+        alteringFailRenames(fileFolder);
+      }
 
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
@@ -705,6 +778,49 @@ public class DataRegion implements IDataRegionForQuery {
       upgradeRet.add(fileResource);
     }
     return new Pair<>(ret, upgradeRet);
+  }
+
+  /**
+   * tsfile repaired<br>
+   * 1、.tfile .alter -> del:.alter<br>
+   * 2、.alter .alter.old -> rename:.alter.old to .tsfile del:.alter<br>
+   */
+  private void alteringFailRenames(File fileFolder) {
+    File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), ALTER_TMP_FILE_SUFFIX);
+    if (files != null) {
+      for (File tempResource : files) {
+        File tsFile =
+            fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX));
+        File resource =
+            fsFactory.getFile(
+                tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, RESOURCE_SUFFIX));
+        File alterResouce =
+            fsFactory.getFile(
+                tempResource
+                    .getPath()
+                    .replace(ALTER_TMP_FILE_SUFFIX, ALTER_TMP_FILE_RESOURCE_SUFFIX));
+        File alterOldTsFile =
+            fsFactory.getFile(
+                tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX));
+        File alterOldResource =
+            fsFactory.getFile(
+                tempResource
+                    .getPath()
+                    .replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX));
+        if (tsFile.exists()) {
+          tempResource.deleteOnExit();
+          alterResouce.deleteOnExit();
+          continue;
+        }
+        if (alterOldTsFile.exists()) {
+          alterOldTsFile.renameTo(tsFile);
+          alterOldResource.renameTo(resource);
+          tempResource.deleteOnExit();
+          alterResouce.deleteOnExit();
+          continue;
+        }
+      }
+    }
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
@@ -1818,6 +1934,68 @@ public class DataRegion implements IDataRegionForQuery {
     return tsfileResourcesForQuery;
   }
 
+  /**
+   * alter timeseries encoding & compressionType<br>
+   * 1、flush and close tsfile<br>
+   * <del>2、locks</del><br>
+   * <del>3、write temp tsfiles</del><br>
+   * <del>4、unregister old tsfiles and release locks</del><br>
+   * <del>5、rename temp tsfiles<</del>br> <del>6、register tsfiles</del><br>
+   */
+  public void alter(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws IOException {
+
+    //    final String logKey =
+    //        storageGroupName + "-" + dataRegionId + "-" + fullPath.getFullPath();
+    // If there are still some old version tsfiles, the delete won't succeeded.
+    if (upgradeFileCount.get() != 0) {
+      throw new IOException("Alter failed. Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException("Alter failed. Please do not delete until the old files settled.");
+    }
+    // log and cache altering record
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    if (!logFile.exists()) {
+      logFile.createNewFile();
+    }
+    try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
+      alteringLogger.addAlterParam(fullPath, curEncoding, curCompressionType);
+      alteringRecordsCache.putRecord(fullPath.getFullPath(), curEncoding, curCompressionType);
+    } catch (Exception e) {
+      throw new IOException("Alter failed.", e);
+    }
+    // flush & close TODO Both merge and clear will be rewritten using the new code(TSEncoding &
+    // CompressionType), so there is no need to waste time forcing disk flushing to modify Schema
+    // operations
+    //    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
+    //    syncCloseAllWorkingTsFileProcessors();
+    // !! Split into alter and clear operations
+  }
+
+  private boolean findUndoneResourcesAndRemove(
+      TsFileResource tsFileResource, Set<TsFileIdentifier> undoneFiles) {
+
+    if (undoneFiles == null || undoneFiles.isEmpty()) {
+      // all undone
+      return true;
+    }
+    TsFileIdentifier undoneFile = null;
+    for (TsFileIdentifier next : undoneFiles) {
+      if (next.getFilename().equals(tsFileResource.getTsFile().getName())) {
+        undoneFile = next;
+        break;
+      }
+    }
+    if (undoneFile != null) {
+      undoneFiles.remove(undoneFile);
+      return true;
+    }
+    return false;
+  }
+
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
   private void separateTsFile(
       List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
@@ -2911,6 +3089,14 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public String getStorageGroupPath() {
     return databaseName + File.separator + dataRegionId;
+  }
+
+  public File getStorageGroupSysDir() {
+    return storageGroupSysDir;
+  }
+
+  public StorageGroupInfo getStorageGroupInfo() {
+    return storageGroupInfo;
   }
 
   /**

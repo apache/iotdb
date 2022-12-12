@@ -196,6 +196,17 @@ public class CompactionUtils {
     return true;
   }
 
+  public static boolean deleteTsFileWithoutMods(TsFileResource seqFile) {
+    try {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
+      seqFile.removeWithoutMods();
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      return false;
+    }
+    return true;
+  }
+
   /** Delete all modification files for source files */
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {

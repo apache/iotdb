@@ -26,6 +26,8 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -50,7 +52,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
    * used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES. when the alterType is
    * RENAME, alterMap has only one entry, key is the beforeName, value is the currentName. when the
    * alterType is DROP, only the keySet of alterMap is useful, it contains all the key names needed
-   * to be removed
+   * to be removed.
    */
   private Map<String, String> alterMap;
 
@@ -59,6 +61,8 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
+  private TSEncoding encoding;
+  private CompressionType compressor;
 
   /** used only for deserialize */
   public AlterTimeSeriesPlan() {
@@ -71,7 +75,9 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
       Map<String, String> alterMap,
       String alias,
       Map<String, String> tagsMap,
-      Map<String, String> attributesMap) {
+      Map<String, String> attributesMap,
+      TSEncoding encoding,
+      CompressionType compressor) {
     super(Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
     this.alterType = alterType;
@@ -79,6 +85,8 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     this.alias = alias;
     this.tagsMap = tagsMap;
     this.attributesMap = attributesMap;
+    this.encoding = encoding;
+    this.compressor = compressor;
   }
 
   public PartialPath getPath() {
@@ -108,6 +116,74 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
+  }
+
+  public TSEncoding getEncoding() {
+    return encoding;
+  }
+
+  public void setEncoding(TSEncoding encoding) {
+    this.encoding = encoding;
+  }
+
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.ALTER_TIMESERIES.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    buffer.put((byte) alterType.ordinal());
+
+    // alias
+    if (alias != null) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // alterMap
+    if (alterMap != null && !alterMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alterMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // tagsMap
+    if (tagsMap != null && !tagsMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(tagsMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // attributesMap
+    if (attributesMap != null && !attributesMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributesMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+    if (encoding != null) {
+      buffer.put((byte) encoding.ordinal());
+    } else {
+      buffer.put((byte) -1);
+    }
+    if (compressor != null) {
+      buffer.put((byte) compressor.ordinal());
+    } else {
+      buffer.put((byte) -1);
+    }
   }
 
   @Override
@@ -150,6 +226,16 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+    if (encoding != null) {
+      stream.writeByte((byte) encoding.ordinal());
+    } else {
+      stream.write(-1);
+    }
+    if (compressor != null) {
+      stream.writeByte((byte) compressor.ordinal());
+    } else {
+      stream.write(-1);
+    }
   }
 
   @Override
@@ -184,6 +270,16 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     if (buffer.get() == 1) {
       attributesMap = ReadWriteIOUtils.readMap(buffer);
     }
+
+    // encoding
+    byte eb = buffer.get();
+    if (eb != -1) {
+      encoding = TSEncoding.values()[eb];
+    }
+    byte cb = buffer.get();
+    if (cb != -1) {
+      compressor = CompressionType.values()[cb];
+    }
   }
 
   @Override
@@ -202,11 +298,14 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
         && Objects.equals(alterMap, that.alterMap)
         && Objects.equals(alias, that.alias)
         && Objects.equals(tagsMap, that.tagsMap)
-        && Objects.equals(attributesMap, that.attributesMap);
+        && Objects.equals(attributesMap, that.attributesMap)
+        && encoding == that.encoding
+        && compressor == that.compressor;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, alias, alterType, alterMap, attributesMap, tagsMap);
+    return Objects.hash(
+        path, alias, alterType, alterMap, attributesMap, tagsMap, encoding, compressor);
   }
 }

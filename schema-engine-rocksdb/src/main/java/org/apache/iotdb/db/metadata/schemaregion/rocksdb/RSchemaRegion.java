@@ -1828,6 +1828,13 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionType(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public String toString() {
     return String.format("database:[%s]", storageGroupFullPath);
   }

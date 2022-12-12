@@ -531,6 +531,20 @@ public class TsFileResource {
     return true;
   }
 
+  /** Remove the data file, its resource file physically. */
+  public boolean removeWithoutMods() {
+    try {
+      fsFactory.deleteIfExists(file);
+    } catch (IOException e) {
+      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
+    }
+    if (!removeResourceFile()) {
+      return false;
+    }
+    return true;
+  }
+
   public boolean removeResourceFile() {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
@@ -1086,5 +1100,29 @@ public class TsFileResource {
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
+  }
+
+  public void moveTsFile(String oldFileSuffix, String newFileSuffix) throws IOException {
+
+    writeLock();
+    try {
+      // move to target file and delete old tmp target file
+      if (!getTsFile().exists()) {
+        return;
+      }
+      File newFile = new File(getTsFilePath().replace(oldFileSuffix, newFileSuffix));
+      if (!newFile.exists()) {
+        FSFactoryProducer.getFSFactory().moveFile(getTsFile(), newFile);
+      }
+
+      // serialize xxx.tsfile.resource
+      setFile(newFile);
+      serialize();
+      close();
+    } catch (Exception e) {
+      throw e;
+    } finally {
+      writeUnlock();
+    }
   }
 }

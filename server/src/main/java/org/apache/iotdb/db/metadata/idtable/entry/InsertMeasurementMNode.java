@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -61,6 +62,15 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setPreDeleted(boolean preDeleted) {}
+
+  @Override
+  public void updateSchemaInfo(
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props) {
+    throw new UnsupportedOperationException("only for alter timeSeries");
+  }
 
   @Override
   public IMeasurementSchema getSchema() {

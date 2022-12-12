@@ -150,4 +150,5 @@ public enum StatementType {
   SHOW_TRIGGERS,
 
   DEACTIVATE_TEMPLATE,
+  REWRITE_TIMESERIES
 }

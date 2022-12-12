@@ -407,4 +407,17 @@ public class CompactionTaskManager implements IService {
     }
     return storageGroupTasks.get(regionWithSG).get(task);
   }
+
+  public Future<CompactionTaskSummary> getCompactionTaskFutureCheckStatusMayBlock(
+      AbstractCompactionTask task) throws InterruptedException {
+    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
+    while (!storageGroupTasks.containsKey(regionWithSG)
+        || !storageGroupTasks.get(regionWithSG).containsKey(task)) {
+      if (task.isTaskFinished()) {
+        return null;
+      }
+      Thread.sleep(10);
+    }
+    return storageGroupTasks.get(regionWithSG).get(task);
+  }
 }

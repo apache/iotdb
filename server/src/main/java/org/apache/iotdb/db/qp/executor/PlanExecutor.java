@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -59,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.RewriteTimeseriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -174,6 +177,27 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    return true;
+  }
+
+  private boolean rewriteTimeseries(RewriteTimeseriesPlan plan) throws QueryProcessException {
+
+    if (plan == null || plan.getPath() == null) {
+      throw new QueryProcessException("RewriteTimeseriesPlan is null");
+    }
+    PartialPath fullPath = plan.getPath();
+    final String logKey = fullPath.getFullPath();
+    AUDIT_LOGGER.info("[rewriteTimeseries] {} begin", logKey);
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new QueryProcessException("This command is not supported in cluster mode");
+    }
+    // storage alter
+    try {
+      StorageEngine.getInstance().rewriteTimeseries(fullPath);
+    } catch (StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    AUDIT_LOGGER.info("[rewriteTimeseries] {} end", logKey);
     return true;
   }
 
@@ -658,6 +682,32 @@ public class PlanExecutor implements IPlanExecutor {
     rowRecord.addField(itemField);
     rowRecord.addField(valueField);
     listDataSet.putRecord(rowRecord);
+  }
+
+  /**
+   * alter timeseris encoding & compression type
+   *
+   * @param fullPath timeseries full path
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws QueryProcessException
+   * @throws IOException
+   * @throws MetadataException
+   */
+  protected void alterTimeSeriesType(
+          PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+          throws QueryProcessException, IOException, MetadataException {
+
+    AUDIT_LOGGER.info("[alter timeseries] {} {} {}", fullPath, curEncoding, curCompressionType);
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new QueryProcessException("This command is not supported in cluster mode");
+    }
+    // storage alter
+    try {
+      StorageEngine.getInstance().alterTimeseries(fullPath, curEncoding, curCompressionType);
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   // high Cognitive Complexity

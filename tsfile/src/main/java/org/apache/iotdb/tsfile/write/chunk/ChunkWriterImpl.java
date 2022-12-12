@@ -24,7 +24,9 @@ import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -372,6 +374,14 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public TSDataType getDataType() {
     return measurementSchema.getType();
+  }
+
+  public TSEncoding getEncoding() {
+    return measurementSchema.getEncodingType();
+  }
+
+  public CompressionType getCompressionType() {
+    return measurementSchema.getCompressor();
   }
 
   /**
