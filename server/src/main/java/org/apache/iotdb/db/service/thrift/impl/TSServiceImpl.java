@@ -1796,7 +1796,7 @@ public class TSServiceImpl implements TSIService.Iface {
               new PartialPath(req.path),
               TSDataType.values()[req.dataType],
               TSEncoding.values()[req.encoding],
-              CompressionType.values()[req.compressor],
+              CompressionType.deserialize((byte) req.compressor),
               req.props,
               req.tags,
               req.attributes,
@@ -1836,7 +1836,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       List<CompressionType> compressors = new ArrayList<>();
       for (int compressor : req.compressors) {
-        compressors.add(CompressionType.values()[compressor]);
+        compressors.add(CompressionType.deserialize((byte) compressor));
       }
 
       CreateAlignedTimeSeriesPlan plan =
@@ -1906,7 +1906,7 @@ public class TSServiceImpl implements TSIService.Iface {
         }
 
         paths.add(new PartialPath(req.paths.get(i)));
-        compressors.add(CompressionType.values()[req.compressors.get(i)]);
+        compressors.add(CompressionType.deserialize(req.compressors.get(i).byteValue()));
         if (alias != null) {
           alias.add(req.measurementAliasList.get(i));
         }
@@ -2014,7 +2014,7 @@ public class TSServiceImpl implements TSIService.Iface {
       measurements[i] = req.getMeasurements().get(i);
       dataTypes[i] = TSDataType.values()[req.getDataTypes().get(i)];
       encodings[i] = TSEncoding.values()[req.getEncodings().get(i)];
-      compressionTypes[i] = CompressionType.values()[req.getCompressors().get(i)];
+      compressionTypes[i] = CompressionType.deserialize(req.getCompressors().get(i).byteValue());
     }
 
     AppendTemplatePlan plan =

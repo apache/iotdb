@@ -157,7 +157,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
       stream.write(encoding.ordinal());
     }
     for (CompressionType compressor : compressors) {
-      stream.write(compressor.ordinal());
+      stream.write(compressor.serialize());
     }
 
     // alias
@@ -190,7 +190,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
       buffer.put((byte) encoding.ordinal());
     }
     for (CompressionType compressor : compressors) {
-      buffer.put((byte) compressor.ordinal());
+      buffer.put(compressor.serialize());
     }
 
     // alias
@@ -228,7 +228,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
     compressors = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      compressors.add(CompressionType.values()[buffer.get()]);
+      compressors.add(CompressionType.deserialize(buffer.get()));
     }
 
     // alias
