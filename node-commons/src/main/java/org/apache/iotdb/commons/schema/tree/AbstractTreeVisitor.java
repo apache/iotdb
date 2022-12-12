@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.SimpleNFA;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
-import org.apache.iotdb.commons.path.fa.match.StateBatchMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
 import java.util.ArrayDeque;
@@ -428,7 +428,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (transitionIterator.hasNext()) {
-          stateMatchInfo = new StateBatchMatchInfo(patternFA, matchedState, transitionIterator);
+          stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
           firstAncestorOfTraceback = ancestorStack.size();
         } else {
           stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
@@ -465,7 +465,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         child = iterator.next();
 
-        stateMatchInfo = new StateBatchMatchInfo(patternFA);
+        stateMatchInfo = new StateMultiMatchInfo(patternFA);
         for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
           sourceState = sourceStateMatchInfo.getMatchedState(i);
           transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo);

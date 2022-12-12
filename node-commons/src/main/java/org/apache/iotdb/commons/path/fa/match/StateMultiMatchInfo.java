@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 import java.util.Iterator;
 
 /** This class is used for cases need traceback. */
-public class StateBatchMatchInfo implements IStateMatchInfo {
+public class StateMultiMatchInfo implements IStateMatchInfo {
 
   private final IPatternFA patternFA;
 
@@ -38,12 +38,12 @@ public class StateBatchMatchInfo implements IStateMatchInfo {
 
   private boolean hasFinalState = false;
 
-  public StateBatchMatchInfo(IPatternFA patternFA) {
+  public StateMultiMatchInfo(IPatternFA patternFA) {
     this.patternFA = patternFA;
     matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
   }
 
-  public StateBatchMatchInfo(
+  public StateMultiMatchInfo(
       IPatternFA patternFA,
       IFAState matchedState,
       Iterator<IFATransition> sourceTransitionIterator) {
