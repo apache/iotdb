@@ -58,8 +58,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -152,7 +154,9 @@ public enum PlanNodeType {
   DEACTIVATE_TEMPLATE_NODE((short) 61),
   INTO((short) 62),
   DEVICE_VIEW_INTO((short) 63),
-  VERTICALLY_CONCAT((short) 64);
+  VERTICALLY_CONCAT((short) 64),
+  SINGLE_DEVICE_VIEW((short) 65),
+  MERGE_SORT((short) 66);
 
   public static final int BYTES = Short.BYTES;
 
@@ -331,6 +335,10 @@ public enum PlanNodeType {
         return DeviceViewIntoNode.deserialize(buffer);
       case 64:
         return VerticallyConcatNode.deserialize(buffer);
+      case 65:
+        return SingleDeviceViewNode.deserialize(buffer);
+      case 66:
+        return MergeSortNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

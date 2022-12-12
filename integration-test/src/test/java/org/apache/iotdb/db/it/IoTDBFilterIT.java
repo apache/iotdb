@@ -35,6 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
@@ -193,5 +194,21 @@ public class IoTDBFilterIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testMismatchedDataTypes() {
+    assertTestFail(
+        "select s1 from root.sg1.d1 where s1;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+    assertTestFail(
+        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
+        "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
+    assertTestFail(
+        "select s1 from root.sg1.d1 where s1 align by device;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+    assertTestFail(
+        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
+        "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
   }
 }
