@@ -115,7 +115,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | Metric   | Tag                                                                 | level     | Description                                                   | Sample                                        |
 | -------- |---------------------------------------------------------------------|-----------|---------------------------------------------------------------|-----------------------------------------------|
 | quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",type="normal"} 1.0 |
-| quantity | name="{{storageGroup}}", type="memtable-flush"                      | core      | The current point number of memtable already flushed in IoTDB | quantity{name="memtable",type="flush"} 1.0    |
+| quantity | sg="{{storageGroup}}", type="flush"                                 | core      | The current point number of memtable already flushed in IoTDB | quantity{name="memtable",type="flush"} 1.0    |
 
 #### 1.3.3.6. Cluster
 

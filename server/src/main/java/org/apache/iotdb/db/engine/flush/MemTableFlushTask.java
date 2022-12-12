@@ -301,12 +301,12 @@ public class MemTableFlushTask {
           MetricService.getInstance()
               .countWithInternalReport(
                   memTable.getTotalPointsNum(),
-                  Metric.QUANTITY.toString(),
+                  Metric.POINTS.toString(),
                   MetricLevel.CORE,
-                  Tag.NAME.toString(),
+                  Tag.SG.toString(),
                   storageGroup,
                   Tag.TYPE.toString(),
-                  "memtable-flush");
+                  "flush");
         }
         LOGGER.debug(
             "flushing a memtable to file {} in storage group {}, io cost {}ms",
