@@ -89,7 +89,8 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 
 - The `ORDER BY` clause is used to specify how the result set is sorted.
 - In ALIGN BY TIME mode: By default, they are sorted in ascending order of timestamp size, and `ORDER BY TIME DESC` can be used to specify that the result set is sorted in descending order of timestamp.
-- In ALIGN BY DEVICE mode: arrange according to the device first, and sort each device in ascending order according to the timestamp. The `ORDER BY` clause is not supported now.
+- In ALIGN BY DEVICE mode: arrange according to the device first, and sort each device in ascending order according to the timestamp. The ordering and priority can be adjusted through `ORDER BY` clause.
+- For details and examples, see the document [Order By](./Order-By.md).
 
 ### `FILL` clause
 

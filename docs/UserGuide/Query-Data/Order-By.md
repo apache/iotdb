@@ -21,4 +21,113 @@
 
 # Order By
 
-TODO @yang caiyin
+## order by in ALIGN BY TIME mode
+
+The result set of IoTDB is in ALIGN BY TIME mode by default and `ORDER BY TIME` clause can also be used to specify the ordering of timestamp. The SQL statement is:
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 order by time desc;
+```
+执行结果：
+
+```
++-----------------------------+--------------------------+------------------------+-----------------------------+------------------------+
+|                         Time|root.ln.wf02.wt02.hardware|root.ln.wf02.wt02.status|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++-----------------------------+--------------------------+------------------------+-----------------------------+------------------------+
+|2017-11-01T00:01:00.000+08:00|                        v2|                    true|                        24.36|                    true|
+|2017-11-01T00:00:00.000+08:00|                        v2|                    true|                        25.96|                    true|
+|1970-01-01T08:00:00.002+08:00|                        v2|                   false|                         null|                    null|
+|1970-01-01T08:00:00.001+08:00|                        v1|                    true|                         null|                    null|
++-----------------------------+--------------------------+------------------------+-----------------------------+------------------------+
+Total line number = 4
+```
+
+## order by in ALIGN BY DEVICE mode
+When querying in ALIGN BY DEVICE mode, `ORDER BY` clause can be used to specify the ordering of result set.
+
+ALIGN BY DEVICE mode supports four kinds of clauses with two sort key which are `Device` and `Time`.
+
+1. ``ORDER BY DEVICE``: sort by the alphabetical order of the device name. The devices with the same column names will be shown in a clustering view.
+
+2. ``ORDER BY TIME``: sort by the timestamp, the row of different devices will be shuffled according to the priority of time.
+
+3. ``ORDER BY DEVICE,TIME``: sort by the alphabetical order of the device name. The row with the same device name will be sorted by timestamp.
+
+4. ``ORDER BY TIME,DEVICE``: sort by timestamp. The row with the same time will be sorted by the alphabetical order of the device name.
+
+> To make the result set more legible, when `ORDER BY` clause is not used, default settings will be provided.
+> The default ordering clause is `ORDER BY DEVICE,TIME` and the default ordering is `ASC`.
+
+When `Device` is the main sort key, the result set sort by device name first, then sort by timestamp in the group with the same device name, the SQL statement is:
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 order by device desc,time asc align by device;
+```
+The result shows below:
+
+```
++-----------------------------+-----------------+--------+------+-----------+
+|                         Time|           Device|hardware|status|temperature|
++-----------------------------+-----------------+--------+------+-----------+
+|1970-01-01T08:00:00.001+08:00|root.ln.wf02.wt02|      v1|  true|       null|
+|1970-01-01T08:00:00.002+08:00|root.ln.wf02.wt02|      v2| false|       null|
+|2017-11-01T00:00:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
+|2017-11-01T00:00:00.000+08:00|root.ln.wf01.wt01|    null|  true|      25.96|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf01.wt01|    null|  true|      24.36|
++-----------------------------+-----------------+--------+------+-----------+
+Total line number = 6
+```
+When `Time` is the main sort key, the result set sort by timestamp first, then sort by device name in rows with the same timestamp. The SQL statement is:
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 order by time asc,device desc align by device;
+```
+The result shows below:
+```
++-----------------------------+-----------------+--------+------+-----------+
+|                         Time|           Device|hardware|status|temperature|
++-----------------------------+-----------------+--------+------+-----------+
+|1970-01-01T08:00:00.001+08:00|root.ln.wf02.wt02|      v1|  true|       null|
+|1970-01-01T08:00:00.002+08:00|root.ln.wf02.wt02|      v2| false|       null|
+|2017-11-01T00:00:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
+|2017-11-01T00:00:00.000+08:00|root.ln.wf01.wt01|    null|  true|      25.96|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf01.wt01|    null|  true|      24.36|
++-----------------------------+-----------------+--------+------+-----------+
+Total line number = 6
+```
+When `ORDER BY` clause is not used, sort in the default way, the SQL statement is：
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device;
+```
+The result below indicates `ORDER BY DEVICE ASC,TIME ASC` is the clause in default situation.
+`ASC` can be omitted because it's the default ordering.
+```
++-----------------------------+-----------------+--------+------+-----------+
+|                         Time|           Device|hardware|status|temperature|
++-----------------------------+-----------------+--------+------+-----------+
+|2017-11-01T00:00:00.000+08:00|root.ln.wf01.wt01|    null|  true|      25.96|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf01.wt01|    null|  true|      24.36|
+|1970-01-01T08:00:00.001+08:00|root.ln.wf02.wt02|      v1|  true|       null|
+|1970-01-01T08:00:00.002+08:00|root.ln.wf02.wt02|      v2| false|       null|
+|2017-11-01T00:00:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf02.wt02|      v2|  true|       null|
++-----------------------------+-----------------+--------+------+-----------+
+Total line number = 6
+```
+Besides，`ALIGN BY DEVICE` and `ORDER BY` clauses can be used with aggregate query，the SQL statement is：
+```sql
+select count(*) from root.ln.** group by ((2017-11-01T00:00:00.000+08:00,2017-11-01T00:03:00.000+08:00],1m) order by device asc,time asc align by device
+```
+The result shows below:
+```
++-----------------------------+-----------------+---------------+-------------+------------------+
+|                         Time|           Device|count(hardware)|count(status)|count(temperature)|
++-----------------------------+-----------------+---------------+-------------+------------------+
+|2017-11-01T00:01:00.000+08:00|root.ln.wf01.wt01|           null|            1|                 1|
+|2017-11-01T00:02:00.000+08:00|root.ln.wf01.wt01|           null|            0|                 0|
+|2017-11-01T00:03:00.000+08:00|root.ln.wf01.wt01|           null|            0|                 0|
+|2017-11-01T00:01:00.000+08:00|root.ln.wf02.wt02|              1|            1|              null|
+|2017-11-01T00:02:00.000+08:00|root.ln.wf02.wt02|              0|            0|              null|
+|2017-11-01T00:03:00.000+08:00|root.ln.wf02.wt02|              0|            0|              null|
++-----------------------------+-----------------+---------------+-------------+------------------+
+Total line number = 6
+```
