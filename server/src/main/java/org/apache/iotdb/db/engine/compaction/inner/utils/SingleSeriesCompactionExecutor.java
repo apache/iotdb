@@ -111,6 +111,7 @@ public class SingleSeriesCompactionExecutor {
    * series compaction may contain more than one chunk.
    */
   public void execute() throws IOException {
+    long originTempFileSize = fileWriter.getPos();
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<ChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
