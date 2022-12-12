@@ -38,10 +38,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  * <p>initial -(root)-> state[0] -(sg)-> state[1] -(*)-> state[2] -(s)-> state[3] <br>
  * state[3] is final state
  *
- * <p>Given path pattern root.**.d.s, the SimpleNFA is:
+ * <p>Given path pattern root.**.s, the SimpleNFA is:
  *
- * <p>initial -(root)-> state[0] -(*)-> state[1] -(d)-> state[2] -(s)-> state[3] <br>
- * with extra: state[2] -(*)-> state[1] <br>
+ * <p>initial -(root)-> state[0] -(*)-> state[1] -(s)-> state[2] <br>
+ * with extra: state[1] -(*)-> state[1] and state[2] -(*)-> state[1] <br>
  * state[3] is final state
  *
  * <p>Given path pattern root.sg.d with prefix match, the SimpleNFA is:
@@ -88,9 +88,6 @@ public class SimpleNFA implements IPatternFA {
   private void generateFATransition(boolean isPrefixMatch) {
     // the index of the last multiLevelWildcard before current index
     int lastMultiWildcard = -1;
-    // e.g. root.**.c.a.c.d, the second "c" is equivalent with first "c", and the state of second
-    // "c" can transfer to first "a".
-    int[][] equivalentHistoryIndex = new int[nodes.length][];
     for (int i = 0; i < nodes.length - 1; i++) {
       if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         lastMultiWildcard = i;
@@ -112,72 +109,12 @@ public class SimpleNFA implements IPatternFA {
           batchMatchTransitionTable[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
           preciseMatchTransitionTable[i] = Collections.emptyMap();
         } else {
-          for (int j = i - 1; j > lastMultiWildcard; j--) {
-            if (nodes[j].equals(nodes[i]) || nodes[j].equals(ONE_LEVEL_PATH_WILDCARD)) {
-              boolean isMatch = true;
-              for (int k = 1, max = j - lastMultiWildcard; k < max; k++) {
-                if (!(nodes[j - k].equals(nodes[i - k])
-                    || nodes[j - k].equals(ONE_LEVEL_PATH_WILDCARD))) {
-                  isMatch = false;
-                  break;
-                }
-              }
-              if (isMatch) {
-                if (equivalentHistoryIndex[i] == null) {
-                  equivalentHistoryIndex[i] = new int[i - lastMultiWildcard - 1];
-                }
-                equivalentHistoryIndex[i][equivalentHistoryIndex[i].length - 1] = j;
-                if (nodes[j].equals(nodes[i]) && equivalentHistoryIndex[j] != null) {
-                  System.arraycopy(
-                      equivalentHistoryIndex[j],
-                      0,
-                      equivalentHistoryIndex[i],
-                      equivalentHistoryIndex[i].length,
-                      equivalentHistoryIndex[j].length);
-                  break;
-                }
-              }
-            }
-          }
-
-          if (equivalentHistoryIndex[i] == null) {
-            if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-              batchMatchTransitionTable[i] =
-                  Arrays.asList(states[i + 1], states[lastMultiWildcard]);
-              preciseMatchTransitionTable[i] = Collections.emptyMap();
-            } else {
-              batchMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
-              preciseMatchTransitionTable[i] =
-                  Collections.singletonMap(nodes[i + 1], states[i + 1]);
-            }
+          if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
+            batchMatchTransitionTable[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
+            preciseMatchTransitionTable[i] = Collections.emptyMap();
           } else {
-            batchMatchTransitionTable[i] = new ArrayList<>(2 + equivalentHistoryIndex[i].length);
-            preciseMatchTransitionTable[i] = new HashMap<>(1 + equivalentHistoryIndex[i].length);
-            if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-              batchMatchTransitionTable[i].add(states[i + 1]);
-            } else {
-              preciseMatchTransitionTable[i].put(nodes[i + 1], states[i + 1]);
-            }
-            for (int index : equivalentHistoryIndex[i]) {
-              if (nodes[index + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-                batchMatchTransitionTable[i].add(states[index + 1]);
-              } else {
-                // e.g. root.**.c.d.c.d, the state of second "c" can transfer to both "d",
-                // but we choose to keep the last one
-                preciseMatchTransitionTable[i].putIfAbsent(nodes[index + 1], states[index + 1]);
-              }
-            }
-
-            // singleton is more effective than normal hash map or array list
-            if (batchMatchTransitionTable[i].size() == 0) {
-              batchMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
-            } else {
-              batchMatchTransitionTable[i].add(states[lastMultiWildcard]);
-            }
-            if (preciseMatchTransitionTable[i].size() == 1) {
-              preciseMatchTransitionTable[i] =
-                  Collections.singletonMap(nodes[i + 1], states[i + 1]);
-            }
+            batchMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
+            preciseMatchTransitionTable[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
           }
         }
       }
