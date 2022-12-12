@@ -730,6 +730,9 @@ showQueryResource
 // Show Query Processlist
 showQueryProcesslist
     : SHOW QUERY PROCESSLIST
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
     ;
 
 // Kill Query

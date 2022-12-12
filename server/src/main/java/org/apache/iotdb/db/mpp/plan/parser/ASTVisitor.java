@@ -145,6 +145,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -2539,6 +2540,34 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new RuntimeException("Unknown system status in set system command.");
     }
     return setSystemStatusStatement;
+  }
+
+  // show query processlist
+
+  @Override
+  public Statement visitShowQueryProcesslist(IoTDBSqlParser.ShowQueryProcesslistContext ctx) {
+    ShowQueriesStatement showQueriesStatement = new ShowQueriesStatement();
+    // parse WHERE
+    if (ctx.whereClause() != null) {
+      showQueriesStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      showQueriesStatement.setOrderByComponent(parseOrderByClause(ctx.orderByClause()));
+    }
+
+    // parse LIMIT & OFFSET
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showQueriesStatement.setRowLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showQueriesStatement.setRowOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showQueriesStatement;
   }
 
   // show region
