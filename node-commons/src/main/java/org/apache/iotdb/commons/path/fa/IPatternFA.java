@@ -26,7 +26,7 @@ public interface IPatternFA {
 
   Map<String, IFATransition> getPreciseMatchTransition(IFAState state);
 
-  List<IFATransition> getBatchMatchTransition(IFAState state);
+  List<IFATransition> getFuzzyMatchTransition(IFAState state);
 
   IFAState getNextState(IFAState currentState, IFATransition transition);
 

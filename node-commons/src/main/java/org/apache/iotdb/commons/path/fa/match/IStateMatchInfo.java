@@ -36,7 +36,7 @@ public interface IStateMatchInfo {
 
   boolean hasNoPreciseMatchTransition();
 
-  boolean isSingleBatchMatchTransition();
+  boolean isSingleFuzzyMatchTransition();
 
   IFAState getOneMatchedState();
 

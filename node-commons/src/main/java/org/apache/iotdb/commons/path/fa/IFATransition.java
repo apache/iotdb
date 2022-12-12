@@ -25,5 +25,5 @@ public interface IFATransition {
 
   boolean isMatch(String event);
 
-  boolean isBatch();
+  boolean isFuzzy();
 }

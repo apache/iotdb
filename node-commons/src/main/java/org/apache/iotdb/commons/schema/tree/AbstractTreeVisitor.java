@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.SimpleNFA;
-import org.apache.iotdb.commons.path.fa.match.BatchStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
-import org.apache.iotdb.commons.path.fa.match.PreciseStateMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.StateBatchMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -104,7 +104,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     IFAState rootState =
         patternFA.getNextState(
             initialState, patternFA.getPreciseMatchTransition(initialState).get(PATH_ROOT));
-    currentStateMatchInfo = new PreciseStateMatchInfo(patternFA, rootState);
+    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
@@ -181,12 +181,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       // the child can be got directly with the precise value of transition
       return new PreciseMatchChildrenIterator(parent, currentStateMatchInfo.getOneMatchedState());
     } else if (currentStateMatchInfo.hasNoPreciseMatchTransition()
-        && currentStateMatchInfo.isSingleBatchMatchTransition()) {
+        && currentStateMatchInfo.isSingleFuzzyMatchTransition()) {
       // only one transition which may match batch children, need to iterate and check all child
-      return new SingleBatchMatchChildrenIterator(
+      return new SingleFuzzyMatchChildrenIterator(
           parent, currentStateMatchInfo.getOneMatchedState());
     } else {
-      // more than one transition which may match batch children, and the matched set may overlap,
+      // child may be matched by multi transitions, precise match or fuzzy match,
       // which results in one child match multi state; need to iterate and check all child
       return new MultiMatchTransitionChildrenIterator(
           parent, currentStateMatchInfo.getOneMatchedState());
@@ -338,29 +338,30 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
         saveResult(
             child,
-            new PreciseStateMatchInfo(patternFA, patternFA.getNextState(sourceState, transition)));
+            new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition)));
         return;
       }
     }
   }
 
-  // only one transition which may match batch children, need to iterate and check all child,
+  // only one fuzzy transition which may match batch children, need to iterate and check all
+  // children,
   // there's no traceback
-  private class SingleBatchMatchChildrenIterator extends AbstractChildrenIterator {
+  private class SingleFuzzyMatchChildrenIterator extends AbstractChildrenIterator {
 
     private final IFAState sourceState;
 
     private final IFATransition transition;
 
-    private final PreciseStateMatchInfo stateMatchInfo;
+    private final StateSingleMatchInfo stateMatchInfo;
 
     private final Iterator<N> childrenIterator;
 
-    private SingleBatchMatchChildrenIterator(N parent, IFAState sourceState) {
+    private SingleFuzzyMatchChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
-      this.transition = patternFA.getBatchMatchTransition(sourceState).get(0);
+      this.transition = patternFA.getFuzzyMatchTransition(sourceState).get(0);
       this.stateMatchInfo =
-          new PreciseStateMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
+          new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
       this.childrenIterator = getChildrenIterator(parent);
     }
 
@@ -378,7 +379,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  // more than one transition which may match batch children, and the matched set may overlap,
+  // child may be matched by multi transitions, precise match or fuzzy match,
   // which results in one child match multi state; need to iterate and check all child.
   // the iterating process will try to get the first matched state of a child, and if there are some
   // rest transitions, there may be traceback when checking the descendents
@@ -388,7 +389,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     private final Map<String, IFATransition> preciseMatchTransitionMap;
 
-    private final List<IFATransition> batchMatchTransitionList;
+    private final List<IFATransition> fuzzyMatchTransitionList;
 
     private final Iterator<N> iterator;
 
@@ -396,7 +397,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       this.sourceState = sourceState;
       this.iterator = getChildrenIterator(parent);
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
-      this.batchMatchTransitionList = patternFA.getBatchMatchTransition(sourceState);
+      this.fuzzyMatchTransitionList = patternFA.getFuzzyMatchTransition(sourceState);
     }
 
     @Override
@@ -413,7 +414,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
         }
 
-        transitionIterator = batchMatchTransitionList.iterator();
+        transitionIterator = fuzzyMatchTransitionList.iterator();
         if (matchedState == null) {
           while (transitionIterator.hasNext()) {
             matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
@@ -427,10 +428,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
 
         if (transitionIterator.hasNext()) {
-          stateMatchInfo = new BatchStateMatchInfo(patternFA, matchedState, transitionIterator);
+          stateMatchInfo = new StateBatchMatchInfo(patternFA, matchedState, transitionIterator);
           firstAncestorOfTraceback = ancestorStack.size();
         } else {
-          stateMatchInfo = new PreciseStateMatchInfo(patternFA, matchedState);
+          stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
         }
         saveResult(child, stateMatchInfo);
         return;
@@ -464,7 +465,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         child = iterator.next();
 
-        stateMatchInfo = new BatchStateMatchInfo(patternFA);
+        stateMatchInfo = new StateBatchMatchInfo(patternFA);
         for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
           sourceState = sourceStateMatchInfo.getMatchedState(i);
           transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo);
@@ -498,12 +499,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
       if (matchedState != null) {
         currentStateMatchInfo.addMatchedState(matchedState);
-        return patternFA.getBatchMatchTransition(sourceState).iterator();
+        return patternFA.getFuzzyMatchTransition(sourceState).iterator();
       }
     }
 
     Iterator<IFATransition> transitionIterator =
-        patternFA.getBatchMatchTransition(sourceState).iterator();
+        patternFA.getFuzzyMatchTransition(sourceState).iterator();
     while (transitionIterator.hasNext()) {
       matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
       if (matchedState != null) {

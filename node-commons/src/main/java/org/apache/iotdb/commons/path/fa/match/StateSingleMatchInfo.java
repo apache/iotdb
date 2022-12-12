@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 import java.util.Iterator;
 
 /** This class is only used for cases not need traceback yet. */
-public class PreciseStateMatchInfo implements IStateMatchInfo {
+public class StateSingleMatchInfo implements IStateMatchInfo {
 
   private final IPatternFA patternFA;
 
   private final IFAState matchedState;
 
-  public PreciseStateMatchInfo(IPatternFA patternFA, IFAState matchedState) {
+  public StateSingleMatchInfo(IPatternFA patternFA, IFAState matchedState) {
     this.patternFA = patternFA;
     this.matchedState = matchedState;
   }
@@ -44,7 +44,7 @@ public class PreciseStateMatchInfo implements IStateMatchInfo {
 
   @Override
   public boolean hasOnlyPreciseMatchTransition() {
-    return patternFA.getBatchMatchTransition(matchedState).isEmpty();
+    return patternFA.getFuzzyMatchTransition(matchedState).isEmpty();
   }
 
   @Override
@@ -53,8 +53,8 @@ public class PreciseStateMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public boolean isSingleBatchMatchTransition() {
-    return patternFA.getBatchMatchTransition(matchedState).size() == 1;
+  public boolean isSingleFuzzyMatchTransition() {
+    return patternFA.getFuzzyMatchTransition(matchedState).size() == 1;
   }
 
   @Override
