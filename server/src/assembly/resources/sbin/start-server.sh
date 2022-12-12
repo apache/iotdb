@@ -180,14 +180,14 @@ if [ -z "${IOTDB_LOG_CONFIG}" ]; then
 fi
 
 
-if [ ! -z "$pidfile" ] && [ "$(ps aux | grep -c "$(cat "$pidfile")")" -ge 2 ]; then
+if [ -f "$pidfile" ] && [ "$(pgrep -c "$(cat "$pidfile")")" -eq 1 ]; then
   echo "IoTDB already exists! Quiting"
   echo Pid = "$(cat "$pidfile")"
   exit 0
 fi
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
