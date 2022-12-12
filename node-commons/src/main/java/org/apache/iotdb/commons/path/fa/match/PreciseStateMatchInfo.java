@@ -68,8 +68,8 @@ public class PreciseStateMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public IFAState getMatchedState(int index) {
-    if (index == 0) {
+  public IFAState getMatchedState(int stateOrdinal) {
+    if (stateOrdinal == 0) {
       return matchedState;
     } else {
       throw new IllegalStateException();
@@ -82,12 +82,12 @@ public class PreciseStateMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public int getSourceStateIndex() {
+  public int getSourceStateOrdinal() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void setSourceStateIndex(int sourceStateIndex) {
+  public void setSourceStateOrdinal(int sourceStateOrdinal) {
     throw new UnsupportedOperationException();
   }
 

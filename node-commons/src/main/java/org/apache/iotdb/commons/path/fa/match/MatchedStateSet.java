@@ -48,8 +48,8 @@ public class MatchedStateSet {
     stateStatus[state.getIndex()] = true;
   }
 
-  int getStateValueIndex(int matchIndex) {
-    return existingState[matchIndex];
+  int getStateIndex(int stateOrdinal) {
+    return existingState[stateOrdinal];
   }
 
   int size() {

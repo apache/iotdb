@@ -89,8 +89,8 @@ public class BatchStateMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public IFAState getMatchedState(int index) {
-    return patternFA.getState(matchedStateSet.getStateValueIndex(index));
+  public IFAState getMatchedState(int stateOrdinal) {
+    return patternFA.getState(matchedStateSet.getStateIndex(stateOrdinal));
   }
 
   @Override
@@ -99,13 +99,13 @@ public class BatchStateMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public int getSourceStateIndex() {
+  public int getSourceStateOrdinal() {
     return sourceStateIndex;
   }
 
   @Override
-  public void setSourceStateIndex(int sourceStateIndex) {
-    this.sourceStateIndex = sourceStateIndex;
+  public void setSourceStateOrdinal(int sourceStateOrdinal) {
+    this.sourceStateIndex = sourceStateOrdinal;
   }
 
   @Override

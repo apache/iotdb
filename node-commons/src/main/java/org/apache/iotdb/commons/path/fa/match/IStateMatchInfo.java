@@ -43,18 +43,18 @@ public interface IStateMatchInfo {
   void addMatchedState(IFAState state);
 
   /**
-   * @param index the target state's index of matched order
-   * @return the index(th) matched state
+   * @param stateOrdinal the target state's ordinal of matched order
+   * @return the ordinal(th) matched state
    */
-  IFAState getMatchedState(int index);
+  IFAState getMatchedState(int stateOrdinal);
 
   int getMatchedStateSize();
 
-  /** @return the value index, the id in FA Graph, of the source state */
-  int getSourceStateIndex();
+  /** @return the ordinal of the source state in matched order */
+  int getSourceStateOrdinal();
 
-  /** @param sourceStateIndex the value index, the id in FA Graph, of the source state, */
-  void setSourceStateIndex(int sourceStateIndex);
+  /** @param sourceStateOrdinal the ordinal of the source state in matched order */
+  void setSourceStateOrdinal(int sourceStateOrdinal);
 
   Iterator<IFATransition> getSourceTransitionIterator();
 

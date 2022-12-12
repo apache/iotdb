@@ -65,8 +65,13 @@ public class SimpleNFA implements IPatternFA {
   // singletonMap, "root"
   private final Map<String, IFATransition> initialTransition;
   // the transition matches only specific value
+  // state[i] -> Map<preciseMatchTransition.value, preciseMatchTransition>
+  // the next states from state[i] by preciseMatchTransition will only be state[i + 1]
   private final Map<String, IFATransition>[] preciseMatchTransitionTable;
   // the transition matches batch values, like ** or * can match any value
+  // state[i] -> List<BatchMatchTransition>
+  // the next states from state[i] by batchMatchTransition may be state[i + 1] or
+  // state[lastIndexOf("**")]
   private final List<IFATransition>[] batchMatchTransitionTable;
 
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
@@ -203,6 +208,9 @@ public class SimpleNFA implements IPatternFA {
     return states[index];
   }
 
+  // Each node in raw nodes of path pattern maps to a state.
+  // Since the transition is defined by the node of next state, we directly let this class implement
+  // IFATransition.
   private class SimpleNFAState implements IFAState, IFATransition {
 
     private final int patternIndex;

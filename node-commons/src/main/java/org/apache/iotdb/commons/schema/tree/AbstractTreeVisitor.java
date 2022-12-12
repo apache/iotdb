@@ -465,7 +465,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           sourceState = sourceStateMatchInfo.getMatchedState(i);
           transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo);
           if (stateMatchInfo.getMatchedStateSize() > 0) {
-            stateMatchInfo.setSourceStateIndex(i);
+            stateMatchInfo.setSourceStateOrdinal(i);
             stateMatchInfo.setSourceTransitionIterator(transitionIterator);
             break;
           }
@@ -530,7 +530,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
 
       // there's no state not further searched
-      if (currentStateMatchInfo.getSourceStateIndex()
+      if (currentStateMatchInfo.getSourceStateOrdinal()
           == parentStateMatchInfo.getMatchedStateSize()) {
         continue;
       }
@@ -552,7 +552,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (currentNode == node) {
           sourceStateIndex = -1;
         } else {
-          sourceStateIndex = currentStateMatchInfo.getSourceStateIndex();
+          sourceStateIndex = currentStateMatchInfo.getSourceStateOrdinal();
           if (sourceStateIndex == parentStateMatchInfo.getMatchedStateSize()) {
             index--;
             continue;
@@ -576,13 +576,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
                 tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
             if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
               matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
-              currentStateMatchInfo.setSourceStateIndex(sourceStateIndex);
+              currentStateMatchInfo.setSourceStateOrdinal(sourceStateIndex);
               currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
               break;
             }
           }
           if (matchedState == null) {
-            currentStateMatchInfo.setSourceStateIndex(sourceStateIndex - 1);
+            currentStateMatchInfo.setSourceStateOrdinal(sourceStateIndex - 1);
             currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
             index--;
             continue;
