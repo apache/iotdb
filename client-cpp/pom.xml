@@ -35,7 +35,7 @@
         <boost.version>1.72.0</boost.version>
         <boost.version.underline-short>1_72</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <cmake-version>3.17.3</cmake-version>
+        <cmake-version>3.23.2-b1</cmake-version>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
