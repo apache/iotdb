@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -67,7 +67,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_F
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
+public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends AbstractCompactionTest {
 
   private final String oldThreadName = Thread.currentThread().getName();
 
@@ -229,7 +229,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -467,7 +467,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -615,7 +615,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -736,7 +736,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
