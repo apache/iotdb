@@ -40,11 +40,11 @@ public class IoTDBMetricsUtils {
     for (int i = 0; i < tags.length; i += 2) {
       stringBuilder
           .append(".")
-          .append("`")
+          .append("\"")
           .append(tags[i])
           .append("=")
           .append(tags[i + 1])
-          .append("`");
+          .append("\"");
     }
     return stringBuilder.toString();
   }
@@ -55,11 +55,11 @@ public class IoTDBMetricsUtils {
     for (Map.Entry<String, String> entry : tags.entrySet()) {
       stringBuilder
           .append(".")
-          .append("`")
+          .append("\"")
           .append(entry.getKey())
           .append("=")
           .append(entry.getValue())
-          .append("`");
+          .append("\"");
     }
     return stringBuilder.toString();
   }
@@ -71,15 +71,15 @@ public class IoTDBMetricsUtils {
         .append(DATABASE)
         .append(".")
         .append(metricConfig.getIoTDBReporterConfig().getDatabase())
-        .append(".`")
+        .append(".\"")
         .append(metricConfig.getRpcAddress())
         .append(":")
         .append(metricConfig.getRpcPort())
-        .append("`")
+        .append("\"")
         .append(".")
-        .append("`")
+        .append("\"")
         .append(name)
-        .append("`");
+        .append("\"");
     return stringBuilder;
   }
 }
