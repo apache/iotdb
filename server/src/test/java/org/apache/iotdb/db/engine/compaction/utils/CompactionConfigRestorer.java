@@ -22,8 +22,11 @@ package org.apache.iotdb.db.engine.compaction.utils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 
 public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
@@ -44,6 +47,12 @@ public class CompactionConfigRestorer {
   private long compactionScheduleIntervalInMs = 60000L;
   private long compactionSubmissionIntervalInMs = 60000L;
   private int compactionWriteThroughputMbPerSec = 8;
+  private CrossCompactionPerformer oldCrossPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer();
+  private InnerSeqCompactionPerformer oldInnerSeqPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer();
+  private InnerUnseqCompactionPerformer oldInnerUnseqPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getInnerUnseqCompactionPerformer();
 
   public CompactionConfigRestorer() {}
 
@@ -66,5 +75,8 @@ public class CompactionConfigRestorer {
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
     config.setCompactionWriteThroughputMbPerSec(compactionWriteThroughputMbPerSec);
+    config.setCrossCompactionPerformer(oldCrossPerformer);
+    config.setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
+    config.setInnerUnseqCompactionPerformer(oldInnerUnseqPerformer);
   }
 }
