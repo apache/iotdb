@@ -114,7 +114,7 @@ public class StabilityTest {
     File[] versionFiles1 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
     Assert.assertNotNull(versionFiles1);
-    Assert.assertEquals(versionFiles1.length, 1);
+    Assert.assertEquals(1, versionFiles1.length);
 
     consensusImpl.triggerSnapshot(dataRegionId);
     consensusImpl.triggerSnapshot(dataRegionId);
@@ -122,7 +122,7 @@ public class StabilityTest {
     File[] versionFiles2 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
     Assert.assertNotNull(versionFiles2);
-    Assert.assertEquals(versionFiles2.length, 1);
+    Assert.assertEquals(1, versionFiles2.length);
 
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
   }
