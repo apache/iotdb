@@ -73,7 +73,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -85,7 +87,7 @@ public class IoTConsensusServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
-  private static final String SNAPSHOT_DIR_NAME = "snapshot";
+  public static final String SNAPSHOT_DIR_NAME = "snapshot";
 
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
 
@@ -299,6 +301,7 @@ public class IoTConsensusServerImpl {
       if (!stateMachine.takeSnapshot(snapshotDir)) {
         throw new ConsensusGroupModifyPeerException("unknown error when taking snapshot");
       }
+      clearOldSnapshot();
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException("error when taking snapshot", e);
     }
@@ -361,6 +364,25 @@ public class IoTConsensusServerImpl {
               "invalid snapshot file. snapshotId: %s, filePath: %s", snapshotId, originalFilePath));
     }
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
+  }
+
+  private void clearOldSnapshot() {
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
+    if (versionFiles == null || versionFiles.length == 0) {
+      logger.error(
+          "Can not find any snapshot dir after build a new snapshot for group {}",
+          thisNode.getGroupId());
+      return;
+    }
+    Arrays.sort(versionFiles, Comparator.comparing(File::getName));
+    for (int i = 0; i < versionFiles.length - 1; i++) {
+      try {
+        FileUtils.deleteDirectory(versionFiles[i]);
+      } catch (IOException e) {
+        logger.error("Delete old snapshot dir {} failed", versionFiles[i].getAbsolutePath(), e);
+      }
+    }
   }
 
   public void loadSnapshot(String snapshotId) {
