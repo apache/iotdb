@@ -63,11 +63,31 @@ IOTDB_HEAP_DUMP_COMMAND=""
 while true; do
     case "$1" in
         -c)
-            IOTDB_CONF="$2"
+            if [ ! -z "$2" ]; then
+              if [ "${2:0:1}"  != "-" ]; then
+                IOTDB_CONF="$2"
+              else
+                echo "Argument after -c cannot starts with '-', exiting"
+                exit 0
+              fi
+            else
+              echo "Missing argument after -c, exiting"
+              exit 0
+            fi
             shift 2
-            ;;
+        ;;
         -p)
-            pidfile="$2"
+            if [ ! -z "$2" ]; then
+              if [ "${2:0:1}"  != "-" ]; then
+                pidfile="$2"
+              else
+                echo "Argument after -p cannot starts with '-', exiting"
+                exit 0
+              fi
+            else
+              echo "Missing argument after -p, exiting"
+              exit 0
+            fi
             shift 2
         ;;
         -f)
@@ -160,11 +180,14 @@ if [ -z "${IOTDB_LOG_CONFIG}" ]; then
 fi
 
 
-
-
+if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" >/dev/null 2>&1; then
+  echo "IoTDB already exists! Quiting"
+  echo Pid = "$(cat "$pidfile")"
+  exit 0
+fi
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
@@ -199,7 +222,7 @@ if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
         . "$IOTDB_CONF/iotdb-env.sh"
     fi
 else
-    echo "can't find $IOTDB_CONF/iotdb-env.sh"
+    echo "Can't find $IOTDB_CONF/iotdb-env.sh"
 fi
 
 # check whether we can enable heap dump when oom
@@ -227,10 +250,8 @@ launch_service()
   if [ "x$foreground" == "xyes" ]; then
       iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
       if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-        [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
           exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
       else
-          [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
           exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
       fi
   # Startup IoTDB, background it, and write the pid.
