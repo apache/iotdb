@@ -184,7 +184,9 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
+                            <summaryFiles>
+                                <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
+                            </summaryFiles>
                         </configuration>
                     </execution>
                 </executions>
