@@ -144,7 +144,13 @@ public class SessionManager implements SessionManagerMBean {
       boolean enableAudit) {
     session.setId(sessionIdGenerator.incrementAndGet());
     session.setUsername(username);
-    session.setZoneId(ZoneId.of(zoneId));
+    ZoneId curZoneId;
+    if (zoneId != null && !zoneId.trim().isEmpty()) {
+      curZoneId = ZoneId.of(zoneId);
+    } else {
+      curZoneId = ZoneId.systemDefault();
+    }
+    session.setZoneId(curZoneId);
     session.setClientVersion(clientVersion);
     session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
