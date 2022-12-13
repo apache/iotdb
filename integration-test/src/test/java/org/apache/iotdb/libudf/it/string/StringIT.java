@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.string;
+package org.apache.iotdb.libudf.it.string;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,13 +38,9 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class StringTests {
-  private static final float oldUdfCollectorMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
-  private static final float oldUdfTransformerMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
-  private static final float oldUdfReaderMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class})
+public class StringIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -61,22 +54,24 @@ public class StringTests {
     registerUDF();
   }
 
-  private static void createTimeSeries() throws MetadataException {
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath("root.vehicle.d1.s1"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath("root.vehicle.d2.s1"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
+  private static void createTimeSeries() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.addBatch("create database root.vehicle");
+      statement.addBatch(
+          "create timeseries root.vehicle.d1.s1 with "
+              + "datatype=text, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.addBatch(
+          "create timeseries root.vehicle.d2.s1 with "
+              + "datatype=text, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.executeBatch();
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 
   private static void generateData() {
@@ -85,37 +80,38 @@ public class StringTests {
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
-              100, "[192.168.0.1] [SUCCESS]"));
+              100, "\"[192.168.0.1] [SUCCESS]\""));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
-              200, "[192.168.0.24] [SUCCESS]"));
+              200, "\"[192.168.0.24] [SUCCESS]\""));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
-              300, "[192.168.0.2] [FAIL]"));
+              300, "\"[192.168.0.2] [FAIL]\""));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
-              400, "[192.168.0.5] [SUCCESS]"));
+              400, "\"[192.168.0.5] [SUCCESS]\""));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1) values(%d,%s)",
-              500, "[192.168.0.124] [SUCCESS]"));
+              500, "\"[192.168.0.124] [SUCCESS]\""));
       statement.addBatch(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 100, "A,B,A+,B-"));
+              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 100, "\"A,B,A+,B-\""));
       statement.addBatch(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 200, "A,A+,A,B+"));
-      statement.addBatch(
-          String.format("insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 300, "B+,B,B"));
+              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 200, "\"A,A+,A,B+\""));
       statement.addBatch(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 400, "A+,A,A+,A"));
+              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 300, "\"B+,B,B\""));
       statement.addBatch(
           String.format(
-              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 500, "A,B-,B,B"));
+              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 400, "\"A+,A,A+,A\""));
+      statement.addBatch(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1) values(%d,%s)", 500, "\"A,B-,B,B\""));
       statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -141,10 +137,6 @@ public class StringTests {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
-        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
-        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
@@ -155,15 +147,15 @@ public class StringTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      String result1 = resultSet.getString(2);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      String result2 = resultSet.getString(2);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      String result3 = resultSet.getString(2);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      String result4 = resultSet.getString(2);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      String result5 = resultSet.getString(2);
       Assert.assertEquals("192.168.0.1", result1);
       Assert.assertEquals("192.168.0.24", result2);
       Assert.assertEquals("192.168.0.2", result3);
@@ -183,15 +175,15 @@ public class StringTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      String result1 = resultSet.getString(2);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      String result2 = resultSet.getString(2);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      String result3 = resultSet.getString(2);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      String result4 = resultSet.getString(2);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      String result5 = resultSet.getString(2);
       Assert.assertEquals("[cluster-1] [SUCCESS]", result1);
       Assert.assertEquals("[cluster-24] [SUCCESS]", result2);
       Assert.assertEquals("[cluster-2] [FAIL]", result3);
@@ -210,15 +202,15 @@ public class StringTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      int result1 = resultSet.getInt(1);
+      int result1 = resultSet.getInt(2);
       resultSet.next();
-      int result2 = resultSet.getInt(1);
+      int result2 = resultSet.getInt(2);
       resultSet.next();
-      int result3 = resultSet.getInt(1);
+      int result3 = resultSet.getInt(2);
       resultSet.next();
-      int result4 = resultSet.getInt(1);
+      int result4 = resultSet.getInt(2);
       resultSet.next();
-      int result5 = resultSet.getInt(1);
+      int result5 = resultSet.getInt(2);
       Assert.assertEquals(4, result1);
       Assert.assertEquals(4, result2);
       Assert.assertEquals(3, result3);
@@ -238,15 +230,15 @@ public class StringTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
-      String result1 = resultSet.getString(1);
+      String result1 = resultSet.getString(2);
       resultSet.next();
-      String result2 = resultSet.getString(1);
+      String result2 = resultSet.getString(2);
       resultSet.next();
-      String result3 = resultSet.getString(1);
+      String result3 = resultSet.getString(2);
       resultSet.next();
-      String result4 = resultSet.getString(1);
+      String result4 = resultSet.getString(2);
       resultSet.next();
-      String result5 = resultSet.getString(1);
+      String result5 = resultSet.getString(2);
       Assert.assertEquals("A/B/A+,B-", result1);
       Assert.assertEquals("A/A+/A,B+", result2);
       Assert.assertEquals("B+/B/B", result3);
