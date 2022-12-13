@@ -43,9 +43,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTConsensusTest {
+public class ReplicateTest {
   private static final long CHECK_POINT_GAP = 500;
-  private final Logger logger = LoggerFactory.getLogger(IoTConsensusTest.class);
+  private final Logger logger = LoggerFactory.getLogger(ReplicateTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
 
