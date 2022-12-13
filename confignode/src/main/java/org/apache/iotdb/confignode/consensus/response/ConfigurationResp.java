@@ -33,10 +33,6 @@ public class ConfigurationResp implements DataSet {
   private TRatisConfig ratisConfig;
   private TCQConfig cqConfig;
 
-  public ConfigurationResp() {
-    this.globalConfig = null;
-  }
-
   public TSStatus getStatus() {
     return status;
   }
