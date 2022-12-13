@@ -75,45 +75,57 @@ for %%i in (%*) do (
 IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
     CALL "%CONFIGNODE_CONF%\confignode-env.bat" %1
     ) ELSE (
-    echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
+    echo "Can't find %CONFIGNODE_CONF%\confignode-env.bat"
     )
 
 @REM CHECK THE PORT USAGES
-IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+IF EXIST "%CONFIGNODE_CONF%\iotdb-confignode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-    %IOTDB_CONF%\iotdb-confignode.properties') do (
+    %CONFIGNODE_CONF%\iotdb-confignode.properties') do (
       set cn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-    %IOTDB_CONF%\iotdb-confignode.properties') do (
+    %CONFIGNODE_CONF%\iotdb-confignode.properties') do (
       set cn_consensus_port=%%i
   )
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+      %CONFIGNODE_HOME%\conf\iotdb-confignode.properties') do (
         set cn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+      %CONFIGNODE_HOME%\conf\iotdb-confignode.properties') do (
         set cn_consensus_port=%%i
   )
+) ELSE (
+  echo "Can't find iotdb-confignode.properties, check the default ports"
+  set cn_internal_port=22277
+  set cn_consensus_port=22278
 )
 
 echo Check whether the ports are occupied....
 set occupied=0
+set cn_internal_port_occupied=0
+set cn_consensus_port_occupied=0
 for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
     if %%i==TCP (
        if %%j==%cn_internal_port% (
-         echo The cn_internal_port %cn_internal_port% is already occupied, pid:%%k
-         set occupied=1
+         if !cn_internal_port_occupied!==0 (
+           echo The cn_internal_port %cn_internal_port% is already occupied, pid:%%k
+           set occupied=1
+           set cn_internal_port_occupied=1
+         )
        ) else if %%j==%cn_consensus_port% (
-         echo The cn_consensus_port %cn_consensus_port% is already occupied, pid:%%k
-         set occupied=1
+         if !cn_consensus_port_occupied!==0 (
+           echo The cn_consensus_port %cn_consensus_port% is already occupied, pid:%%k
+           set occupied=1
+           set cn_consensus_port_occupied=1
+         )
        )
     )
 )
 
-if occupied==1 (
+if %occupied%==1 (
   echo There exists occupied port, please change the configuration.
   TIMEOUT /T 10 /NOBREAK
   exit 0

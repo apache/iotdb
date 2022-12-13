@@ -67,6 +67,7 @@ IF "%1" == "printgc" (
   SHIFT
 )
 
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 SET IOTDB_CONF=%1
 IF "%IOTDB_CONF%" == "" (
   SET IOTDB_CONF=%IOTDB_HOME%\conf
@@ -136,40 +137,62 @@ IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
       set dn_data_region_consensus_port=%%i
   )
 ) ELSE (
-  echo "Can't find iotdb-datanode.properties, cannot check the ports"
-  goto :finish
+  echo "Can't find iotdb-datanode.properties, check the default ports"
+  set dn_rpc_port=6667
+  set dn_internal_port=9003
+  set dn_mpp_data_exchange_port=8777
+  set dn_schema_region_consensus_port=40030
+  set dn_data_region_consensus_port=40010
 )
 
 echo Check whether the ports are occupied....
 set occupied=0
+set dn_rpc_port_occupied=0
+set dn_internal_port_occupied=0
+set dn_mpp_data_exchange_port_occupied=0
+set dn_schema_region_consensus_port_occupied=0
+set dn_data_region_consensus_port_occupied=0
 for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
     if %%i==TCP (
        if %%j==%dn_rpc_port% (
-         echo The dn_rpc_port %dn_rpc_port% is already occupied, pid:%%k
-         set occupied=1
+         if !dn_rpc_port_occupied!==0 (
+           echo The dn_rpc_port %dn_rpc_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_rpc_port_occupied=1
+         )
        ) else if %%j==%dn_internal_port% (
-         echo The dn_internal_port %dn_internal_port% is already occupied, pid:%%k
-         set occupied=1
+         if !dn_internal_port_occupied!==0 (
+           echo The dn_internal_port %dn_internal_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_internal_port_occupied=1
+         )
        ) else if %%j==%dn_mpp_data_exchange_port% (
-         echo The dn_mpp_data_exchange_port %dn_mpp_data_exchange_port% is already occupied, pid:%%k
-         set occupied=1
+         if !dn_mpp_data_exchange_port_occupied!==0 (
+           echo The dn_mpp_data_exchange_port %dn_mpp_data_exchange_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_mpp_data_exchange_port_occupied=1
+         )
        ) else if %%j==%dn_schema_region_consensus_port% (
-         echo The dn_schema_region_consensus_port %dn_schema_region_consensus_port% is already occupied, pid:%%k
-         set occupied=1
+         if !dn_schema_region_consensus_port_occupied!==0 (
+           echo The dn_schema_region_consensus_port %dn_schema_region_consensus_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_schema_region_consensus_port_occupied=1
+         )
        ) else if %%j==%dn_data_region_consensus_port% (
-         echo The dn_data_region_consensus_port %dn_data_region_consensus_port% is already occupied, pid:%%k
-         set occupied=1
+         if !dn_data_region_consensus_port_occupied!==0 (
+           echo The dn_data_region_consensus_port %dn_data_region_consensus_port% is already occupied, pid:%%k
+           set occupied=1
+         )
        )
     )
 )
 
-if occupied==1 (
+if %occupied%==1 (
   echo There exists occupied port, please change the configuration.
   TIMEOUT /T 10 /NOBREAK
   exit 0
 )
 
-:finish
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.DataNode
