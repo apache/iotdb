@@ -117,6 +117,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -1319,6 +1320,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus migrateRegion(TMigrateRegionReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.migrateRegion(req)
+        : status;
+  }
+
+  @Override
   public TSStatus createCQ(TCreateCQReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1432,7 +1441,7 @@ public class ConfigManager implements IManager {
                     dataNodeConfiguration.getLocation().getDataNodeId(),
                     dataNodeConfiguration.getLocation()));
     if (runningDataNodeLocationMap.isEmpty()) {
-      // no running DataNode, will not transfer and print log
+      // No running DataNode, will not transfer and print log
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
 
@@ -1440,7 +1449,7 @@ public class ConfigManager implements IManager {
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
     LOGGER.info("Start transfer of {}", newUnknownDataList);
-    // transfer trigger
+    // Transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
     if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

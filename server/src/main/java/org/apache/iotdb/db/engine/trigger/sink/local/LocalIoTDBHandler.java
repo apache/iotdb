@@ -27,10 +27,10 @@ import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -63,15 +63,16 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       TSDataType dataType = dataTypes[i];
 
       PartialPath path = new PartialPath(device.getFullPath(), measurement);
-      if (!IoTDB.schemaProcessor.isPathExist(path)) {
-        IoTDB.schemaProcessor.createTimeseries(
-            path,
-            dataType,
-            getDefaultEncoding(dataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+      if (!LocalSchemaProcessor.getInstance().isPathExist(path)) {
+        LocalSchemaProcessor.getInstance()
+            .createTimeseries(
+                path,
+                dataType,
+                getDefaultEncoding(dataType),
+                TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                Collections.emptyMap());
       } else {
-        if (!IoTDB.schemaProcessor.getSeriesType(path).equals(dataType)) {
+        if (!LocalSchemaProcessor.getInstance().getSeriesType(path).equals(dataType)) {
           throw new SinkException(
               String.format("The data type of %s you provided was not correct.", path));
         }
