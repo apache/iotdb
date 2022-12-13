@@ -22,7 +22,7 @@ package org.apache.iotdb.library.dmatch;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -62,175 +62,203 @@ public class DMatchTests {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s5"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s6"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s7"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s8"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s5"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s6"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s7"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s8"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s5"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s6"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s7"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d4.s8"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s2"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s3"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s4"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s5"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s6"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s7"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s8"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s2"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s3"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s4"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s5"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s6"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s7"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s8"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s2"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s3"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s4"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s2"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s3"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s4"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s5"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s6"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s7"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d4.s8"),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
   }
 
   private static void generateData() {

@@ -22,7 +22,7 @@ package org.apache.iotdb.library.drepair;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.jdbc.Config;
@@ -66,28 +66,31 @@ public class DRepairTests {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
     // test series for TimeStampRepair
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
     // test series for ValueFill
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s1"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s1"),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
     // test series for ValueRepair
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s1"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s1"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
   }
 
   private static void generateData() {
