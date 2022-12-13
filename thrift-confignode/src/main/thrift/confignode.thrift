@@ -33,13 +33,17 @@ struct TDataNodeRegisterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
-  4: optional TGlobalConfig globalConfig
-  5: optional binary templateInfo
-  6: optional TRatisConfig ratisConfig
-  7: optional list<binary> allTriggerInformation
-  8: optional TCQConfig cqConfig
-  9: optional list<binary> allUDFInformation
-  10: optional binary allTTLInformation
+  4: optional binary templateInfo
+  5: optional list<binary> allTriggerInformation
+  6: optional list<binary> allUDFInformation
+  7: optional binary allTTLInformation
+}
+
+struct TConfigurationResp{
+  1: required common.TSStatus status
+  2: optional TGlobalConfig globalConfig
+  3: optional TRatisConfig ratisConfig
+  4: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -633,6 +637,11 @@ service IConfigNodeRPCService {
    *         DATANODE_ALREADY_REGISTERED if the DataNode already registered
    */
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
+
+  /**
+  * Get configuration information that is not associated with the DataNodeId
+  */
+  TConfigurationResp getConfiguration()
 
   /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster

@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -91,8 +92,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.service.DataNodeServerCommandLine.MODE_START;
-
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -102,10 +101,10 @@ public class DataNode implements DataNodeMBean {
           "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
 
   /**
-   * when joining a cluster this node will retry at most "DEFAULT_JOIN_RETRY" times before returning
-   * a failure to the client
+   * when joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
+   * times before returning a failure to the client
    */
-  private static final int DEFAULT_JOIN_RETRY = 10;
+  private static final int DEFAULT_RETRY = 10;
 
   private final TEndPoint thisNode = new TEndPoint();
 
@@ -132,13 +131,9 @@ public class DataNode implements DataNodeMBean {
     new DataNodeServerCommandLine().doMain(args);
   }
 
-  protected void serverCheckAndInit(String mode) throws ConfigurationException, IOException {
+  protected void serverCheckAndInit() throws ConfigurationException, IOException {
     config.setClusterMode(true);
     IoTDBStartCheck.getInstance().checkConfig();
-    if (MODE_START.equals(mode)) {
-      // Only checkDirectory when start DataNode
-      IoTDBStartCheck.getInstance().checkDirectory();
-    }
     // TODO: check configuration for data node
 
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -156,6 +151,8 @@ public class DataNode implements DataNodeMBean {
     try {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
+      // pull and check configuration from ConfigNode
+      pullAndCheckConfiguration();
       // register current DataNode to ConfigNode
       registerInConfigNode();
       // active DataNode
@@ -198,9 +195,46 @@ public class DataNode implements DataNodeMBean {
     JMXService.registerMBean(getInstance(), mbeanName);
   }
 
+  private void pullAndCheckConfiguration() throws StartupException {
+    int retry = DEFAULT_RETRY;
+
+    ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
+    // get and check configuration
+    while (retry > 0) {
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+        TConfigurationResp configuration = configNodeClient.getConfiguration();
+        IoTDBDescriptor.getInstance().loadGlobalConfig(configuration.globalConfig);
+        IoTDBDescriptor.getInstance().loadRatisConfig(configuration.ratisConfig);
+        IoTDBDescriptor.getInstance().loadCQConfig(configuration.cqConfig);
+
+        CommonDescriptor.getInstance().loadGlobalConfig(configuration.globalConfig);
+        if (!IoTDBStartCheck.getInstance()
+            .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+          config.setDataRegionConsensusProtocolClass(
+              configuration.globalConfig.getDataRegionConsensusProtocolClass());
+        }
+
+        if (!IoTDBStartCheck.getInstance()
+            .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+          config.setSchemaRegionConsensusProtocolClass(
+              configuration.globalConfig.getSchemaRegionConsensusProtocolClass());
+        }
+
+        IoTDBStartCheck.getInstance().checkDirectory();
+        IoTDBStartCheck.getInstance().serializeGlobalConfig(configuration.globalConfig);
+      } catch (TException e) {
+        // read config nodes from system.properties
+        logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
+      } catch (Exception e) {
+        throw new StartupException(e.getMessage());
+      }
+    }
+  }
+
   /** register DataNode with ConfigNode */
   private void registerInConfigNode() throws StartupException {
-    int retry = DEFAULT_JOIN_RETRY;
+    int retry = DEFAULT_RETRY;
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
@@ -238,24 +272,7 @@ public class DataNode implements DataNodeMBean {
             IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
             config.setDataNodeId(dataNodeID);
           }
-          IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
-          IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
-          IoTDBDescriptor.getInstance().loadCQConfig(dataNodeRegisterResp.cqConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
-
-          CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
-
-          if (!IoTDBStartCheck.getInstance()
-              .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
-            config.setDataRegionConsensusProtocolClass(
-                dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
-          }
-
-          if (!IoTDBStartCheck.getInstance()
-              .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
-            config.setSchemaRegionConsensusProtocolClass(
-                dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
-          }
 
           // In current implementation, only IoTConsensus need separated memory from Consensus
           if (!config
@@ -263,8 +280,6 @@ public class DataNode implements DataNodeMBean {
               .equals(ConsensusFactory.IOT_CONSENSUS)) {
             IoTDBDescriptor.getInstance().reclaimConsensusMemory();
           }
-
-          IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
           return;
@@ -294,7 +309,7 @@ public class DataNode implements DataNodeMBean {
       retry--;
     }
     // all tries failed
-    logger.error("Cannot register to the cluster after {} retries", DEFAULT_JOIN_RETRY);
+    logger.error("Cannot register to the cluster after {} retries", DEFAULT_RETRY);
     throw new StartupException("Cannot register to the cluster.");
   }
 
