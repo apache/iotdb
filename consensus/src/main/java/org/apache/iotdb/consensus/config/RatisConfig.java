@@ -84,7 +84,7 @@ public class RatisConfig {
     return grpc;
   }
 
-  public Impl getImplConfig() {
+  public Impl getImpl() {
     return impl;
   }
 
