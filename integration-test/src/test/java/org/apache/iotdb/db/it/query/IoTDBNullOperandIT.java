@@ -181,7 +181,8 @@ public class IoTDBNullOperandIT {
     String[] retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where s2>0", expectedHeader, retArray);
 
-    resultSetEqualTest("select s1, s3, s4 from root.** where s2 is not null", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where s2 is not null", expectedHeader, retArray);
 
     retArray =
         new String[] {
