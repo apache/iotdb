@@ -61,4 +61,4 @@ jobs:
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean test -Dtest.port.closed=true -P '!testcontainer' -P compile-library-udf
+        run: mvn -B clean test -Dtest.port.closed=true -P '!testcontainer' -P get-jar-with-dependencies
