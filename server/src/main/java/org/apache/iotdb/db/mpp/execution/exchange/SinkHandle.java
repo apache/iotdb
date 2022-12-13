@@ -61,6 +61,8 @@ public class SinkHandle implements ISinkHandle {
   private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final String remotePlanNodeId;
+
+  private final String localPlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
@@ -92,10 +94,14 @@ public class SinkHandle implements ISinkHandle {
 
   private boolean noMoreTsBlocks = false;
 
+  /** max bytes this SourceHandle can reserve. */
+  private long maxBytesCanReserve;
+
   public SinkHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      String localPlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
@@ -106,6 +112,7 @@ public class SinkHandle implements ISinkHandle {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
+    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
@@ -121,7 +128,14 @@ public class SinkHandle implements ISinkHandle {
     this.blocked =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES)
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                localFragmentInstanceId.getInstanceId(),
+                localPlanNodeId,
+                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
+            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
+            // at first this SinkHandle has not reserved memory.
             .left;
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
@@ -153,7 +167,12 @@ public class SinkHandle implements ISinkHandle {
     blocked =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes)
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                localFragmentInstanceId.getInstanceId(),
+                localPlanNodeId,
+                retainedSizeInBytes,
+                maxBytesCanReserve)
             .left;
     bufferRetainedSizeInBytes += retainedSizeInBytes;
 
@@ -188,7 +207,11 @@ public class SinkHandle implements ISinkHandle {
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onAborted(this);
@@ -204,7 +227,11 @@ public class SinkHandle implements ISinkHandle {
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onFinish(this);
@@ -282,7 +309,13 @@ public class SinkHandle implements ISinkHandle {
     // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
     // ack message's freedBytes may be zero
     if (freedBytes > 0) {
-      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
+      localMemoryManager
+          .getQueryPool()
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              freedBytes);
     }
   }
 
@@ -300,6 +333,14 @@ public class SinkHandle implements ISinkHandle {
 
   public TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
+  }
+
+  public long getMaxBytesCanReserve() {
+    return maxBytesCanReserve;
+  }
+
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    this.maxBytesCanReserve = maxBytesCanReserve;
   }
 
   @Override

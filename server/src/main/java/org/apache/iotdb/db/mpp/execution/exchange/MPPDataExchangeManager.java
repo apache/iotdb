@@ -364,7 +364,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               .getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
+      queue =
+          new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager);
     }
 
     LocalSinkHandle localSinkHandle =
@@ -384,6 +385,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
@@ -402,6 +404,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
+            localPlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
@@ -439,7 +442,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue = ((LocalSinkHandle) sinkHandles.get(remoteFragmentInstanceId)).getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(localFragmentInstanceId, localMemoryManager);
+      queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
