@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.path.fa;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,7 +46,13 @@ public interface IPatternFA {
    * @param state state the source state of the returned transitions
    * @return transitions, that the given state has and can match batch events
    */
-  List<IFATransition> getFuzzyMatchTransition(IFAState state);
+  Iterator<IFATransition> getFuzzyMatchTransitionIterator(IFAState state);
+
+  /**
+   * @param state state the source state of the returned transitions
+   * @return num of transitions, that the given state has and can match batch events
+   */
+  int getFuzzyMatchTransitionSize(IFAState state);
 
   /**
    * @param sourceState source state

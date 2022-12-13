@@ -21,11 +21,9 @@ package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
@@ -53,118 +51,45 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  */
 public class SimpleNFA implements IPatternFA {
 
-  // raw nodes of pathPattern
-  private final String[] nodes;
+  private final boolean isPrefixMatch;
 
-  // used for pattern node like d*
-  private final Map<Integer, Pattern> regexPatternMap = new HashMap<>();
+  // raw nodes of pathPattern
+  private final String[] rawNodes;
 
   // initial state of this NFA and the only transition from this state is "root"
-  private final SimpleNFAState initialState = new InitialState();
+  private final SinglePathPatternNode initialState = new InitialNode();
   // all states corresponding to raw pattern nodes, with an extra prefixMatch state
-  private final SimpleNFAState[] states;
-
-  // singletonMap, "root"
-  private final Map<String, IFATransition> initialTransition;
-  // the transition matches only specific value
-  // state[i] -> Map<preciseMatchTransition.value, preciseMatchTransition>
-  // the next states from state[i] by preciseMatchTransition will only be state[i + 1]
-  private final Map<String, IFATransition>[] preciseMatchTransitionTable;
-  // the fuzzy transition matches multi values, like ** or * can match any value
-  // state[i] -> List<FuzzyMatchTransition>
-  // the next states from state[i] by fuzzyMatchTransition may be state[i + 1] or
-  // state[lastIndexOf("**")]
-  private final List<IFATransition>[] fuzzyMatchTransitionTable;
+  private final SinglePathPatternNode[] patternNodes;
 
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
-    this.nodes = pathPattern.getNodes();
-
-    states = new SimpleNFAState[this.nodes.length + 1];
-    preciseMatchTransitionTable = new Map[states.length];
-    fuzzyMatchTransitionTable = new List[states.length];
-
-    // nodes[0] must be root
-    states[0] = new NameMatchState(0);
-    initialTransition = Collections.singletonMap(nodes[0], states[0]);
-    int lastMultiWildcard = -1;
-    for (int i = 1; i < nodes.length; i++) {
-      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        lastMultiWildcard = i;
-        states[i] = new AllMatchState(i);
-        fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
-        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
-      } else if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
-        states[i] = new AllMatchState(i);
-        if (lastMultiWildcard == -1) {
-          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
-        } else {
-          fuzzyMatchTransitionTable[i - 1] = Arrays.asList(states[i], states[lastMultiWildcard]);
-        }
-        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
-      } else if (nodes[i].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        states[i] = new RegexMatchState(i);
-        regexPatternMap.put(i, Pattern.compile(nodes[i].replace("*", ".*")));
-        if (lastMultiWildcard == -1) {
-          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
-        } else {
-          fuzzyMatchTransitionTable[i - 1] = Arrays.asList(states[i], states[lastMultiWildcard]);
-        }
-        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
-      } else {
-        states[i] = new NameMatchState(i);
-        if (lastMultiWildcard == -1) {
-          fuzzyMatchTransitionTable[i - 1] = Collections.emptyList();
-        } else {
-          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[lastMultiWildcard]);
-        }
-        preciseMatchTransitionTable[i - 1] = Collections.singletonMap(nodes[i], states[i]);
-      }
-    }
-
-    preciseMatchTransitionTable[nodes.length - 1] = Collections.emptyMap();
-    if (isPrefixMatch) {
-      states[nodes.length] = new AllMatchState(nodes.length);
-      fuzzyMatchTransitionTable[nodes.length - 1] = Collections.singletonList(states[nodes.length]);
-      preciseMatchTransitionTable[nodes.length] = Collections.emptyMap();
-      fuzzyMatchTransitionTable[nodes.length] = Collections.singletonList(states[nodes.length]);
-    } else {
-      if (lastMultiWildcard == -1) {
-        fuzzyMatchTransitionTable[nodes.length - 1] = Collections.emptyList();
-      } else {
-        fuzzyMatchTransitionTable[nodes.length - 1] =
-            Collections.singletonList(states[lastMultiWildcard]);
-      }
-    }
+    this.isPrefixMatch = isPrefixMatch;
+    this.rawNodes = pathPattern.getNodes();
+    patternNodes = new SinglePathPatternNode[this.rawNodes.length + 1];
   }
 
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
-    if (state.isInitial()) {
-      return initialTransition;
-    }
-    return preciseMatchTransitionTable[state.getIndex()];
+    return getNextNode((SinglePathPatternNode) state).getPreNodePreciseMatchTransition();
   }
 
   @Override
   public Iterator<IFATransition> getPreciseMatchTransitionIterator(IFAState state) {
-    if (preciseMatchTransitionTable[state.getIndex()].isEmpty()) {
-      return Collections.emptyIterator();
-    } else {
-      return new SingleTransitionIterator(states[state.getIndex() + 1]);
-    }
+    return getNextNode((SinglePathPatternNode) state).getPreNodePreciseMatchTransitionIterator();
   }
 
   @Override
-  public List<IFATransition> getFuzzyMatchTransition(IFAState state) {
-    if (state.isInitial()) {
-      return Collections.emptyList();
-    }
-    return fuzzyMatchTransitionTable[state.getIndex()];
+  public Iterator<IFATransition> getFuzzyMatchTransitionIterator(IFAState state) {
+    return getNextNode((SinglePathPatternNode) state).getPreNodeFuzzyMatchTransitionIterator();
+  }
+
+  @Override
+  public int getFuzzyMatchTransitionSize(IFAState state) {
+    return getNextNode((SinglePathPatternNode) state).getPreNodeFuzzyMatchTransitionSize();
   }
 
   @Override
   public IFAState getNextState(IFAState sourceState, IFATransition transition) {
-    return (SimpleNFAState) transition;
+    return (SinglePathPatternNode) transition;
   }
 
   @Override
@@ -174,23 +99,48 @@ public class SimpleNFA implements IPatternFA {
 
   @Override
   public int getStateSize() {
-    return states.length;
+    return patternNodes.length;
   }
 
   @Override
   public IFAState getState(int index) {
-    return states[index];
+    return patternNodes[index];
   }
 
-  // Each node in raw nodes of path pattern maps to a state.
+  private SinglePathPatternNode getNextNode(SinglePathPatternNode currentNode) {
+    if (currentNode.patternIndex == rawNodes.length) {
+      return currentNode;
+    }
+    int nextIndex = currentNode.getIndex() + 1;
+    if (patternNodes[nextIndex] == null) {
+      if (nextIndex == rawNodes.length) {
+        patternNodes[nextIndex] = new PrefixMatchNode(nextIndex, currentNode.getTracebackNode());
+      } else if (rawNodes[nextIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        patternNodes[nextIndex] = new MultiLevelWildcardMatchNode(nextIndex);
+      } else if (rawNodes[nextIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        patternNodes[nextIndex] =
+            new OneLevelWildcardMatchNode(nextIndex, currentNode.getTracebackNode());
+      } else if (rawNodes[nextIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
+      } else {
+        patternNodes[nextIndex] = new NameMatchNode(nextIndex, currentNode.getTracebackNode());
+      }
+    }
+    return patternNodes[nextIndex];
+  }
+
+  // Each node in raw nodes of path pattern maps to a PatternNode, which can represent a state.
   // Since the transition is defined by the node of next state, we directly let this class implement
   // IFATransition.
-  private abstract class SimpleNFAState implements IFAState, IFATransition {
+  private abstract class SinglePathPatternNode implements IFAState, IFATransition {
 
     protected final int patternIndex;
 
-    private SimpleNFAState(int patternIndex) {
+    protected final SinglePathPatternNode tracebackNode;
+
+    private SinglePathPatternNode(int patternIndex, SinglePathPatternNode tracebackNode) {
       this.patternIndex = patternIndex;
+      this.tracebackNode = tracebackNode;
     }
 
     @Override
@@ -200,7 +150,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public boolean isFinal() {
-      return patternIndex >= nodes.length - 1;
+      return patternIndex >= rawNodes.length - 1;
     }
 
     @Override
@@ -210,15 +160,51 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public String getValue() {
-      return nodes[patternIndex];
+      return rawNodes[patternIndex];
     }
+
+    public SinglePathPatternNode getTracebackNode() {
+      return tracebackNode;
+    }
+
+    /**
+     * Since the transition generation of one patternNode need to judge based on next patternNode.
+     * Therefore, we implemented this method for previous node.
+     *
+     * @return the precise transitions of patternNode[patternIndex - 1]
+     */
+    protected abstract Map<String, IFATransition> getPreNodePreciseMatchTransition();
+
+    /**
+     * Since the transition generation of one patternNode need to judge based on next patternNode.
+     * Therefore, we implemented this method for previous node.
+     *
+     * @return the precise transitions of patternNode[patternIndex - 1]
+     */
+    protected abstract Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator();
+
+    /**
+     * Since the transition generation of one patternNode need to judge based on next patternNode.
+     * Therefore, we implemented this method for previous node.
+     *
+     * @return the precise transitions of patternNode[patternIndex - 1]
+     */
+    protected abstract Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator();
+
+    /**
+     * Since the transition generation of one patternNode need to judge based on next patternNode.
+     * Therefore, we implemented this method for previous node.
+     *
+     * @return the precise transitions of patternNode[patternIndex - 1]
+     */
+    protected abstract int getPreNodeFuzzyMatchTransitionSize();
 
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      SimpleNFAState nfaState = (SimpleNFAState) o;
-      return patternIndex == nfaState.patternIndex;
+      SinglePathPatternNode patternNode = (SinglePathPatternNode) o;
+      return patternIndex == patternNode.patternIndex;
     }
 
     @Override
@@ -227,10 +213,10 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
-  private class InitialState extends SimpleNFAState {
+  private class InitialNode extends SinglePathPatternNode {
 
-    private InitialState() {
-      super(-1);
+    private InitialNode() {
+      super(-1, null);
     }
 
     @Override
@@ -239,73 +225,286 @@ public class SimpleNFA implements IPatternFA {
     }
 
     @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean isMatch(String event) {
       return false;
     }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      throw new UnsupportedOperationException();
+    }
   }
 
-  /**
-   * This state may map to prefix match state with patternIndex == nodes.length, or path wildcard
-   * state with nodes[patternIndex] is MULTI_LEVEL_PATH_WILDCARD or ONE_LEVEL_PATH_WILDCARD.
-   */
-  private class AllMatchState extends SimpleNFAState {
+  private class PrefixMatchNode extends SinglePathPatternNode {
 
-    private AllMatchState(int patternIndex) {
-      super(patternIndex);
+    private PrefixMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
+      super(patternIndex, tracebackNode);
     }
 
     @Override
     public boolean isMatch(String event) {
       return true;
     }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return Collections.emptyIterator();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      if (isPrefixMatch) {
+        return new SingletonIterator<>(this);
+      } else {
+        if (tracebackNode == null) {
+          return Collections.emptyIterator();
+        } else {
+          return new SingletonIterator<>(tracebackNode);
+        }
+      }
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      return isPrefixMatch || tracebackNode != null ? 1 : 0;
+    }
   }
 
-  /** nodes[patternIndex] contains *, like d*. */
-  private class RegexMatchState extends SimpleNFAState {
+  private class MultiLevelWildcardMatchNode extends SinglePathPatternNode {
 
-    private RegexMatchState(int patternIndex) {
-      super(patternIndex);
+    private MultiLevelWildcardMatchNode(int patternIndex) {
+      super(patternIndex, null);
+    }
+
+    @Override
+    public SinglePathPatternNode getTracebackNode() {
+      return this;
     }
 
     @Override
     public boolean isMatch(String event) {
-      return regexPatternMap.get(patternIndex).matcher(event).matches();
+      return true;
+    }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return Collections.emptyIterator();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      return new SingletonIterator<>(this);
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      return 1;
+    }
+  }
+
+  private class OneLevelWildcardMatchNode extends SinglePathPatternNode {
+
+    private OneLevelWildcardMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
+      super(patternIndex, tracebackNode);
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      return true;
+    }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return Collections.emptyIterator();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      if (tracebackNode == null) {
+        return new SingletonIterator<>(this);
+      } else {
+        return new DualIterator<>(this, tracebackNode);
+      }
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      if (tracebackNode == null) {
+        return 1;
+      } else {
+        return 2;
+      }
+    }
+  }
+
+  /** nodes[patternIndex] contains *, like d*. */
+  private class RegexMatchNode extends SinglePathPatternNode {
+
+    private Pattern regexPattern;
+
+    private RegexMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
+      super(patternIndex, tracebackNode);
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      if (regexPattern == null) {
+        regexPattern = Pattern.compile(rawNodes[patternIndex].replace("*", ".*"));
+      }
+      return regexPattern.matcher(event).matches();
+    }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return Collections.emptyIterator();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      if (tracebackNode == null) {
+        return new SingletonIterator<>(this);
+      } else {
+        return new DualIterator<>(this, tracebackNode);
+      }
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      if (tracebackNode == null) {
+        return 1;
+      } else {
+        return 2;
+      }
     }
   }
 
   /** nodes[patternIndex] is a specified name */
-  private class NameMatchState extends SimpleNFAState {
+  private class NameMatchNode extends SinglePathPatternNode {
 
-    private NameMatchState(int patternIndex) {
-      super(patternIndex);
+    private NameMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
+      super(patternIndex, tracebackNode);
     }
 
     @Override
     public boolean isMatch(String event) {
-      return nodes[patternIndex].equals(event);
+      return rawNodes[patternIndex].equals(event);
+    }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return Collections.singletonMap(rawNodes[patternIndex], this);
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return new SingletonIterator<>(this);
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      if (tracebackNode == null) {
+        return Collections.emptyIterator();
+      } else {
+        return new SingletonIterator<>(tracebackNode);
+      }
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      if (tracebackNode == null) {
+        return 0;
+      } else {
+        return 1;
+      }
     }
   }
 
-  private class SingleTransitionIterator implements Iterator<IFATransition> {
+  private static class SingletonIterator<E> implements Iterator<E> {
 
-    private IFATransition transition;
+    private E e;
 
-    private SingleTransitionIterator(IFATransition transition) {
-      this.transition = transition;
+    private SingletonIterator(E e) {
+      this.e = e;
     }
 
     @Override
     public boolean hasNext() {
-      return transition != null;
+      return e != null;
     }
 
     @Override
-    public IFATransition next() {
+    public E next() {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      IFATransition result = transition;
-      transition = null;
+      E result = e;
+      e = null;
+      return result;
+    }
+  }
+
+  private static class DualIterator<E> implements Iterator<E> {
+    private E e1;
+    private E e2;
+
+    private DualIterator(E e1, E e2) {
+      this.e1 = e1;
+      this.e2 = e2;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return e2 != null;
+    }
+
+    @Override
+    public E next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      E result;
+      if (e1 != null) {
+        result = e1;
+        e1 = null;
+      } else {
+        result = e2;
+        e2 = null;
+      }
       return result;
     }
   }

@@ -361,7 +361,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     private SingleFuzzyMatchChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
-      this.transition = patternFA.getFuzzyMatchTransition(sourceState).get(0);
+      this.transition = patternFA.getFuzzyMatchTransitionIterator(sourceState).next();
       this.stateMatchInfo =
           new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
       this.childrenIterator = getChildrenIterator(parent);
@@ -391,15 +391,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
     private final Map<String, IFATransition> preciseMatchTransitionMap;
 
-    private final List<IFATransition> fuzzyMatchTransitionList;
-
     private final Iterator<N> iterator;
 
     private MultiMatchTransitionChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
       this.iterator = getChildrenIterator(parent);
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
-      this.fuzzyMatchTransitionList = patternFA.getFuzzyMatchTransition(sourceState);
     }
 
     @Override
@@ -416,7 +413,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
         }
 
-        transitionIterator = fuzzyMatchTransitionList.iterator();
+        transitionIterator = patternFA.getFuzzyMatchTransitionIterator(sourceState);
         if (matchedState == null) {
           while (transitionIterator.hasNext()) {
             matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
@@ -500,12 +497,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
         if (matchedState != null) {
           currentStateMatchInfo.addMatchedState(matchedState);
-          return patternFA.getFuzzyMatchTransition(sourceState).iterator();
+          return patternFA.getFuzzyMatchTransitionIterator(sourceState);
         }
       }
 
       Iterator<IFATransition> transitionIterator =
-          patternFA.getFuzzyMatchTransition(sourceState).iterator();
+          patternFA.getFuzzyMatchTransitionIterator(sourceState);
       while (transitionIterator.hasNext()) {
         matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
         if (matchedState != null) {

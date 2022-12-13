@@ -44,7 +44,7 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
 
   @Override
   public boolean hasOnlyPreciseMatchTransition() {
-    return patternFA.getFuzzyMatchTransition(matchedState).isEmpty();
+    return patternFA.getFuzzyMatchTransitionSize(matchedState) == 0;
   }
 
   @Override
@@ -54,7 +54,7 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
 
   @Override
   public boolean isSingleFuzzyMatchTransition() {
-    return patternFA.getFuzzyMatchTransition(matchedState).size() == 1;
+    return patternFA.getFuzzyMatchTransitionSize(matchedState) == 1;
   }
 
   @Override
