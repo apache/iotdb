@@ -35,7 +35,8 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionOverlapType;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -103,16 +104,17 @@ public class InnerUnseqCompactionWithFastPerformerTest {
 
   @Before
   public void setUp() throws MetadataException {
-    IoTDB.configManager.init();
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    LocalConfigNode.getInstance().init();
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
-      IoTDB.schemaProcessor.createTimeseries(
-          path,
-          TSDataType.INT64,
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
+      LocalSchemaProcessor.getInstance()
+          .createTimeseries(
+              path,
+              TSDataType.INT64,
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
+              Collections.emptyMap());
     }
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
     EnvironmentUtils.envSetUp();
@@ -125,7 +127,7 @@ public class InnerUnseqCompactionWithFastPerformerTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     CompactionClearUtils.deleteEmptyDir(new File("target"));

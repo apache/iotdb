@@ -232,7 +232,7 @@ public class CreateRegionGroupsProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    // must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
+    // Must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
     stream.writeShort(ProcedureType.CREATE_REGION_GROUPS.getTypeCode());
     super.serialize(stream);
     stream.writeInt(consensusGroupType.getValue());

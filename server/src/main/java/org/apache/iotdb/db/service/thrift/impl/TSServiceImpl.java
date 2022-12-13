@@ -40,6 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -64,7 +65,6 @@ import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.pool.QueryTaskManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -233,7 +233,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   public TSServiceImpl() {
     super();
-    serviceProvider = IoTDB.serviceProvider;
+    serviceProvider = null;
   }
 
   @Override
@@ -351,11 +351,11 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementPaths(path);
+    return LocalSchemaProcessor.getInstance().getMeasurementPaths(path);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getSeriesType(path);
+    return LocalSchemaProcessor.getInstance().getSeriesType(path);
   }
 
   @Override

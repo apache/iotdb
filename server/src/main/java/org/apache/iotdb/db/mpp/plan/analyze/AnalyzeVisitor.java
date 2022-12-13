@@ -569,8 +569,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression havingExpression =
         ExpressionUtils.constructQueryFilter(
             conJunctions.stream().distinct().collect(Collectors.toList()));
-    analyzeExpression(analysis, havingExpression);
-
+    TSDataType outputType = analyzeExpression(analysis, havingExpression);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
     analysis.setHavingExpression(havingExpression);
   }
 
@@ -610,7 +615,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     havingExpression = ExpressionUtils.constructQueryFilter(new ArrayList<>(conJunctions));
-    analyzeExpression(analysis, havingExpression);
+    TSDataType outputType = analyzeExpression(analysis, havingExpression);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
     analysis.setHavingExpression(havingExpression);
   }
 
@@ -962,8 +973,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         throw e;
       }
+
+      TSDataType outputType = analyzeExpression(analysis, whereExpression);
+      if (outputType != TSDataType.BOOLEAN) {
+        throw new SemanticException(
+            String.format(
+                "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.",
+                outputType));
+      }
+
       deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
-      analyzeExpression(analysis, whereExpression);
     }
     analysis.setDeviceToWhereExpression(deviceToWhereExpression);
   }
@@ -982,7 +1001,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression whereExpression =
         ExpressionUtils.constructQueryFilter(
             conJunctions.stream().distinct().collect(Collectors.toList()));
-    analyzeExpression(analysis, whereExpression);
+    TSDataType outputType = analyzeExpression(analysis, whereExpression);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
     analysis.setWhereExpression(whereExpression);
   }
 
@@ -1093,8 +1118,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setMergeOrderParameter(new OrderByParameter(queryStatement.getSortItemList()));
   }
 
-  private void analyzeExpression(Analysis analysis, Expression expression) {
+  private TSDataType analyzeExpression(Analysis analysis, Expression expression) {
     ExpressionTypeAnalyzer.analyzeExpression(analysis, expression);
+    return analysis.getType(expression);
   }
 
   private void analyzeGroupBy(Analysis analysis, QueryStatement queryStatement) {

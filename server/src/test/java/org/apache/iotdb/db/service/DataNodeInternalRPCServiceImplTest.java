@@ -76,7 +76,7 @@ public class DataNodeInternalRPCServiceImplTest {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     configNode = LocalConfigNode.getInstance();
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
     DataRegionConsensusImpl.setupAndGetInstance().start();
@@ -108,7 +108,7 @@ public class DataNodeInternalRPCServiceImplTest {
     DataNodeRegionManager.getInstance().clear();
     DataRegionConsensusImpl.getInstance().stop();
     SchemaRegionConsensusImpl.getInstance().stop();
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanEnv();
   }
 

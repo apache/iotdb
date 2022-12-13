@@ -241,14 +241,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
     // deserialize ConsensusGroupId
-    ConsensusGroupId groupId;
-    try {
-      groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    } catch (Throwable t) {
-      LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
-      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-      resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
-      return resp;
+    ConsensusGroupId groupId = null;
+    if (req.consensusGroupId != null) {
+      try {
+        groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+      } catch (Throwable t) {
+        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+        resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
+        return resp;
+      }
     }
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
@@ -264,11 +266,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     RegionReadExecutor executor = new RegionReadExecutor();
-    RegionExecutionResult executionResult = executor.execute(groupId, fragmentInstance);
+    RegionExecutionResult executionResult =
+        groupId == null
+            ? executor.execute(fragmentInstance)
+            : executor.execute(groupId, fragmentInstance);
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-
+    // TODO
     return resp;
   }
 

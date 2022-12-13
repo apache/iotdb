@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -81,7 +81,7 @@ public class IDTableManager {
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     try {
       return idTableMap.computeIfAbsent(
-          IoTDB.schemaProcessor.getStorageGroupNodeByPath(devicePath).getFullPath(),
+          LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(devicePath).getFullPath(),
           storageGroupPath ->
               new IDTableHashmapImpl(
                   SystemFileFactory.INSTANCE.getFile(
