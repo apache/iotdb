@@ -98,10 +98,6 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTable
     return null;
   }
 
-  public synchronized IRequest recover() {
-    return null;
-  }
-
   /**
    * generate insert context from wal entry
    *
@@ -131,7 +127,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTable
   private void process(MemTableGroup memTableGroup, InsertionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(INSERT, request.getKeys(), request.getValue());
     if (checkUpdateWalFile(memTableGroup, request)) {
-      updateFile(this.walFilePrefix + "-" + currentFileID);
+      updateFile(getWalFileName(currentFileID));
     }
     getWalWriter().write(walEntry);
   }
@@ -154,7 +150,7 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTable
   private void process(MemTableGroup memTableGroup, DeletionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(DELETE, request.getKeys(), request.getValue());
     if (checkUpdateWalFile(memTableGroup, request)) {
-      updateFile(this.walFilePrefix + "-" + currentFileID);
+      updateFile(getWalFileName(currentFileID));
     }
     getWalWriter().write(walEntry);
   }

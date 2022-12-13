@@ -80,7 +80,7 @@ public abstract class WALManager<T> {
             .toArray(String[]::new);
     String walFileName;
     if (walFileNames.length == 0) {
-      walFileName = walDirPath + "-" + currentFileID;
+      walFileName = getWalFileName(currentFileID);
     } else {
       walFileName = walFileNames[currentFileIndex];
     }
@@ -97,11 +97,11 @@ public abstract class WALManager<T> {
     return request;
   }
 
-  private Integer getWalFileID(File file) {
+  protected Integer getWalFileID(File file) {
     return Integer.parseInt(file.getName().substring(walFilePrefix.length()));
   }
 
-  private String getWalFileName(Integer ID) {
+  protected String getWalFileName(Integer ID) {
     return walFilePrefix + ID;
   }
 
