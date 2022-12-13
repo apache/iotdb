@@ -77,14 +77,14 @@ public class RatisClient {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
-    private final Supplier<RatisConfig.ImplConfig> config;
+    private final Supplier<RatisConfig.Impl> config;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         ClientFactoryProperty clientPoolProperty,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        Supplier<RatisConfig.ImplConfig> config) {
+        Supplier<RatisConfig.Impl> config) {
       super(clientManager, clientPoolProperty);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
@@ -131,7 +131,7 @@ public class RatisClient {
     private static final int maxAttempts = 10;
     RetryPolicy defaultPolicy;
 
-    public RatisRetryPolicy(RatisConfig.ImplConfig config) {
+    public RatisRetryPolicy(RatisConfig.Impl config) {
       defaultPolicy =
           ExponentialBackoffRetry.newBuilder()
               .setBaseSleepTime(

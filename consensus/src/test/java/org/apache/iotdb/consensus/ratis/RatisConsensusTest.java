@@ -77,7 +77,7 @@ public class RatisConsensusTest {
                       .setCreationGap(10)
                       .build())
               .setRatisConsensus(
-                  RatisConfig.ImplConfig.newBuilder()
+                  RatisConfig.Impl.newBuilder()
                       .setTriggerSnapshotFileSize(1)
                       .setTriggerSnapshotTime(4)
                       .build())
