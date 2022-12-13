@@ -24,6 +24,9 @@ public class TagSchemaConfig {
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable = 65536;
 
+  // the maximum number of immutableMemTables
+  private int numOfImmutableMemTable = 5;
+
   // the size of wal buffer used to store a wal record
   private int walBufferSize = 1024 * 1024;
 
@@ -33,6 +36,14 @@ public class TagSchemaConfig {
 
   public void setNumOfDeviceIdsInMemTable(int numOfDeviceIdsInMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
+  }
+
+  public int getNumOfImmutableMemTable() {
+    return numOfImmutableMemTable;
+  }
+
+  public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
   }
 
   public int getWalBufferSize() {

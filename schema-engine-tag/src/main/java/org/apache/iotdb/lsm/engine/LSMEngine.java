@@ -129,7 +129,7 @@ public class LSMEngine<T> implements ILSMEngine {
 
   /** recover the LSMEngine */
   @Override
-  public void recover() {
+  public void recover() throws IOException {
     recoverManager.recover(this);
   }
 

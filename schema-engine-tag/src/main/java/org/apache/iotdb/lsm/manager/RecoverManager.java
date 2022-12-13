@@ -21,6 +21,8 @@ package org.apache.iotdb.lsm.manager;
 import org.apache.iotdb.lsm.engine.IRecoverable;
 import org.apache.iotdb.lsm.request.IRequest;
 
+import java.io.IOException;
+
 /** for memory structure recovery */
 public class RecoverManager<T extends IRecoverable> {
 
@@ -36,9 +38,9 @@ public class RecoverManager<T extends IRecoverable> {
    *
    * @param t extends IRecoverable
    */
-  public void recover(T t) {
+  public void recover(T t) throws IOException {
     while (true) {
-      IRequest request = walManager.read();
+      IRequest request = walManager.recover();
       if (request == null) {
         walManager.setRecover(false);
         return;

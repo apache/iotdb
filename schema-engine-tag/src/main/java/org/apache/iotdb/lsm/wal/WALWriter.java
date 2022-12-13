@@ -84,6 +84,13 @@ public class WALWriter implements IWALWriter {
     }
   }
 
+  public void update(File logFile) throws IOException {
+    close();
+    this.logFile = logFile;
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
+  }
+
   @Override
   public void force() throws IOException {
     if (channel != null && channel.isOpen()) {
