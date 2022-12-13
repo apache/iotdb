@@ -229,6 +229,7 @@ public class DataNode implements DataNodeMBean {
       } catch (Exception e) {
         throw new StartupException(e.getMessage());
       }
+      retry--;
     }
   }
 
