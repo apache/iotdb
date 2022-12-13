@@ -58,9 +58,11 @@ public class IoTDBSnapshotTransferIT {
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(2)
-        .setDataRatisTriggerSnapshotThreshold(snapshotMagic);
+        .setDataRatisTriggerSnapshotThreshold(snapshotMagic)
+            .setConfigNodeRatisSnapshotTriggerThreshold(1); // must trigger snapshot
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
