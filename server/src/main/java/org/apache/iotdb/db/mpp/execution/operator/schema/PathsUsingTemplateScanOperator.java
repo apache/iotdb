@@ -63,7 +63,7 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
       List<String> schemaRegionResult = new LinkedList<>();
       for (PartialPath pathPattern : pathPatternList) {
         schemaRegionResult.addAll(
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getPathsUsingTemplate(pathPattern, templateId));
       }

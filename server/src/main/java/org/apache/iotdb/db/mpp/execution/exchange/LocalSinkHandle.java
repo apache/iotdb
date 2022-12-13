@@ -39,7 +39,6 @@ public class LocalSinkHandle implements ISinkHandle {
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
   private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final String remotePlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final SinkHandleListener sinkHandleListener;
 
@@ -50,12 +49,10 @@ public class LocalSinkHandle implements ISinkHandle {
 
   public LocalSinkHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
       SinkHandleListener sinkHandleListener) {
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
@@ -180,10 +177,6 @@ public class LocalSinkHandle implements ISinkHandle {
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId;
-  }
-
-  public String getRemotePlanNodeId() {
-    return remotePlanNodeId;
   }
 
   SharedTsBlockQueue getSharedTsBlockQueue() {

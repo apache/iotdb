@@ -69,8 +69,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           continue;
         }
 
-        try (SetThreadName fragmentInstanceName =
-            new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+        try (SetThreadName fragmentInstanceName = new SetThreadName(next.getId().getInstanceId())) {
           execute(next);
         } catch (Throwable t) {
           // try-with-resource syntax will call close once after try block is done, so we need to

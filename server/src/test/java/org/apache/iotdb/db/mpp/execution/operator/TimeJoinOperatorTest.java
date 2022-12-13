@@ -110,11 +110,11 @@ public class TimeJoinOperatorTest {
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -127,11 +127,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -213,11 +213,11 @@ public class TimeJoinOperatorTest {
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -230,11 +230,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -248,11 +248,11 @@ public class TimeJoinOperatorTest {
               TIME_JOIN_OPERATOR_TEST_SG + ".device0.error_sensor", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
@@ -337,11 +337,11 @@ public class TimeJoinOperatorTest {
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               false);
@@ -354,11 +354,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               false);
@@ -372,11 +372,11 @@ public class TimeJoinOperatorTest {
               TIME_JOIN_OPERATOR_TEST_SG + ".device0.error_sensor", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);

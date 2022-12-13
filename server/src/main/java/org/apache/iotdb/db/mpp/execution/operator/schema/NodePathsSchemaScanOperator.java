@@ -78,7 +78,7 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
       if (-1 == level) {
         // show child paths and show child nodes
         Set<TSchemaNode> nodePaths =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getChildNodePathInNextLevel(partialPath);
         nodePaths.forEach(
@@ -94,7 +94,7 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
         // show nodes with level
         Set<String> childNodes;
         childNodes =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false).stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());

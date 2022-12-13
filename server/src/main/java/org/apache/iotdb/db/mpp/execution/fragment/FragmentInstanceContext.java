@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -33,12 +32,11 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.h2.mvstore.DataUtils.checkArgument;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -49,8 +47,6 @@ public class FragmentInstanceContext extends QueryContext {
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-
-  private DriverContext driverContext;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -66,8 +62,6 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
-  private ExecutorService intoOperationExecutor;
-
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -77,12 +71,9 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      ExecutorService intoOperationExecutor) {
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, intoOperationExecutor);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -93,15 +84,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      ExecutorService intoOperationExecutor) {
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.intoOperationExecutor = intoOperationExecutor;
   }
 
   @TestOnly
@@ -109,7 +96,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()), null);
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -156,6 +143,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
+  // TODO Remove this
   public OperatorContext addOperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType) {
     checkArgument(operatorId >= 0, "operatorId is negative");
@@ -179,14 +167,6 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceId getId() {
     return id;
-  }
-
-  public DriverContext getDriverContext() {
-    return driverContext;
-  }
-
-  public void setDriverContext(DriverContext driverContext) {
-    this.driverContext = driverContext;
   }
 
   public void failed(Throwable cause) {
@@ -247,9 +227,5 @@ public class FragmentInstanceContext extends QueryContext {
 
   public Optional<Throwable> getFailureCause() {
     return Optional.ofNullable(stateMachine.getFailureCauses().peek());
-  }
-
-  public ExecutorService getIntoOperationExecutor() {
-    return intoOperationExecutor;
   }
 }

@@ -264,11 +264,11 @@ public class AlignedSeriesScanOperatorTest {
               SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.BOOLEAN,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
@@ -281,11 +281,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               true);
@@ -298,11 +298,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               allSensors,
               TSDataType.INT64,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               true);
@@ -315,11 +315,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               allSensors,
               TSDataType.FLOAT,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               true);
@@ -332,11 +332,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               allSensors,
               TSDataType.DOUBLE,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               true);
@@ -349,11 +349,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(7),
               planNodeId8,
               measurementPath8,
               allSensors,
               TSDataType.TEXT,
-              fragmentInstanceContext.getOperatorContexts().get(7),
               null,
               null,
               true);
@@ -575,11 +575,11 @@ public class AlignedSeriesScanOperatorTest {
               SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.BOOLEAN,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               false);
@@ -592,11 +592,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               false);
@@ -609,11 +609,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               allSensors,
               TSDataType.INT64,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               false);
@@ -626,11 +626,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               allSensors,
               TSDataType.FLOAT,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               false);
@@ -643,11 +643,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               allSensors,
               TSDataType.DOUBLE,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               false);
@@ -660,11 +660,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(7),
               planNodeId8,
               measurementPath8,
               allSensors,
               TSDataType.TEXT,
-              fragmentInstanceContext.getOperatorContexts().get(7),
               null,
               null,
               false);

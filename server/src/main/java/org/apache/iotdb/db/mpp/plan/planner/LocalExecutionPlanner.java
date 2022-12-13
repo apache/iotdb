@@ -22,8 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -39,6 +37,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
@@ -52,11 +52,13 @@ public class LocalExecutionPlanner {
   private long freeMemoryForOperators =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
+  private final int defaultParallelism = 1;
+
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
-  public DataDriver plan(
+  public List<PipelineDriverFactory> plan(
       PlanNode plan,
       TypeProvider types,
       FragmentInstanceContext instanceContext,
@@ -64,40 +66,26 @@ public class LocalExecutionPlanner {
       IDataRegionForQuery dataRegion)
       throws MemoryNotEnoughException {
     LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
+        new LocalExecutionPlanContext(
+            types, instanceContext, dataRegion.getDataTTL(), timeFilter, dataRegion);
 
+    // Generate pipelines and operators
+    // Return the last pipeline data structure
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    context.addPipelineDriverFactory(context.isInputDriver(), true, root);
 
-    DataDriverContext dataDriverContext =
-        new DataDriverContext(
-            instanceContext,
-            context.getPaths(),
-            timeFilter,
-            dataRegion,
-            context.getSourceOperators());
-    instanceContext.setDriverContext(dataDriverContext);
-    return new DataDriver(root, context.getSinkHandle(), dataDriverContext);
+    return context.getPipelineDriverFactories();
   }
 
   public SchemaDriver plan(
       PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
-
-    SchemaDriverContext schemaDriverContext =
-        new SchemaDriverContext(instanceContext, schemaRegion);
-    instanceContext.setDriverContext(schemaDriverContext);
-
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(instanceContext, schemaRegion);
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
@@ -105,13 +93,14 @@ public class LocalExecutionPlanner {
     checkMemory(root, instanceContext.getStateMachine());
 
     ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
+    context
+        .getDriverContext()
         .getOperatorContexts()
         .forEach(
             operatorContext ->
                 operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
 
-    return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
+    return new SchemaDriver(root, (SchemaDriverContext) context.getDriverContext());
   }
 
   private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)

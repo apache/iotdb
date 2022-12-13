@@ -115,11 +115,11 @@ public class OffsetOperatorTest {
           5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -132,11 +132,11 @@ public class OffsetOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -227,11 +227,11 @@ public class OffsetOperatorTest {
           5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -244,11 +244,11 @@ public class OffsetOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -335,11 +335,11 @@ public class OffsetOperatorTest {
           5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -352,11 +352,11 @@ public class OffsetOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);

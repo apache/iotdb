@@ -91,12 +91,12 @@ public class TimeSeriesCountOperator implements SourceOperator {
     try {
       if (key != null && value != null) {
         count =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getAllTimeseriesCount(partialPath, isPrefixPath, key, value, isContains);
       } else {
         count =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getAllTimeseriesCount(partialPath, templateMap, isPrefixPath);
       }

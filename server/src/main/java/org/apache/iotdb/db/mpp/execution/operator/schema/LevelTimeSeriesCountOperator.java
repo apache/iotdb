@@ -109,13 +109,13 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
     try {
       if (key != null && value != null) {
         countMap =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getMeasurementCountGroupByLevel(
                     partialPath, level, isPrefixPath, key, value, isContains);
       } else {
         countMap =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+            ((SchemaDriverContext) operatorContext.getDriverContext())
                 .getSchemaRegion()
                 .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
       }

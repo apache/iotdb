@@ -24,15 +24,29 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** TODO Add javadoc for context */
 public class DataDriverContext extends DriverContext {
-  private final List<PartialPath> paths;
-  private final Filter timeFilter;
-  private final IDataRegionForQuery dataRegion;
-  private final List<DataSourceOperator> sourceOperators;
 
+  private List<PartialPath> paths;
+  private Filter timeFilter;
+  private IDataRegionForQuery dataRegion;
+  private List<DataSourceOperator> sourceOperators = new ArrayList<>();
+
+  public DataDriverContext(
+      FragmentInstanceContext fragmentInstanceContext,
+      int pipelineId,
+      Filter timeFilter,
+      IDataRegionForQuery dataRegion) {
+    super(fragmentInstanceContext);
+    this.pipelineId = pipelineId;
+    this.timeFilter = timeFilter;
+    this.dataRegion = dataRegion;
+  }
+
+  // Only used for test
   public DataDriverContext(
       FragmentInstanceContext fragmentInstanceContext,
       List<PartialPath> paths,
@@ -44,6 +58,27 @@ public class DataDriverContext extends DriverContext {
     this.timeFilter = timeFilter;
     this.dataRegion = dataRegion;
     this.sourceOperators = sourceOperators;
+  }
+
+  public DataDriverContext(DataDriverContext parentContext) {
+    super(parentContext.getFragmentInstanceContext());
+    this.timeFilter = parentContext.timeFilter;
+    this.dataRegion = parentContext.dataRegion;
+  }
+
+  public void addPath(PartialPath path) {
+    if (this.paths == null) {
+      this.paths = new ArrayList<>();
+    }
+    this.paths.add(path);
+  }
+
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
+  }
+
+  public void addSourceOperator(DataSourceOperator sourceOperator) {
+    this.sourceOperators.add(sourceOperator);
   }
 
   public List<PartialPath> getPaths() {
@@ -60,5 +95,9 @@ public class DataDriverContext extends DriverContext {
 
   public List<DataSourceOperator> getSourceOperators() {
     return sourceOperators;
+  }
+
+  public DriverContext createSubDriverContext() {
+    return new DataDriverContext(this);
   }
 }

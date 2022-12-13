@@ -370,11 +370,28 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
             remoteFragmentInstanceId,
-            remotePlanNodeId,
             localFragmentInstanceId,
             queue,
             new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
     sinkHandles.put(localFragmentInstanceId, localSinkHandle);
+    return localSinkHandle;
+  }
+
+  public synchronized ISinkHandle createLocalSinkHandleForPipeline(
+      TFragmentInstanceId localFragmentInstanceId,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      FragmentInstanceContext instanceContext) {
+
+    logger.debug("Create shared tsblock queue");
+    SharedTsBlockQueue queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
+
+    LocalSinkHandle localSinkHandle =
+        new LocalSinkHandle(
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            queue,
+            new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
+    // sinkHandles.put(localFragmentInstanceId, localSinkHandle);
     return localSinkHandle;
   }
 

@@ -141,11 +141,11 @@ public class OperatorMemoryTest {
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);

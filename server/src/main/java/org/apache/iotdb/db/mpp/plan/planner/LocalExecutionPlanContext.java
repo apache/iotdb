@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
+import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -30,30 +35,32 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
+// Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
+
   private final FragmentInstanceContext instanceContext;
-  private final List<PartialPath> paths;
-  // deviceId -> sensorId Set
+  private AtomicInteger nextOperatorId;
+  private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
-  // Used to lock corresponding query resources
-  private final List<DataSourceOperator> sourceOperators;
+
+  private boolean inputDriver = true;
+  private DriverContext driverContext;
+  // this is shared with all subContexts
+  private AtomicInteger nextPipelineId;
+  private List<PipelineDriverFactory> pipelineDriverFactories;
 
   private final long dataRegionTTL;
-  private ISinkHandle sinkHandle;
-
-  private int nextOperatorId = 0;
-
-  private final TypeProvider typeProvider;
 
   // left is cached last value in last query
   // right is full path for each cached last value
@@ -67,54 +74,103 @@ public class LocalExecutionPlanContext {
 
   // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider, FragmentInstanceContext instanceContext, long dataRegionTTL) {
+      TypeProvider typeProvider,
+      FragmentInstanceContext instanceContext,
+      long dataRegionTTL,
+      Filter timeFilter,
+      IDataRegionForQuery dataRegionForQuery) {
     this.typeProvider = typeProvider;
     this.instanceContext = instanceContext;
-    this.paths = new ArrayList<>();
-    this.allSensorsMap = new HashMap<>();
-    this.sourceOperators = new ArrayList<>();
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    this.allSensorsMap = new ConcurrentHashMap<>();
     this.dataRegionTTL = dataRegionTTL;
+    this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
+    this.driverContext =
+        new DataDriverContext(instanceContext, getNextPipelineId(), timeFilter, dataRegionForQuery);
+    this.pipelineDriverFactories = new CopyOnWriteArrayList<>();
+  }
+
+  // for create sub context
+  public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
+    this.nextOperatorId = parentContext.nextOperatorId;
+    this.typeProvider = parentContext.typeProvider;
+    this.instanceContext = parentContext.instanceContext;
+    this.allSensorsMap = parentContext.allSensorsMap;
+    this.dataRegionTTL = parentContext.dataRegionTTL;
+    this.nextPipelineId = parentContext.nextPipelineId;
+    this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    this.driverContext = parentContext.getDriverContext().createSubDriverContext();
   }
 
   // for schema region
-  public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
+  public LocalExecutionPlanContext(
+      FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
     this.instanceContext = instanceContext;
-    this.paths = new ArrayList<>();
-    this.allSensorsMap = new HashMap<>();
-    this.sourceOperators = new ArrayList<>();
+    this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
+    this.nextOperatorId = new AtomicInteger(0);
 
     // only used in `order by heat`
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
+    this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
+  }
+
+  public void addPipelineDriverFactory(
+      boolean inputDriver, boolean outputDriver, Operator operator) {
+    driverContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext ->
+                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    pipelineDriverFactories.add(
+        new PipelineDriverFactory(
+            getNextPipelineId(), inputDriver, outputDriver, operator, driverContext));
+  }
+
+  public LocalExecutionPlanContext createSubContext() {
+    return new LocalExecutionPlanContext(this);
+  }
+
+  public FragmentInstanceId getFragmentInstanceId() {
+    return this.instanceContext.getId();
+  }
+
+  public List<PipelineDriverFactory> getPipelineDriverFactories() {
+    return pipelineDriverFactories;
+  }
+
+  public Map<String, Set<String>> getAllSensorsMap() {
+    return allSensorsMap;
+  }
+
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  private int getNextPipelineId() {
+    return nextPipelineId.getAndIncrement();
+  }
+
+  public boolean isInputDriver() {
+    return inputDriver;
+  }
+
+  public void setInputDriver(boolean inputDriver) {
+    this.inputDriver = inputDriver;
   }
 
   public int getNextOperatorId() {
-    return nextOperatorId++;
-  }
-
-  public List<PartialPath> getPaths() {
-    return paths;
+    return nextOperatorId.getAndIncrement();
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {
     Set<String> allSensors = allSensorsMap.computeIfAbsent(deviceId, k -> new HashSet<>());
     allSensors.add(sensorId);
     return allSensors;
-  }
-
-  public List<DataSourceOperator> getSourceOperators() {
-    return sourceOperators;
-  }
-
-  public void addPath(PartialPath path) {
-    paths.add(path);
-  }
-
-  public void addSourceOperator(DataSourceOperator sourceOperator) {
-    sourceOperators.add(sourceOperator);
   }
 
   public void setLastQueryTimeFilter(Filter lastQueryTimeFilter) {
@@ -137,14 +193,13 @@ public class LocalExecutionPlanContext {
   }
 
   public ISinkHandle getSinkHandle() {
-    return sinkHandle;
+    return driverContext.getSinkHandle();
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {
     requireNonNull(sinkHandle, "sinkHandle is null");
-    checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
-
-    this.sinkHandle = sinkHandle;
+    checkArgument(driverContext.getSinkHandle() == null, "There must be at most one SinkNode");
+    driverContext.setSinkHandle(sinkHandle);
   }
 
   public TypeProvider getTypeProvider() {
@@ -169,9 +224,5 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
-  }
-
-  public ExecutorService getIntoOperationExecutor() {
-    return instanceContext.getIntoOperationExecutor();
   }
 }

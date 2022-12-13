@@ -18,14 +18,25 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class DriverContext {
 
+  protected int pipelineId;
+  // only used to pass QueryContext
   private final FragmentInstanceContext fragmentInstanceContext;
+
+  private final List<OperatorContext> operatorContexts = new CopyOnWriteArrayList<>();
+  private ISinkHandle sinkHandle;
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
@@ -33,8 +44,41 @@ public class DriverContext {
     this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
-  public FragmentInstanceId getId() {
-    return fragmentInstanceContext.getId();
+  public OperatorContext addOperatorContext(
+      int operatorId, PlanNodeId planNodeId, String operatorType) {
+    checkArgument(operatorId >= 0, "operatorId is negative");
+
+    for (OperatorContext operatorContext : operatorContexts) {
+      checkArgument(
+          operatorId != operatorContext.getOperatorId(),
+          "A context already exists for operatorId %s",
+          operatorId);
+    }
+
+    OperatorContext operatorContext =
+        new OperatorContext(operatorId, planNodeId, operatorType, this);
+    operatorContexts.add(operatorContext);
+    return operatorContext;
+  }
+
+  public DriverContext createSubDriverContext() {
+    return null;
+  }
+
+  public void setSinkHandle(ISinkHandle sinkHandle) {
+    this.sinkHandle = sinkHandle;
+  }
+
+  public ISinkHandle getSinkHandle() {
+    return sinkHandle;
+  }
+
+  public List<OperatorContext> getOperatorContexts() {
+    return operatorContexts;
+  }
+
+  public int getId() {
+    return pipelineId;
   }
 
   public FragmentInstanceContext getFragmentInstanceContext() {

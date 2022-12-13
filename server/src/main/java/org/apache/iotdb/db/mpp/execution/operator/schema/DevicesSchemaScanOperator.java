@@ -60,7 +60,7 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   protected List<TsBlock> createTsBlockList() {
     try {
       List<ShowDevicesResult> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
               .getMatchedDevices(convertToPhysicalPlan())
               .left;

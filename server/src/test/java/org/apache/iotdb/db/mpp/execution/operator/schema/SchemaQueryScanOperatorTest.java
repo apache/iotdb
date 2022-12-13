@@ -104,9 +104,8 @@ public class SchemaQueryScanOperatorTest {
           SchemaEngine.getInstance()
               .getSchemaRegion(
                   LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_DATABASE, COLUMN_IS_ALIGNED);
       DevicesSchemaScanOperator deviceMetaScanOperator =
           new DevicesSchemaScanOperator(
@@ -173,9 +172,8 @@ public class SchemaQueryScanOperatorTest {
           SchemaEngine.getInstance()
               .getSchemaRegion(
                   LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
           new TimeSeriesSchemaScanOperator(
               planNodeId,

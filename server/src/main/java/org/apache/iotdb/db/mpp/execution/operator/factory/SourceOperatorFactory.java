@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.driver;
+package org.apache.iotdb.db.mpp.execution.operator.factory;
 
-import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
+import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-import com.google.common.util.concurrent.SettableFuture;
-
-import javax.annotation.concurrent.NotThreadSafe;
-
-/** One SchemaDriver is used to execute one FragmentInstance which is for metadata query. */
-@NotThreadSafe
-public class SchemaDriver extends Driver {
-
-  public SchemaDriver(Operator root, SchemaDriverContext driverContext) {
-    super(root, driverContext);
-  }
+public interface SourceOperatorFactory extends OperatorFactory {
+  PlanNodeId getSourceId();
 
   @Override
-  protected boolean init(SettableFuture<?> blockedFuture) {
-    return true;
-  }
+  SourceOperator createOperator(DriverContext driverContext);
 
   @Override
-  protected void releaseResource() {
-    // do nothing
+  default OperatorFactory duplicate() {
+    throw new UnsupportedOperationException("Source operator factories cannot be duplicated");
   }
 }

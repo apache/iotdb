@@ -76,7 +76,7 @@ public class DevicesCountOperator implements SourceOperator {
     long count = 0;
     try {
       count =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
               .getDevicesNum(partialPath, isPrefixPath);
     } catch (MetadataException e) {

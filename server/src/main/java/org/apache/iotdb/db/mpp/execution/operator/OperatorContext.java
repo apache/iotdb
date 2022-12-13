@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
@@ -36,19 +37,31 @@ public class OperatorContext {
   private final int operatorId;
   private final PlanNodeId planNodeId;
   private final String operatorType;
-  private final FragmentInstanceContext instanceContext;
+  private DriverContext driverContext;
+
+  // Only Used for test
+  private FragmentInstanceContext fragmentInstanceContext;
 
   private Duration maxRunTime;
 
   public OperatorContext(
-      int operatorId,
-      PlanNodeId planNodeId,
-      String operatorType,
-      FragmentInstanceContext instanceContext) {
+      int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
-    this.instanceContext = instanceContext;
+    this.driverContext = driverContext;
+  }
+
+  // Only Used for test Now !
+  public OperatorContext(
+      int operatorId,
+      PlanNodeId planNodeId,
+      String operatorType,
+      FragmentInstanceContext fragmentInstanceContext) {
+    this.operatorId = operatorId;
+    this.planNodeId = planNodeId;
+    this.operatorType = operatorType;
+    this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
   public int getOperatorId() {
@@ -59,8 +72,16 @@ public class OperatorContext {
     return operatorType;
   }
 
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public void setDriverContext(DriverContext driverContext) {
+    this.driverContext = driverContext;
+  }
+
   public FragmentInstanceContext getInstanceContext() {
-    return instanceContext;
+    return getDriverContext().getFragmentInstanceContext();
   }
 
   public Duration getMaxRunTime() {
@@ -72,7 +93,7 @@ public class OperatorContext {
   }
 
   public SessionInfo getSessionInfo() {
-    return instanceContext.getSessionInfo();
+    return getInstanceContext().getSessionInfo();
   }
 
   @Override

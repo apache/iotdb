@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -54,8 +53,8 @@ public class DataDriver extends Driver {
   /** unClosed tsfile used in this fragment instance */
   private Set<TsFileResource> unClosedFilePaths;
 
-  public DataDriver(Operator root, ISinkHandle sinkHandle, DataDriverContext driverContext) {
-    super(root, sinkHandle, driverContext);
+  public DataDriver(Operator root, DriverContext driverContext) {
+    super(root, driverContext);
     this.closedFilePaths = new HashSet<>();
     this.unClosedFilePaths = new HashSet<>();
   }

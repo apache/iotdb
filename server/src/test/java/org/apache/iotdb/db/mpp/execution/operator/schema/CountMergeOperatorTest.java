@@ -97,9 +97,8 @@ public class CountMergeOperatorTest {
           SchemaEngine.getInstance()
               .getSchemaRegion(
                   LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       TimeSeriesCountOperator timeSeriesCountOperator =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -159,9 +158,8 @@ public class CountMergeOperatorTest {
               .getSchemaRegion(
                   LocalConfigNode.getInstance()
                       .getBelongedSchemaRegionId(new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG)));
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       LevelTimeSeriesCountOperator timeSeriesCountOperator1 =
           new LevelTimeSeriesCountOperator(
               planNodeId,

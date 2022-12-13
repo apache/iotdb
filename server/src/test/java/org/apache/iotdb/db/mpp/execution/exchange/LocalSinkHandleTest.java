@@ -53,11 +53,7 @@ public class LocalSinkHandleTest {
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
+            remoteFragmentInstanceId, localFragmentInstanceId, queue, mockSinkHandleListener);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());
@@ -118,11 +114,7 @@ public class LocalSinkHandleTest {
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
+            remoteFragmentInstanceId, localFragmentInstanceId, queue, mockSinkHandleListener);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());

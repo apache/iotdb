@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -60,7 +59,8 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class SeriesScanUtil {
-  private final FragmentInstanceContext context;
+
+  private final QueryContext context;
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -125,7 +125,7 @@ public class SeriesScanUtil {
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
-      FragmentInstanceContext context,
+      QueryContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {

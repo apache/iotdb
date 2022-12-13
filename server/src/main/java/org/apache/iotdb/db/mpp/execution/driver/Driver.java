@@ -64,11 +64,11 @@ public abstract class Driver implements IDriver {
     DESTROYED
   }
 
-  public Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
+  public Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
-    checkNotNull(sinkHandle, "SinkHandle should not be null");
+    // checkNotNull(sinkHandle, "SinkHandle should not be null");
     this.root = root;
-    this.sinkHandle = sinkHandle;
+    this.sinkHandle = driverContext.getSinkHandle();
     this.driverContext = driverContext;
 
     // initially the driverBlockedFuture is not blocked (it is completed)
@@ -135,7 +135,7 @@ public abstract class Driver implements IDriver {
 
   @Override
   public FragmentInstanceId getInfo() {
-    return driverContext.getId();
+    return driverContext.getFragmentInstanceContext().getId();
   }
 
   @Override
@@ -372,6 +372,7 @@ public abstract class Driver implements IDriver {
   }
 
   private static class DriverLock {
+
     private final ReentrantLock lock = new ReentrantLock();
 
     @GuardedBy("this")

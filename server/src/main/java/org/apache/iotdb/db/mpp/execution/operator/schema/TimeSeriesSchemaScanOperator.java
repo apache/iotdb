@@ -92,7 +92,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   protected List<TsBlock> createTsBlockList() {
     try {
       List<ShowTimeSeriesResult> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
               .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
               .left;

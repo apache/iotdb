@@ -32,7 +32,16 @@ public class SchemaDriverContext extends DriverContext {
     this.schemaRegion = schemaRegion;
   }
 
+  public SchemaDriverContext(SchemaDriverContext parentContext) {
+    super(parentContext.getFragmentInstanceContext());
+    this.schemaRegion = parentContext.schemaRegion;
+  }
+
   public ISchemaRegion getSchemaRegion() {
     return schemaRegion;
+  }
+
+  public DriverContext createSubDriverContext() {
+    return new SchemaDriverContext(this);
   }
 }
