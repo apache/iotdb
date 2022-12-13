@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.path.fa;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -416,6 +415,8 @@ public class SimpleNFA implements IPatternFA {
   /** nodes[patternIndex] is a specified name */
   private class NameMatchNode extends SinglePathPatternNode {
 
+    private Map<String, IFATransition> preNodePreciseMatchTransitionMap;
+
     private NameMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
       super(patternIndex, tracebackNode);
     }
@@ -427,7 +428,10 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
-      return Collections.singletonMap(rawNodes[patternIndex], this);
+      if (preNodePreciseMatchTransitionMap == null) {
+        preNodePreciseMatchTransitionMap = Collections.singletonMap(rawNodes[patternIndex], this);
+      }
+      return preNodePreciseMatchTransitionMap;
     }
 
     @Override
