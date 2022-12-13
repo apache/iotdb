@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -39,9 +39,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
-public class RecoveryTest {
+public class StabilityTest {
 
-  private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
+  private final ConsensusGroupId dataRegionId = new DataRegionId(1);
+
+  private final File storageDir = new File("target" + java.io.File.separator + "stability");
+
   private IConsensus consensusImpl;
 
   public void constructConsensus() throws IOException {
@@ -51,7 +54,7 @@ public class RecoveryTest {
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
-                    .setStorageDir("target" + java.io.File.separator + "recovery")
+                    .setStorageDir(storageDir.getAbsolutePath())
                     .build(),
                 gid -> new TestStateMachine())
             .orElseThrow(
@@ -71,16 +74,16 @@ public class RecoveryTest {
   @After
   public void tearDown() throws IOException {
     consensusImpl.stop();
-    FileUtils.deleteFully(new File("./target/recovery"));
+    FileUtils.deleteFully(storageDir);
   }
 
   @Test
   public void recoveryTest() throws Exception {
     consensusImpl.createPeer(
-        schemaRegionId,
-        Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
-    consensusImpl.deletePeer(schemaRegionId);
+    consensusImpl.deletePeer(dataRegionId);
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -89,9 +92,38 @@ public class RecoveryTest {
 
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
-            schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+            dataRegionId,
+            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
     Assert.assertTrue(response.isSuccess());
+  }
+
+  @Test
+  public void cleanOldSnapshotAfterTriggerSnapshotTest() {
+    ConsensusGenericResponse response =
+        consensusImpl.createPeer(
+            dataRegionId,
+            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+
+    Assert.assertTrue(response.isSuccess());
+
+    consensusImpl.triggerSnapshot(dataRegionId);
+
+    File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
+
+    File[] versionFiles1 =
+        dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+    Assert.assertNotNull(versionFiles1);
+    Assert.assertEquals(versionFiles1.length, 1);
+
+    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId);
+
+    File[] versionFiles2 =
+        dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+    Assert.assertNotNull(versionFiles2);
+    Assert.assertEquals(versionFiles2.length, 1);
+
+    Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
   }
 }
