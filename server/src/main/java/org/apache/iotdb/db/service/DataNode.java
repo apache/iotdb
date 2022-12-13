@@ -222,6 +222,7 @@ public class DataNode implements DataNodeMBean {
 
         IoTDBStartCheck.getInstance().checkDirectory();
         IoTDBStartCheck.getInstance().serializeGlobalConfig(configuration.globalConfig);
+        return;
       } catch (TException e) {
         // read config nodes from system.properties
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
@@ -231,6 +232,9 @@ public class DataNode implements DataNodeMBean {
       }
       retry--;
     }
+    // all tries failed
+    logger.error("Cannot get configuration from ConfigNode after {} retries", DEFAULT_RETRY);
+    throw new StartupException("Cannot get configuration from ConfigNode");
   }
 
   /** register DataNode with ConfigNode */
