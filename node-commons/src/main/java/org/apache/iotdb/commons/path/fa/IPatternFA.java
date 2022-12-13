@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.path.fa;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +35,13 @@ public interface IPatternFA {
    *     batch events
    */
   Map<String, IFATransition> getPreciseMatchTransition(IFAState state);
+
+  /**
+   * @param state the source state of the returned transitions
+   * @return transitions, that the given state has and only match one specified event rather than
+   *     batch events
+   */
+  Iterator<IFATransition> getPreciseMatchTransitionIterator(IFAState state);
 
   /**
    * @param state state the source state of the returned transitions

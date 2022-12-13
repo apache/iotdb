@@ -325,7 +325,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     private PreciseMatchChildrenIterator(N parent, IFAState sourceState) {
       this.parent = parent;
       this.sourceState = sourceState;
-      transitionIterator = patternFA.getPreciseMatchTransition(sourceState).values().iterator();
+      transitionIterator = patternFA.getPreciseMatchTransitionIterator(sourceState);
     }
 
     @Override

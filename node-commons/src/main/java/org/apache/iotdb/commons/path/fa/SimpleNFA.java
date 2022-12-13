@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -141,6 +143,15 @@ public class SimpleNFA implements IPatternFA {
       return initialTransition;
     }
     return preciseMatchTransitionTable[state.getIndex()];
+  }
+
+  @Override
+  public Iterator<IFATransition> getPreciseMatchTransitionIterator(IFAState state) {
+    if (preciseMatchTransitionTable[state.getIndex()].isEmpty()) {
+      return Collections.emptyIterator();
+    } else {
+      return new SingleTransitionIterator(states[state.getIndex() + 1]);
+    }
   }
 
   @Override
@@ -272,6 +283,30 @@ public class SimpleNFA implements IPatternFA {
     @Override
     public boolean isMatch(String event) {
       return nodes[patternIndex].equals(event);
+    }
+  }
+
+  private class SingleTransitionIterator implements Iterator<IFATransition> {
+
+    private IFATransition transition;
+
+    private SingleTransitionIterator(IFATransition transition) {
+      this.transition = transition;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return transition != null;
+    }
+
+    @Override
+    public IFATransition next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      IFATransition result = transition;
+      transition = null;
+      return result;
     }
   }
 }
