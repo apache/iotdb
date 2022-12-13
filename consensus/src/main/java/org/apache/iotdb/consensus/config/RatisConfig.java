@@ -885,8 +885,7 @@ public class RatisConfig {
         return this;
       }
 
-      public Impl.Builder setClientRetryInitialSleepTimeMs(
-          long clientRetryInitialSleepTimeMs) {
+      public Impl.Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
         this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
         return this;
       }
