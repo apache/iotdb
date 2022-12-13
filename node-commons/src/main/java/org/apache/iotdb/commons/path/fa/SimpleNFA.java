@@ -78,65 +78,54 @@ public class SimpleNFA implements IPatternFA {
     this.nodes = pathPattern.getNodes();
 
     states = new SimpleNFAState[this.nodes.length + 1];
-    for (int i = 0; i < nodes.length; i++) {
-      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD) || nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
-        states[i] = new AllMatchState(i);
-      } else if (nodes[i].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        regexPatternMap.put(i, Pattern.compile(nodes[i].replace("*", ".*")));
-        states[i] = new RegexMatchState(i);
-      } else {
-        states[i] = new NameMatchState(i);
-      }
-    }
-    states[nodes.length] = new AllMatchState(nodes.length);
-
-    initialTransition = Collections.singletonMap(nodes[0], states[0]);
-
     preciseMatchTransitionTable = new Map[states.length];
     fuzzyMatchTransitionTable = new List[states.length];
 
-    generateFATransition(isPrefixMatch);
-  }
-
-  private void generateFATransition(boolean isPrefixMatch) {
-    // the index of the last multiLevelWildcard before current index
+    // nodes[0] must be root
+    states[0] = new NameMatchState(0);
+    initialTransition = Collections.singletonMap(nodes[0], states[0]);
     int lastMultiWildcard = -1;
-    for (int i = 0; i < nodes.length - 1; i++) {
+    for (int i = 1; i < nodes.length; i++) {
       if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         lastMultiWildcard = i;
-      }
-      if (lastMultiWildcard == -1) {
-        if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-          fuzzyMatchTransitionTable[i] = Collections.singletonList(states[i + 1]);
-          preciseMatchTransitionTable[i] = Collections.emptyMap();
+        states[i] = new AllMatchState(i);
+        fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
+        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
+      } else if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        states[i] = new AllMatchState(i);
+        if (lastMultiWildcard == -1) {
+          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
         } else {
-          fuzzyMatchTransitionTable[i] = Collections.emptyList();
-          preciseMatchTransitionTable[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
+          fuzzyMatchTransitionTable[i - 1] = Arrays.asList(states[i], states[lastMultiWildcard]);
         }
+        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
+      } else if (nodes[i].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        states[i] = new RegexMatchState(i);
+        regexPatternMap.put(i, Pattern.compile(nodes[i].replace("*", ".*")));
+        if (lastMultiWildcard == -1) {
+          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[i]);
+        } else {
+          fuzzyMatchTransitionTable[i - 1] = Arrays.asList(states[i], states[lastMultiWildcard]);
+        }
+        preciseMatchTransitionTable[i - 1] = Collections.emptyMap();
       } else {
-        // with dfs or greedy strategy, the state should be advanced as possible
-        if (nodes[i + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          fuzzyMatchTransitionTable[i] = Collections.singletonList(states[i + 1]);
-          preciseMatchTransitionTable[i] = Collections.emptyMap();
-        } else if (nodes[i + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-          fuzzyMatchTransitionTable[i] = Arrays.asList(states[i + 1], states[lastMultiWildcard]);
-          preciseMatchTransitionTable[i] = Collections.emptyMap();
+        states[i] = new NameMatchState(i);
+        if (lastMultiWildcard == -1) {
+          fuzzyMatchTransitionTable[i - 1] = Collections.emptyList();
         } else {
-          fuzzyMatchTransitionTable[i] = Collections.singletonList(states[lastMultiWildcard]);
-          preciseMatchTransitionTable[i] = Collections.singletonMap(nodes[i + 1], states[i + 1]);
+          fuzzyMatchTransitionTable[i - 1] = Collections.singletonList(states[lastMultiWildcard]);
         }
+        preciseMatchTransitionTable[i - 1] = Collections.singletonMap(nodes[i], states[i]);
       }
     }
 
+    preciseMatchTransitionTable[nodes.length - 1] = Collections.emptyMap();
     if (isPrefixMatch) {
-      preciseMatchTransitionTable[nodes.length - 1] = Collections.emptyMap();
+      states[nodes.length] = new AllMatchState(nodes.length);
       fuzzyMatchTransitionTable[nodes.length - 1] = Collections.singletonList(states[nodes.length]);
-    } else if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      preciseMatchTransitionTable[nodes.length - 1] = Collections.emptyMap();
-      fuzzyMatchTransitionTable[nodes.length - 1] =
-          Collections.singletonList(states[nodes.length - 1]);
+      preciseMatchTransitionTable[nodes.length] = Collections.emptyMap();
+      fuzzyMatchTransitionTable[nodes.length] = Collections.singletonList(states[nodes.length]);
     } else {
-      preciseMatchTransitionTable[nodes.length - 1] = Collections.emptyMap();
       if (lastMultiWildcard == -1) {
         fuzzyMatchTransitionTable[nodes.length - 1] = Collections.emptyList();
       } else {
@@ -144,9 +133,6 @@ public class SimpleNFA implements IPatternFA {
             Collections.singletonList(states[lastMultiWildcard]);
       }
     }
-
-    preciseMatchTransitionTable[nodes.length] = Collections.emptyMap();
-    fuzzyMatchTransitionTable[nodes.length] = Collections.singletonList(states[nodes.length]);
   }
 
   @Override
