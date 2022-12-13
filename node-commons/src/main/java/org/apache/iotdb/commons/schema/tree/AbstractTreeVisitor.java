@@ -36,8 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-
 /**
  * This class defines a dfs-based algorithm of tree-traversing with path pattern match, and support
  * iterating each element of the result.
@@ -101,9 +99,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private void initStack() {
     IFAState initialState = patternFA.getInitialState();
-    IFAState rootState =
-        patternFA.getNextState(
-            initialState, patternFA.getPreciseMatchTransition(initialState).get(PATH_ROOT));
+    IFATransition transition =
+        patternFA.getPreciseMatchTransition(initialState).get(root.getName());
+    if (transition == null) {
+      // the visitor stack will be empty and the result of hasNext() will be false
+      return;
+    }
+    IFAState rootState = patternFA.getNextState(initialState, transition);
     currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));

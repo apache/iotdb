@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +46,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  * <p>Given path pattern root.sg.d with prefix match, the SimpleNFA is:
  *
  * <p>initial -(root)-> state[0] -(sg)-> state[1] -(d)-> state[2] -(*)-> state[3] <br>
+ * with extra: state[3] -(*)-> state[3] <br>
  * both state[2] and state[3] are final states
  */
 public class SimpleNFA implements IPatternFA {
@@ -58,7 +58,7 @@ public class SimpleNFA implements IPatternFA {
   private final Map<Integer, Pattern> regexPatternMap = new HashMap<>();
 
   // initial state of this NFA and the only transition from this state is "root"
-  private final SimpleNFAState initialState = new SimpleNFAState(-1);
+  private final SimpleNFAState initialState = new InitialState();
   // all states corresponding to raw pattern nodes, with an extra prefixMatch state
   private final SimpleNFAState[] states;
 
@@ -75,12 +75,20 @@ public class SimpleNFA implements IPatternFA {
   private final List<IFATransition>[] fuzzyMatchTransitionTable;
 
   public SimpleNFA(PartialPath pathPattern, boolean isPrefixMatch) {
-    this.nodes = optimizePathPattern(pathPattern);
+    this.nodes = pathPattern.getNodes();
 
     states = new SimpleNFAState[this.nodes.length + 1];
-    for (int i = 0; i < states.length; i++) {
-      states[i] = new SimpleNFAState(i);
+    for (int i = 0; i < nodes.length; i++) {
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD) || nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        states[i] = new AllMatchState(i);
+      } else if (nodes[i].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        regexPatternMap.put(i, Pattern.compile(nodes[i].replace("*", ".*")));
+        states[i] = new RegexMatchState(i);
+      } else {
+        states[i] = new NameMatchState(i);
+      }
     }
+    states[nodes.length] = new AllMatchState(nodes.length);
 
     initialTransition = Collections.singletonMap(nodes[0], states[0]);
 
@@ -141,38 +149,12 @@ public class SimpleNFA implements IPatternFA {
     fuzzyMatchTransitionTable[nodes.length] = Collections.singletonList(states[nodes.length]);
   }
 
-  /**
-   * Optimize the given path pattern. Currently, the node name used for one level match will be
-   * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
-   * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
-   */
-  private String[] optimizePathPattern(PartialPath pathPattern) {
-    String[] rawNodes = pathPattern.getNodes();
-    List<String> optimizedNodes = new ArrayList<>(rawNodes.length);
-    for (String rawNode : rawNodes) {
-      if (rawNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(MULTI_LEVEL_PATH_WILDCARD);
-      } else if (rawNode.equals(ONE_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(ONE_LEVEL_PATH_WILDCARD);
-      } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(rawNode.replace("*", ".*"));
-        regexPatternMap.put(
-            optimizedNodes.size() - 1,
-            Pattern.compile(optimizedNodes.get(optimizedNodes.size() - 1)));
-      } else {
-        optimizedNodes.add(rawNode);
-      }
-    }
-
-    return optimizedNodes.toArray(new String[0]);
-  }
-
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
     if (state.isInitial()) {
       return initialTransition;
     }
-    return preciseMatchTransitionTable[((SimpleNFAState) state).patternIndex];
+    return preciseMatchTransitionTable[state.getIndex()];
   }
 
   @Override
@@ -180,11 +162,11 @@ public class SimpleNFA implements IPatternFA {
     if (state.isInitial()) {
       return Collections.emptyList();
     }
-    return fuzzyMatchTransitionTable[((SimpleNFAState) state).patternIndex];
+    return fuzzyMatchTransitionTable[state.getIndex()];
   }
 
   @Override
-  public IFAState getNextState(IFAState currentState, IFATransition transition) {
+  public IFAState getNextState(IFAState sourceState, IFATransition transition) {
     return (SimpleNFAState) transition;
   }
 
@@ -206,11 +188,11 @@ public class SimpleNFA implements IPatternFA {
   // Each node in raw nodes of path pattern maps to a state.
   // Since the transition is defined by the node of next state, we directly let this class implement
   // IFATransition.
-  private class SimpleNFAState implements IFAState, IFATransition {
+  private abstract class SimpleNFAState implements IFAState, IFATransition {
 
-    private final int patternIndex;
+    protected final int patternIndex;
 
-    SimpleNFAState(int patternIndex) {
+    private SimpleNFAState(int patternIndex) {
       this.patternIndex = patternIndex;
     }
 
@@ -235,28 +217,6 @@ public class SimpleNFA implements IPatternFA {
     }
 
     @Override
-    public boolean isMatch(String event) {
-      if (patternIndex == nodes.length) {
-        return true;
-      }
-      if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return true;
-      }
-      if (nodes[patternIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
-        return true;
-      }
-      if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        return regexPatternMap.get(patternIndex).matcher(event).matches();
-      }
-      return nodes[patternIndex].equals(event);
-    }
-
-    @Override
-    public boolean isFuzzy() {
-      return patternIndex == nodes.length || nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD);
-    }
-
-    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
@@ -267,6 +227,65 @@ public class SimpleNFA implements IPatternFA {
     @Override
     public int hashCode() {
       return patternIndex;
+    }
+  }
+
+  private class InitialState extends SimpleNFAState {
+
+    private InitialState() {
+      super(-1);
+    }
+
+    @Override
+    public boolean isInitial() {
+      return true;
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      return false;
+    }
+  }
+
+  /**
+   * This state may map to prefix match state with patternIndex == nodes.length, or path wildcard
+   * state with nodes[patternIndex] is MULTI_LEVEL_PATH_WILDCARD or ONE_LEVEL_PATH_WILDCARD.
+   */
+  private class AllMatchState extends SimpleNFAState {
+
+    private AllMatchState(int patternIndex) {
+      super(patternIndex);
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      return true;
+    }
+  }
+
+  /** nodes[patternIndex] contains *, like d*. */
+  private class RegexMatchState extends SimpleNFAState {
+
+    private RegexMatchState(int patternIndex) {
+      super(patternIndex);
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      return regexPatternMap.get(patternIndex).matcher(event).matches();
+    }
+  }
+
+  /** nodes[patternIndex] is a specified name */
+  private class NameMatchState extends SimpleNFAState {
+
+    private NameMatchState(int patternIndex) {
+      super(patternIndex);
+    }
+
+    @Override
+    public boolean isMatch(String event) {
+      return nodes[patternIndex].equals(event);
     }
   }
 }

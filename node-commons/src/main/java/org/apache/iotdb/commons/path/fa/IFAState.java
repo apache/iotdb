@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.commons.path.fa;
 
+/** This interface defines the behaviour of a FA(Finite Automation)'s states. */
 public interface IFAState {
 
+  /** @return whether this state is the initial state of the belonged FA */
   boolean isInitial();
 
+  /** @return whether this state is one of the final state of the belonged FA */
   boolean isFinal();
 
+  /** @return the index of this state, used for uniquely identifying states in FA */
   int getIndex();
 }

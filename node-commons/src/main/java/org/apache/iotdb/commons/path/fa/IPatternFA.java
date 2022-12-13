@@ -22,17 +22,41 @@ package org.apache.iotdb.commons.path.fa;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This interface defines the behaviour of a FA(Finite Automation), generated from a path pattern or
+ * a pattern tree.
+ */
 public interface IPatternFA {
 
+  /**
+   * @param state the source state of the returned transitions
+   * @return transitions, that the given state has and only match one specified event rather than
+   *     batch events
+   */
   Map<String, IFATransition> getPreciseMatchTransition(IFAState state);
 
+  /**
+   * @param state state the source state of the returned transitions
+   * @return transitions, that the given state has and can match batch events
+   */
   List<IFATransition> getFuzzyMatchTransition(IFAState state);
 
-  IFAState getNextState(IFAState currentState, IFATransition transition);
+  /**
+   * @param sourceState source state
+   * @param transition transition that the source state has
+   * @return next state
+   */
+  IFAState getNextState(IFAState sourceState, IFATransition transition);
 
+  /** @return the initial state of this FA */
   IFAState getInitialState();
 
+  /** @return the size of states this FA has */
   int getStateSize();
 
+  /**
+   * @param index the index of the target state, used for uniquely identifying states in FA
+   * @return the state identified by given index
+   */
   IFAState getState(int index);
 }

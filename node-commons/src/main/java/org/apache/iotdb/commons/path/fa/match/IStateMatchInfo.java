@@ -30,14 +30,28 @@ import java.util.Iterator;
  */
 public interface IStateMatchInfo {
 
+  /** @return whether current matched state has a final state */
   boolean hasFinalState();
 
+  /**
+   * @return whether the transitions, current matched states have, are only precise match
+   *     transition, that only matches specified event rather than batch events
+   */
   boolean hasOnlyPreciseMatchTransition();
 
+  /**
+   * @return whether none of the transitions, current matched states have, is precise match
+   *     transition, that only matches specified event rather than batch events
+   */
   boolean hasNoPreciseMatchTransition();
 
+  /**
+   * @return whether current match state only have one transition, and it is a fuzzy transition that
+   *     may match batch events
+   */
   boolean isSingleFuzzyMatchTransition();
 
+  /** @return one of the matched state */
   IFAState getOneMatchedState();
 
   void addMatchedState(IFAState state);
@@ -48,6 +62,7 @@ public interface IStateMatchInfo {
    */
   IFAState getMatchedState(int stateOrdinal);
 
+  /** @return size of current matched states */
   int getMatchedStateSize();
 
   /** @return the ordinal of the source state in matched order */
@@ -56,7 +71,9 @@ public interface IStateMatchInfo {
   /** @param sourceStateOrdinal the ordinal of the source state in matched order */
   void setSourceStateOrdinal(int sourceStateOrdinal);
 
+  /** @return the iterator of current checking source states' transition */
   Iterator<IFATransition> getSourceTransitionIterator();
 
+  /** @param sourceTransitionIterator the iterator of current checking source states' transition */
   void setSourceTransitionIterator(Iterator<IFATransition> sourceTransitionIterator);
 }
