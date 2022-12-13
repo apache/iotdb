@@ -158,7 +158,7 @@ public class ConsensusManager {
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.ImplConfig.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           CONF.getConfigNodeRatisRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(

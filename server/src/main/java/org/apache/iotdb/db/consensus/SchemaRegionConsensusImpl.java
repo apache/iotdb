@@ -116,7 +116,7 @@ public class SchemaRegionConsensusImpl {
                                           conf.getSchemaRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.ImplConfig.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getSchemaRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(

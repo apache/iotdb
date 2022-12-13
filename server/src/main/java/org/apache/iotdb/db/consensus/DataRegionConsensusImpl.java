@@ -148,7 +148,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.ImplConfig.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
