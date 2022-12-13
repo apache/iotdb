@@ -42,12 +42,19 @@ Windows
 > ./exportSchema.bat-d /yourpath/data/system/schema -o /yourpath/targetDir
 
 
-Source directory and the export destination directory need to be specified when exporting metadata using scripting.
+Export destination directory on server need to be specified when exporting metadata using scripting.
 ```
-usage: ExportSchema -d <source directory path> -o <target directory path>
-       [-help]
- -d <source directory path>   Need to specify a source directory path
- -o <target directory path>   Need to specify a target directory path
+usage: ExportSchema -o <target directory path> [-h <host address>] [-p <port>] [-u <user>] [-pw <password>] [-help]
+ -o <target directory path>   Need to specify a target directory path on
+                              server（required)
+ -h <host address>            Could specify a specify the IoTDB host
+                              address, default is 127.0.0.1 (optional)
+ -p <port>                    Could specify a specify the IoTDB port,
+                              default is 6667 (optional)
+ -u <user>                    Could specify the IoTDB user name, default
+                              is root (optional)
+ -pw <password>               Could specify the IoTDB password, default is
+                              root (optional)
  -help,--help                 Display help information
 ```
 
@@ -57,10 +64,6 @@ usage: ExportSchema -d <source directory path> -o <target directory path>
     * It may be because the environment variable $IOTDB_HOME is not set, please set the environment variable and try again
 * Encounter an error, because: File ... already exist.
     * There is already a mlog.bin or tlog.txt file in the target directory, please check the target directory and try again
-* Encounter an error, because: ... does not exist or is not a directory.
-    * The source directory path does not exist or is not a directory, please check the source directory and try again
-* Encounter an error, because: ... is not a valid directory.
-    * The source directory is not the schema directory in IoTDB, please check the target directory and try again
 
 
 ### Load Schema

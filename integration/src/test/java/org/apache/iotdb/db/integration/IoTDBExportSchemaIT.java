@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.tools.mlog.ExportSchema;
 import org.apache.iotdb.db.tools.mlog.MLogLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -278,6 +279,27 @@ public class IoTDBExportSchemaIT {
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
+    // load mlog
+    MLogLoader.main(
+        new String[] {
+          "-mlog",
+          targetDir.getAbsolutePath() + "/" + MetadataConstant.METADATA_LOG,
+          "-tlog",
+          targetDir.getAbsolutePath() + "/" + MetadataConstant.TAG_LOG
+        });
+    checkExpectedResult();
+  }
+
+  @Test
+  public void testExportSchemaAndLoadWithScript() throws Exception {
+    saveExpectedResult();
+
+    String[] args = new String[] {"-o", targetDir.getAbsolutePath()};
+    ExportSchema.main(args);
+
+    File[] files = targetDir.listFiles();
+    Assert.assertNotEquals(0, files.length);
+    cleanAndRestart();
     // load mlog
     MLogLoader.main(
         new String[] {

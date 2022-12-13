@@ -36,18 +36,25 @@ EXPORT SCHEMA '<path/dir>'
 
 Linux/MacOS
 
-> ./exportSchema.sh -d /yourpath/data/system/schema -o /yourpath/targetDir
+> ./exportSchema.sh -o /yourpath/targetDir -h 127.0.0.1 -p 6667 -u root -pw root
 
 Windows
 
-> ./exportSchema.bat-d /yourpath/data/system/schema -o /yourpath/targetDir
+> ./exportSchema.bat -o /yourpath/targetDir -h 127.0.0.1 -p 6667 -u root -pw root
 
-使用脚本方式导出元数据时候，需要指定 IoTDB 的元数据文件目录与导出目标目录：
+使用脚本方式导出元数据时候，需要指定 IoTDB 元数据文件的导出目标目录（位于 IoTDB 服务器上）：
 ```
-usage: ExportSchema -d <source directory path> -o <target directory path>
-       [-help]
- -d <source directory path>   Need to specify a source directory path
- -o <target directory path>   Need to specify a target directory path
+usage: ExportSchema -o <target directory path> [-h <host address>] [-p <port>] [-u <user>] [-pw <password>] [-help]
+ -o <target directory path>   Need to specify a target directory path on
+                              server（required)
+ -h <host address>            Could specify a specify the IoTDB host
+                              address, default is 127.0.0.1 (optional)
+ -p <port>                    Could specify a specify the IoTDB port,
+                              default is 6667 (optional)
+ -u <user>                    Could specify the IoTDB user name, default
+                              is root (optional)
+ -pw <password>               Could specify the IoTDB password, default is
+                              root (optional)
  -help,--help                 Display help information
 ```
 
@@ -57,10 +64,6 @@ usage: ExportSchema -d <source directory path> -o <target directory path>
     * 可能是由于未设置环境变量 $IOTDB_HOME，请设置环境变量之后重试
 * Encounter an error, because: File ... already exist.
     * 目标目录下已有 mlog.bin 或者 tlog.txt 文件，请检查目标目录之后重试
-* Encounter an error, because: ... does not exist or is not a directory.
-    * 源目录路径不存在或不是目录，请检查源目录之后重试
-* Encounter an error, because: ... is not a valid directory.
-    * 源目录不是 IoTDB 中的元数据文件目录，请检查目标目录之后重试
 
 ## 元数据加载操作
 
