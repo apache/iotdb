@@ -1194,12 +1194,12 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   String[] res =
       new String[] {
-          "v2,true,null",
-          "null,true,24.36",
-          "v2,true,null",
-          "null,true,25.96",
-          "v2,false,null",
-          "v1,true,null"
+        "v2,true,null",
+        "null,true,24.36",
+        "v2,true,null",
+        "null,true,25.96",
+        "v2,false,null",
+        "v1,true,null"
       };
 
   @Test
