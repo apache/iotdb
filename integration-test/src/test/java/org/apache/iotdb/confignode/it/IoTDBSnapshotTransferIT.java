@@ -62,7 +62,7 @@ public class IoTDBSnapshotTransferIT {
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(2)
         .setDataRatisTriggerSnapshotThreshold(snapshotMagic)
-            .setConfigNodeRatisSnapshotTriggerThreshold(1); // must trigger snapshot
+        .setConfigNodeRatisSnapshotTriggerThreshold(1); // must trigger snapshot
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
@@ -131,6 +131,20 @@ public class IoTDBSnapshotTransferIT {
       readResult.next();
       Assert.assertEquals(
           2 * (snapshotMagic + 1), readResult.getInt("count(root.emma.william.ethereal)"));
+
+      EnvFactory.getEnv().registerNewConfigNode();
+      final TShowRegionResp registerResult = configClient.showRegion(new TShowRegionReq());
+      Assert.assertNotNull(result.getRegionInfoList());
+
+      final long configNodeGroupCount =
+          registerResult.getRegionInfoList().stream()
+              .filter(
+                  info ->
+                      info.getConsensusGroupId()
+                          .getType()
+                          .equals(TConsensusGroupType.ConfigNodeRegion))
+              .count();
+      Assert.assertEquals(4, configNodeGroupCount);
     }
   }
 }
