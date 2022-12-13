@@ -180,7 +180,7 @@ if [ -z "${IOTDB_LOG_CONFIG}" ]; then
 fi
 
 
-if [ -f "$pidfile" ] && [ "$(pgrep -c "$(cat "$pidfile")")" -eq 1 ]; then
+if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" >/dev/null 2>&1; then
   echo "IoTDB already exists! Quiting"
   echo Pid = "$(cat "$pidfile")"
   exit 0
