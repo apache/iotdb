@@ -286,6 +286,9 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
+      // TODO: We should use logic clock such as searchIndex rather than wall clock to mark the
+      // snapshot, otherwise there will be bugs in situations where the clock might fall back, such
+      // as CI
       latestSnapshotId =
           String.format(
               "%s_%s_%d",
