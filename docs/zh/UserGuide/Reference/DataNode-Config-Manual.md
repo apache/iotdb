@@ -140,7 +140,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:---:|:---|
 |描述| DataNode 元数据副本的共识协议通信端口 |
 |类型| int |
-|默认值| 50010 |
+|默认值| 40030 |
 |改后生效方式|重启服务生效|
 
 * dn\_data\_region\_consensus\_port

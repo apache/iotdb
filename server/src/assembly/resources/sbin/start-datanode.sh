@@ -26,7 +26,10 @@ foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
 
-echo "all parameters are $*"
+if [ $# -ne 0 ]; then
+  echo "All parameters are $*"
+fi
+
 while true; do
     case "$1" in
         -c)
@@ -60,7 +63,7 @@ while true; do
         -D)
             IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
             #checkEnvVariables is in iotdb-common.sh
-            checkEnvVariables $2
+            checkEnvVariables "$2"
             shift 2
         ;;
         -X)
@@ -95,11 +98,18 @@ while true; do
     esac
 done
 
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Warning: in some systems, DataNode must run in sudo mode to write data. The process may fail."
+fi
+
 #checkAllVariables is in iotdb-common.sh
 checkAllVariables
 
+#checkDataNodePortUsages is in iotdb-common.sh
+checkDataNodePortUsages
+
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in "${IOTDB_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
@@ -245,7 +255,7 @@ check_running_process() {
 
 
 check_tool_env
-# If needed tool is ready, check whether same directory's IotDB node is running
+# If needed tool is ready, check whether same directory's IoTDB node is running
 if [ $? -eq 0 ]; then
   check_running_process
 fi

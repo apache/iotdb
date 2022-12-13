@@ -78,6 +78,47 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
     echo "can't find %CONFIGNODE_CONF%\confignode-env.bat"
     )
 
+@REM CHECK THE PORT USAGES
+IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
+    %IOTDB_CONF%\iotdb-confignode.properties') do (
+      set cn_internal_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
+    %IOTDB_CONF%\iotdb-confignode.properties') do (
+      set cn_consensus_port=%%i
+  )
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
+      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+        set cn_internal_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
+      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+        set cn_consensus_port=%%i
+  )
+)
+
+echo Check whether the ports are occupied....
+set occupied=0
+for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
+    if %%i==TCP (
+       if %%j==%cn_internal_port% (
+         echo The cn_internal_port %cn_internal_port% is already occupied, pid:%%k
+         set occupied=1
+       ) else if %%j==%cn_consensus_port% (
+         echo The cn_consensus_port %cn_consensus_port% is already occupied, pid:%%k
+         set occupied=1
+       )
+    )
+)
+
+if occupied==1 (
+  echo There exists occupied port, please change the configuration.
+  TIMEOUT /T 10 /NOBREAK
+  exit 0
+)
+
 set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err

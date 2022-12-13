@@ -24,7 +24,7 @@ dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.pro
 echo "check whether the rpc_port is used..., port is" $dn_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
-  PID=$(lsof -t -i:${dn_rpc_port} -sTCP:LISTEN)
+  PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)
 elif type netstat > /dev/null 2>&1 ; then
   PID=$(netstat -anp 2>/dev/null | grep ":${dn_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
 else
@@ -34,13 +34,16 @@ else
   exit 1
 fi
 
-PIDS=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(pgrep -f 'DataNode')
 if [ -z "$PID" ]; then
   echo "No DataNode to stop"
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Maybe you can try to run in sudo mode to detect the process."
+  fi
   exit 1
-elif [[ "${PIDS}" =~ "${PID}" ]]; then
-  kill -s TERM $PID
-  echo "Stop DataNode, PID:" $PID
+elif [[ "${PIDS}" =~ ${PID} ]]; then
+  kill -s TERM "$PID"
+  echo "Stop DataNode, PID:" "$PID"
 else
   echo "No DataNode to stop"
   exit 1

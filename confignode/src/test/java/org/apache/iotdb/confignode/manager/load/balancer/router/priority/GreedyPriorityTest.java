@@ -53,7 +53,7 @@ public class GreedyPriorityTest {
               new TEndPoint("0.0.0.0", 9003 + i),
               new TEndPoint("0.0.0.0", 8777 + i),
               new TEndPoint("0.0.0.0", 40010 + i),
-              new TEndPoint("0.0.0.0", 50010 + i)));
+              new TEndPoint("0.0.0.0", 40030 + i)));
     }
 
     /* Build nodeCacheMap */

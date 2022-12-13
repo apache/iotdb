@@ -147,7 +147,7 @@ public class TestRPCClient {
               new TEndPoint("127.0.0.1", 9003),
               new TEndPoint("127.0.0.1", 8777),
               new TEndPoint("127.0.0.1", 40010),
-              new TEndPoint("127.0.0.1", 50010)));
+              new TEndPoint("127.0.0.1", 40030)));
       locationList.add(
           new TDataNodeLocation(
               4,

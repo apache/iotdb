@@ -866,7 +866,7 @@ public class IoTDBConfig {
   private int dataRegionConsensusPort = 40010;
 
   /** Internal port for schemaRegion consensus protocol */
-  private int schemaRegionConsensusPort = 50010;
+  private int schemaRegionConsensusPort = 40030;
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =

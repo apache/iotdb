@@ -150,6 +150,143 @@ checkAllConfigNodeVariables()
   fi
 }
 
+checkDataNodePortUsages () {
+  echo "Checking whether the ports are already occupied..."
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Warning: If you do not use sudo, the checking may not detect all the occupied ports."
+  fi
+  occupied=false
+  if [ -f "$IOTDB_CONF/iotdb-datanode.properties" ]; then
+    dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+  elif [ -f "$IOTDB_HOME/conf/iotdb-datanode.properties" ]; then
+    dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-datanode.properties)
+    dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-datanode.properties)
+    dn_mpp_data_exchange_port=$(sed '/^dn_mpp_data_exchange_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+    dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
+  else
+    echo "Cannot find iotdb-datanode.properties, check the default configuration"
+    dn_rpc_port=6667
+    dn_internal_port=9003
+    dn_mpp_data_exchange_port=8777
+    dn_schema_region_consensus_port=40030
+    dn_data_region_consensus_port=40010
+  fi
+  if type lsof >/dev/null 2>&1; then
+    PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The dn_rpc_port" "$dn_rpc_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(lsof -t -i:"${dn_internal_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The dn_internal_port" "$dn_internal_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(lsof -t -i:"${dn_mpp_data_exchange_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The dn_mpp_data_exchange_port" "$dn_mpp_data_exchange_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(lsof -t -i:"${dn_schema_region_consensus_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The dn_schema_region_consensus_port" "$dn_schema_region_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(lsof -t -i:"${dn_data_region_consensus_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The dn_data_region_consensus_port" "$dn_data_region_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+  elif type netstat >/dev/null 2>&1; then
+    PID=$(netstat -anp 2>/dev/null | grep ":${dn_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The dn_rpc_port" "$dn_rpc_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(netstat -anp 2>/dev/null | grep ":${dn_internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The dn_internal_port" "$dn_internal_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(netstat -anp 2>/dev/null | grep ":${dn_mpp_data_exchange_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The dn_mpp_data_exchange_port" "$dn_mpp_data_exchange_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(netstat -anp 2>/dev/null | grep ":${dn_schema_region_consensus_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The dn_schema_region_consensus_port" "$dn_schema_region_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(netstat -anp 2>/dev/null | grep ":${dn_data_region_consensus_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The dn_data_region_consensus_port" "$dn_data_region_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+  else
+    echo " Error: No necessary tool, stop ports checking"
+    echo " Please install 'lsof' or 'netstat'."
+  fi
+  if [ $occupied = true ]; then
+    echo "Exit because there are occupied ports."
+    exit 0
+  fi
+}
+
+checkConfigNodePortUsages () {
+  echo "Checking whether the ports are already occupied..."
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Warning: If you do not use sudo, the checking may not detect all the occupied ports."
+  fi
+  occupied=false
+  if [ -f "$CONFIGNODE_CONF/iotdb-confignode.properties" ]; then
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+  elif [ -f "$CONFIGNODE_HOME/conf/iotdb-confignode.properties" ]; then
+    cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
+    cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
+  else
+    echo "Cannot find iotdb-confignode.properties, check the default configuration"
+    cn_internal_port=22277
+    cn_consensus_port=22278
+  fi
+  if type lsof >/dev/null 2>&1; then
+    PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The cn_internal_port" "$cn_internal_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(lsof -t -i:"${cn_consensus_port}" -sTCP:LISTEN)
+    if [ -n "$PID" ]; then
+      echo "The cn_consensus_port" "$cn_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+  elif type netstat >/dev/null 2>&1; then
+    PID=$(netstat -anp 2>/dev/null | grep ":${cn_internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The cn_internal_port" "$cn_internal_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+    PID=$(netstat -anp 2>/dev/null | grep ":${cn_consensus_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+    if [ -n "$PID" ]; then
+      echo "The cn_consensus_port" "$cn_consensus_port" "is already occupied, PID:" "$PID"
+      occupied=true
+    fi
+  else
+    echo " Error: No necessary tool, stop ports checking"
+    echo " Please install 'lsof' or 'netstat'."
+  fi
+  if [ $occupied = true ]; then
+    echo "Exit because there are occupied ports."
+    exit 0
+  fi
+}
+
 initEnv() {
   if [ -f "$IOTDB_CONF/datanode-env.sh" ]; then
       if [ "x$PRINT_GC" != "x" ]; then

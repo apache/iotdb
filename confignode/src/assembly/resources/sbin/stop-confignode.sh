@@ -19,12 +19,12 @@
 #
 
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
-cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
+cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
 
-echo "check whether the internal_port is used..., port is" $cn_internal_port
+echo Check whether the internal_port is used..., port is "$cn_internal_port"
 
 if type lsof >/dev/null 2>&1; then
-  PID=$(lsof -t -i:${cn_internal_port} -sTCP:LISTEN)
+  PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)
 elif type netstat >/dev/null 2>&1; then
   PID=$(netstat -anp 2>/dev/null | grep ":${cn_internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
 else
@@ -36,8 +36,11 @@ fi
 
 if [ -z "$PID" ]; then
   echo "No ConfigNode to stop"
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Maybe you can try to run in sudo mode to detect the process."
+  fi
   exit 1
 else
-  kill -s TERM $PID
-  echo "close ConfigNode, PID:" $PID
+  kill -s TERM "$PID"
+  echo "Close ConfigNode, PID:" "$PID"
 fi

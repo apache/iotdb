@@ -58,7 +58,7 @@ public class RegionRouteMapTest {
                 new TEndPoint("0.0.0.0", 9003 + j),
                 new TEndPoint("0.0.0.0", 8777 + j),
                 new TEndPoint("0.0.0.0", 40010 + j),
-                new TEndPoint("0.0.0.0", 50010 + j)));
+                new TEndPoint("0.0.0.0", 40030 + j)));
       }
       regionLeaderMap.put(regionGroupId, i % 3);
       regionPriorityMap.put(regionGroupId, regionReplicaSet);
