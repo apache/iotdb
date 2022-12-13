@@ -1194,12 +1194,12 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   String[] res =
       new String[] {
-        "v1,true,null",
-        "v2,false,null",
-        "null,true,25.96",
-        "v2,true,null",
-        "null,true,24.36",
-        "v2,true,null"
+          "v2,true,null",
+          "null,true,24.36",
+          "v2,true,null",
+          "null,true,25.96",
+          "v2,false,null",
+          "v1,true,null"
       };
 
   @Test
@@ -1224,10 +1224,10 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           lastDevice = actualDevice;
           lastTimeStamp = actualTimeStamp;
           String actualHardware = resultSet.getString(3);
-          boolean actualStatus = resultSet.getBoolean(4);
-          double actualTemperature = resultSet.getDouble(5);
+          String actualStatus = resultSet.getString(4);
+          String actualTemperature = resultSet.getString(5);
           String stringBuilder = actualHardware + "," + actualStatus + "," + actualTemperature;
-          assertEquals(stringBuilder, res[i]);
+          assertEquals(res[i], stringBuilder);
           i++;
         }
         assertEquals(i, 6);
