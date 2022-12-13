@@ -99,7 +99,7 @@ public class StabilityTest {
   }
 
   @Test
-  public void cleanOldSnapshotAfterTriggerSnapshotTest() {
+  public void cleanOldSnapshotAfterTriggerSnapshotTest() throws InterruptedException {
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
             dataRegionId,
@@ -108,6 +108,7 @@ public class StabilityTest {
     Assert.assertTrue(response.isSuccess());
 
     consensusImpl.triggerSnapshot(dataRegionId);
+    Thread.sleep(10);
 
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
 
@@ -117,6 +118,7 @@ public class StabilityTest {
     Assert.assertEquals(1, versionFiles1.length);
 
     consensusImpl.triggerSnapshot(dataRegionId);
+    Thread.sleep(10);
     consensusImpl.triggerSnapshot(dataRegionId);
 
     File[] versionFiles2 =
