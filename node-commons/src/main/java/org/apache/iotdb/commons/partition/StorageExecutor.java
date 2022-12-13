@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import java.util.List;
 import java.util.Objects;
 
 /** StorageExecutor indicates execution of this query need data from StorageEngine */
@@ -35,8 +34,7 @@ public class StorageExecutor implements ExecutorType {
 
   @Override
   public TDataNodeLocation getDataNodeLocation() {
-    List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
-    if (dataNodeLocations == null) {
+    if (regionReplicaSet == null || regionReplicaSet.getDataNodeLocations() == null) {
       return null;
     }
     return regionReplicaSet.getDataNodeLocations().get(0);
