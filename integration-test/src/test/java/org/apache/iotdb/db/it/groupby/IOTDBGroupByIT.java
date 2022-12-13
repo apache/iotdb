@@ -536,7 +536,7 @@ public class IOTDBGroupByIT {
         new String[] {count("root.test.noDataRegion.s1"), sum("root.test.noDataRegion.s1")};
     String[] retArray = new String[] {"1,0,null,", "2,0,null,"};
     resultSetEqualWithDescOrderTest(
-        "select count(s1), sum(s1) from root.test.noDataRegion" + "GROUP BY ([1, 3), 1ms)",
+        "select count(s1), sum(s1) from root.test.noDataRegion GROUP BY ([1, 3), 1ms)",
         expectedHeader,
         retArray);
   }
