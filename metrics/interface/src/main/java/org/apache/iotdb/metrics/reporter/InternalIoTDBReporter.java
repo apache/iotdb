@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics.reporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetric;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -65,9 +64,6 @@ public abstract class InternalIoTDBReporter implements Reporter {
   public void clear() {
     autoGauges.clear();
   }
-
-  /** Get the type of internal reporter */
-  public abstract InternalReporterType getType();
 
   /**
    * Write metric into IoTDB

@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -58,8 +57,8 @@ public class MetricConfig {
   /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
-  /** The type of internal reporter */
-  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
+  /** Whether store predefined metrics locally */
+  private Boolean isStoreToLocal = false;
 
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value */
@@ -171,7 +170,7 @@ public class MetricConfig {
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
     ioTDBReporterConfig = newMetricConfig.getIoTDBReporterConfig();
-    internalReporterType = newMetricConfig.getInternalReporterType();
+    isStoreToLocal = newMetricConfig.isStoreToLocal();
   }
 
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
@@ -259,12 +258,12 @@ public class MetricConfig {
     return rpcPort;
   }
 
-  public InternalReporterType getInternalReporterType() {
-    return internalReporterType;
+  public boolean isStoreToLocal() {
+    return isStoreToLocal;
   }
 
-  public void setInternalReporterType(InternalReporterType internalReporterType) {
-    this.internalReporterType = internalReporterType;
+  public void setStoreToLocal(boolean storeToLocal) {
+    isStoreToLocal = storeToLocal;
   }
 
   @Override
@@ -282,6 +281,6 @@ public class MetricConfig {
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
         && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
-        && internalReporterType.equals(anotherMetricConfig.getInternalReporterType());
+        && isStoreToLocal.equals(anotherMetricConfig.isStoreToLocal());
   }
 }

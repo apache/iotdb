@@ -50,7 +50,6 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,8 +194,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReporterType()
-        == InternalReporterType.IOTDB) {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().isStoreToLocal()) {
       MetricService.getInstance().reloadInternalReporter(new IoTDBInternalReporter());
     }
     registerManager.register(MetricService.getInstance());

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -55,11 +54,6 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
 
   public IoTDBInternalReporter() {
     // Empty constructor
-  }
-
-  @Override
-  public InternalReporterType getType() {
-    return InternalReporterType.IOTDB;
   }
 
   @Override

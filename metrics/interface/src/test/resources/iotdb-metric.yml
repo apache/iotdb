@@ -49,8 +49,8 @@ asyncCollectPeriodInSecond: 10
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9090
 
-# The type of internal reporter, options: [MEMORY, IOTDB]
-internalReporterType: IOTDB
+# whether store predefined metrics locally
+isStoreToLocal: true
 
 # The config of iotdb reporter
 ioTDBReporterConfig:

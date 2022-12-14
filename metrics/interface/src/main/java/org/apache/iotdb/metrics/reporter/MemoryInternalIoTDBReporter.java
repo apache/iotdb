@@ -20,16 +20,11 @@
 package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Map;
 
 public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
-  @Override
-  public InternalReporterType getType() {
-    return InternalReporterType.MEMORY;
-  }
 
   @Override
   protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
 
@@ -60,7 +59,7 @@ public class MetricConfigTest {
     assertEquals(5, metricConfig.getPredefinedMetrics().size());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
-    assertEquals(InternalReporterType.IOTDB, metricConfig.getInternalReporterType());
+    assertTrue(metricConfig.isStoreToLocal());
 
     MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());

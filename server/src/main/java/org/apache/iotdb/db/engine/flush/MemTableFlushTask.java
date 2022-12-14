@@ -297,14 +297,19 @@ public class MemTableFlushTask {
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
-        if (!storageGroup.equals(IoTDBConstant.SYSTEM_STORAGE_GROUP)) {
+        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
+            && !storageGroup.startsWith(IoTDBConstant.SYSTEM_STORAGE_GROUP)) {
+          int lastIndex = storageGroup.lastIndexOf("/");
+          if (lastIndex == -1) {
+            lastIndex = storageGroup.length();
+          }
           MetricService.getInstance()
               .countWithInternalReport(
                   memTable.getTotalPointsNum(),
                   Metric.POINTS.toString(),
                   MetricLevel.CORE,
                   Tag.SG.toString(),
-                  storageGroup,
+                  storageGroup.substring(0, lastIndex),
                   Tag.TYPE.toString(),
                   "flush");
         }
