@@ -186,7 +186,7 @@ public class SimpleNFA implements IPatternFA {
      * Since the transition generation of one patternNode need to judge based on next patternNode.
      * Therefore, we implemented this method for previous node.
      *
-     * @return the precise transitions of patternNode[patternIndex - 1]
+     * @return the fuzzy transitions of patternNode[patternIndex - 1]
      */
     protected abstract Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator();
 
@@ -194,7 +194,7 @@ public class SimpleNFA implements IPatternFA {
      * Since the transition generation of one patternNode need to judge based on next patternNode.
      * Therefore, we implemented this method for previous node.
      *
-     * @return the precise transitions of patternNode[patternIndex - 1]
+     * @return the num of fuzzy transitions of patternNode[patternIndex - 1]
      */
     protected abstract int getPreNodeFuzzyMatchTransitionSize();
 
@@ -212,6 +212,7 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
+  /** Initial node with patternIndex == -1. Holds the initial transition -(root)-> */
   private class InitialNode extends SinglePathPatternNode {
 
     private InitialNode() {
@@ -249,6 +250,10 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
+  /**
+   * The last node represents the prefix match state, and provides the transition access for
+   * patternNodes[rawNodes.length - 1]
+   */
   private class PrefixMatchNode extends SinglePathPatternNode {
 
     private PrefixMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
@@ -289,6 +294,7 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
+  /** The patternNode of the rawNode **. */
   private class MultiLevelWildcardMatchNode extends SinglePathPatternNode {
 
     private MultiLevelWildcardMatchNode(int patternIndex) {
@@ -326,6 +332,7 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
+  /** The patternNode of the rawNode *. */
   private class OneLevelWildcardMatchNode extends SinglePathPatternNode {
 
     private OneLevelWildcardMatchNode(int patternIndex, SinglePathPatternNode tracebackNode) {
@@ -366,7 +373,7 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
-  /** nodes[patternIndex] contains *, like d*. */
+  /** The patternNode of the rawNode contains *, like d*. */
   private class RegexMatchNode extends SinglePathPatternNode {
 
     private Pattern regexPattern;
@@ -412,7 +419,7 @@ public class SimpleNFA implements IPatternFA {
     }
   }
 
-  /** nodes[patternIndex] is a specified name */
+  /** The patternNode of the rawNode which is a specified name. */
   private class NameMatchNode extends SinglePathPatternNode {
 
     private Map<String, IFATransition> preNodePreciseMatchTransitionMap;
