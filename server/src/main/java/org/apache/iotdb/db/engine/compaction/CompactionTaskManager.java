@@ -240,9 +240,8 @@ public class CompactionTaskManager implements IService {
         .containsKey(task);
   }
 
-  public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+  public RateLimiter getCompactionIORateLimiter() {
+    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getCompactionIORatePerSec());
     return mergeWriteRateLimiter;
   }
 
@@ -256,8 +255,8 @@ public class CompactionTaskManager implements IService {
       mergeWriteRateLimiter.setRate(throughout);
     }
   }
-  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
-  public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
+  /** wait by compactionIORatePerSec limit to avoid continuous Write Or Read */
+  public static void compactionIORateLimiterAcquire(RateLimiter limiter, long bytesLength) {
     while (bytesLength >= Integer.MAX_VALUE) {
       limiter.acquire(Integer.MAX_VALUE);
       bytesLength -= Integer.MAX_VALUE;
