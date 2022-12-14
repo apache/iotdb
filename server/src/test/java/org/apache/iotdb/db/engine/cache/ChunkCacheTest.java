@@ -25,8 +25,9 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -83,7 +84,7 @@ public class ChunkCacheTest {
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -95,7 +96,7 @@ public class ChunkCacheTest {
     unseqResources.clear();
     chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -146,16 +147,17 @@ public class ChunkCacheTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TEST_SG));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaProcessor.createTimeseries(
-            devicePath.concatNode(measurementSchema.getMeasurementId()),
-            measurementSchema.getType(),
-            measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(),
-            Collections.emptyMap());
+        LocalSchemaProcessor.getInstance()
+            .createTimeseries(
+                devicePath.concatNode(measurementSchema.getMeasurementId()),
+                measurementSchema.getType(),
+                measurementSchema.getEncodingType(),
+                measurementSchema.getCompressor(),
+                Collections.emptyMap());
       }
     }
   }

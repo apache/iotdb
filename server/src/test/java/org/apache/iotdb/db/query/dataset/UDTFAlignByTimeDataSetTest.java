@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -80,43 +80,49 @@ public class UDTFAlignByTimeDataSetTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s1"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d1.s2"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s1"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d2.s2"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s1"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.vehicle.d3.s2"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s1"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d1.s2"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s1"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d2.s2"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s1"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath("root.vehicle.d3.s2"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
     generateData();
     queryExecutor.processNonQuery(
         processor.parseSQLToPhysicalPlan(

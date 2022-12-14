@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -71,8 +71,9 @@ public class WildcardsRemover {
       throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
-              path, currentLimit, currentOffset, isPrefixMatch, false);
+          LocalSchemaProcessor.getInstance()
+              .getMeasurementPathsWithAlias(
+                  path, currentLimit, currentOffset, isPrefixMatch, false);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);
       currentLimit -= pair.left.size();

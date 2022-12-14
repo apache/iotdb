@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.ActivateTemplateInClusterPlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -82,7 +82,7 @@ public abstract class SchemaRegionBasicTest {
   public void setUp() {
     isClusterMode = config.isClusterMode();
     config.setClusterMode(true);
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
   }
 
   @After
@@ -141,8 +141,8 @@ public abstract class SchemaRegionBasicTest {
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
-      IoTDB.configManager.clear();
-      IoTDB.configManager.init();
+      LocalConfigNode.getInstance().clear();
+      LocalConfigNode.getInstance().init();
       SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
       ISchemaRegion newSchemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
       newSchemaRegion.loadSnapshot(snapshotDir);

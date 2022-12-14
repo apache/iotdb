@@ -663,7 +663,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
     List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
-    List<TSDataType> outputColumnTypes = context.getCachedDataTypes();
+    List<TSDataType> outputColumnTypes =
+        node.isCacheOutputColumnNames()
+            ? getOutputColumnTypes(node, context.getTypeProvider())
+            : context.getCachedDataTypes();
     if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }

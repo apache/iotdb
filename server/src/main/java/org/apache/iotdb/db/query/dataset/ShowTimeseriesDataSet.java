@@ -21,9 +21,9 @@ package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -80,7 +80,7 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList =
-        IoTDB.schemaProcessor.showTimeseries((ShowTimeSeriesPlan) plan, context);
+        LocalSchemaProcessor.getInstance().showTimeseries((ShowTimeSeriesPlan) plan, context);
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);

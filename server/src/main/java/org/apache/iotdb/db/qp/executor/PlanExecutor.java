@@ -42,6 +42,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -80,7 +81,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -339,24 +339,24 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.schemaProcessor.getDevicesNum(path, isPrefixMatch);
+    return LocalSchemaProcessor.getInstance().getDevicesNum(path, isPrefixMatch);
   }
 
   private int getStorageGroupNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.schemaProcessor.getStorageGroupNum(path, isPrefixMatch);
+    return LocalSchemaProcessor.getInstance().getStorageGroupNum(path, isPrefixMatch);
   }
 
   protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return IoTDB.schemaProcessor.getAllTimeseriesCount(path, isPrefixMatch);
+    return LocalSchemaProcessor.getInstance().getAllTimeseriesCount(path, isPrefixMatch);
   }
 
   protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
       throws MetadataException {
-    return IoTDB.schemaProcessor.getNodesCountInGivenLevel(path, level, isPrefixMatch);
+    return LocalSchemaProcessor.getInstance().getNodesCountInGivenLevel(path, level, isPrefixMatch);
   }
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementPaths(path);
+    return LocalSchemaProcessor.getInstance().getMeasurementPaths(path);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
@@ -403,7 +403,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<TSchemaNode> getPathNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getChildNodePathInNextLevel(path);
+    return LocalSchemaProcessor.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowChildNodes(ShowChildNodesPlan showChildNodesPlan)
@@ -425,12 +425,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getChildNodeNameInNextLevel(path);
+    return LocalSchemaProcessor.getInstance().getChildNodeNameInNextLevel(path);
   }
 
   protected List<PartialPath> getStorageGroupNames(PartialPath path, boolean isPrefixMatch)
       throws MetadataException {
-    return IoTDB.schemaProcessor.getMatchedStorageGroups(path, isPrefixMatch);
+    return LocalSchemaProcessor.getInstance().getMatchedStorageGroups(path, isPrefixMatch);
   }
 
   private QueryDataSet processShowStorageGroup(ShowStorageGroupPlan showStorageGroupPlan)
@@ -475,7 +475,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return IoTDB.schemaProcessor.getAllStorageGroupNodes();
+    return LocalSchemaProcessor.getInstance().getAllStorageGroupNodes();
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
