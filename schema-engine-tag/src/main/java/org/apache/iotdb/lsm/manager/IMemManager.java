@@ -16,32 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-
-import java.util.List;
-
-/** Represents a flush request that can be processed by the lsm framework */
-public class IFlushRequest<K, V> implements IRequest<K, V> {
-
-  @Override
-  public K getKey(RequestContext context) {
-    return null;
-  }
-
-  @Override
-  public List<K> getKeys() {
-    return null;
-  }
-
-  @Override
-  public V getValue() {
-    return null;
-  }
-
-  @Override
-  public RequestType getRequestType() {
-    return RequestType.FLUSH;
-  }
+public interface IMemManager {
+  public boolean isNeedFlush();
 }
