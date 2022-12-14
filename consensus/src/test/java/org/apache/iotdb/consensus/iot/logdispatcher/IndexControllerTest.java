@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.ratis.Utils;
+
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -27,11 +32,14 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 public class IndexControllerTest {
 
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
-  private static final String prefix = "version";
+
+  private static final Peer peer =
+      new Peer(new DataRegionId(1), 2, new TEndPoint("127.0.0.1", 6667));
 
   private static final long CHECK_POINT_GAP = 500;
 
@@ -45,11 +53,10 @@ public class IndexControllerTest {
     FileUtils.deleteFully(storageDir);
   }
 
-  /** test indexController when incrementIntervalAfterRestart == false */
   @Test
-  public void testIncrementIntervalAfterRestart() {
+  public void testRestart() {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -58,7 +65,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -66,7 +73,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP + 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
@@ -74,12 +81,26 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP * 2 - 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP, controller.getLastFlushedIndex());
 
     controller.updateAndGet(CHECK_POINT_GAP * 2 + 1);
     Assert.assertEquals(CHECK_POINT_GAP * 2 + 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getLastFlushedIndex());
+  }
+
+  @Test
+  public void testUpgrade() throws IOException {
+    File oldFile =
+        new File(storageDir, Utils.fromTEndPointToString(peer.getEndpoint()) + "-" + 100);
+    Files.createFile(oldFile.toPath());
+
+    IndexController controller =
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
+    Assert.assertEquals(100, controller.getCurrentIndex());
+
+    File newFile = new File(storageDir, peer.getNodeId() + "-" + 100);
+    Assert.assertTrue(newFile.exists());
   }
 }
