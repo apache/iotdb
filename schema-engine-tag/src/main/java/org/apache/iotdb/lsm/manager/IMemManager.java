@@ -18,34 +18,6 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.engine.IRecoverable;
-import org.apache.iotdb.lsm.request.IRequest;
-
-import java.io.IOException;
-
-/** for memory structure recovery */
-public class RecoverManager<T extends IRecoverable> {
-
-  private WALManager walManager;
-
-  public RecoverManager(WALManager walManager) {
-    this.walManager = walManager;
-    walManager.setRecover(true);
-  }
-
-  /**
-   * recover
-   *
-   * @param t extends IRecoverable
-   */
-  public void recover(T t) throws IOException {
-    while (true) {
-      IRequest request = walManager.recover();
-      if (request == null) {
-        walManager.setRecover(false);
-        return;
-      }
-      t.recover(request);
-    }
-  }
+public interface IMemManager {
+  public boolean isNeedFlush();
 }

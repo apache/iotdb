@@ -33,12 +33,23 @@ public class TagSchemaConfig {
   // degree of a b+ tree
   private int degree = 100;
 
+  // the maximum number of immutableMemTables, when this is reached, flush operation is required
+  private int numOfImmutableMemTable = 5;
+
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
   }
 
   public void setNumOfDeviceIdsInMemTable(int numOfDeviceIdsInMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
+  }
+
+  public int getNumOfImmutableMemTable() {
+    return numOfImmutableMemTable;
+  }
+
+  public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
   }
 
   public int getWalBufferSize() {
@@ -70,6 +81,8 @@ public class TagSchemaConfig {
     return "TagSchemaConfig{"
         + "numOfDeviceIdsInMemTable="
         + numOfDeviceIdsInMemTable
+        + "numOfImmutableMemTable="
+        + numOfImmutableMemTable
         + ", walBufferSize="
         + walBufferSize
         + ", outBufferSize="

@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
+import org.apache.iotdb.lsm.manager.IMemManager;
+
 import java.util.HashMap;
 import java.util.Map;
 
 /** used to manage working and immutableMemTables */
-public class MemTableGroup {
+public class MemTableGroup implements IMemManager {
 
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable;
@@ -98,5 +100,10 @@ public class MemTableGroup {
         + ", maxDeviceID="
         + maxDeviceID
         + '}';
+  }
+
+  @Override
+  public boolean isNeedFlush() {
+    return false;
   }
 }

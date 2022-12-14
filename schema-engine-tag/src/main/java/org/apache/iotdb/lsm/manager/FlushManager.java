@@ -18,17 +18,59 @@
  */
 package org.apache.iotdb.lsm.manager;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
-public class FlushManager<T, R extends IFlushRequest>
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+public class FlushManager<T extends IMemManager, R extends IFlushRequest>
     extends BasicLSMManager<T, R, FlushRequestContext> {
 
   // use wal manager object to write wal file on deletion
   private WALManager walManager;
 
-  public FlushManager(WALManager walManager) {
+  private T memManager;
+
+  private ScheduledExecutorService checkFlushThread;
+
+  private final int flushIntervalMs = 60_000;
+
+  public FlushManager(WALManager walManager, T memManager) {
     this.walManager = walManager;
+    this.memManager = memManager;
+    checkFlushThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("LSM-Flush-Service");
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        checkFlushThread,
+        this::checkFlush,
+        flushIntervalMs,
+        flushIntervalMs,
+        TimeUnit.MILLISECONDS);
+  }
+
+  public void checkFlush() {
+    if (memManager.isNeedFlush()) {
+      FlushRequestContext flushRequestContext = flush();
+      updateWal(flushRequestContext);
+    }
+  }
+
+  private void updateWal(FlushRequestContext flushRequestContext) {
+    // TODO delete wal file
+  }
+
+  private void flushToDisk(FlushRequestContext flushRequestContext) {
+    // TODO flush to disk
+  }
+
+  private FlushRequestContext flush() {
+    FlushRequestContext flushRequestContext = new FlushRequestContext();
+    IFlushRequest flushRequest = new IFlushRequest();
+    process(memManager, (R) flushRequest, flushRequestContext);
+    flushToDisk(flushRequestContext);
+    return flushRequestContext;
   }
 
   @Override
