@@ -28,6 +28,7 @@ import org.apache.iotdb.lsm.sstable.writer.FileOutput;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Queue;
 
@@ -51,9 +52,94 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     bPlushTreeHeader = new BPlusTreeHeader();
   }
 
-  public void write(Map<String, Integer> entries) {}
+  /**
+   * generate a b+ tree for records and write to disk
+   *
+   * @param records a map that holds all records, the map can be unordered
+   * @return start offset of the b+ tree
+   * @throws IOException
+   */
+  @Override
+  public long write(Map<String, Long> records) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records);
+    BPlusTreeHeader bPlusTreeHeader = writeBPlusTree();
+    return fileOutput.write(bPlusTreeHeader);
+  }
 
-  public BPlusTreeHeader writeLeafNode() throws IOException {
+  /**
+   * generate a b+ tree for records and write to disk
+   *
+   * @param records a map that holds all records, the map can be unordered
+   * @return b+ tree header
+   * @throws IOException
+   */
+  @Override
+  public BPlusTreeHeader writeBPlusTree(Map<String, Long> records) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records);
+    return writeBPlusTree();
+  }
+
+  /**
+   * generate a b+ tree and header for records and write to disk
+   *
+   * @param records a queue that holds all records, the queue can be unordered
+   * @return start offset of the b+ tree
+   * @throws IOException
+   */
+  @Override
+  public long write(Queue<BPlusTreeEntry> records) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records);
+    BPlusTreeHeader bPlusTreeHeader = writeBPlusTree();
+    return fileOutput.write(bPlusTreeHeader);
+  }
+
+  /**
+   * generate a b+ tree for records and write to disk
+   *
+   * @param records a queue that holds all records, the queue can be unordered
+   * @return b+ tree header
+   * @throws IOException
+   */
+  @Override
+  public BPlusTreeHeader writeBPlusTree(Queue<BPlusTreeEntry> records) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records);
+    return writeBPlusTree();
+  }
+
+  /**
+   * collect the records to be written to the disk, and only call write or writeBPlusTree to
+   * actually write to the disk
+   *
+   * @param name name of the record
+   * @param offset offset of the record
+   * @return this
+   */
+  @Override
+  public IBPlusTreeWriter collectRecord(String name, long offset) {
+    currentBPlusTreeEntryQueue.add(new BPlusTreeEntry(name, offset));
+    return this;
+  }
+
+  /**
+   * generate a b+ tree and header for records and write to disk
+   *
+   * @return start offset of the b+ tree
+   * @throws IOException
+   */
+  @Override
+  public long write() throws IOException {
+    BPlusTreeHeader bPlusTreeHeader = writeBPlusTree();
+    return fileOutput.write(bPlusTreeHeader);
+  }
+
+  /**
+   * generate a b+ tree for records and write to disk
+   *
+   * @return b+ tree header
+   * @throws IOException
+   */
+  @Override
+  public BPlusTreeHeader writeBPlusTree() throws IOException {
     setBPlushTreeHeaderMaxAndMin();
     BPlusTreeNode bPlusTreeNode = new BPlusTreeNode(BPlusTreeNodeType.LEAF_NODE);
     BPlusTreeEntry bPlusTreeEntry = null;
@@ -144,6 +230,22 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
       bPlushTreeHeader.setOffset(rootNodeOffset);
     }
     return bPlushTreeHeader;
+  }
+
+  private void setCurrentBPlusTreeEntryQueue(Map<String, Long> records) {
+    records.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(
+            stringIntegerEntry ->
+                currentBPlusTreeEntryQueue.add(
+                    new BPlusTreeEntry(
+                        stringIntegerEntry.getKey(), stringIntegerEntry.getValue())));
+  }
+
+  private void setCurrentBPlusTreeEntryQueue(Queue<BPlusTreeEntry> records) {
+    records.stream()
+        .sorted(Comparator.comparing(BPlusTreeEntry::getName))
+        .forEach(bPlusTreeEntry -> currentBPlusTreeEntryQueue.add(bPlusTreeEntry));
   }
 
   @Override
