@@ -74,9 +74,9 @@ public class TagSchemaDescriptor {
                   "num_of_deviceIds_in_memTable",
                   String.valueOf(conf.getNumOfDeviceIdsInMemTable()))));
       conf.setNumOfImmutableMemTable(
-              Integer.parseInt(
-                      properties.getProperty(
-                              "num_of_immutable_memTable", String.valueOf(conf.getNumOfImmutableMemTable()))));
+          Integer.parseInt(
+              properties.getProperty(
+                  "num_of_immutable_memTable", String.valueOf(conf.getNumOfImmutableMemTable()))));
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find tag schema region config file {}", tagSchemaConfigPath);
     } catch (IOException e) {

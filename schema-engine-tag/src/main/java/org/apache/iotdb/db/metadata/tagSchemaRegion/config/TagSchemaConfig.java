@@ -37,6 +37,7 @@ public class TagSchemaConfig {
   public void setNumOfDeviceIdsInMemTable(int numOfDeviceIdsInMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
   }
+
   public int getNumOfImmutableMemTable() {
     return numOfImmutableMemTable;
   }
@@ -44,6 +45,7 @@ public class TagSchemaConfig {
   public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
     this.numOfImmutableMemTable = numOfImmutableMemTable;
   }
+
   public int getWalBufferSize() {
     return walBufferSize;
   }
