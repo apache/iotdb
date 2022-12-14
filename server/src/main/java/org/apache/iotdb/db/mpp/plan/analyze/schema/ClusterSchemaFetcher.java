@@ -83,7 +83,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()));
+                  config.getQueryTimeoutThreshold()),
+              templateManager::checkAllRelatedTemplate);
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -119,7 +120,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     if (withTags) {
       return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-          new SchemaFetchStatement(patternTree, templateMap, withTags));
+          new SchemaFetchStatement(patternTree, templateMap, true));
     }
 
     List<PartialPath> fullPathList = new ArrayList<>();
@@ -131,7 +132,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     if (fullPathList.isEmpty()) {
       return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-          new SchemaFetchStatement(patternTree, templateMap, withTags));
+          new SchemaFetchStatement(patternTree, templateMap, false));
     }
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -165,7 +166,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       schemaTree =
           clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-              new SchemaFetchStatement(patternTree, templateMap, withTags));
+              new SchemaFetchStatement(patternTree, templateMap, false));
 
       // only cache the schema fetched by full path
       List<MeasurementPath> measurementPathList;

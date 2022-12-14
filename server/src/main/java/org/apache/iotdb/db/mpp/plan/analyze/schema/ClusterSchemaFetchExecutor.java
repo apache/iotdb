@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
@@ -31,15 +34,22 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 class ClusterSchemaFetchExecutor {
@@ -47,14 +57,75 @@ class ClusterSchemaFetchExecutor {
   private final Coordinator coordinator;
   private final Supplier<Long> queryIdProvider;
   private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
+  private final Function<PartialPath, Map<Integer, Template>> templateSetInfoProvider;
+
+  private final Map<PartialPath, Pair<AtomicInteger, ClusterSchemaTree>> fetchedResultMap = new ConcurrentHashMap<>();
+
+  private final Map<PartialPath, Pair<AtomicInteger, Set<String>>> executingTaskMap = new ConcurrentHashMap<>();
+
+  private final Map<PartialPath, Pair<AtomicInteger, Set<String>>> waitingTaskMap = new ConcurrentHashMap<>();
 
   ClusterSchemaFetchExecutor(
       Coordinator coordinator,
       Supplier<Long> queryIdProvider,
-      BiFunction<Long, Statement, ExecutionResult> statementExecutor) {
+      BiFunction<Long, Statement, ExecutionResult> statementExecutor,
+      Function<PartialPath, Map<Integer, Template>> templateSetInfoProvider) {
     this.coordinator = coordinator;
     this.queryIdProvider = queryIdProvider;
     this.statementExecutor = statementExecutor;
+    this.templateSetInfoProvider = templateSetInfoProvider;
+  }
+
+  ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements){
+
+    final AtomicBoolean shouldWait = new AtomicBoolean(true);
+    executingTaskMap.compute(devicePath, (key, value) -> {
+      if (value == null){
+        return null;
+      }
+      if (value.right.size() < measurements.size()){
+        shouldWait.set(false);
+        return value;
+      }
+      for (String measurement: measurements){
+        if (!value.right.contains(measurement)){
+          shouldWait.set(false);
+          return value;
+        }
+      }
+      value.left.getAndIncrement();
+      return value;
+    });
+    if (shouldWait.get()){
+      while (!fetchedResultMap.containsKey(devicePath));
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      Pair<AtomicInteger, ClusterSchemaTree> pair = fetchedResultMap.get(devicePath);
+      if (pair.left.decrementAndGet() == 0){
+        fetchedResultMap.remove(devicePath);
+      }
+    }else {
+      Pair<AtomicInteger, Set<String>> task = waitingTaskMap.compute(devicePath, (key, value) -> {
+        if (value == null){
+          value = new Pair<>(new AtomicInteger(0), new HashSet<>());
+        }
+        value.left.getAndIncrement();
+        value.right.addAll(measurements);
+        return value;
+      });
+      synchronized (task){
+        while (executingTaskMap.computeIfAbsent(devicePath, key -> task)!=task);
+        PathPatternTree patternTree = new PathPatternTree();
+        for (String measurement: task.right){
+          patternTree.appendFullPath(devicePath, measurement);
+        }
+        ClusterSchemaTree fetchedSchemaTree = executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateSetInfoProvider.apply(devicePath), false));
+        Pair<AtomicInteger, ClusterSchemaTree> fetchSchemaResult = new Pair<>(task.left, fetchedSchemaTree);
+        while (fetchedResultMap.computeIfAbsent(devicePath, key -> fetchSchemaResult) != fetchSchemaResult);
+
+      }
+    }
+
+    return null;
   }
 
   ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
