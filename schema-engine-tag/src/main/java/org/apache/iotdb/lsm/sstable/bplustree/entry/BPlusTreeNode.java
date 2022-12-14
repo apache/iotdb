@@ -22,6 +22,7 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class BPlusTreeNode implements IEntry {
@@ -89,5 +90,12 @@ public class BPlusTreeNode implements IEntry {
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
     return null;
+  }
+
+  public void add(BPlusTreeEntry bPlusTreeEntry) {
+    if (bPlusTreeEntries == null) {
+      bPlusTreeEntries = new ArrayList<>();
+    }
+    bPlusTreeEntries.add(bPlusTreeEntry);
   }
 }

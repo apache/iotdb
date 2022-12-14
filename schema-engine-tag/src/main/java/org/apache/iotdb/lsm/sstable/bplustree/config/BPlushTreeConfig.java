@@ -18,4 +18,23 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.config;
 
-public class BPlushTreeConfig {}
+public class BPlushTreeConfig {
+  private int degree = 10;
+
+  public BPlushTreeConfig(int degree) {
+    this.degree = degree;
+  }
+
+  public int getDegree() {
+    return degree;
+  }
+
+  public void setDegree(int degree) {
+    this.degree = degree;
+  }
+
+  @Override
+  public String toString() {
+    return "BPlushTreeConfig{" + "degree=" + degree + '}';
+  }
+}
