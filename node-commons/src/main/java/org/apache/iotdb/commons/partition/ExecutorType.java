@@ -33,8 +33,4 @@ public interface ExecutorType {
   default TRegionReplicaSet getRegionReplicaSet() {
     throw new UnsupportedOperationException(getClass().getName());
   }
-
-  default void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
 }
