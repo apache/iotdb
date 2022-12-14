@@ -40,7 +40,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @ThreadSafe
 public class IndexController {
 
-  public static final String separator = "-";
+  public static final String SEPARATOR = "-";
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
 
@@ -60,7 +60,7 @@ public class IndexController {
   public IndexController(String storageDir, Peer peer, long initialIndex, long checkpointGap) {
     this.storageDir = storageDir;
     this.peer = peer;
-    this.prefix = peer.getNodeId() + separator;
+    this.prefix = peer.getNodeId() + SEPARATOR;
     this.checkpointGap = checkpointGap;
     this.initialIndex = initialIndex;
     // This is because we changed the name of the version file in version 1.0.1. In order to ensure
@@ -139,14 +139,14 @@ public class IndexController {
 
   private void upgrade() {
     File directory = new File(storageDir);
-    String oldPrefix = Utils.fromTEndPointToString(peer.getEndpoint()) + separator;
+    String oldPrefix = Utils.fromTEndPointToString(peer.getEndpoint()) + SEPARATOR;
     Optional.ofNullable(directory.listFiles((dir, name) -> name.startsWith(oldPrefix)))
         .ifPresent(
             files ->
                 Arrays.stream(files)
                     .forEach(
                         oldFile -> {
-                          String[] splits = oldFile.getName().split(separator);
+                          String[] splits = oldFile.getName().split(SEPARATOR);
                           long fileVersion = Long.parseLong(splits[splits.length - 1]);
                           File newFile = new File(storageDir, prefix + fileVersion);
                           try {
@@ -169,7 +169,7 @@ public class IndexController {
       long maxVersion = 0;
       int maxVersionIndex = 0;
       for (int i = 0; i < versionFiles.length; i++) {
-        long fileVersion = Long.parseLong(versionFiles[i].getName().split(separator)[1]);
+        long fileVersion = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
         if (fileVersion > maxVersion) {
           maxVersion = fileVersion;
           maxVersionIndex = i;

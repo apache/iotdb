@@ -95,14 +95,14 @@ public class IndexControllerTest {
     File oldFile =
         new File(
             storageDir,
-            Utils.fromTEndPointToString(peer.getEndpoint()) + IndexController.separator + 100);
+            Utils.fromTEndPointToString(peer.getEndpoint()) + IndexController.SEPARATOR + 100);
     Files.createFile(oldFile.toPath());
 
     IndexController controller =
         new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(100, controller.getCurrentIndex());
 
-    File newFile = new File(storageDir, peer.getNodeId() + IndexController.separator + 100);
+    File newFile = new File(storageDir, peer.getNodeId() + IndexController.SEPARATOR + 100);
     Assert.assertTrue(newFile.exists());
   }
 }
