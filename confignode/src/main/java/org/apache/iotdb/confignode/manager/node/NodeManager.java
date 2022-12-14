@@ -269,8 +269,7 @@ public class NodeManager {
   /**
    * Get configuration
    *
-   * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
-   *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
+   * @return ConfigurationResp. The TSStatus will be set to SUCCESS_STATUS.
    */
   public DataSet getConfiguration() {
     ConfigurationResp dataSet = new ConfigurationResp();
