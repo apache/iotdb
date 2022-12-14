@@ -25,6 +25,9 @@ derby-tsfile-db
 # build generated
 **/target/
 
+# build docker images
+tmp
+
 # intermediately generated locally
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml

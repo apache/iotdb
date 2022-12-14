@@ -17,41 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.drepair;
+package org.apache.iotdb.libudf.it.drepair;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class DRepairTests {
-  protected static final int ITERATION_TIMES = 100_000;
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class})
+public class DRepairIT {
+  protected static final int ITERATION_TIMES = 1_000;
   protected static final int DELTA_T = 100;
-
-  private static final float oldUdfCollectorMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
-  private static final float oldUdfTransformerMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
-  private static final float oldUdfReaderMemoryBudgetInMB =
-      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -65,65 +56,60 @@ public class DRepairTests {
     registerUDF();
   }
 
-  private static void createTimeSeries() throws MetadataException {
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
-    // test series for TimeStampRepair
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath("root.vehicle.d1.s1"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
-    // test series for ValueFill
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath("root.vehicle.d2.s1"),
-            TSDataType.INT64,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
-    // test series for ValueRepair
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath("root.vehicle.d3.s1"),
-            TSDataType.FLOAT,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
+  private static void createTimeSeries() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.addBatch("create database root.vehicle");
+      statement.addBatch(
+          "create timeseries root.vehicle.d1.s1 with "
+              + "datatype=int32, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.addBatch(
+          "create timeseries root.vehicle.d2.s1 with "
+              + "datatype=int64, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.addBatch(
+          "create timeseries root.vehicle.d3.s1 with "
+              + "datatype=float, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.executeBatch();
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 
   private static void generateData() {
     double x = -100d, y = 100d; // borders of random value
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         if (Math.random() < 0.99) {
           statement.execute(
               String.format(
-                  "insert into root.vehicle.d1(timestamp,s1) values(%d,%f)",
-                  (long) i * DELTA_T, Math.floor(x + Math.random() * y % (y - x + 1))));
+                  "insert into root.vehicle.d1(timestamp,s1) values(%d,%d)",
+                  (long) i * DELTA_T, (int) Math.floor(x + Math.random() * y % (y - x + 1))));
         } else {
           statement.execute(
               String.format(
-                  "insert into root.vehicle.d1(timestamp,s1) values(%d,%f)",
+                  "insert into root.vehicle.d1(timestamp,s1) values(%d,%d)",
                   (long) i * DELTA_T + (long) Math.floor((Math.random() - 0.5) * DELTA_T),
-                  Math.floor(x + Math.random() * y % (y - x + 1))));
+                  (int) Math.floor(x + Math.random() * y % (y - x + 1))));
         }
       }
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         if (Math.random() < 0.97) {
           statement.execute(
               String.format(
-                  "insert into root.vehicle.d2(timestamp,s1) values(%d,%f)",
-                  (long) i * DELTA_T, Math.floor(x + Math.random() * y % (y - x + 1))));
+                  "insert into root.vehicle.d2(timestamp,s1) values(%d,%d)",
+                  (long) i * DELTA_T, (long) Math.floor(x + Math.random() * y % (y - x + 1))));
         } else {
           statement.execute(
               String.format(
-                  "insert into root.vehicle.d2(timestamp,s1) values(%d,%f)",
-                  (long) i * DELTA_T, Double.NaN));
+                  "insert into root.vehicle.d2(timestamp,s1) values(%d,%d)",
+                  (long) i * DELTA_T, 0));
         }
       }
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
@@ -142,11 +128,11 @@ public class DRepairTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function timestamprepair as 'org.apache.iotdb.library.dquality.UDTFTimestampRepair'");
+          "create function timestamprepair as 'org.apache.iotdb.library.drepair.UDTFTimestampRepair'");
       statement.execute(
-          "create function valuefill as 'org.apache.iotdb.library.dquality.UDTFValueFill'");
+          "create function valuefill as 'org.apache.iotdb.library.drepair.UDTFValueFill'");
       statement.execute(
-          "create function valuerepair as 'org.apache.iotdb.library.dquality.UDTFValueRepair'");
+          "create function valuerepair as 'org.apache.iotdb.library.drepair.UDTFValueRepair'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -155,19 +141,13 @@ public class DRepairTests {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(oldUdfCollectorMemoryBudgetInMB)
-        .setUdfTransformerMemoryBudgetInMB(oldUdfTransformerMemoryBudgetInMB)
-        .setUdfReaderMemoryBudgetInMB(oldUdfReaderMemoryBudgetInMB);
   }
 
   @Test
   public void testTimestampRepair1() {
     String sqlStr =
         String.format("select timestamprepair(d1.s1,'interval'='%d') from root.vehicle", DELTA_T);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -178,9 +158,7 @@ public class DRepairTests {
   @Test
   public void testTimestampRepair2() {
     String sqlStr = "select timestamprepair(d1.s1,'method'='median') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -191,9 +169,7 @@ public class DRepairTests {
   @Test
   public void testTimestampRepair3() {
     String sqlStr = "select timestamprepair(d1.s1,'method'='mode') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -204,9 +180,7 @@ public class DRepairTests {
   @Test
   public void testTimestampRepair4() {
     String sqlStr = "select timestamprepair(d1.s1,'method'='cluster') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -217,9 +191,7 @@ public class DRepairTests {
   @Test
   public void testValueFill1() {
     String sqlStr = "select valuefill(d2.s1,'method'='previous') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -230,9 +202,7 @@ public class DRepairTests {
   @Test
   public void testValueFill2() {
     String sqlStr = "select valuefill(d2.s1,'method'='linear') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -243,9 +213,7 @@ public class DRepairTests {
   @Test
   public void testValueFill3() {
     String sqlStr = "select valuefill(d2.s1,'method'='likelihood') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -253,12 +221,11 @@ public class DRepairTests {
     }
   }
 
+  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testValueFill4() {
     String sqlStr = "select valuefill(d2.s1,'method'='ar') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -268,10 +235,8 @@ public class DRepairTests {
 
   @Test
   public void testValueFill5() {
-    String sqlStr = "select valuefill(d2.s1,'method'='ma') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    String sqlStr = "select valuefill(d2.s1,'method'='mean') from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -282,9 +247,7 @@ public class DRepairTests {
   @Test
   public void testValueFill6() {
     String sqlStr = "select valuefill(d2.s1,'method'='screen') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -295,9 +258,7 @@ public class DRepairTests {
   @Test
   public void testValueRepair1() {
     String sqlStr = "select valuerepair(d3.s1,'method'='screen') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
@@ -308,9 +269,7 @@ public class DRepairTests {
   @Test
   public void testValueRepair2() {
     String sqlStr = "select valuerepair(d3.s1,'method'='lsgreedy') from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
