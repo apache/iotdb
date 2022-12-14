@@ -110,6 +110,7 @@ public class CrossSpaceCompactionTest {
           Collections.emptyMap());
     }
     CompactionTaskManager.getInstance().start();
+    IoTDB.activated = true;
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -121,6 +122,7 @@ public class CrossSpaceCompactionTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     CompactionTaskManager.getInstance().stop();
+    IoTDB.activated = false;
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     new CompactionConfigRestorer().restoreCompactionConfig();
