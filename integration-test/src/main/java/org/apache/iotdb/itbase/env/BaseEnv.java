@@ -201,6 +201,8 @@ public interface BaseEnv {
   /** Register a new DataNode */
   void registerNewDataNode();
 
+  void registerNewConfigNode();
+
   /** Start an existed DataNode */
   void startDataNode(int index);
 

@@ -313,10 +313,9 @@ public class NodeManager {
     }
 
     // Add request to queue, then return to client
-    boolean registerSucceed =
-        configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
+    boolean removeSucceed = configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
-    if (registerSucceed) {
+    if (removeSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("Server accepted the request");
     } else {

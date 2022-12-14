@@ -111,6 +111,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -1539,12 +1540,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeName(nodeName);
     return nodeName;
@@ -1556,12 +1552,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (PathUtils.isRealNumber(unWrapped)
-          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
-        return nodeName;
-      }
-      return unWrapped;
+      return PathUtils.removeBackQuotesIfNecessary(nodeName);
     }
     checkNodeNameInIntoPath(nodeName);
     return nodeName;
@@ -3064,5 +3055,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
     }
     return getTimeSlotListStatement;
+  }
+
+  @Override
+  public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
+    return new MigrateRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()),
+        Integer.parseInt(ctx.fromId.getText()),
+        Integer.parseInt(ctx.toId.getText()));
   }
 }

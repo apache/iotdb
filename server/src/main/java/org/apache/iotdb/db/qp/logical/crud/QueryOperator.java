@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -510,11 +510,11 @@ public class QueryOperator extends Operator {
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getMatchedDevices(path, isPrefixMatchPath);
+    return LocalSchemaProcessor.getInstance().getMatchedDevices(path, isPrefixMatchPath);
   }
 
   protected List<MeasurementPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementPaths(path, isPrefixMatchPath);
+    return LocalSchemaProcessor.getInstance().getMeasurementPaths(path, isPrefixMatchPath);
   }
 
   public boolean isEnableTracing() {

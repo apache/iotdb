@@ -22,12 +22,12 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -121,7 +121,9 @@ public abstract class QueryPlan extends PhysicalPlan {
       if (isJdbcQuery) {
         // Separate sgName from the name of resultColumn to reduce the network IO
         String sgName =
-            IoTDB.schemaProcessor.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+            LocalSchemaProcessor.getInstance()
+                .getBelongedStorageGroup(getPaths().get(i))
+                .getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {
           respColumns.add(

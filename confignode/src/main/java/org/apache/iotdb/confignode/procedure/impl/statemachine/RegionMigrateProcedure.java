@@ -44,7 +44,7 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
-/** region migrate procedure */
+/** Region migrate procedure */
 public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
   private static final Logger LOG = LoggerFactory.getLogger(RegionMigrateProcedure.class);
@@ -264,13 +264,14 @@ public class RegionMigrateProcedure
 
         if (!migrateSuccess) {
           throw new ProcedureException(
-              String.format("Region migrate failed, regionId: %s", consensusGroupId));
+              String.format("Region migration failed, regionId: %s", consensusGroupId));
         }
       } catch (InterruptedException e) {
-        LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
+        LOG.error(
+            "{}, region migration {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("wait region migrate interrupt," + e.getMessage());
+        status.setMessage("Waiting for region migration interruption," + e.getMessage());
       }
     }
     return status;
@@ -280,17 +281,17 @@ public class RegionMigrateProcedure
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
     LOG.info(
-        "{}, ConfigNode received region migrate result reported by DataNode: {}",
+        "{}, ConfigNode received region migration result reported by DataNode: {}",
         REMOVE_DATANODE_PROCESS,
         req);
 
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       TSStatus migrateStatus = req.getMigrateResult();
-      // migrate failed
+      // Migration failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
         LOG.info(
-            "{}, Region migrate failed in DataNode, migrateStatus: {}",
+            "{}, Region migration failed in DataNode, migrateStatus: {}",
             REMOVE_DATANODE_PROCESS,
             migrateStatus);
         migrateSuccess = false;

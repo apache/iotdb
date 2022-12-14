@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -96,8 +96,8 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.schemaProcessor.createTimeseries(
-          path, dataType, encoding, compressionType, Collections.emptyMap());
+      LocalSchemaProcessor.getInstance()
+          .createTimeseries(path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {

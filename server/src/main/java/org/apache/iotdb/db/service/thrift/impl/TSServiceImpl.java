@@ -40,6 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -64,7 +65,6 @@ import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.pool.QueryTaskManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -233,7 +233,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   public TSServiceImpl() {
     super();
-    serviceProvider = IoTDB.serviceProvider;
+    serviceProvider = null;
   }
 
   @Override
@@ -351,11 +351,11 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getMeasurementPaths(path);
+    return LocalSchemaProcessor.getInstance().getMeasurementPaths(path);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.schemaProcessor.getSeriesType(path);
+    return LocalSchemaProcessor.getInstance().getSeriesType(path);
   }
 
   @Override
@@ -1042,7 +1042,8 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // measurementAlias is also a nodeName
-      PathUtils.isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
+          Collections.singletonList(req.getMeasurementAlias()));
       CreateTimeSeriesPlan plan =
           new CreateTimeSeriesPlan(
               new PartialPath(req.path),
@@ -1072,9 +1073,9 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention
 
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements());
 
-      PathUtils.isLegalSingleMeasurements(req.getMeasurementAlias());
+      PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAlias());
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
@@ -1135,7 +1136,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
       // measurementAlias is also a nodeName
 
-      PathUtils.isLegalSingleMeasurements(req.measurementAliasList);
+      PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.measurementAliasList);
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
@@ -1255,7 +1256,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalMeasurementLists(plan.getMeasurements());
+      PathUtils.checkIsLegalMeasurementListsAndUpdate(plan.getMeasurements());
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, SESSION_MANAGER.getCurrSession());
 
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1271,7 +1272,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     try {
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalMeasurements(req.getMeasurements());
+      PathUtils.checkIsLegalMeasurementsAndUpdate(req.getMeasurements());
     } catch (IoTDBException e) {
       onIoTDBException(e, OperationType.EXECUTE_NON_QUERY_PLAN, e.getErrorCode());
     }

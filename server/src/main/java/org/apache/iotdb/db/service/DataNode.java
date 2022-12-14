@@ -705,7 +705,6 @@ public class DataNode implements DataNodeMBean {
   private void initProtocols() throws StartupException {
     if (config.isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
-      IoTDB.initInfluxDBMManager();
     }
     if (config.isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
