@@ -177,12 +177,30 @@ public class FileMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "inner-seq-temp-num");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "inner-unseq-temp-num");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "cross-temp-num");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "inner-seq-temp-size");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "inner-unseq-temp-size");
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "cross-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "cross-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "cross-temp-size");
   }
 
   private void collect() {
