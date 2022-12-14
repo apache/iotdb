@@ -44,7 +44,9 @@ public class BPlusTreeWriterTest {
 
   @After
   public void tearDown() throws Exception {
-    bPlusTreeWriter.close();
+    if (bPlusTreeWriter != null) {
+      bPlusTreeWriter.close();
+    }
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(degree);
     bPlusTreeWriter = null;
     file.delete();
