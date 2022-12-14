@@ -39,7 +39,7 @@ public class IndexControllerTest {
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
 
   private static final Peer peer =
-      new Peer(new DataRegionId(1), 2, new TEndPoint("127.0.0.1", 6667));
+      new Peer(new DataRegionId(1), 2, new TEndPoint("datanode-1.datanode-svc", 6667));
 
   private static final long CHECK_POINT_GAP = 500;
 
@@ -93,14 +93,16 @@ public class IndexControllerTest {
   @Test
   public void testUpgrade() throws IOException {
     File oldFile =
-        new File(storageDir, Utils.fromTEndPointToString(peer.getEndpoint()) + "-" + 100);
+        new File(
+            storageDir,
+            Utils.fromTEndPointToString(peer.getEndpoint()) + IndexController.separator + 100);
     Files.createFile(oldFile.toPath());
 
     IndexController controller =
         new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(100, controller.getCurrentIndex());
 
-    File newFile = new File(storageDir, peer.getNodeId() + "-" + 100);
+    File newFile = new File(storageDir, peer.getNodeId() + IndexController.separator + 100);
     Assert.assertTrue(newFile.exists());
   }
 }
