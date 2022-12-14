@@ -58,12 +58,6 @@ import static org.junit.Assert.fail;
 public class CompactionSchedulerWithFastPerformerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";
-  private static final boolean oldEnableInnerSeqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-  private static final boolean oldEnableInnerUnseqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-  private static final boolean oldEnableCrossCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
   static final long MAX_WAITING_TIME = 60_000;
   static final long SCHEDULE_AGAIN_TIME = 30_000;
   static final String[] fullPaths =
@@ -85,13 +79,6 @@ public class CompactionSchedulerWithFastPerformerTest {
         ".device1.sensor4",
       };
 
-  private CrossCompactionPerformer oldCrossPerformer =
-      IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer();
-  private InnerSeqCompactionPerformer oldInnerSeqPerformer =
-      IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer();
-  private InnerUnseqCompactionPerformer oldInnerUnseqPerformer =
-      IoTDBDescriptor.getInstance().getConfig().getInnerUnseqCompactionPerformer();
-
   @Before
   public void setUp() throws MetadataException, IOException {
     CompactionClearUtils.clearAllCompactionFiles();
@@ -101,9 +88,6 @@ public class CompactionSchedulerWithFastPerformerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCrossCompactionPerformer(CrossCompactionPerformer.FAST);
@@ -132,20 +116,6 @@ public class CompactionSchedulerWithFastPerformerTest {
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
     CompactionTaskManager.getInstance().stop();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(oldEnableInnerSeqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(oldEnableInnerUnseqCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(oldEnableCrossCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionPerformer(oldCrossPerformer);
-    IoTDBDescriptor.getInstance().getConfig().setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setInnerUnseqCompactionPerformer(oldInnerUnseqPerformer);
   }
 
   /**
