@@ -25,14 +25,24 @@ import org.apache.iotdb.commons.path.fa.IFAState;
 public class MatchedStateSet {
   private static final int INITIAL_SIZE = 8;
 
+  /**
+   * Status of all states, identified by index in target FA. stateStatus[k] == true means state with
+   * index equals k is already in this set.
+   */
   private final boolean[] stateStatus;
 
+  /** The existing state in this state, stored in the putting order. */
   private int[] existingState = new int[INITIAL_SIZE];
 
   private int end = 0;
 
-  MatchedStateSet(int stateSize) {
-    stateStatus = new boolean[stateSize];
+  /**
+   * Construct an empty set with given capacity. This set stores states no more than given cpacity.
+   *
+   * @param capacity generally, we use stateSize as capacity
+   */
+  MatchedStateSet(int capacity) {
+    stateStatus = new boolean[capacity];
   }
 
   void add(IFAState state) {
