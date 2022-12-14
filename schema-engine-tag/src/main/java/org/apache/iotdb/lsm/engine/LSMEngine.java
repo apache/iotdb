@@ -25,8 +25,8 @@ import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
+import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
-import org.apache.iotdb.lsm.manager.MemManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
@@ -44,7 +44,7 @@ import java.io.IOException;
  *
  * @param <T> The type of root memory node handled by this engine
  */
-public class LSMEngine<T extends MemManager> implements ILSMEngine {
+public class LSMEngine<T extends IMemManager> implements ILSMEngine {
 
   // Use the framework's default InsertionManager object to handle insert requests
   private InsertionManager<T, IInsertionRequest> insertionManager;

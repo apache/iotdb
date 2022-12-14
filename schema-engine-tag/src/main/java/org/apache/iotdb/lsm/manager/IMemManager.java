@@ -18,6 +18,6 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-public interface MemManager {
-    public boolean isNeedFlush();
+public interface IMemManager {
+  public boolean isNeedFlush();
 }

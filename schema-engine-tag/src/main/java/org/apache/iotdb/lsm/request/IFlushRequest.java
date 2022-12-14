@@ -18,11 +18,30 @@
  */
 package org.apache.iotdb.lsm.request;
 
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+
+import java.util.List;
+
 /** Represents a flush request that can be processed by the lsm framework */
-public interface IFlushRequest<K, V> extends IRequest<K, V> {
+public class IFlushRequest<K, V> implements IRequest<K, V> {
 
   @Override
-  default RequestType getRequestType() {
+  public K getKey(RequestContext context) {
+    return null;
+  }
+
+  @Override
+  public List<K> getKeys() {
+    return null;
+  }
+
+  @Override
+  public V getValue() {
+    return null;
+  }
+
+  @Override
+  public RequestType getRequestType() {
     return RequestType.FLUSH;
   }
 }

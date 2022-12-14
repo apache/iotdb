@@ -29,8 +29,8 @@ import org.apache.iotdb.lsm.levelProcess.ILevelProcessor;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
+import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
-import org.apache.iotdb.lsm.manager.MemManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
@@ -51,7 +51,7 @@ import java.util.List;
  *
  * @param <T> The type of root memory node handled by this engine
  */
-public class LSMEngineBuilder<T extends MemManager> {
+public class LSMEngineBuilder<T extends IMemManager> {
 
   private static final Logger logger = LoggerFactory.getLogger(LSMEngineBuilder.class);
 
@@ -127,12 +127,13 @@ public class LSMEngineBuilder<T extends MemManager> {
   /**
    * build FlushManager for lsmEngine
    *
-   * @param levelProcessChain flush level processors chain
    * @param <R> extends IFlushRequest
+   * @param levelProcessChain flush level processors chain
+   * @param memManager
    */
   public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
-      LevelProcessorChain<T, R, FlushRequestContext> levelProcessChain) {
-    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager());
+      LevelProcessorChain<T, R, FlushRequestContext> levelProcessChain, T memManager) {
+    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager(), memManager);
     flushManager.setLevelProcessorsChain(levelProcessChain);
     buildFlushManager(flushManager);
     return this;
@@ -197,8 +198,10 @@ public class LSMEngineBuilder<T extends MemManager> {
    * build level processors from ApplicationContext object
    *
    * @param applicationContext ApplicationContext object
+   * @param memManager
    */
-  private LSMEngineBuilder<T> buildLevelProcessors(ApplicationContext applicationContext) {
+  private LSMEngineBuilder<T> buildLevelProcessors(
+      ApplicationContext applicationContext, T memManager) {
     LevelProcessorChain<T, IInsertionRequest, InsertRequestContext> insertionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getInsertionLevelProcessClass());
     LevelProcessorChain<T, IDeletionRequest, DeleteRequestContext> deletionLevelProcessChain =
@@ -210,7 +213,7 @@ public class LSMEngineBuilder<T extends MemManager> {
     return buildQueryManager(queryLevelProcessChain)
         .buildInsertionManager(insertionLevelProcessChain)
         .buildDeletionManager(deletionLevelProcessChain)
-        .buildFlushManager(flushLevelProcessChain);
+        .buildFlushManager(flushLevelProcessChain, memManager);
   }
 
   /**
@@ -218,11 +221,11 @@ public class LSMEngineBuilder<T extends MemManager> {
    *
    * @param packageName package name
    */
-  private LSMEngineBuilder<T> buildLevelProcessors(String packageName) {
+  private LSMEngineBuilder<T> buildLevelProcessors(String packageName, T memManager) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLevelProcessors(property);
+      buildLevelProcessors(property, memManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -234,11 +237,14 @@ public class LSMEngineBuilder<T extends MemManager> {
    *
    * @param applicationContext ApplicationContext object
    * @param walManager WalManager object
+   * @param memManager
    */
   public LSMEngineBuilder<T> buildLSMManagers(
-      ApplicationContext applicationContext, WALManager walManager) {
+      ApplicationContext applicationContext, WALManager walManager, T memManager) {
     try {
-      buildWalManager(walManager).buildLevelProcessors(applicationContext).buildRecoverManager();
+      buildWalManager(walManager)
+          .buildLevelProcessors(applicationContext, memManager)
+          .buildRecoverManager();
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -251,11 +257,12 @@ public class LSMEngineBuilder<T extends MemManager> {
    * @param packageName package name
    * @param walManager WalManager object
    */
-  public LSMEngineBuilder<T> buildLSMManagers(String packageName, WALManager walManager) {
+  public LSMEngineBuilder<T> buildLSMManagers(
+      String packageName, WALManager walManager, T memManager) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLSMManagers(property, walManager);
+      buildLSMManagers(property, walManager, memManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
